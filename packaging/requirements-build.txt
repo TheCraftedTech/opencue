@@ -1,0 +1,4 @@
+# Nur zum Bauen der Windows-Version (nicht zur Laufzeit): venv\Scripts\pip install -r packaging\requirements-build.txt
+# Zusaetzlich zu requirements.txt.
+pyinstaller==6.22.3
+pyinstaller-hooks-contrib==2026.8

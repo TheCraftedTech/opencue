@@ -1,0 +1,10 @@
+; Erzeugt von packaging/make_version_info.py aus app/version.py - nicht von Hand aendern.
+#define AppName "OpenCue"
+#define AppVersion "1.0.0"
+#define AppVersionLabel "v1.0.0"
+#define AppVersionNumeric "1.0.0.0"
+#define AppPublisher "Samuel Zenker"
+#define AppURL "https://thecraftedtech.github.io/opencue/"
+#define AppExeName "OpenCue.exe"
+#define AppDescription "DMX lighting control console"
+#define AppCopyright "Copyright (C) 2026 Samuel Zenker"

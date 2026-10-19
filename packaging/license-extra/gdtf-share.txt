@@ -1,0 +1,13 @@
+GDTF Share (online service) and GDTF fixture files
+
+OpenCue does NOT bundle any fixture files from GDTF Share. Its fixture library can download GDTF files from GDTF Share (https://gdtf-share.com) when the user asks for them
+(free account required); the user installs them into their own data folder.
+
+* GDTF (General Device Type Format) is an open standard: DIN SPEC 15800:2022 (https://github.com/mvrdevelopment/spec).
+* GDTF Share is hosted by the German Entertainment Technology Association (VPLT). Use of the service is subject to its Terms and Conditions:
+  https://gdtf-share.com/landing/pages/termsAndConditions.php
+* Rights in an uploaded fixture file stay with the uploader / manufacturer (title and intellectual property rights belong to the content owner). The terms allow downloading
+  for personal use, do not allow modifying or copying the content beyond what they permit, and require a licence for commercial use of the materials. For that reason OpenCue
+  ships no GDTF files of its own selection; fixtures that come with OpenCue are the three built-in generic devices (Generic Dimmer, Generic RGBW LED Par,
+  Generic Moving Head Spot 16ch), which are part of OpenCue itself.
+* A fixture file you download and a show that contains such a fixture are your own responsibility under the terms of the file's owner and of GDTF Share.

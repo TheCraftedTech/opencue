@@ -1,0 +1,1864 @@
+/*
+ * modern.css
+ * Moderne Bedienelemente (siehe styleguide.md), geladen NACH style.css.
+ *
+ * Schritt 1: Grundschrift, Toolbar, Menues, Buttons, Felder, Modale, Toasts, Overlays.
+ * Die Panels folgen einzeln. Was hier steht, ersetzt die alten Regeln in style.css; sobald
+ * ein Bereich fertig umgestellt ist, werden dort die alten Regeln entfernt.
+ */
+
+/* ======================================================================= Grundlagen */
+html, body {
+  background: var(--bg);
+  color: var(--text-1);
+  font-family: var(--font-ui);
+}
+
+body {
+  font-size: var(--fs-sm);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Fokus nur per Tastatur: 2px Akzent, 2px Abstand, kein Glow */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+:focus:not(:focus-visible) { outline: none; }
+
+/* Werte, Zeiten, Kanaele: immer Monospace mit festen Ziffernbreiten */
+.menubar__clock,
+.menu__shortcut-hint,
+.color-hex-input,
+.remote-cell--ip,
+.remote-cell--time,
+.cue-td--num,
+.cue-td--fade,
+.fxprog-tile__pct,
+.fxprog-tile__id,
+.vfader__thumb,
+.fxs-text,
+.fxs-hl,
+.fxs-gutter,
+input[type="number"] {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+::-webkit-scrollbar-thumb { background: var(--border-strong); }
+* { scrollbar-color: var(--border-strong) transparent; }
+
+/* ========================================================================== Toolbar */
+.menubar {
+  padding: 0 var(--sp-3);
+  gap: var(--sp-1);
+  background: var(--toolbar-bg);
+  border-bottom: 1px solid var(--border);
+  font-size: var(--fs-sm);
+}
+
+.menubar__brand {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: 0 var(--sp-3) 0 0;
+  margin-right: var(--sp-1);
+  color: var(--text-1);
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  letter-spacing: 0.1em;
+}
+
+/* Logo (Pixel-Art, ohne schwarzen Hintergrund) statt des gelben Punkts: Hoehe in rem = waechst mit der UI-Skalierung, scharfe Kanten */
+.menubar__logo {
+  display: block;
+  width: 1.75rem;
+  height: 1.75rem;
+  flex: none;
+  image-rendering: pixelated;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+/* Dunkles Theme: Logo ohne schwarzen Hintergrund - es sitzt direkt auf der Toolbar-Farbe (kein Rand). Helles Theme: die weissen Buchstaben
+   des Logos brauchen den dunklen Grund, daher das Logo mit seinem schwarzen Hintergrund als kleines, abgerundetes Abzeichen. */
+.menubar__logo--on-light { display: none; border-radius: 0.3rem; }
+:root[data-theme="light"] .menubar__logo--on-dark { display: none; }
+:root[data-theme="light"] .menubar__logo--on-light { display: block; }
+
+.menu { display: flex; align-items: center; }
+
+.menu__trigger {
+  height: var(--control-sm);
+  padding: 0 var(--sp-3);
+  border-radius: var(--radius-sm);
+  color: var(--text-2);
+  font-size: var(--fs-sm);
+  letter-spacing: 0;
+  transition: background var(--dur) var(--ease), color var(--dur) var(--ease);
+}
+
+@media (hover: hover) {
+  .menu__trigger:hover { background: var(--surface-2); color: var(--text-1); }
+}
+
+.menu--open .menu__trigger { background: var(--surface-2); color: var(--text-1); }
+
+/* Dropdown schwebt 4px unter der Leiste; die unsichtbare Bruecke haelt das Hover-Menue offen */
+.menu__dropdown,
+.menu__submenu {
+  background: var(--menu-bg);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-2);
+  padding: var(--sp-1);
+}
+
+.menu__dropdown { top: calc(100% + 0.25rem); min-width: 12rem; }
+.menu__dropdown::before { content: ""; position: absolute; left: 0; right: 0; top: -0.375rem; height: 0.375rem; }
+.menu__submenu { top: calc(var(--sp-1) * -1 - 1px); left: calc(100% + 2px); }
+.menu__submenu::before { content: ""; position: absolute; top: 0; bottom: 0; left: -0.375rem; width: 0.375rem; }
+
+.menu__item {
+  padding: 0 var(--sp-3);
+  min-height: var(--control-sm);
+  display: flex;
+  align-items: center;
+  border-radius: var(--radius-sm);
+  font-size: var(--fs-sm);
+  color: var(--text-1);
+  transition: background var(--dur-fast) var(--ease);
+}
+
+.menu__dropdown > .menu__item:last-child { border-radius: var(--radius-sm); }
+
+@media (hover: hover) {
+  .menu__item:hover { background: var(--accent-soft); color: var(--text-1); }
+}
+
+.menu__item--active { color: var(--accent); }
+.menu__item--disabled { opacity: 0.4; }
+
+.menu__item--checkbox::before {
+  width: 0.875rem;
+  height: 0.875rem;
+  border: 1px solid var(--border-strong);
+  border-radius: 3px;
+}
+.menu__item--checkbox.menu__item--checked::before {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-ink);
+  font-size: 0.625rem;
+}
+
+.menu__shortcut-hint { color: var(--text-3); font-size: var(--fs-xs); letter-spacing: 0; }
+.menu__separator { margin: var(--sp-1) var(--sp-1); background: var(--border); }
+
+.menubar__showfile-name {
+  color: var(--text-2);
+  font-size: var(--fs-xs);
+  opacity: 1;
+  max-width: 13.75rem;
+  padding-left: 0;          /* style.css gibt dem Namen 0.75rem links: zusammen mit dem Abstand der Beschriftung war der Zwischenraum zu "Show" doppelt so gross wie bei "Layout"/"Stage" */
+}
+
+/* Beschriftung "Show" vor dem Namen - gleiche Optik wie "Layout" vor dem Layout-Namen */
+.menubar__showfile-label { color: var(--text-3); text-transform: uppercase; letter-spacing: 0.04em; flex: none; font-size: var(--fs-xs); margin-right: var(--sp-1); }       /* + Leistenabstand (sp-1) = sp-2: gleicher Abstand zum Namen wie bei Layout/Stage */
+
+.menubar__showfile-name--sep,
+.toolbar__dirty-star { border-right: 1px solid var(--border); }
+
+.toolbar__dirty-star { color: var(--accent); font-size: var(--fs-sm); }
+
+.menubar__clock { color: var(--text-2); font-size: var(--fs-xs); }
+
+/* Statussymbole und Icon-Buttons: gleiche Groesse, gleiche Zustaende */
+.menubar__icon-button,
+.menubar__dmx-heart-btn,
+.menubar__remote-btn {
+  width: var(--control-sm);
+  height: var(--control-sm);
+  margin-left: var(--sp-1);
+  padding: 0;
+  border-radius: var(--radius-sm);
+  color: var(--text-2);
+  opacity: 1;
+  transition: background var(--dur) var(--ease), color var(--dur) var(--ease);
+}
+
+@media (hover: hover) {
+  .menubar__icon-button:hover,
+  .menubar__dmx-heart-btn:hover,
+    .menubar__remote-btn:not(:disabled):hover { background: var(--surface-2); color: var(--text-1); }
+}
+
+.menubar__icon-button svg { width: 1.125rem; height: 1.125rem; }
+
+.menubar__dmx-heart--active { color: var(--ok); }
+.menubar__dmx-heart--error,
+.menubar__dmx-heart--broken { color: var(--error); }
+
+/* Blackout: dezent solange aus, rot und pulsierend solange aktiv; der Schraegstrich erscheint nur im aktiven Zustand */
+.menubar__blackout .menubar__blackout-slash { opacity: 0; }
+.menubar__blackout { color: var(--warn); }                       /* normal: die Gluehbirne leuchtet gelb (Licht an) */
+@media (hover: hover) { .menubar__blackout:hover { color: var(--warn); } }
+.menubar__blackout--on, .menubar__blackout--on:hover { color: var(--error); background: color-mix(in srgb, var(--error) 16%, transparent); box-shadow: 0 0 0.7rem color-mix(in srgb, var(--error) 45%, transparent); animation: blackout-pulse 1.4s ease-in-out infinite; }
+.menubar__blackout--on .menubar__blackout-slash { opacity: 1; }
+@keyframes blackout-pulse { 50% { background: color-mix(in srgb, var(--error) 30%, transparent); box-shadow: 0 0 1rem color-mix(in srgb, var(--error) 65%, transparent); } }
+@media (prefers-reduced-motion: reduce) { .menubar__blackout--on { animation: none; } }
+.cmdbtn--blackout { color: var(--warn); }
+.cmdbtn--blackout.cmdbtn--on { color: var(--error); border-color: var(--error); }
+
+
+.menubar__remote-btn--idle { color: var(--text-2); opacity: 1; }
+.menubar__remote-btn--active { color: var(--ok); }
+.remote-badge { background: var(--ok); color: #04210b; font-family: var(--font-ui); }
+
+/* ========================================================================== Buttons */
+/* Sekundaer ist der Standard. Hoehe 28px (kompakt) bzw. 36px (Dialoge). */
+.btn,
+.fx-btn,
+.fxs-btn,
+.modal__button,
+.settings-field button,
+.settings-enttec-refresh-btn,
+.settings-enttec-reconnect-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-2);
+  min-height: var(--control-sm);
+  padding: 0 var(--sp-3);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  color: var(--text-1);
+  font: 500 var(--fs-sm)/1 var(--font-ui);
+  letter-spacing: 0;
+  text-transform: none;
+  cursor: pointer;
+  transition: background var(--dur) var(--ease), border-color var(--dur) var(--ease),
+              color var(--dur) var(--ease), transform var(--dur-fast) var(--ease);
+}
+
+.modal__button:not(.touch-btn) { min-height: var(--control-md); padding: 0 var(--sp-4); font-weight: 600; }
+
+@media (hover: hover) {
+  .btn:hover,
+  .fx-btn:hover,
+  .fxs-btn:hover,
+  .modal__button:hover,
+  .settings-field button:hover,
+  .settings-enttec-refresh-btn:hover,
+  .settings-enttec-reconnect-btn:hover { background: var(--surface-3); border-color: var(--border-strong); color: var(--text-1); }
+}
+
+.btn:active,
+.fx-btn:active,
+.fxs-btn:active,
+.modal__button:active,
+.settings-field button:active { transform: translateY(1px); }
+
+.btn:disabled,
+.fx-btn:disabled,
+.fxs-btn:disabled,
+.modal__button:disabled,
+.settings-field button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  transform: none;
+  pointer-events: none;
+}
+
+/* Primaer: Akzentflaeche, kein Rahmen */
+.btn--primary,
+.modal__button--primary,
+.fxs-btn--primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-ink);
+}
+
+@media (hover: hover) {
+  .btn--primary:hover,
+  .modal__button--primary:hover,
+  .fxs-btn--primary:hover { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); filter: brightness(1.1); }
+}
+
+/* Gefaehrlich: im Ruhezustand nur Rahmen/Text, volle Flaeche erst bei Bestaetigung */
+.btn--danger,
+.fxs-btn--danger,
+.remote-client__kick {
+  background: transparent;
+  border-color: var(--error);
+  color: var(--error);
+}
+
+@media (hover: hover) {
+  .btn--danger:hover,
+  .fxs-btn--danger:hover,
+  .remote-client__kick:hover { background: var(--error-soft); border-color: var(--error); color: var(--error); }
+}
+
+.modal__button--danger { background: var(--error); border-color: var(--error); color: #fff; }
+
+@media (hover: hover) {
+  .modal__button--danger:hover { background: var(--error); border-color: var(--error); color: #fff; filter: brightness(1.1); }
+}
+
+/* Ghost: nur Text, Rahmen erst bei Hover */
+.btn--ghost,
+.modal__button--link {
+  background: transparent;
+  border-color: transparent;
+  color: var(--text-2);
+  font-weight: 500;
+}
+
+@media (hover: hover) {
+  .btn--ghost:hover,
+  .modal__button--link:hover { background: transparent; border-color: var(--border-strong); color: var(--text-1); }
+}
+
+/* ============================================================================ Felder */
+.modal input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]),
+.modal select,
+.modal textarea,
+.settings-field input[type="text"],
+.settings-field input[type="number"],
+.settings-field select,
+.settings__text-input,
+.modal__input,
+.color-hex-input,
+#gui-scale-modal-number {
+  min-height: 2rem;
+  padding: 0 var(--sp-2);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-1);
+  font-family: inherit;
+  font-size: var(--fs-sm);
+  transition: border-color var(--dur) var(--ease);
+}
+
+.modal textarea { padding: var(--sp-2); }
+
+.modal input::placeholder,
+.modal textarea::placeholder { color: var(--text-3); }
+
+.modal input:focus,
+.modal select:focus,
+.modal textarea:focus,
+.settings-field input:focus,
+.settings-field select:focus,
+.settings__text-input:focus,
+.modal__input:focus,
+.color-hex-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.modal input:disabled,
+.modal select:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.modal input[type="range"],
+#gui-scale-modal-slider { accent-color: var(--accent); }
+
+/* Regler: schmale Bahn, links vom Griff in der Akzentfarbe gefuellt (--pct setzt ocRangeFill in app.js), runder Griff mit Rand */
+.modal input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 1.75rem;
+  background: transparent;
+  cursor: pointer;
+  --pct: 0%;
+}
+.modal input[type="range"]::-webkit-slider-runnable-track {
+  height: 0.4rem;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--accent) var(--pct), var(--surface-3) var(--pct));
+  border: 1px solid var(--border-strong);
+}
+.modal input[type="range"]::-moz-range-track {
+  height: 0.4rem;
+  border-radius: 999px;
+  background: var(--surface-3);
+  border: 1px solid var(--border-strong);
+}
+.modal input[type="range"]::-moz-range-progress { height: 0.4rem; border-radius: 999px; background: var(--accent); }
+.modal input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 1.2rem;
+  height: 1.2rem;
+  margin-top: -0.45rem;
+  border-radius: 50%;
+  background: var(--text-1);
+  border: 2px solid var(--accent);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.45);
+  transition: transform var(--dur) var(--ease);
+}
+.modal input[type="range"]::-moz-range-thumb {
+  width: 1rem;
+  height: 1rem;
+  border-radius: 50%;
+  background: var(--text-1);
+  border: 2px solid var(--accent);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.45);
+}
+.modal input[type="range"]:hover::-webkit-slider-thumb,
+.modal input[type="range"]:focus-visible::-webkit-slider-thumb { transform: scale(1.15); }
+.modal input[type="range"]:focus-visible { outline: none; }
+.modal input[type="range"]:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.color-swatch-input { border-radius: var(--radius-sm); border: 1px solid var(--border); }
+
+.settings-field label,
+.modal__field label,
+.modal__field-grid-item label { color: var(--text-2); font-size: var(--fs-sm); }
+
+/* Schalter */
+.toggle-switch__track { background: var(--surface-3); border: 1px solid var(--border-strong); }
+.toggle-switch__track::before { background: var(--text-2); left: 0.12rem; top: 0.09rem; }
+.toggle-switch input:checked + .toggle-switch__track { background: var(--accent); border-color: var(--accent); }
+.toggle-switch input:checked + .toggle-switch__track::before { background: var(--accent-ink); }
+
+/* Kleiner Schalter (Vorschlaege der Befehlszeile): sichtbar klein, die klickbare Flaeche (Label) bleibt gross genug fuer Touch */
+.toggle-switch--mini { width: 1.7rem; height: 0.95rem; min-width: 1.7rem !important; max-width: 1.7rem; }
+.toggle-switch--mini .toggle-switch__track::before { width: 0.7rem; height: 0.7rem; left: 0.12rem; top: 0.11rem; }
+.toggle-switch--mini input:checked + .toggle-switch__track::before { transform: translateX(0.75rem); }
+.cmdline-sugg { display: flex; align-items: center; justify-content: center; flex-shrink: 0; min-width: 44px; min-height: 44px; margin: -0.5rem -0.3rem -0.5rem 0; cursor: pointer; }
+
+/* ============================================================================ Modale */
+.modal-backdrop {
+  background: rgba(0, 0, 0, 0.62);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+.modal {
+  background: var(--surface-1);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-2);
+}
+
+.modal__header {
+  padding: var(--sp-3) var(--sp-4);
+  background: transparent;
+  border-bottom: 1px solid var(--border);
+  font-size: var(--fs-md);
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--text-1);
+}
+
+.modal__close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--control-sm);
+  height: var(--control-sm);
+  padding: 0;
+  border-radius: var(--radius-sm);
+  color: var(--text-2);
+  font-size: var(--fs-lg);
+  transition: background var(--dur) var(--ease), color var(--dur) var(--ease);
+}
+
+@media (hover: hover) {
+  .modal__close:hover { background: var(--surface-2); color: var(--text-1); }
+}
+
+.modal__footer { gap: var(--sp-2); padding: var(--sp-3) var(--sp-4); border-top: 1px solid var(--border); }
+
+/* Settings- und Panel-Properties-Dialog: Seitenleiste */
+.settings-modal__sidebar { background: var(--surface-1); border-right: 1px solid var(--border); padding: var(--sp-2); gap: 2px; }
+.settings-modal__content { background: var(--surface-1); }
+
+.settings-modal__category {
+  min-height: var(--control-sm);
+  padding: 0 var(--sp-3);
+  border-radius: var(--radius-sm);
+  color: var(--text-2);
+  font-size: var(--fs-sm);
+  transition: background var(--dur) var(--ease), color var(--dur) var(--ease);
+}
+
+@media (hover: hover) {
+  .settings-modal__category:hover { background: var(--surface-2); color: var(--text-1); }
+}
+
+.settings-modal__category.settings-modal__category--active,
+.settings-modal__category.settings-modal__category--active:hover {
+  background: var(--accent-soft);
+  color: var(--text-1);
+  box-shadow: inset 2px 0 0 var(--accent);
+}
+
+.settings-section__title {
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--text-2);
+  border-bottom: 1px solid var(--border);
+}
+
+/* ======================================================================== Benachrichtigungen */
+#toast-container { top: calc(var(--menubar-height) + var(--sp-2)); right: var(--sp-3); }
+
+.toast {
+  max-width: 21.25rem;
+  padding: var(--sp-2) var(--sp-3);
+  background: var(--surface-3);
+  border: 1px solid var(--border-strong);
+  border-left: 3px solid var(--text-3);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-2);
+  color: var(--text-1);
+  font-size: var(--fs-sm);
+  line-height: 1.4;
+}
+
+.toast--ok { border-left-color: var(--ok); }
+.toast--warn { border-left-color: var(--warn); }
+.toast--error { border-left-color: var(--error); }
+
+/* Verbindungs-Overlay: ruhig, ohne Unschaerfe */
+.connection-overlay { background: rgba(0, 0, 0, 0.7); backdrop-filter: none; -webkit-backdrop-filter: none; }
+.connection-overlay__box { background: var(--surface-1); border: 1px solid var(--border-strong); border-radius: var(--radius-lg); box-shadow: var(--shadow-2); }
+.connection-overlay__spinner { border-color: var(--border-strong); border-top-color: var(--accent); }
+
+/* =================================================================== Akzent-Presets (Settings) */
+.accent-presets { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
+
+.accent-preset {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  min-height: var(--control-sm);
+  padding: 0 var(--sp-3) 0 var(--sp-2);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  color: var(--text-1);
+  font: 500 var(--fs-xs)/1 var(--font-ui);
+  cursor: pointer;
+  transition: background var(--dur) var(--ease), border-color var(--dur) var(--ease);
+}
+
+.accent-preset__dot { width: 0.75rem; height: 0.75rem; border-radius: var(--radius-pill); background: var(--preset-color); }
+
+@media (hover: hover) {
+  .accent-preset:hover { background: var(--surface-3); border-color: var(--border-strong); }
+}
+
+.accent-preset--active { border-color: var(--accent); background: var(--accent-soft); }
+
+/* Link-Buttons (z.B. "Auf Standard zuruecksetzen"): Text ohne Unterstreichung */
+.modal__button--link { text-decoration: none; align-self: stretch; justify-content: flex-start; padding: 0 var(--sp-3); min-height: var(--control-sm); border-radius: var(--radius-sm); }
+.settings-modal__sidebar .modal__button--link { margin-top: auto; color: var(--text-3); }
+@media (hover: hover) { .settings-modal__sidebar .modal__button--link:hover { color: var(--error); background: var(--error-soft); border-color: transparent; } }
+
+/* Tabellenkoepfe: normale Schreibweise (Styleguide: keine Versalien als Textstil) */
+.remote-table th, .fx-th, .fxs-filelist__origin { text-transform: none; letter-spacing: 0; font-size: var(--fs-xs); }
+.remote-col--ip { width: 30%; }
+.remote-col--device { width: 20%; }
+.remote-col--time { width: 26%; }
+.remote-col--action { width: 24%; }
+
+/* ============================================================================== Panels
+ * Schritt 2: Rahmen und Kopfzeile aller Panels. Der Inhalt (Cue-Liste, Steuerung, Monitor ...)
+ * bleibt unberuehrt. Farben kommen aus den Tokens; nur bewusst gesetzte Panel-Farben stehen als
+ * Inline-Style am Element (siehe applyPanelAppearance in app.js) und gewinnen dann.
+ * ========================================================================================= */
+.panel {
+  background: var(--panel-bg);
+  border: 1px solid var(--panel-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-1);
+  color: var(--text-1);
+}
+
+.panel > .panel__header {
+  height: var(--control-md);
+  padding: 0 var(--sp-3);
+  gap: var(--sp-2);
+  background: var(--panel-header-bg);
+  border-bottom: 1px solid var(--panel-border);
+  color: var(--text-2);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.panel__header-title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Griff: sechs Punkte (2 x 3), nur im Bearbeitungsmodus - dort sind Panels verschiebbar */
+.panel > .panel__header::before {
+  content: "";
+  display: none;
+  flex: 0 0 auto;
+  width: 0.5rem;
+  height: 0.75rem;
+  margin-right: var(--sp-1);
+  background:
+    radial-gradient(circle, var(--text-3) 1.1px, transparent 1.6px) 0 0 / 4px 4px repeat;
+  opacity: 0.9;
+}
+
+.edit-mode .panel > .panel__header::before { display: block; }
+@media (hover: hover) {
+  .edit-mode .panel:hover > .panel__header::before {
+    background-image: radial-gradient(circle, var(--accent) 1.1px, transparent 1.6px);
+  }
+}
+
+/* Panels sind nicht fokussierbar; falls ein Panel (z.B. per tabindex) Fokus bekommt: Akzent-Outline */
+.panel:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+
+.resize-handle { border-radius: var(--radius-sm); border-color: var(--panel-bg); }
+
+/* ============================================================================ Cue-Liste
+ * Schritt 3. Zustandsstufen einer Zeile (alles aus --accent abgeleitet, keine festen Gruentoene):
+ *
+ *   normal    Fläche --surface-1, Status-Punkt grau
+ *   hover     Fläche --surface-2
+ *   NAECHSTER hohler Ring als Status-Punkt, 2px --accent-Streifen links, KEINE Flaechenfuellung
+ *             -> "das kommt mit Go"
+ *   AKTIV     gefuellter Punkt, 4px --accent-Streifen links, Zeile in --accent-soft, Name fett,
+ *             Fortschrittsbalken am unteren Rand
+ *             -> "das laeuft/liegt jetzt an"
+ *
+ * Aktiv und naechster unterscheiden sich bewusst in Form (gefuellt gegen Ring), Streifenbreite
+ * (4px gegen 2px) und Flaeche (getoent gegen leer), nicht nur in der Helligkeit - das haelt auch
+ * auf dem iPad und bei Farbschwaeche. Die Stufen gelten fuer jede Liste, die Zeilen mit
+ * Status-Punkt hat; --accent-soft und --accent sind die wiederverwendbaren Bausteine.
+ * ========================================================================================= */
+
+/* Toolbar: Buttons brechen als Ganzes um, nie mitten im Text */
+.cuelist-table-wrap { background: var(--surface-1); }
+[data-panel-type="cuelist"] .fx-toolbar { flex-wrap: wrap; gap: var(--sp-2); padding: var(--sp-2) var(--sp-3); background: transparent; border-bottom: 1px solid var(--border); }
+[data-panel-type="cuelist"] .fx-toolbar .fx-btn { white-space: nowrap; }
+
+.cuelist-select {
+  min-height: var(--control-sm);
+  max-width: 11.25rem;
+  padding: 0 var(--sp-2);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-1);
+  font-size: var(--fs-sm);
+}
+
+.cuelist-select:focus { outline: none; border-color: var(--accent); }
+
+/* Go: Hauptaktion = Primaer-Button statt Neon-Gruen */
+.cuelist-toolbar__btn--go,
+.cuelist-toolbar__btn--go:hover {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-ink);
+  font-weight: 700;
+}
+
+@media (hover: hover) {
+  .cuelist-toolbar__btn--go:hover { filter: brightness(1.1); }
+  .cuelist-toolbar__btn--save:hover { border-color: var(--border-strong); color: var(--text-1); }
+}
+
+/* Tabellenkopf */
+.cuelist-table thead { background: var(--surface-1); }
+.cuelist-table .fx-th {
+  background: var(--surface-1);
+  border-bottom: 1px solid var(--border);
+  border-right: 1px solid transparent;
+  color: var(--text-2);
+  font-weight: 500;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+/* Zahlen rechtsbuendig (Kopf und Zellen), Monospace kommt aus dem Grundblock oben */
+.cuelist-table td.cue-td--num,
+.cuelist-table td.cue-td--fade,
+.cuelist-table th[data-col="number"],
+.cuelist-table th[data-col="fade"],
+.cuelist-table th[data-col="delay"],
+.cuelist-table th[data-col="fade_color"],
+.cuelist-table th[data-col="delay_color"],
+.cuelist-table th[data-col="fade_pos"],
+.cuelist-table th[data-col="delay_pos"],
+.cuelist-table th[data-col="fade_beam"],
+.cuelist-table th[data-col="delay_beam"],
+.cuelist-table th[data-col="fade_zoom"],
+.cuelist-table th[data-col="delay_zoom"],
+.cuelist-table th[data-col="fx_fade_in"],
+.cuelist-table th[data-col="fx_fade_out"] { text-align: right; }
+
+/* Zeilen */
+.cuelist-table .cue-row .fx-td {
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+  border-right: 1px solid transparent;
+  color: var(--text-1);
+  transition: background var(--dur-fast) var(--ease);
+}
+
+.cue-row { cursor: pointer; }
+
+@media (hover: hover) {
+  .cuelist-table .cue-row:hover .fx-td { background: var(--surface-3); }   /* eine Stufe ueber dem Zebra (surface-2) */
+}
+
+/* Naechster Cue: Streifen + Ring, keine Flaeche */
+.cuelist-table .cue-row--next .fx-td { box-shadow: none; }
+.cuelist-table .cue-row--next .cue-td--status { box-shadow: inset 2px 0 0 var(--accent); }
+
+/* Aktiver Cue: getoente Zeile, kraeftiger Streifen */
+.cuelist-table .cue-row--active .fx-td { background: var(--accent-soft); }
+.cuelist-table .cue-row--active .cue-td--status { box-shadow: inset 4px 0 0 var(--accent); }
+.cuelist-table .cue-row--active .cue-name-text { font-weight: 700; }
+
+@media (hover: hover) {
+  .cuelist-table .cue-row--active:hover .fx-td { background: color-mix(in srgb, var(--accent) 22%, transparent); }
+}
+
+/* Status-Punkt */
+.cue-status-dot {
+  width: 0.625rem;
+  height: 0.625rem;
+  box-sizing: border-box;
+  background: var(--surface-3);
+  border: 1px solid var(--border-strong);
+}
+
+.cue-status-dot--active { background: var(--accent); border-color: var(--accent); box-shadow: none; }
+.cue-status-dot--next { background: transparent; border: 2px solid var(--accent); }
+
+/* Fortschrittsbalken: Spur --surface-3, Fuellung --accent, kein Glow */
+.cue-progress-bar {
+  left: var(--sp-2);
+  right: var(--sp-2);
+  bottom: 2px;
+  height: 3px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-3);
+}
+
+.cue-progress-bar__fill { background: var(--accent); border-radius: var(--radius-sm); }
+
+/* Leerer Zustand */
+.cuelist-empty { color: var(--text-3); font-size: var(--fs-sm); padding: var(--sp-6) var(--sp-4); }
+
+/* Inline-Bearbeitung einer Zelle */
+.cue-td-edit-input {
+  min-height: 1.625rem;
+  padding: 0 var(--sp-2);
+  background: var(--surface-2);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-sm);
+  color: var(--text-1);
+  font-size: var(--fs-sm);
+}
+
+.cue-td-edit-input:focus { outline: none; }
+
+/* ============================================================== Bearbeitungsmodus (Arbeitsflaeche)
+ * Ruhige Markierung statt violettem Leuchtrahmen: 2px-Linie, kein Glow, keine Animation. */
+.viewport.edit-mode .workspace { box-shadow: inset 0 0 0 2px var(--edit-mode-color); }
+
+
+/* Cue-Liste: kompakte Toolbar, damit sie in ueblichen Panelbreiten einzeilig bleibt */
+[data-panel-type="cuelist"] .fx-toolbar { gap: var(--sp-1); padding: var(--sp-2); }
+[data-panel-type="cuelist"] .fx-toolbar .fx-btn { padding: 0 var(--sp-2); font-size: var(--fs-xs); }
+
+/* Hell: weisse Schrift auf dem dunkleren Gruen */
+:root[data-theme="light"] .remote-badge { color: #ffffff; }
+
+/* ================================================================================ Theme-Editor */
+.segmented { display: inline-flex; padding: 2px; background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-md); gap: 2px; }
+
+.segmented__btn {
+  min-height: calc(var(--control-sm) - 4px);
+  padding: 0 var(--sp-4);
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  color: var(--text-2);
+  font: 500 var(--fs-sm)/1 var(--font-ui);
+  cursor: pointer;
+  transition: background var(--dur) var(--ease), color var(--dur) var(--ease);
+}
+
+@media (hover: hover) {
+  .segmented__btn:hover { color: var(--text-1); }
+}
+
+.segmented__btn--active { background: var(--accent); color: var(--accent-ink); }
+.segmented__btn--indicator { cursor: default; }
+
+.theme-root .settings-section { margin-bottom: var(--sp-5); }
+.theme-hint { margin-top: var(--sp-2); color: var(--text-3); font-size: var(--fs-xs); line-height: 1.4; }
+.theme-row .modal__field { gap: var(--sp-2); }
+.theme-row__reset { min-height: var(--control-sm); width: var(--control-sm); padding: 0; color: var(--text-2); }
+.theme-row__reset[hidden] { display: none; }
+
+#settings-theme-root input[type="range"] { flex: 1 1 auto; min-width: 8rem; }
+.theme-radius-value { min-width: 3.5rem; text-align: right; color: var(--text-2); font-family: var(--font-mono); }
+
+.theme-save-row { display: flex; gap: var(--sp-2); margin-bottom: var(--sp-3); }
+.theme-save-row .settings__text-input { flex: 1 1 auto; min-width: 0; }
+
+.theme-profile-list { display: flex; flex-direction: column; border: 1px solid var(--border); border-radius: var(--radius-md); overflow: hidden; }
+.theme-profile { display: flex; align-items: center; gap: var(--sp-2); padding: var(--sp-1) var(--sp-2); border-bottom: 1px solid var(--border); }
+.theme-profile:last-child { border-bottom: none; }
+
+.theme-profile__name {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: var(--control-sm);
+  padding: 0 var(--sp-1);
+  background: transparent;
+  border: none;
+  color: var(--text-1);
+  font: 500 var(--fs-sm)/1 var(--font-ui);
+  text-align: left;
+  cursor: pointer;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (hover: hover) {
+  .theme-profile__name:hover { color: var(--accent); }
+}
+
+.theme-profile__tag { color: var(--text-3); font-size: var(--fs-xs); }
+.theme-profile__actions { display: flex; gap: var(--sp-1); }
+.theme-profile__btn { min-height: var(--control-sm); padding: 0 var(--sp-2); font-size: var(--fs-xs); }
+.theme-profile__rename { flex: 1 1 auto; }
+.theme-profile-empty { padding: var(--sp-3); color: var(--text-3); font-size: var(--fs-sm); }
+
+.theme-transfer {
+  width: 100%;
+  padding: var(--sp-2);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-1);
+  font: var(--fs-xs)/1.4 var(--font-mono);
+  resize: vertical;
+}
+
+.theme-transfer:focus { outline: none; border-color: var(--accent); }
+.theme-transfer-buttons { display: flex; gap: var(--sp-2); margin-top: var(--sp-2); }
+
+/* ================================================================================== Zebra
+ * Wiederverwendbarer Baustein fuer Listen/Tabellen: Klasse .list--zebra an die Tabelle haengen.
+ * Ungerade Zeilen --surface-1, gerade --surface-2. Opt-in, kein globaler Zwang.
+ * Alle Zebra-Selektoren stehen in :where() und haben damit Spezifitaet 0: JEDER Zustand
+ * (Hover, aktiver/naechster Cue, Auswahl, ...) gewinnt automatisch gegen den Zebra-Grundton.
+ * Gilt fuer <table> (tbody tr) ebenso wie fuer Listen aus Block-Elementen (.list--zebra > *). */
+:where(.list--zebra) :where(tbody) > :where(tr:nth-child(odd)) > :where(td, th),
+:where(.list--zebra:not(table)) > :where(*:nth-child(odd)) { background-color: var(--surface-1); }
+
+:where(.list--zebra) :where(tbody) > :where(tr:nth-child(even)) > :where(td, th),
+:where(.list--zebra:not(table)) > :where(*:nth-child(even)) { background-color: var(--surface-2); }
+
+
+/* ===================================================================== Panel-Eigenschaften
+ * Farbfelder kompakter: kleines Farbfeld + festes Hex-Feld statt eines ueber die ganze Breite
+ * gezogenen Feldes, Bezeichnung und Feld bilden ein Paar mit klarem Abstand dazwischen. */
+.modal--panel-properties .settings-modal__pane .modal__field { margin: 0; }
+.modal--panel-properties .settings-modal__pane .modal__field:has(> label.label) { margin-top: var(--sp-4); margin-bottom: var(--sp-1); }
+.modal--panel-properties .settings-modal__pane .modal__field:has(> label.label):first-child { margin-top: 0; }
+.modal--panel-properties .color-swatch-input { width: 2.25rem; height: 2rem; flex: 0 0 auto; padding: 0; }
+.modal--panel-properties .color-hex-input { flex: 0 0 9rem; }
+.modal--panel-properties .modal__field--checkbox { margin-top: var(--sp-4); gap: var(--sp-3); }
+.modal--panel-properties select#panel-properties-corners { flex: 0 0 12rem; }
+#panel-properties-accent-color-row { margin: var(--sp-2) 0; }
+
+/* ================================================================================ Kontextmenue
+ * Die EINE Komponente fuer alle Kontextmenues (Panel-Editor, Cue-Liste, Scheinwerferliste, Presets/
+ * Effekte). Gebaut von ContextMenu.show() in app.js. Optik wie die Toolbar-Menues: Menue-Flaeche,
+ * starker Rahmen, Aktiv-Hover, gefaehrliche Aktionen in Rot, Trennlinien, 44px-Ziele auf Touch. */
+.ctx-menu {
+  position: fixed;
+  z-index: 100300;   /* auch ueber Dialogen (Modal-Stack ab 100100) */
+  min-width: 11rem;
+  max-width: calc(100vw - 1rem);
+  padding: var(--sp-1);
+  background: var(--menu-bg);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-2);
+  color: var(--text-1);
+  font-size: var(--fs-sm);
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.ctx-menu__item {
+  display: flex;
+  align-items: center;
+  min-height: var(--control-sm);
+  padding: 0 var(--sp-3);
+  border-radius: var(--radius-sm);
+  color: var(--text-1);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background var(--dur-fast) var(--ease);
+}
+
+@media (hover: hover) {
+  .ctx-menu__item:hover { background: var(--accent-soft); }
+  .ctx-menu__item--danger:hover { background: var(--error-soft); }
+}
+
+.ctx-menu__item--danger { color: var(--error); }
+.ctx-menu__separator { height: 1px; margin: var(--sp-1) var(--sp-1); background: var(--border); }
+
+@media (pointer: coarse) {
+  .ctx-menu__item { min-height: 2.75rem; font-size: var(--fs-md); }
+}
+
+/* ================================================================== Abstaende in Dialogen
+ * Eine Stufe grosszuegiger als zuvor, alles aus den Abstands-Tokens (rem: waechst mit der GUI-Skalierung). */
+.settings-modal__sidebar { gap: var(--sp-1); padding: var(--sp-3) var(--sp-2); }
+
+.settings-modal__category {
+  min-height: var(--control-md);
+  padding: var(--sp-2) var(--sp-3);
+  line-height: 1.3;
+}
+
+.settings-modal__pane { padding: var(--sp-5) var(--sp-5); }
+.settings-section { margin-bottom: var(--sp-6); }
+.settings-section__title { margin-bottom: var(--sp-3); padding-bottom: var(--sp-2); }
+.settings-field { margin-bottom: var(--sp-3); gap: var(--sp-4); }
+
+/* Panel-Eigenschaften: Feldgruppen mit gleichmaessigem Abstand; ein Bezeichner ohne eigenes Feld
+   (nur <label>) rueckt dichter an das darauf folgende Bedienelement. */
+.modal--panel-properties .settings-modal__pane--active {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+}
+
+.modal--panel-properties .settings-modal__pane .modal__field,
+.modal--panel-properties .settings-modal__pane .modal__field:has(> label.label),
+.modal--panel-properties .settings-modal__pane .modal__field--checkbox { margin: 0; }
+
+.modal--panel-properties .settings-modal__pane .modal__field:has(> label:only-child) { margin-bottom: calc(var(--sp-2) * -1); }
+.modal--panel-properties .settings-modal__pane label { display: block; }
+.modal--panel-properties .settings-modal__pane .modal__field > label { min-width: 0; }
+.modal--panel-properties .settings-modal__pane .modal__field--checkbox { gap: var(--sp-3); }
+.modal--panel-properties .modal__field-grid { gap: var(--sp-4); margin-bottom: 0; }
+#panel-properties-accent-color-row { margin: 0; }
+
+/* Lasso-Auswahl laeuft: nur das besitzende Panel reagiert, Nachbar-Panels sind fuer die Geste gesperrt
+   (kein Hover, keine Klicks). Ergaenzt den Pointer-Capture in app.js. */
+body.lasso-active .workspace-panel:not(.lasso-owner) { pointer-events: none; }
+body.lasso-active { cursor: crosshair; }
+
+/* Cue-Liste: Pause/Stopp in der bestehenden Button-Optik. Pausiert: Akzentrahmen als Zustandsanzeige. */
+.cuelist-toolbar__btn--held { border-color: var(--accent); color: var(--accent); }
+
+/* Wiedergabe-Steuerung mindestens 44 px hoch - auf allen Geraeten (keine Touch-Sonderwerte) */
+[data-panel-type="cuelist"] .fx-toolbar .fx-btn,
+[data-panel-type="cuelist"] .fx-toolbar .cuelist-select { min-height: 2rem; }
+
+/* Follow-Delay: Countdown-Balken in der Zeile des folgenden Cues (sonst nur beim aktiven Cue sichtbar) */
+.cue-row.cue-row--next .cue-progress-bar.cue-progress-bar--follow { display: block; }
+/* Der Delay-Countdown ist gruen (--ok), damit er sich von der orangen Ueberblendung abhebt */
+.cue-progress-bar--follow .cue-progress-bar__fill { background: var(--ok); }
+
+/* Live-Sync: Hinweis, dass ein offenes Layout von einem anderen Geraet aktualisiert wurde (nicht blockierend) */
+.layout-update-banner {
+  position: fixed;
+  left: 50%;
+  bottom: max(var(--sp-4), env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  z-index: 100005;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-3);
+  width: max-content;
+  max-width: min(94vw, 40rem);
+  padding: var(--sp-3) var(--sp-4);
+  background: var(--surface-3);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-2, 0 8px 24px rgba(0, 0, 0, .4));
+  color: var(--text-1);
+  font-size: var(--fs-md);
+}
+.layout-update-banner__text { flex: 1 1 14rem; }
+@media (pointer: coarse) { .layout-update-banner .modal__button { min-height: 2.75rem; } }
+
+/* ============================================================================ Touch-Vollstaendigkeit
+ * Alles, was am Desktop nur mit Hover oder einem kleinen Zielpunkt erreichbar ist, bekommt auf Touch-Geraeten
+ * (pointer: coarse / hover: none) ein sichtbares, fingergrosses Ziel. */
+@media (pointer: coarse) {
+  /* Panel-Editor: Eck-Griffe mit 44-px-Trefferflaeche INNERHALB des Panels (am Arbeitsflaechenrand nicht abgeschnitten);
+     sichtbar bleibt der kleine Punkt in der Ecke. */
+  .resize-handle {
+    width: 2.75rem;
+    height: 2.75rem;
+    background: transparent;
+    border: 0;
+  }
+  .resize-handle::after {
+    content: "";
+    position: absolute;
+    width: 1rem;
+    height: 1rem;
+    background: var(--edit-mode-color);
+    border: 1px solid var(--panel-bg);
+    border-radius: var(--radius-sm);
+  }
+  .resize-handle--nw { top: 0; left: 0; }
+  .resize-handle--ne { top: 0; right: 0; }
+  .resize-handle--sw { bottom: 0; left: 0; }
+  .resize-handle--se { bottom: 0; right: 0; }
+  .resize-handle--nw::after { top: 0.25rem; left: 0.25rem; }
+  .resize-handle--ne::after { top: 0.25rem; right: 0.25rem; }
+  .resize-handle--sw::after { bottom: 0.25rem; left: 0.25rem; }
+  .resize-handle--se::after { bottom: 0.25rem; right: 0.25rem; }
+
+  /* Preset-Leiste: Fingergroesse nur als UNSICHTBARE Trefferflaeche - die sichtbare Groesse im Panel ist auf allen Geraeten
+     gleich (sonst waere dieses Panel auf dem iPad groesser als die anderen bei derselben Skalierung). */
+  .preset-toolbar__btn,
+  .preset-filter__btn,
+  .preset-sort__btn { position: relative; }
+  .preset-toolbar__btn::after,
+  .preset-filter__btn::after,
+  .preset-sort__btn::after { content: ""; position: absolute; inset: -0.5rem -0.25rem; }
+}
+
+@media (hover: none) {
+  /* Layout-Menue: Favorit-Stern und Loeschen sind sonst nur bei Hover sichtbar bzw. winzig */
+  .layout-delete-btn { opacity: 0.8; }
+  .layout-star,
+  .layout-delete-btn {
+    min-width: 2.75rem;
+    min-height: 2.75rem;
+    font-size: 1.125rem;
+  }
+  .menu__item--layout { min-height: 2.75rem; }
+}
+
+@media (pointer: coarse) {
+  /* Toolbar-Menues: Eintraege in Fingergroesse (wie die Kontextmenues) */
+  .menu__dropdown > .menu__item,
+  .menu__submenu > .menu__item { min-height: 2.75rem; display: flex; align-items: center; }
+}
+
+/* ============================================================== Position: Zahlenfelder, Grob/Fein
+ * Die Zahlenfelder sind zugleich Eingabefeld (Tippen) und Wisch-Regler (hoch/runter ziehen, Maus und Touch). */
+.fxprog-numfield-wrap { display: flex; }
+.fxprog-numfield {
+  width: 100%;
+  min-height: var(--control-md);
+  box-sizing: border-box;
+  padding: 0 var(--sp-2);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-1);
+  font: 600 var(--fs-md)/1 var(--font-mono);
+  text-align: center;
+  touch-action: none;            /* senkrechtes Wischen aendert den Wert, die Seite scrollt dabei nicht */
+  cursor: ns-resize;
+  -webkit-user-select: none;
+  user-select: none;
+}
+.fxprog-numfield:focus { cursor: text; -webkit-user-select: text; user-select: text; border-color: var(--accent); outline: none; }
+.fxprog-numfield-wrap--swiping .fxprog-numfield { border-color: var(--accent); background: var(--accent-soft); }
+
+.fxprog-posfine {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: var(--sp-4);
+  min-height: 0;
+  padding: var(--sp-4);
+  box-sizing: border-box;
+}
+.fxprog-posfine__fields { display: flex; gap: var(--sp-4); justify-content: center; }
+.fxprog-posfine__col { display: flex; flex-direction: column; gap: var(--sp-2); flex: 1 1 0; max-width: 14rem; }
+.fxprog-posfine__label { color: var(--text-2); font-size: var(--fs-sm); font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; text-align: center; }
+.fxprog-posfine .fxprog-numfield { min-height: 3.5rem; font-size: var(--fs-xl); }
+.fxprog-numfield-caption { min-height: 1.2em; text-align: center; color: var(--text-3); font: var(--fs-xs)/1.2 var(--font-mono); }
+.fxprog-posfine__hint { text-align: center; color: var(--text-2); font-size: var(--fs-sm); line-height: 1.4; }
+/* Kein Fein-Kanal in der Auswahl: Felder gedimmt, Hinweis hervorgehoben (statt leerer Flaeche) */
+.fxprog-posfine[data-fine="none"] .fxprog-posfine__fields { opacity: 0.35; pointer-events: none; }
+.fxprog-posfine[data-fine="none"] .fxprog-posfine__hint,
+.fxprog-posfine[data-fine="some"] .fxprog-posfine__hint { color: var(--warn); }
+
+.settings-field-hint { margin: calc(-1 * var(--sp-2)) 0 var(--sp-3); color: var(--text-3); font-size: var(--fs-sm); line-height: 1.4; }
+
+/* ============================================================ Toolbar auf Touch: groessere Trefferflaechen
+ * Sichtbar bleibt die kompakte Leiste (40 px); die Treffer-Flaeche jedes Toolbar-Elements wird per unsichtbarem
+ * Pseudo-Element auf mindestens 44 x 44 px vergroessert (ein Tipp knapp daneben trifft trotzdem). */
+@media (pointer: coarse) {
+  .menubar .menu__trigger,
+  .menubar > button { position: relative; }
+  .menubar .menu__trigger::after,
+  .menubar > button::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: max(calc(100% + var(--sp-1)), 2.75rem);   /* auch die Luecke zwischen den Eintraegen */
+    height: 2.75rem;
+    transform: translate(-50%, -50%);
+  }
+}
+
+/* "Abmelden" gibt es nur an Remote-Geraeten (die Konsole hat keine Anmeldung) */
+.menu__item--remote-only { display: none; }
+html.is-remote .menu__item--remote-only { display: flex; }
+
+
+/* ============================================================ Layout-Verwaltung
+ * Layout-Zeichen in der Menueleiste (Name + Punkt bei ungespeicherten Aenderungen) und der Dialog "Layouts verwalten". */
+.menubar__layout-chip {
+  display: inline-flex; align-items: center; gap: var(--sp-2);
+  max-width: 17rem; min-width: 0; padding: 0 var(--sp-3);
+  background: transparent; border: 0; border-right: 1px solid var(--border);
+  color: var(--text-2); font: inherit; font-size: var(--fs-xs); cursor: pointer;
+}
+.menubar__layout-chip:hover { color: var(--text-1); }
+.menubar__layout-label { color: var(--text-3); text-transform: uppercase; letter-spacing: 0.04em; flex: none; }
+.menubar__layout-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.menubar__layout-chip--none .menubar__layout-name { color: var(--text-3); font-style: italic; }
+.menubar__layout-dirty { color: var(--accent); flex: none; line-height: 1; }
+.menubar__layout-chip--dirty .menubar__layout-name { color: var(--text-1); }
+
+.modal--layouts { width: min(34rem, calc(100vw - 2rem)); display: flex; flex-direction: column; }
+.modal--layouts .modal__body { overflow-y: auto; min-height: 0; }
+.layout-current {
+  display: flex; align-items: baseline; flex-wrap: wrap; gap: var(--sp-2) var(--sp-3);
+  padding: var(--sp-3); background: var(--surface-2); border: 1px solid var(--border); border-left: 3px solid var(--border);
+}
+.layout-current--dirty { border-left-color: var(--accent); }
+.layout-current__label { color: var(--text-3); font-size: var(--fs-xs); text-transform: uppercase; letter-spacing: 0.04em; }
+.layout-current__name { color: var(--text-1); font-size: var(--fs-lg); font-weight: 600; overflow-wrap: anywhere; }
+.layout-current__state { color: var(--text-2); font-size: var(--fs-sm); margin-left: auto; }
+.layout-current--dirty .layout-current__state { color: var(--accent); }
+.layout-manage__hint { margin: var(--sp-2) 0 var(--sp-3); color: var(--text-3); font-size: var(--fs-sm); line-height: 1.4; }
+.layout-manage__actions { display: flex; gap: var(--sp-3); margin-bottom: var(--sp-4); }
+.layout-manage__actions .modal__button { min-height: 2.75rem; }
+
+.layout-list { list-style: none; margin: 0; padding: 0; border: 1px solid var(--border); }
+.layout-list__empty { padding: var(--sp-4); color: var(--text-3); text-align: center; }
+.layout-row { display: flex; align-items: stretch; border-bottom: 1px solid var(--border); }
+.layout-row:last-child { border-bottom: 0; }
+.layout-row--current { background: var(--surface-2); box-shadow: inset 3px 0 0 var(--accent); }
+.layout-row__btn {
+  flex: none; min-width: 2.75rem; min-height: 2.75rem; padding: 0;
+  background: none; border: 0; color: var(--text-3); font-size: 1.05rem; cursor: pointer;
+}
+.layout-row__btn:hover { color: var(--text-1); }
+.layout-row__star--on { color: var(--highlight-color, var(--accent)); }
+.layout-row__delete:hover { color: var(--error); }
+.layout-row__name {
+  flex: 1; min-width: 0; display: flex; align-items: center; gap: var(--sp-2); min-height: 2.75rem;
+  padding: 0 var(--sp-2); background: none; border: 0; color: var(--text-1); font: inherit; text-align: left; cursor: pointer;
+}
+.layout-row__title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.layout-row__tag { flex: none; margin-left: auto; color: var(--accent); font-size: var(--fs-xs); }
+
+/* ============================================================================ Scheinwerfer-Bibliothek */
+/* Sehr grosses Fenster (mehr als die halbe Flaeche); rem-basiert, folgt also der GUI-Skalierung des Geraets, mit Obergrenze am Bildschirm. */
+.modal--fxlib { width: min(72rem, calc(100vw - 2rem)); height: min(48rem, calc(100vh - 2rem)); max-height: calc(100vh - 2rem); display: flex; flex-direction: column; position: relative; }
+.modal--fxlib .modal__body { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; gap: var(--sp-3); overflow: hidden; }
+/* Timecode in der Toolbar: Punkt (gruen = laeuft, gelb = pausiert) + Zeit; auf schmalen Fenstern ausgeblendet */
+.menubar__tc { display: inline-flex; align-items: center; gap: var(--sp-2); flex: none; color: var(--text-2); font-size: var(--fs-xs); font-family: var(--font-mono, ui-monospace, Consolas, monospace); font-variant-numeric: tabular-nums; white-space: nowrap; padding: 0 var(--sp-2); border-right: 1px solid var(--border); }
+.menubar__tc-dot { width: 0.55rem; height: 0.55rem; border-radius: 50%; background: var(--text-3); }
+.menubar__tc--run .menubar__tc-dot { background: var(--ok); box-shadow: 0 0 0.4rem var(--ok); }
+.menubar__tc--run { color: var(--text-1); }
+.menubar__tc--pause .menubar__tc-dot { background: var(--accent); }
+@media (max-width: 1000px) { .menubar__tc { display: none; } }
+
+/* Gemeinsame SVG-Symbole (Icons in static/js/icons.js): Farbe = Textfarbe, Groesse = Schrift */
+.ico { width: 1.1em; height: 1.1em; flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; vertical-align: -0.2em; }
+.ico--fill { fill: currentColor; stroke: none; }
+.modal__button--icon { display: inline-flex; align-items: center; gap: var(--sp-2); }
+.fxlib-tag .ico { width: 0.95em; height: 0.95em; margin-right: 0.25em; vertical-align: -0.15em; }
+.fxlib-split__arrow .ico, .fxlib__top .ico { width: 1.3em; height: 1.3em; vertical-align: middle; }
+.fxdet__row td:last-child .ico { width: 1.1em; height: 1.1em; }
+.modal--fxlib [hidden] { display: none !important; }     /* .modal__button & Co. setzen display und wuerden das hidden-Attribut sonst uebersteuern */
+.modal--fxlib .modal__body { position: relative; }
+.fxlib__tabs { display: flex; align-items: center; gap: var(--sp-2); flex: none; flex-wrap: wrap; }
+.fxlib__spacer { flex: 1; }
+.fxlib__tab {
+  min-height: 2.75rem; padding: 0 var(--sp-4); background: var(--surface-2); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); color: var(--text-2); font: inherit; font-weight: 600; cursor: pointer;
+}
+.fxlib__tab--active { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.fxlib__filters { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2) var(--sp-3); flex: none; }
+.fxlib__filters[hidden] { display: none; }
+.modal--fxlib .fxlib__filters input[type="search"] { flex: 1 1 14rem; min-width: 10rem; min-height: 2.75rem !important; }
+.modal--fxlib .fxlib__filters select { flex: 0 1 14rem; min-width: 8rem; min-height: 2.75rem !important; }
+.fxlib__cats { display: flex; flex-wrap: wrap; gap: var(--sp-2); flex: 1 1 100%; }
+.fxlib-chip {
+  min-height: 2.5rem; padding: 0 var(--sp-3); background: var(--surface-2); border: 1px solid var(--border);
+  border-radius: 999px; color: var(--text-2); font: inherit; font-size: var(--fs-sm); cursor: pointer;
+}
+.fxlib-chip--on { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.fxlib__content { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+.fxlib__scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding-right: var(--sp-1); }
+.fxlib__scroll[hidden] { display: none; }
+.fxlib__hint { margin: 0 0 var(--sp-2); color: var(--text-3); font-size: var(--fs-sm); line-height: 1.4; overflow-wrap: anywhere; }
+.fxlib__empty { grid-column: 1 / -1; padding: var(--sp-5, 2rem) var(--sp-4); color: var(--text-3); text-align: center; }
+.fxlib__error { margin: 0 0 var(--sp-2); padding: var(--sp-2) var(--sp-3); border-left: 3px solid var(--error); background: var(--surface-2); color: var(--text-1); font-size: var(--fs-sm); }
+.fxlib__error[hidden] { display: none; }
+.fxlib__count { color: var(--text-3); font-size: var(--fs-sm); }
+.fxlib__sort { display: inline-flex; align-items: center; gap: var(--sp-2); color: var(--text-3); font-size: var(--fs-sm); }
+.modal--fxlib .fxlib__sort select { min-height: 2.5rem !important; }
+.fxlib__end { margin: 0; color: var(--text-3); font-size: var(--fs-sm); text-align: center; }
+.fxlib-account {
+  display: inline-flex; align-items: center; gap: var(--sp-2); min-height: 2.75rem; padding: 0 var(--sp-3); background: var(--surface-2);
+  border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text-1); font: inherit; font-size: var(--fs-sm); cursor: pointer; max-width: 100%;
+}
+.fxlib-account #fxlib-session-user { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.fxlib-account__dot { flex: none; width: 0.6rem; height: 0.6rem; border-radius: 50%; background: var(--ok); }
+.fxlib-account__caret { color: var(--text-3); }
+.fxlib-account[aria-expanded="true"] { border-color: var(--accent); }
+.fxlib__top {
+  position: absolute; right: var(--sp-4); bottom: var(--sp-3); z-index: 4; width: 2.75rem; height: 2.75rem; display: flex; align-items: center; justify-content: center;
+  background: var(--accent); color: var(--accent-ink); border: 0; border-radius: 50%; box-shadow: var(--shadow-2); font-size: 1.3rem; line-height: 1; cursor: pointer;
+}
+.fxdet__wrap { position: relative; flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+.fxdet__wrap .fxdet__scroll { flex: 1 1 auto; }
+.fxlib__empty .modal__button { margin-top: var(--sp-3); }
+.fxlib-split { display: inline-flex; }
+.fxlib-split .modal__button:first-child { border-top-right-radius: 0; border-bottom-right-radius: 0; }
+.fxlib-split__arrow { min-width: 2.75rem; padding: 0 !important; border-top-left-radius: 0 !important; border-bottom-left-radius: 0 !important; border-left: 1px solid rgba(0, 0, 0, 0.35) !important; }
+.fxlib-pop {
+  position: fixed; z-index: 100290; min-width: 15rem; max-width: min(26rem, calc(100vw - 1rem)); max-height: min(24rem, calc(100vh - 2rem)); overflow-y: auto;
+  background: var(--surface-3); border: 1px solid var(--border-strong); border-radius: var(--radius-md); box-shadow: var(--shadow-2); padding: var(--sp-1);
+}
+.fxlib-pop__item {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 2px; width: 100%; min-height: 2.75rem; padding: var(--sp-2) var(--sp-3); background: none; border: 0;
+  border-radius: var(--radius-sm); color: var(--text-1); font: inherit; font-size: var(--fs-sm); text-align: left; cursor: pointer;
+}
+.fxlib-pop__item:hover:not(:disabled), .fxlib-pop__item:focus-visible { background: var(--surface-2); outline: none; }
+.fxlib-pop__item:disabled { opacity: 0.55; cursor: default; }
+.fxlib-pop__item--danger { color: var(--error); }
+.fxlib-pop__main { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-1) var(--sp-2); }
+.fxlib-pop__sub { color: var(--text-3); font-size: var(--fs-xs); }
+.fxlib-pop__sep { height: 1px; margin: var(--sp-1) 0; background: var(--border); }
+.fxlib__session { display: flex; align-items: center; flex-wrap: wrap; gap: var(--sp-2) var(--sp-3); margin-bottom: var(--sp-3); color: var(--text-2); font-size: var(--fs-sm); }
+.fxlib__more { display: flex; justify-content: center; padding: var(--sp-3) 0; }
+.fxlib__grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(21rem, 100%), 1fr)); gap: var(--sp-3); align-content: start; }
+.fxlib-card {
+  display: grid; grid-template-columns: 4.5rem minmax(0, 1fr); grid-template-areas: "thumb info" "thumb actions";
+  gap: var(--sp-1) var(--sp-3); padding: var(--sp-3); background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-md);
+}
+.fxlib-card__thumb {
+  grid-area: thumb; width: 4.5rem; height: 4.5rem; display: flex; align-items: center; justify-content: center;
+  background: var(--surface-1); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text-3); overflow: hidden;
+}
+.fxlib-card__thumb img { width: 100%; height: 100%; object-fit: contain; }
+.fxlib-card__icon { width: 2.6rem; height: 2.6rem; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+.fxlib-card__info { grid-area: info; min-width: 0; }
+.fxlib-card__open { cursor: pointer; }
+.fxlib-card__open:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+@media (hover: hover) { .fxlib-card:hover { border-color: var(--border-strong); } }
+.fxlib-card__name { color: var(--text-1); font-weight: 600; overflow-wrap: anywhere; }
+.fxlib-card__mfr { color: var(--text-2); font-size: var(--fs-sm); overflow-wrap: anywhere; }
+.fxlib-card__tags { display: flex; flex-wrap: wrap; gap: var(--sp-1); margin-top: var(--sp-1); }
+.fxlib-tag { padding: 0 var(--sp-2); background: var(--surface-1); border: 1px solid var(--border); border-radius: 999px; color: var(--text-2); font-size: var(--fs-xs); line-height: 1.6; }
+.fxlib-tag--cat { color: var(--text-1); }
+.fxlib-tag--ok { border-color: var(--ok); color: var(--ok); }
+.fxlib-tag--use { border-color: var(--accent); color: var(--accent); }
+.fxlib-tag--bad { border-color: var(--error); color: var(--error); }
+.fxlib-card__actions { grid-area: actions; display: flex; flex-wrap: wrap; gap: var(--sp-2); justify-content: flex-end; align-self: end; }
+.fxlib-card__actions .modal__button { min-height: 2.75rem; }
+.fxlib__login { max-width: 28rem; margin: var(--sp-4) auto; display: flex; flex-direction: column; gap: var(--sp-2); }
+.fxlib__login[hidden] { display: none; }
+.fxlib__login-title { margin: 0; font-size: var(--fs-md); color: var(--text-1); }
+.fxlib__login label { color: var(--text-2); font-size: var(--fs-sm); }
+.modal--fxlib .fxlib__login input { min-height: 2.75rem !important; }
+.fxlib__remember { display: flex; align-items: flex-start; gap: var(--sp-2); color: var(--text-2); font-size: var(--fs-sm); line-height: 1.4; cursor: pointer; min-height: 2.75rem; }
+.fxlib__remember[hidden] { display: none; }
+.modal--fxlib .fxlib__remember input { flex: none; width: 1.25rem; height: 1.25rem; min-height: 0 !important; margin-top: 0.1rem; accent-color: var(--accent); }
+.fxlib__login-actions { display: flex; flex-wrap: wrap; gap: var(--sp-2); margin-top: var(--sp-2); }
+.fxlib__login-actions .modal__button { min-height: 2.75rem; text-decoration: none; display: inline-flex; align-items: center; }
+.fxlib__drop {
+  display: none; position: absolute; inset: 0; z-index: 5; align-items: center; justify-content: center; text-align: center;
+  background: rgba(0, 0, 0, 0.55); border: 2px dashed var(--accent); border-radius: var(--radius-lg); color: var(--text-1); font-size: var(--fs-lg); pointer-events: none;
+}
+.modal--drop .fxlib__drop { display: flex; }
+/* Scheinwerfer-Details */
+.fxdet { gap: var(--sp-3); }
+.fxdet__top { display: flex; gap: var(--sp-4); flex: none; align-items: flex-start; }
+.fxdet__thumb { flex: none; }
+.fxdet__thumb .fxlib-card__thumb { width: 6rem; height: 6rem; }
+.fxdet__thumb .fxlib-card__icon { width: 3.4rem; height: 3.4rem; }
+.fxdet__facts { margin: 0; flex: 1; min-width: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(13rem, 1fr)); gap: var(--sp-1) var(--sp-4); }
+.fxdet__fact { min-width: 0; }
+.fxdet__fact dt { color: var(--text-3); font-size: var(--fs-xs); text-transform: uppercase; letter-spacing: 0.04em; }
+.fxdet__fact dd { margin: 0; color: var(--text-1); font-size: var(--fs-sm); overflow-wrap: anywhere; }
+.fxdet__fact--wide { grid-column: 1 / -1; }
+.fxdet__modebar { display: flex; align-items: center; flex-wrap: wrap; gap: var(--sp-2) var(--sp-3); flex: none; }
+.fxdet__modebar label { color: var(--text-2); font-size: var(--fs-sm); }
+.modal--fxdet .fxdet__modebar select { min-height: 2.75rem !important; min-width: 12rem; max-width: 100%; }
+.fxdet__modeinfo { color: var(--text-3); font-size: var(--fs-sm); }
+.fxdet__scroll { flex: 1 1 auto; min-height: 0; overflow: auto; border: 1px solid var(--border); border-radius: var(--radius-sm); }
+.fxdet__table { width: 100%; border-collapse: collapse; font-size: var(--fs-sm); }
+.fxdet__table th { position: sticky; top: 0; z-index: 1; background: var(--surface-2); color: var(--text-2); text-align: left; font-weight: 600; padding: var(--sp-2) var(--sp-3); border-bottom: 1px solid var(--border-strong); white-space: nowrap; }
+.fxdet__table td { padding: var(--sp-2) var(--sp-3); border-bottom: 1px solid var(--border); vertical-align: top; color: var(--text-1); }
+.fxdet__row { cursor: pointer; }
+.fxdet__row:hover td, .fxdet__row--open td { background: var(--surface-2); }
+.fxdet__row td:last-child { width: 2.75rem; text-align: center; color: var(--text-3); }
+.fxdet__row[aria-expanded="true"] td:last-child { color: var(--accent); }
+.fxdet__muted { color: var(--text-3); font-size: var(--fs-xs); }
+.fxdet__bit { margin-left: var(--sp-1); padding: 0 var(--sp-1); border: 1px solid var(--border); border-radius: 999px; color: var(--text-2); font-size: var(--fs-xs); }
+.fxdet__sub td { padding: 0; background: var(--surface-1); }
+.fxdet__sub-inner { padding: var(--sp-2) var(--sp-3) var(--sp-3) var(--sp-5, 1.5rem); }
+.fxdet__fn { width: 100%; border-collapse: collapse; margin-bottom: var(--sp-2); }
+.fxdet__fn th { position: static; background: none; border-bottom: 1px solid var(--border); padding: var(--sp-1) var(--sp-2); font-size: var(--fs-xs); }
+.fxdet__fn td { padding: var(--sp-1) var(--sp-2); border-bottom: 1px solid var(--border); }
+.fxdet__sets { margin: var(--sp-1) 0 0; padding: 0; list-style: none; columns: 2 16rem; color: var(--text-2); font-size: var(--fs-xs); }
+.fxdet__sets li { break-inside: avoid; padding: 1px 0; }
+.fxdet__extra { padding: var(--sp-3); display: flex; flex-direction: column; gap: var(--sp-2); }
+.fxdet__extra h4 { margin: 0; color: var(--text-2); font-size: var(--fs-sm); }
+.fxdet__extra p { margin: 0; color: var(--text-2); font-size: var(--fs-sm); }
+.fxdet__empty { padding: var(--sp-4); color: var(--text-3); text-align: center; }
+@media (max-width: 700px) {
+  .fxdet__top { flex-direction: column; }
+  .fxdet__thumb .fxlib-card__thumb { width: 4.5rem; height: 4.5rem; }
+}
+@media (max-width: 520px) {
+  /* Handy: Typ-Chips in einer Zeile zum Wischen statt mehrerer Zeilen (mehr Platz fuer die Liste) */
+  .fxlib__cats { flex-wrap: nowrap; overflow-x: auto; padding-bottom: var(--sp-1); }
+  .fxlib-chip { flex: none; }
+}
+
+
+/* ============================================================================ Timecode-Panel */
+/* Groessen: Panel-abhaengig (Container-Einheiten), nie geraeteabhaengig; Bedienflaechen mind. 3rem (Touch). */
+.tcp { container-type: inline-size; display: flex; flex-direction: column; gap: var(--sp-3); height: 100%; padding: var(--sp-3); overflow: auto; }
+.tcp [hidden] { display: none !important; }
+#cue-edit-timecode-wrap[hidden] { display: none !important; }
+.tcp__display {
+  font-family: var(--font-mono, ui-monospace, "Cascadia Mono", Consolas, monospace); font-variant-numeric: tabular-nums; font-weight: 600; text-align: center;
+  font-size: clamp(1.6rem, 11cqi, 4.5rem); line-height: 1.1; color: var(--text-1); letter-spacing: 0.02em; padding: var(--sp-2) 0;
+}
+.tcp__status { display: flex; align-items: center; justify-content: center; gap: var(--sp-2); color: var(--text-2); font-size: var(--fs-sm); }
+.tcp__dot { width: 0.7rem; height: 0.7rem; border-radius: 50%; background: var(--text-3); }
+.tcp__dot--run { background: var(--ok); box-shadow: 0 0 0.5rem var(--ok); }
+.tcp__dot--pause { background: var(--accent); }
+.tcp__transport { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--sp-2); }
+.tcp__btn {
+  min-height: 3rem; display: flex; align-items: center; justify-content: center; background: var(--surface-2); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); color: var(--text-1); cursor: pointer; font-size: 1.4rem;
+}
+.tcp__btn:active { background: var(--surface-3); }
+.tcp__btn--on { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.tcp__row { display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; }
+.tcp__row--step { justify-content: center; }
+.tcp__label { color: var(--text-3); font-size: var(--fs-xs); text-transform: uppercase; letter-spacing: 0.04em; min-width: 6rem; }
+.tcp__input, .tcp__select {
+  flex: 1 1 8rem; min-width: 0; min-height: 2.75rem; padding: 0 var(--sp-2); background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-sm);
+  color: var(--text-1); font: inherit; font-family: var(--font-mono, ui-monospace, Consolas, monospace); font-size: var(--fs-sm);
+}
+.tcp__input--bad { border-color: var(--error); }
+.tcp__small {
+  display: inline-flex; align-items: center; gap: var(--sp-2); min-height: 2.75rem; padding: 0 var(--sp-3); background: var(--surface-2); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); color: var(--text-1); font: inherit; font-size: var(--fs-sm); cursor: pointer;
+}
+.tcp__small--primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 600; }
+
+/* ============================================================================ Medien-Player-Panel */
+/* Randlos: der Player fuellt das Panel bis zum Rand (kein Innenabstand des Panel-Inhalts); den Titel blendet man in den Panel-Eigenschaften aus */
+[data-panel-type="media_player"] .panel__content { padding: 0; display: flex; overflow: hidden; }
+.mp { position: relative; flex: 1 1 auto; width: 100%; height: 100%; min-width: 0; min-height: 0; background: #000; overflow: hidden; }
+.mp [hidden] { display: none !important; }
+.mp__stage { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; }
+.mp__video { width: 100%; height: 100%; object-fit: var(--mp-fit, contain); background: #000; }
+.mp__audio { display: flex; flex-direction: column; align-items: center; gap: var(--sp-3); color: var(--text-2); padding: var(--sp-4); text-align: center; }
+.mp__audio-icon, .mp__empty-icon { width: 4rem; height: 4rem; stroke-width: 1.5; color: var(--text-3); }
+.mp__audio-name { font-size: var(--fs-md); color: var(--text-1); overflow-wrap: anywhere; }
+.mp__empty { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--sp-3); padding: var(--sp-4); background: var(--surface-1); text-align: center; }
+.mp__empty-text { color: var(--text-2); font-size: var(--fs-sm); overflow-wrap: anywhere; }
+.mp__pick, .mp__unlock {
+  min-height: 2.75rem; padding: 0 var(--sp-4); background: var(--accent); border: 0; border-radius: var(--radius-sm); color: var(--accent-ink); font: inherit; font-weight: 600; cursor: pointer;
+}
+.mp__unlock { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); display: inline-flex; align-items: center; gap: var(--sp-2); box-shadow: var(--shadow-2); z-index: 3; }
+.mp__bar {
+  position: absolute; left: 0; right: 0; bottom: 0; display: flex; align-items: center; justify-content: space-between; gap: var(--sp-2); padding: var(--sp-2) var(--sp-3);
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.7), transparent); color: #fff; font-size: var(--fs-xs); font-variant-numeric: tabular-nums;
+  opacity: 0; transition: opacity var(--dur) var(--ease); pointer-events: none;
+}
+.mp__bar::before { content: ""; position: absolute; left: 0; bottom: 0; height: 3px; width: calc(var(--mp-progress, 0) * 100%); background: var(--accent); }
+.mp:hover .mp__bar, .mp:focus-within .mp__bar, .mp:fullscreen .mp__bar { opacity: 1; pointer-events: auto; }
+.mp--free .mp__bar { display: none; }
+@media (hover: none) { .mp__bar { opacity: 1; pointer-events: auto; } }       /* Touch: kein Darueberfahren - Vollbild-Knopf immer sichtbar */
+.mp__spacer { flex: 1; }
+.mp__tc-label, .mp__tc { font-family: var(--font-mono, ui-monospace, Consolas, monospace); font-variant-numeric: tabular-nums; }
+.mp__status { opacity: 0.85; }
+.mp__tc { position: absolute; left: var(--sp-2); top: var(--sp-2); z-index: 2; padding: 2px var(--sp-2); background: rgba(0, 0, 0, 0.55); border-radius: var(--radius-sm); color: #fff; font-size: var(--fs-sm); pointer-events: none; }
+.mp__btn {
+  position: relative; width: 2.75rem; height: 2.75rem; flex: none; display: flex; align-items: center; justify-content: center; background: rgba(0, 0, 0, 0.45); border: 0; border-radius: var(--radius-sm);
+  color: #fff; cursor: pointer; font-size: 1.3rem;
+}
+.mp__btn--on { background: var(--accent); color: var(--accent-ink); }
+.mp:fullscreen { background: #000; }
+
+/* Eigenschaften des Medien-Panels */
+.modal--media { width: min(36rem, calc(100vw - 2rem)); }
+.media-dialog__question { margin: 0 0 var(--sp-3); color: var(--text-1); font-size: var(--fs-md); font-weight: 600; overflow-wrap: anywhere; }
+.media-dialog__text { margin: 0 0 var(--sp-3); color: var(--text-2); font-size: var(--fs-sm); line-height: 1.5; }
+.media-import__options { display: flex; flex-direction: column; gap: var(--sp-2); }
+.media-import__option {
+  display: flex; align-items: flex-start; gap: var(--sp-3); padding: var(--sp-3); background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-md); cursor: pointer;
+}
+.media-import__option:has(input:checked) { border-color: var(--accent); box-shadow: inset 3px 0 0 var(--accent); }
+.media-import__option[hidden] { display: none; }
+.modal .media-import__option input { flex: none; width: 1.25rem; height: 1.25rem; min-height: 0 !important; margin: 0.15rem 0 0; padding: 0 !important; accent-color: var(--accent); }
+.media-import__body { display: flex; flex-direction: column; gap: var(--sp-1); min-width: 0; }
+.media-import__name { color: var(--text-1); font-weight: 600; }
+.media-import__text { color: var(--text-2); font-size: var(--fs-sm); line-height: 1.4; }
+.media-import__tag { align-self: flex-start; padding: 0 var(--sp-2); border: 1px solid var(--border-strong); border-radius: 999px; color: var(--text-3); font-size: var(--fs-xs); line-height: 1.6; }
+.media-import__tag--share { border-color: var(--ok); color: var(--ok); }
+.mp-prop__badge { display: inline-block; padding: 0 var(--sp-2); border: 1px solid var(--border-strong); border-radius: 999px; color: var(--text-3); font-size: var(--fs-xs); line-height: 1.6; }
+.mp-prop__badge--share { border-color: var(--ok); color: var(--ok); }
+.mp-prop__rowbtn { display: inline-flex; align-items: center; gap: var(--sp-1); min-height: 2.75rem; padding: 0 var(--sp-2); background: none; border: 0; border-radius: var(--radius-sm); color: var(--text-2); font: inherit; font-size: var(--fs-xs); cursor: pointer; }
+.media-dialog__label { display: block; margin-bottom: var(--sp-2); color: var(--text-2); font-size: var(--fs-sm); }
+.modal .media-dialog__input { width: 100%; box-sizing: border-box; min-height: 2.75rem !important; font-family: var(--font-mono, ui-monospace, Consolas, monospace); }
+.media-dialog__hint { margin: var(--sp-2) 0 var(--sp-3); color: var(--text-3); font-size: var(--fs-xs); line-height: 1.4; }
+.mp-prop__embed-new { display: flex; align-items: center; gap: var(--sp-2); min-height: 2.5rem; color: var(--text-2); font-size: var(--fs-sm); }
+.mp-prop__embed-new input { width: 1.2rem; height: 1.2rem; accent-color: var(--accent); }
+.mp-prop__where { margin-top: var(--sp-2); color: var(--text-3); font-size: var(--fs-xs); overflow-wrap: anywhere; }
+.mp-prop__upload { display: flex; align-items: center; gap: var(--sp-3); flex-wrap: wrap; margin: var(--sp-2) 0 var(--sp-3); }
+.mp-prop__list { display: block; margin: var(--sp-3) 0; }
+.mp-prop__progress { color: var(--text-2); font-size: var(--fs-sm); }
+.mp-prop__heading { color: var(--text-3); font-size: var(--fs-xs); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: var(--sp-2); }
+.mp-prop__items { display: flex; flex-direction: column; gap: var(--sp-1); max-height: 14rem; overflow-y: auto; border: 1px solid var(--border); border-radius: var(--radius-sm); }
+.mp-prop__none { padding: var(--sp-3); color: var(--text-3); font-size: var(--fs-sm); }
+.mp-prop__item { display: flex; align-items: center; gap: var(--sp-3); padding: var(--sp-2) var(--sp-3); border-bottom: 1px solid var(--border); }
+.mp-prop__item:last-child { border-bottom: 0; }
+.mp-prop__info { flex: 1; min-width: 0; }
+.mp-prop__name { color: var(--text-1); font-size: var(--fs-sm); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mp-prop__meta { color: var(--text-3); font-size: var(--fs-xs); }
+.mp-prop__embed { display: flex; flex-direction: row; flex-wrap: nowrap; white-space: nowrap; align-items: center; gap: var(--sp-1); color: var(--text-2); font-size: var(--fs-xs); cursor: pointer; min-height: 2.75rem; }
+.modal .mp-prop__embed input { flex: none; width: 1.2rem; height: 1.2rem; min-height: 0 !important; margin: 0; padding: 0 !important; accent-color: var(--accent); }
+.mp-prop__del { width: 2.75rem; height: 2.75rem; display: flex; align-items: center; justify-content: center; background: none; border: 0; border-radius: var(--radius-sm); color: var(--text-3); cursor: pointer; }
+.mp-prop__del--armed { background: var(--error); color: #fff; }
+.mp-prop__hint { color: var(--text-3); font-size: var(--fs-xs); margin: 0 0 var(--sp-3); }
+.mp-prop__range { width: 100%; accent-color: var(--accent); }
+
+.modal--exit-edit { width: min(34rem, calc(100vw - 2rem)); }
+.layout-exit-edit__footer { gap: var(--sp-2); flex-wrap: wrap; justify-content: flex-end; }
+.layout-exit-edit__footer .modal__button { min-height: 2.75rem; }
+@media (max-width: 520px) {
+  .menubar__layout-label, .menubar__showfile-label { display: none; }
+  .menubar__layout-chip { max-width: 9rem; }
+}
+
+/* ============================================================ Showfile-Verwaltung (nutzt die Zeilen des Layout-Dialogs)
+ * Showfile-Name in der Menueleiste ist antippbar und oeffnet den Dialog. */
+.menubar__showfile-name--link { cursor: pointer; position: relative; }
+.menubar__showfile-name--link:hover { color: var(--text-1); }
+.menubar__showfile-name--link:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+@media (pointer: coarse) {
+  .menubar__showfile-name--link::after {
+    content: ""; position: absolute; left: 0; right: 0; top: 50%; height: 2.75rem; transform: translateY(-50%);
+  }
+}
+.layout-row__meta { flex: none; margin-left: auto; color: var(--text-3); font-size: var(--fs-xs); white-space: nowrap; }
+
+/* ============================================================ Cue-Listen-Panel: Aktionsleiste, Auswahl, Dialoge
+ * Alle Aktionen in EINER Reihe, jede Taste gleich breit ueber die volle Panel-Breite (mindestens 44 px hoch). */
+[data-panel-type="cuelist"] .fx-toolbar.cuelist-toolbar { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--sp-3); }   /* 12 px: Platz fuer die unsichtbare 44-px-Trefferflaeche jeder Zeile (je 6 px) */
+/* Listenauswahl + "Liste loeschen" in einer Reihe */
+.cuelist-listrow[hidden], .cuelist-actions .fx-btn[hidden] { display: none !important; }
+.cuelist-listrow { display: flex; gap: var(--sp-2); align-items: stretch; }
+.cuelist-listrow .cuelist-select { flex: 1 1 auto; min-width: 0; max-width: none; }
+.cuelist-listrow .cuelist-toolbar__btn--manage { flex: none; min-height: 2rem; padding: 0 var(--sp-3); }
+.cuelist-listrow .cuelist-toolbar__btn--manage:disabled { opacity: 0.4; cursor: default; }
+/* Wischgeste zum Markieren: Vorschau der beruehrten Zeilen (noch keine Auswahl) und der kurz aufleuchtende Rahmen beim Scharfschalten (Touch) */
+.cuelist-table .cue-row--preview .fx-td { background: color-mix(in srgb, #ffff00 14%, var(--surface-2)); box-shadow: inset 0 1px 0 rgba(255, 255, 0, 0.55), inset 0 -1px 0 rgba(255, 255, 0, 0.55); }
+.cuelist-table-wrap.cuelist--arming { box-shadow: inset 0 0 0 2px var(--accent); }
+.cuelist-table-wrap.cuelist--swiping { user-select: none; -webkit-user-select: none; overflow: hidden; touch-action: none; }
+/* Panel-Auswahl im Bearbeitungsmodus: duenner Rahmen in der Akzentfarbe ueber dem Panel */
+.edit-mode .workspace-panel--selected::after {
+  content: ""; position: absolute; inset: 0; z-index: 60; pointer-events: none;
+  border: 2px solid var(--accent); border-radius: inherit;
+}
+.cuelist-actions { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: var(--sp-2); }
+/* Sichtbare Hoehe 2 rem (frueher 2,75 rem = -27 %); die Trefferflaeche bleibt mindestens 44 px: ein unsichtbares Pseudo-Element
+   ragt oben/unten so weit hinaus, dass sie auch bei kleiner Skalierung 44 px erreicht (ohne das Layout zu veraendern). */
+.cuelist-actions .fx-btn,
+.cuelist-listrow .cuelist-toolbar__btn--manage { position: relative; }
+.cuelist-actions .fx-btn::after,
+.cuelist-listrow .cuelist-toolbar__btn--manage::after {
+  content: ""; position: absolute; left: 0; right: 0;
+  top: min(0px, calc(50% - 22px)); bottom: min(0px, calc(50% - 22px));
+}
+.cuelist-actions .fx-btn {
+  min-height: 2rem; min-width: 0; margin: 0; padding: 0 var(--sp-1);
+  display: flex; align-items: center; justify-content: center;
+  overflow: visible;                                /* nicht abschneiden: sonst waere die ::after-Trefferflaeche weg */
+}
+.cuelist-btn__label { display: block; min-width: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cuelist-actions .fx-btn:disabled { opacity: 0.4; cursor: default; }
+.cuelist-table .cue-row--selected .fx-td { box-shadow: inset 0 1px 0 var(--text-3), inset 0 -1px 0 var(--text-3); background: var(--surface-2); }
+.cuelist-table .cue-row--selected .cue-td--status { box-shadow: inset 3px 0 0 var(--text-1), inset 0 1px 0 var(--text-3), inset 0 -1px 0 var(--text-3); }
+.cuelist-table .cue-row--active.cue-row--selected .fx-td { background: var(--accent-soft); }
+.cuelist-table .cue-row { cursor: pointer; }
+
+.modal--cue-store { width: min(30rem, calc(100vw - 2rem)); }
+.cue-store__body { display: flex; flex-direction: column; gap: var(--sp-2); }
+.cue-store__body label { font-size: var(--fs-sm); color: var(--text-3); margin-top: var(--sp-1); }
+.cue-store__body .settings__text-input { width: 100%; box-sizing: border-box; min-height: 2.75rem; }
+.cue-store__hint { margin: 0; min-height: 2.4em; font-size: var(--fs-sm); line-height: 1.4; color: var(--text-3); }
+.cue-store__hint--error { color: var(--error); }
+.modal--cue-conflict { width: min(34rem, calc(100vw - 2rem)); }
+.cue-conflict__option { display: flex; flex-direction: column; gap: 2px; margin: 0 0 var(--sp-2); font-size: var(--fs-sm); color: var(--text-2); line-height: 1.4; }
+.cue-conflict__option strong { color: var(--text-1); }
+.cue-conflict__footer { gap: var(--sp-2); flex-wrap: wrap; justify-content: flex-end; }
+.cue-conflict__footer .modal__button { min-height: 2.75rem; }
+.modal--cue-update { width: min(32rem, calc(100vw - 2rem)); }
+.cue-update__choice {
+  display: flex; flex-direction: column; gap: 4px; width: 100%; min-height: 3.5rem; margin: 0 0 var(--sp-2);
+  padding: var(--sp-3); text-align: left; background: var(--surface-2); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); color: var(--text-1); font: inherit; cursor: pointer;
+}
+.cue-update__choice span { color: var(--text-3); font-size: var(--fs-sm); line-height: 1.4; }
+.cue-update__choice:hover, .cue-update__choice:focus-visible { border-color: var(--accent); outline: none; }
+
+/* ============================================================ Executor-Panel */
+/* Vollflaechig wie die anderen Panels (kein Innenabstand des Panel-Inhalts) und beliebig klein platzierbar */
+[data-panel-type="executor"] .panel__content { padding: 0; display: flex; overflow: hidden; }
+.executor { display: flex; flex-direction: column; gap: var(--sp-1); width: 100%; height: 100%; min-width: 0; min-height: 0; padding: 0; box-sizing: border-box; overflow: hidden; container-type: inline-size; }
+.executor [hidden] { display: none !important; }
+.executor__name { padding: 0 2px; text-align: center; font-weight: 600; font-size: var(--fs-sm); color: var(--text-1); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: none; }
+.executor__cue { padding: 0 2px; text-align: center; font-size: var(--fs-xs); color: var(--text-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: none; }
+.executor--no-title .executor__name, .executor--no-title .executor__cue { display: none; }
+/* Der Fader ist so breit wie die Tastenreihe (volle Breite des Panels) */
+.executor__track { flex: 1 1 auto; min-height: 1rem; width: 100%; margin: 0; touch-action: none; cursor: ns-resize; }
+.executor__track .vfader__fill { background: var(--exec-fader-color, var(--accent)); }
+.executor__track .vfader__thumb { border-color: var(--exec-fader-color, var(--accent)); }
+.executor__track:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.executor__track--disabled { opacity: 0.4; pointer-events: none; }
+/* Tastengroesse je Taste: klein / normal / gross (Mindesthoehe, rem: waechst mit der Skalierung; klein = 44 px bei 100 %).
+   Auf ALLEN Geraeten gleich (frueher gab es hier Sonderwerte nur fuer Touch, wodurch der Executor auf dem iPad groesser
+   war als bei gleicher Skalierung am Laptop). */
+.executor { --exec-h-small: 2.75rem; --exec-h-normal: 3.5rem; --exec-h-large: 4.75rem; }
+/* Standard: alle sichtbaren Tasten gleich gross - nebeneinander, soweit das Panel breit genug ist, sonst untereinander */
+.executor__buttons { display: grid; grid-template-columns: repeat(auto-fit, minmax(6rem, 1fr)); gap: var(--sp-1); flex: none; }
+.executor__btn { position: relative; overflow: hidden; min-height: var(--exec-h-normal); min-width: 0; width: 100%; margin: 0; padding: 0 2px; white-space: nowrap; }
+.executor__btn[data-size="small"] { min-height: var(--exec-h-small); }
+.executor__btn[data-size="large"] { min-height: var(--exec-h-large); }
+.executor__label { position: relative; z-index: 1; display: block; overflow: hidden; text-overflow: ellipsis; }
+.executor__btn--idle { opacity: 0.6; }
+/* Fortschritt im Wiedergabe-Knopf: abgedunkelte Akzentfarbe, waechst ueber die Restzeit des Fades (CSS-Transition) */
+.executor__goprog { position: absolute; inset: 0; z-index: 0; transform: scaleX(0); transform-origin: left; opacity: 0;
+  background: color-mix(in srgb, var(--accent) 55%, #000); pointer-events: none; }
+/* Smarte Anordnung: IMMER 1 Taste oben (Wiedergabe, volle Breite, deutlich groesser) + die uebrigen sichtbaren in EINER
+   Reihe darunter - unabhaengig von der Panel-Breite (kein 2x2, kein Stapeln); bei wenig Platz schrumpft die Schrift. */
+.executor--smart .executor__buttons { grid-template-columns: repeat(var(--exec-n, 3), minmax(0, 1fr)); }
+.executor--smart .executor__buttons .cuelist-toolbar__btn--go { grid-column: 1 / -1; min-height: calc(var(--exec-h-normal) * 1.6); font-size: clamp(0.6rem, 9cqw, var(--fs-lg)); }
+.executor--smart .executor__buttons .cuelist-toolbar__btn--go[data-size="small"] { min-height: var(--exec-h-normal); }
+.executor--smart .executor__buttons .cuelist-toolbar__btn--go[data-size="large"] { min-height: calc(var(--exec-h-large) * 1.4); }
+.executor--smart .executor__buttons .executor__btn:not(.cuelist-toolbar__btn--go) { font-size: clamp(0.5rem, 7cqw, var(--fs-sm)); }
+/* Kompakte Anordnung: keine Zwischenraeume */
+.executor--compact { gap: 0; }
+.executor--compact .executor__buttons { gap: 1px; }
+
+/* ============================================================ Cue-Liste: Mehrfachauswahl + Delay-Wischen */
+.cuelist-table .cue-delay-field {
+  width: 100%; box-sizing: border-box; margin: 0; padding: 0 var(--sp-1); background: transparent; border: 1px solid transparent;
+  color: inherit; font: inherit; text-align: right;
+  touch-action: none; cursor: ns-resize; -webkit-user-select: none; user-select: none;     /* senkrechtes Wischen aendert den Wert */
+}
+.cuelist-table .cue-delay-field:focus { cursor: text; -webkit-user-select: text; user-select: text; border-color: var(--accent); outline: none; background: var(--surface-2); }
+/* Fingergroesse ohne die Zeile hoeher zu machen: das Feld fuellt die ganze Zelle (negativer Aussenabstand = Zellen-Padding),
+   gilt auf allen Geraeten gleich - die Zeilenhoehe der Cue-Liste ist damit geraeteunabhaengig. */
+.cuelist-table .cue-delay-field { margin: -4px 0; padding: 4px var(--sp-1); }
+.cuelist-table .cue-td--swiping { background: var(--accent-soft); color: var(--accent); }
+.cuelist-table .cue-td--swiping .cue-delay-field { border-color: var(--accent); }
+
+
+/* ============================================================================ Dialog "Panel hinzufuegen" (gross, Querformat) */
+.modal.modal--addpanel { width: min(62rem, calc(100vw - 2rem)); height: min(35rem, calc(100dvh - 2rem)); display: flex; flex-direction: column; }
+.modal--addpanel .modal__body { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: row; gap: var(--sp-4); overflow: hidden; }
+.addpanel__cats { flex: none; width: 13rem; display: flex; flex-direction: column; gap: var(--sp-1); overflow-y: auto; padding-right: var(--sp-3); border-right: 1px solid var(--border); }
+.addpanel__cat {
+  display: flex; align-items: center; gap: var(--sp-2); min-height: 2.75rem; padding: 0 var(--sp-3); background: none; border: 0; border-radius: var(--radius-sm);
+  color: var(--text-2); font: inherit; text-align: left; cursor: pointer;
+}
+.addpanel__cat[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); font-weight: 600; }
+.addpanel__cat-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.addpanel__count { flex: none; font-size: var(--fs-xs); opacity: 0.8; font-variant-numeric: tabular-nums; }
+.addpanel__main { flex: 1 1 auto; min-width: 0; min-height: 0; display: flex; flex-direction: column; gap: var(--sp-3); }
+.addpanel__search { flex: none; display: flex; align-items: center; gap: var(--sp-2); min-height: 2.75rem; padding: 0 var(--sp-3); background: var(--surface-2); border: 1px solid var(--border-strong); border-radius: var(--radius-sm); color: var(--text-3); }
+.addpanel__search:focus-within { border-color: var(--accent); }
+.addpanel__input { flex: 1; min-width: 0; height: 100%; background: none; border: 0; outline: 0; color: var(--text-1); font: inherit; }
+.addpanel__grid { list-style: none; margin: 0; padding: 0 var(--sp-1) var(--sp-1) 0; flex: 1 1 auto; min-height: 0; overflow-y: auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr)); gap: var(--sp-2); align-content: start; }
+.addpanel__heading { grid-column: 1 / -1; margin-top: var(--sp-2); color: var(--text-3); font-size: var(--fs-xs); text-transform: uppercase; letter-spacing: 0.05em; }
+.addpanel__heading:first-child { margin-top: 0; }
+.addpanel__item[hidden], .addpanel__heading[hidden] { display: none; }
+.addpanel__card {
+  display: flex; align-items: flex-start; gap: var(--sp-3); width: 100%; height: 100%; min-height: 4.5rem; padding: var(--sp-3); text-align: left;
+  background: var(--surface-1); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text-1); font: inherit; cursor: pointer;
+}
+.addpanel__card:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+@media (hover: hover) { .addpanel__card:hover { border-color: var(--accent); } }
+.addpanel__icon { width: 1.7rem; height: 1.7rem; flex: none; color: var(--accent); stroke-width: 1.7; }
+.addpanel__text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.add-panel__name { font-weight: 600; font-size: var(--fs-md); }
+.addpanel__desc { color: var(--text-3); font-size: var(--fs-xs); line-height: 1.35; }
+.addpanel__none { margin: var(--sp-4) 0; color: var(--text-3); text-align: center; }
+@media (max-width: 42rem) {
+  .modal--addpanel .modal__body { flex-direction: column; gap: var(--sp-2); }
+  .addpanel__cats { width: auto; flex-direction: row; overflow-x: auto; overflow-y: hidden; padding: 0 0 var(--sp-2); border-right: 0; border-bottom: 1px solid var(--border); }
+  .addpanel__cat { flex: none; }
+  .addpanel__grid { grid-template-columns: 1fr; }
+}
+
+/* ============================================================================ Livestream-Panel */
+[data-panel-type="stream"] .panel__content { padding: 0; display: flex; overflow: hidden; }
+.sp { position: relative; flex: 1 1 auto; width: 100%; height: 100%; min-width: 0; min-height: 0; background: #000; overflow: hidden; }
+.sp [hidden] { display: none !important; }
+.sp__stage { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; }
+.sp__media { width: 100%; height: 100%; object-fit: var(--sp-fit, contain); background: #000; -webkit-user-select: none; user-select: none; }
+.sp__empty, .sp__status {
+  position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--sp-3); padding: var(--sp-4); text-align: center;
+}
+.sp__empty { background: var(--surface-1); }
+.sp__status { background: rgba(0, 0, 0, 0.55); color: #fff; }
+.sp__empty-icon { width: 4rem; height: 4rem; stroke-width: 1.5; color: var(--text-3); }
+.sp__status-icon { width: 2.4rem; height: 2.4rem; color: var(--warn, #f0b429); }
+.sp__empty-text, .sp__status-sub { color: var(--text-2); font-size: var(--fs-sm); overflow-wrap: anywhere; }
+.sp__status-text { font-size: var(--fs-md); overflow-wrap: anywhere; max-width: 28rem; }
+.sp__status-sub { color: rgba(255, 255, 255, 0.75); }
+.sp__pick, .sp__unlock {
+  min-height: 2.75rem; padding: 0 var(--sp-4); background: var(--accent); border: 0; border-radius: var(--radius-sm); color: var(--accent-ink); font: inherit; font-weight: 600; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center; gap: var(--sp-2);
+}
+.sp__unlock { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); box-shadow: var(--shadow-2); z-index: 3; }
+.sp__live { position: absolute; left: var(--sp-2); top: var(--sp-2); z-index: 2; display: flex; align-items: center; gap: var(--sp-1); padding: 2px var(--sp-2); background: rgba(0, 0, 0, 0.55); border-radius: var(--radius-sm); color: #fff; font-size: var(--fs-xs); font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; pointer-events: none; }
+.sp__live-dot { width: 0.55rem; height: 0.55rem; border-radius: 50%; background: var(--error, #e5484d); }
+.sp__bar {
+  position: absolute; left: 0; right: 0; bottom: 0; display: flex; align-items: center; gap: var(--sp-2); padding: var(--sp-2) var(--sp-3);
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.7), transparent); color: #fff; font-size: var(--fs-xs);
+  opacity: 0; transition: opacity var(--dur) var(--ease); pointer-events: none; z-index: 2;
+}
+.sp:hover .sp__bar, .sp:focus-within .sp__bar, .sp:fullscreen .sp__bar { opacity: 1; pointer-events: auto; }
+@media (hover: none) { .sp__bar { opacity: 1; pointer-events: auto; } }       /* Touch: kein Darueberfahren - Knoepfe immer sichtbar */
+.sp__name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sp__spacer { flex: 1; }
+.sp__btn {
+  position: relative; width: 2.75rem; height: 2.75rem; flex: none; display: flex; align-items: center; justify-content: center; background: rgba(0, 0, 0, 0.45); border: 0; border-radius: var(--radius-sm);
+  color: #fff; cursor: pointer; font-size: 1.3rem;
+}
+.sp__btn--on { background: var(--accent); color: var(--accent-ink); }
+.sp:fullscreen { background: #000; }
+.sp[data-state="paused"] .sp__bar { opacity: 1; pointer-events: auto; }
+.sp__paused { z-index: 1; }
+
+/* Dialoge und Eigenschaften des Livestream-Panels */
+.sp-dialog { display: flex; flex-direction: column; gap: var(--sp-2); overflow-y: auto; }
+.sp-dialog__check { display: flex; align-items: center; gap: var(--sp-2); min-height: 2.75rem; color: var(--text-1); cursor: pointer; }
+.sp-dialog__check input { width: 1.2rem; height: 1.2rem; accent-color: var(--accent); }
+.sp-dialog__test { display: flex; align-items: center; gap: var(--sp-3); flex-wrap: wrap; }
+.sp-dialog__result { font-size: var(--fs-sm); color: var(--text-2); overflow-wrap: anywhere; }
+.sp-dialog__result--ok { color: var(--ok); }
+.sp-dialog__result--bad, .sp-dialog__warn { color: var(--error); }
+.sp-prop__camera { display: flex; flex-direction: column; gap: var(--sp-2); margin-bottom: var(--sp-2); }
+.sp-prop__camera[hidden], .sp-dialog [hidden], .modal__field[hidden], .mp-prop__hint[hidden] { display: none !important; }
+.sp-dialog .modal__field { flex-direction: column; align-items: stretch; gap: var(--sp-1); }
+.sp-dialog .modal__field .modal__input { width: 100%; }
+
+/* ============================================================================ Vollbild (eigenes, siehe static/js/fullscreen.js) */
+/* Liegt ueber Menueleiste und allen Panels (deren z-index bleibt unter 100000), aber unter Menues (100002), Dialogen (ab 100003/100100,
+   z. B. 'Programm beenden') und Meldungen. Muss ohne echtes Vollbild funktionieren (iPad, als PWA installiert). */
+.oc-fs {
+  position: fixed !important; inset: 0; width: 100vw !important; height: 100vh !important; height: 100dvh !important; max-width: none !important; margin: 0 !important;
+  z-index: 100001; background: #000;
+}
+html.oc-fs-active body { overflow: hidden; }
+.mp.oc-fs .mp__bar, .sp.oc-fs .sp__bar { opacity: 1; pointer-events: auto; padding-bottom: max(var(--sp-2), env(safe-area-inset-bottom)); }
+.sp.oc-fs .sp__live, .mp.oc-fs .mp__tc { top: max(var(--sp-2), env(safe-area-inset-top)); left: max(var(--sp-2), env(safe-area-inset-left)); }
+.tcp { position: relative; }
+.tcp.oc-fs { background: var(--bg); padding: max(var(--sp-4), env(safe-area-inset-top)) max(var(--sp-4), env(safe-area-inset-right)) max(var(--sp-4), env(safe-area-inset-bottom)) max(var(--sp-4), env(safe-area-inset-left)); justify-content: center; }
+.tcp.oc-fs .tcp__display { font-size: clamp(3rem, 12.5cqi, 32vh); white-space: nowrap; }
+.tcp__fs {
+  position: absolute; top: var(--sp-2); right: var(--sp-2); width: 2.75rem; height: 2.75rem; display: flex; align-items: center; justify-content: center;
+  background: var(--surface-2); border: 1px solid var(--border-strong); border-radius: var(--radius-sm); color: var(--text-1); cursor: pointer; font-size: 1.2rem; z-index: 1;
+}
+.tcp.oc-fs .tcp__fs { top: max(var(--sp-2), env(safe-area-inset-top)); right: max(var(--sp-2), env(safe-area-inset-right)); }
+
+/* ============================================================================ Scheinwerfer-Details: Reiter, Karten, Raeder, 3D */
+.fxdet__tabs { display: flex; gap: var(--sp-1); flex: none; border-bottom: 1px solid var(--border); overflow-x: auto; }
+.fxdet__tab {
+  display: inline-flex; align-items: center; gap: var(--sp-2); min-height: 2.75rem; padding: 0 var(--sp-4); background: none; border: 0; border-bottom: 3px solid transparent;
+  color: var(--text-2); font: inherit; cursor: pointer; white-space: nowrap;
+}
+.fxdet__tab[aria-selected="true"] { color: var(--text-1); border-bottom-color: var(--accent); font-weight: 600; }
+.fxdet__pane[hidden] { display: none; }
+.fxdet__pane { padding: var(--sp-3); display: flex; flex-direction: column; gap: var(--sp-3); }
+.fxdet__scroll { border: 0; }
+.fxdet__tablebox { border: 1px solid var(--border); border-radius: var(--radius-sm); overflow: auto; }
+.fxdet__cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr)); gap: var(--sp-3); }
+.fxdet__card { border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface-1); padding: var(--sp-3); display: flex; flex-direction: column; gap: var(--sp-2); min-width: 0; }
+.fxdet__card h4 { margin: 0; color: var(--text-2); font-size: var(--fs-sm); }
+.fxdet__kv { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 2px var(--sp-3); font-size: var(--fs-sm); }
+.fxdet__kv dt { color: var(--text-3); }
+.fxdet__kv dd { margin: 0; color: var(--text-1); overflow-wrap: anywhere; }
+.fxdet__emitters { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
+.fxdet__emitter { display: inline-flex; align-items: center; gap: var(--sp-1); font-size: var(--fs-sm); color: var(--text-1); }
+.fxdet__dot { width: 0.9rem; height: 0.9rem; border-radius: 50%; background: var(--text-3); border: 1px solid var(--border-strong); }
+.fxdet__wheel { border: 1px solid var(--border); border-radius: var(--radius-sm); padding: var(--sp-3); display: flex; flex-direction: column; gap: var(--sp-2); }
+.fxdet__wheel-head { margin: 0; display: flex; align-items: center; gap: var(--sp-3); flex-wrap: wrap; color: var(--text-1); font-size: var(--fs-md); }
+.fxdet__badge { padding: 0 var(--sp-2); border: 1px solid var(--accent); border-radius: 999px; color: var(--accent); font-size: var(--fs-xs); font-weight: 600; line-height: 1.6; }
+.fxdet__slots { display: grid; grid-template-columns: repeat(auto-fill, minmax(5.5rem, 1fr)); gap: var(--sp-3); }
+.fxdet__slot { display: flex; flex-direction: column; align-items: center; gap: var(--sp-1); text-align: center; min-width: 0; }
+.fxdet__slot-face { width: 4.5rem; height: 4.5rem; border-radius: 50%; border: 1px solid var(--border-strong); background: var(--surface-3); overflow: hidden; display: flex; align-items: center; justify-content: center; }
+.fxdet__slot-face--gobo { background: #050506; }
+.fxdet__slot-face--gobo img { width: 100%; height: 100%; object-fit: contain; }
+.fxdet__slot-face--prism { color: var(--text-2); }
+.fxdet__slot-face--prism .ico { width: 2.2rem; height: 2.2rem; }
+.fxdet__slot-face--open { background: radial-gradient(circle, #fff 0, #cfd2d8 100%); }
+.fxdet__slot-name { font-size: var(--fs-xs); color: var(--text-1); overflow-wrap: anywhere; }
+.fxdet__viewer { position: relative; height: clamp(16rem, 52vh, 34rem); background: #131417; border: 1px solid var(--border); border-radius: var(--radius-sm); overflow: hidden; flex: none; }
+.mv__canvas { position: absolute; inset: 0; display: block; cursor: grab; }
+.mv__canvas:active { cursor: grabbing; }
+.fxdet__viewer-status { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; margin: 0; padding: var(--sp-4); text-align: center; color: var(--text-2); }
+.fxdet__viewer-status[hidden] { display: none; }
+.fxdet__viewctl { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-3) var(--sp-4); }
+.fxdet__btns { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
+.fxdet__check { display: inline-flex; align-items: center; gap: var(--sp-2); min-height: 2.75rem; color: var(--text-1); cursor: pointer; }
+.fxdet__check input { width: 1.2rem; height: 1.2rem; accent-color: var(--accent); }
+.fxdet__slider { display: flex; align-items: center; gap: var(--sp-2); min-height: 2.75rem; flex: 1 1 16rem; min-width: 12rem; }
+.fxdet__slider-label { min-width: 3rem; color: var(--text-2); font-size: var(--fs-sm); }
+.fxdet__slider input[type="range"] { flex: 1; min-width: 0; accent-color: var(--accent); height: 2.75rem; }
+.fxdet__slider-value { min-width: 3.6rem; text-align: right; color: var(--text-1); font-variant-numeric: tabular-nums; font-size: var(--fs-sm); }
+
+/* ============================================================================ Cue-Listen verwalten */
+.modal--cuelists { width: min(48rem, calc(100vw - 2rem)); max-height: calc(100dvh - 2rem); display: flex; flex-direction: column; }
+.modal--cuelists .modal__body { overflow-y: auto; min-height: 0; display: flex; flex-direction: column; gap: var(--sp-3); padding: var(--sp-4); }
+.cm-add { display: flex; gap: var(--sp-2); align-items: center; }
+.cm-add__input { flex: 1 1 auto; min-width: 0; min-height: 2.75rem; }
+.cm-add__btn { display: inline-flex; align-items: center; gap: var(--sp-2); flex: none; min-height: 2.75rem; }
+.cm-lists { display: flex; flex-direction: column; gap: var(--sp-2); }
+.cm-empty { color: var(--text-3); text-align: center; padding: var(--sp-5) 0; }
+.cm-card { border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface-1); }
+.cm-card--active { border-color: var(--accent); }
+.cm-head { display: flex; align-items: center; gap: var(--sp-2); padding: var(--sp-2) var(--sp-3); min-height: 3.25rem; flex-wrap: wrap; }
+.cm-index { flex: none; min-width: 1.6rem; color: var(--text-3); font-variant-numeric: tabular-nums; }
+.cm-name { flex: 1 1 10rem; min-width: 0; text-align: left; background: none; border: 0; padding: var(--sp-2) 0; color: var(--text-1); font: inherit; font-weight: 600; cursor: text; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cm-name:hover { color: var(--accent); }
+.cm-name-input { flex: 1 1 10rem; min-width: 0; min-height: 2.5rem; }
+.cm-meta { flex: none; color: var(--text-3); font-size: var(--fs-sm); }
+.cm-badge { flex: none; padding: 0 var(--sp-2); border: 1px solid var(--accent); border-radius: 999px; color: var(--accent); font-size: var(--fs-xs); font-weight: 600; line-height: 1.6; }
+.cm-acts { display: flex; gap: var(--sp-1); flex: none; margin-left: auto; }
+.cm-btn { display: inline-flex; align-items: center; justify-content: center; width: 2.5rem; height: 2.5rem; flex: none; background: none; border: 1px solid transparent; border-radius: var(--radius-sm); color: var(--text-2); cursor: pointer; }
+.cm-btn .ico { width: 1.15rem; height: 1.15rem; }
+@media (hover: hover) { .cm-btn:hover:not(:disabled) { border-color: var(--border-strong); color: var(--text-1); } .cm-btn--danger:hover:not(:disabled) { color: var(--danger, #e5484d); } }
+.cm-btn:disabled { opacity: 0.3; cursor: default; }
+.cm-cues { width: 100%; border-collapse: collapse; font-size: var(--fs-sm); border-top: 1px solid var(--border); }
+.cm-cues th, .cm-cues td { padding: var(--sp-1) var(--sp-3); text-align: left; white-space: nowrap; }
+.cm-cues th { color: var(--text-3); font-weight: 500; font-size: var(--fs-xs); text-transform: uppercase; letter-spacing: 0.04em; }
+.cm-cues tbody tr:nth-child(even) { background: var(--surface-2); }
+.cm-cues__name { width: 100%; max-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.cm-cues__empty { color: var(--text-3); text-align: center; padding: var(--sp-3); }
+@media (max-width: 42rem) { .cm-acts { margin-left: 0; width: 100%; justify-content: flex-end; } .cm-cues th:nth-child(n+6), .cm-cues td:nth-child(n+6) { display: none; } }
+
+/* ================================================================== Einstellungen: grosser Dialog
+ * Wie der Dateimanager gross und ruhig: breite Seitenleiste, die Seiten haben eine feste, gut lesbare Breite (die Zeilen laufen nicht ueber den ganzen Dialog). */
+.modal--settings { width: min(82rem, 96vw); height: min(50rem, 92dvh); max-width: none; max-height: none; }       /* wie der Dateimanager */
+.modal--settings .settings-modal__sidebar { flex: 0 0 14rem; padding: var(--sp-4) var(--sp-3); gap: var(--sp-1); }
+.modal--settings .settings-modal__category { font-size: var(--fs-md); }
+.modal--settings .settings-modal__content { padding: 0; }
+.modal--settings .settings-modal__pane { padding: var(--sp-6) var(--sp-7, 2rem); max-width: 58rem; }
+.modal--settings .settings-section { margin-bottom: var(--sp-7, 2rem); }
+.modal--settings .settings-section__title { font-size: var(--fs-sm); margin-bottom: var(--sp-4); }
+.modal--settings .settings-field { margin-bottom: var(--sp-4); min-height: var(--control-md); }
+/* Speicherort: Beschriftung ueber der Zeile, Pfadfeld nimmt die Breite (statt 9rem abzuschneiden) */
+.modal--settings [data-settings-pane="storage"] .settings-field { flex-direction: column; align-items: stretch; gap: var(--sp-2); }
+.modal--settings [data-settings-pane="storage"] .settings-field > .modal__field { display: flex; align-items: center; gap: var(--sp-2); }
+.modal--settings [data-settings-pane="storage"] .settings-field input[type="text"] { flex: 1 1 auto; width: auto; min-width: 0; }
+@media (max-width: 760px) {
+  .modal--settings .settings-modal__body { flex-direction: column; }
+  .modal--settings .settings-modal__sidebar { flex: 0 0 auto; flex-direction: row; flex-wrap: wrap; border-right: 0; border-bottom: 1px solid var(--border); }
+}
+
+/* Einstellungen -> Farben: die Farbfelder stehen in zwei Spalten, die Zeilen sind kompakt; Titel, Profile und Export laufen ueber die volle Breite */
+.modal--settings .theme-root .settings-section { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: var(--sp-7, 2rem); align-items: center; }
+.modal--settings .theme-root .settings-section > :not(.theme-row) { grid-column: 1 / -1; }
+.modal--settings .theme-root .theme-row { margin: 0; min-height: calc(var(--control-md) + var(--sp-2)); padding: var(--sp-1) 0; border-bottom: 1px solid color-mix(in srgb, var(--border) 55%, transparent); }
+.modal--settings .theme-root .theme-row > label { flex: 1 1 auto; min-width: 0; }
+@media (max-width: 900px) { .modal--settings .theme-root .settings-section { grid-template-columns: minmax(0, 1fr); } }
+
+/* ---- Ueber OpenCue (Hilfe-Menue; static/js/about.js) ---------------------------------------------------------------------------------------------------- */
+.modal--about { width: min(44rem, 94vw); }
+.about { display: flex; flex-direction: column; gap: 0.9rem; min-height: 22rem; }
+.about__head { display: flex; align-items: center; gap: 1rem; }
+.about__logo { flex: 0 0 auto; width: 5.5rem; height: 5.5rem; border-radius: var(--base-radius, 3px); image-rendering: pixelated; }
+.about__id { min-width: 0; }
+.about__name { font-size: 1.6rem; font-weight: 700; letter-spacing: 0.02em; }
+.about__version { color: var(--accent-color); font-weight: 600; font-variant-numeric: tabular-nums; }
+.about__desc { margin-top: 0.2rem; color: var(--secondary-text); font-size: 0.85rem; }
+.about__tabs { display: flex; border-bottom: 1px solid var(--border-color); }
+.about__tab { padding: 0.55rem 1rem; background: transparent; border: 0; border-bottom: 2px solid transparent; color: var(--secondary-text); font: inherit; cursor: pointer; }
+.about__tab:hover { color: var(--text-main); }
+.about__tab--on { color: var(--accent-color); border-bottom-color: var(--accent-color); }
+.about__pane[hidden] { display: none; }
+.about__pane { display: flex; flex-direction: column; gap: 0.7rem; min-height: 0; }
+.about__line { margin: 0; line-height: 1.5; }
+.about__notice { color: var(--secondary-text); font-size: 0.85rem; }
+.about__facts { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 0.35rem 1rem; margin: 0; font-size: 0.88rem; }
+.about__facts dt { color: var(--secondary-text); }
+.about__facts dd { margin: 0; overflow-wrap: anywhere; }
+.about__links { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.about__text { margin: 0; padding: 0.7rem; max-height: 22rem; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; background: var(--bg-color); border: 1px solid var(--border-color); border-radius: var(--base-radius, 3px);
+  font: 0.78rem/1.45 ui-monospace, Consolas, monospace; user-select: text; }
+.about__text[hidden] { display: none; }
+.about__third { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.6rem; }
+.about__list { list-style: none; margin: 0; padding: 0; max-height: 10.5rem; overflow: auto; border: 1px solid var(--border-color); border-radius: var(--base-radius, 3px); }
+.about__item { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 0.8fr) minmax(0, 1.2fr); gap: 0.6rem; padding: 0.4rem 0.7rem; font-size: 0.82rem; cursor: pointer; border-bottom: 1px solid color-mix(in srgb, var(--border-color) 60%, transparent); }
+.about__item:last-child { border-bottom: 0; }
+.about__item:hover { background: color-mix(in srgb, var(--accent-color) 10%, transparent); }
+.about__item--on { background: color-mix(in srgb, var(--accent-color) 20%, transparent); }
+.about__item span:nth-child(2), .about__item span:nth-child(3) { color: var(--secondary-text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.about__item--none { cursor: default; opacity: 0.8; }
+.about__text--small { max-height: 11rem; }
+
+/* ---- Update-Dialog (static/js/updater.js) ---------------------------------------------------------------------------------------------------------------- */
+.modal--update { width: min(36rem, 94vw); }
+.update { display: flex; flex-direction: column; gap: 0.8rem; }
+.update__headline { margin: 0; font-size: 1.1rem; font-weight: 700; }
+.update__sub { margin: 0; color: var(--secondary-text); }
+.update__notes { margin: 0; padding: 0.7rem; max-height: 14rem; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; background: var(--bg-color); border: 1px solid var(--border-color); border-radius: var(--base-radius, 3px); font: 0.8rem/1.45 ui-monospace, Consolas, monospace; user-select: text; }
+.update__notes[hidden], .update__progress[hidden], .update__error[hidden], .update__headline[hidden], .update__sub[hidden] { display: none; }
+.update__progress { display: flex; flex-direction: column; gap: 0.35rem; }
+.update__bar { height: 0.7rem; border: 1px solid var(--border-color); border-radius: var(--base-radius, 3px); overflow: hidden; background: var(--bg-color); }
+.update__bar-fill { height: 100%; width: 0; background: var(--accent-color); transition: width 0.25s ease; }
+.update__progress-text { color: var(--secondary-text); font-size: 0.85rem; font-variant-numeric: tabular-nums; }
+.update__error { margin: 0; color: var(--error, #e5484d); }
+.modal--update .modal__footer { flex-wrap: wrap; gap: 0.5rem; }
+.modal--update .modal__button[hidden] { display: none; }
+.modal--update .modal__footer { display: flex; justify-content: stretch; }
+.modal--update #update-install { order: -1; flex: 1 1 100%; min-height: 2.6rem; font-weight: 700; }
+.modal--update .modal__button:not(#update-install) { flex: 1 1 auto; }

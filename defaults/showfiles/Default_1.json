@@ -1,0 +1,203 @@
+{
+  "showfile_name": "Default_1",
+  "saved_at": "2026-10-19T19:59:13",
+  "fixtures": {
+    "61fb8491-f00d-4281-ad71-a19e6076726d": {
+      "id": "61fb8491-f00d-4281-ad71-a19e6076726d",
+      "name": "Dimmer 1",
+      "fixture_type": "__generic_dimmer",
+      "universe": 1,
+      "start_channel": 1,
+      "channel_count": 1,
+      "fid": 1,
+      "mode": "default",
+      "values": {
+        "Dimmer": 0
+      },
+      "sort_index": null
+    },
+    "2f0b3785-8c74-499b-9d00-2dae99448bef": {
+      "id": "2f0b3785-8c74-499b-9d00-2dae99448bef",
+      "name": "Dimmer 2",
+      "fixture_type": "__generic_dimmer",
+      "universe": 1,
+      "start_channel": 2,
+      "channel_count": 1,
+      "fid": 2,
+      "mode": "default",
+      "values": {
+        "Dimmer": 0
+      },
+      "sort_index": null
+    },
+    "aaddb018-4773-4102-b509-9ea76b09ee0b": {
+      "id": "aaddb018-4773-4102-b509-9ea76b09ee0b",
+      "name": "Dimmer 3",
+      "fixture_type": "__generic_dimmer",
+      "universe": 1,
+      "start_channel": 3,
+      "channel_count": 1,
+      "fid": 3,
+      "mode": "default",
+      "values": {
+        "Dimmer": 0
+      },
+      "sort_index": null
+    },
+    "e0aec888-b730-4807-88cb-7c66317e6c7c": {
+      "id": "e0aec888-b730-4807-88cb-7c66317e6c7c",
+      "name": "Dimmer 4",
+      "fixture_type": "__generic_dimmer",
+      "universe": 1,
+      "start_channel": 4,
+      "channel_count": 1,
+      "fid": 4,
+      "mode": "default",
+      "values": {
+        "Dimmer": 0
+      },
+      "sort_index": null
+    },
+    "17b5c7ea-63eb-4c3c-84c6-af729180052d": {
+      "id": "17b5c7ea-63eb-4c3c-84c6-af729180052d",
+      "name": "Dimmer 5",
+      "fixture_type": "__generic_dimmer",
+      "universe": 1,
+      "start_channel": 5,
+      "channel_count": 1,
+      "fid": 5,
+      "mode": "default",
+      "values": {
+        "Dimmer": 0
+      },
+      "sort_index": null
+    }
+  },
+  "fx_effects": {},
+  "groups": {},
+  "cues": [],
+  "presets": {},
+  "preset_groups": [],
+  "fx_groups": [],
+  "cuelists": {
+    "1601e49b-0022-4a72-8c6a-7b4e05c6a01b": {
+      "id": "1601e49b-0022-4a72-8c6a-7b4e05c6a01b",
+      "name": "Default",
+      "cues": [
+        {
+          "id": "feda2b9f-925b-4dd7-b64d-178f4b77c0b7",
+          "number": 1.0,
+          "name": "Cue 1",
+          "fade": 1.0,
+          "delay": 0.0,
+          "trigger": "go",
+          "timecode_ms": null,
+          "fade_color": null,
+          "delay_color": null,
+          "fade_pos": null,
+          "delay_pos": null,
+          "fade_beam": null,
+          "delay_beam": null,
+          "fade_zoom": null,
+          "delay_zoom": null,
+          "mib": "Off",
+          "cmd": "",
+          "fixture_values": {
+            "61fb8491-f00d-4281-ad71-a19e6076726d": {
+              "values": {
+                "dimmer": 0
+              }
+            },
+            "2f0b3785-8c74-499b-9d00-2dae99448bef": {
+              "values": {
+                "dimmer": 0
+              }
+            },
+            "aaddb018-4773-4102-b509-9ea76b09ee0b": {
+              "values": {
+                "dimmer": 0
+              }
+            },
+            "e0aec888-b730-4807-88cb-7c66317e6c7c": {
+              "values": {
+                "dimmer": 0
+              }
+            },
+            "17b5c7ea-63eb-4c3c-84c6-af729180052d": {
+              "values": {
+                "dimmer": 0
+              }
+            }
+          },
+          "fx": {},
+          "fx_order": {},
+          "fx_fade_in": 0.0,
+          "fx_fade_out": 0.0
+        },
+        {
+          "id": "fc37fdb8-0485-45da-b6b7-5523c11b245d",
+          "number": 2.0,
+          "name": "Cue 2",
+          "fade": 1.0,
+          "delay": 0.0,
+          "trigger": "go",
+          "timecode_ms": null,
+          "fade_color": null,
+          "delay_color": null,
+          "fade_pos": null,
+          "delay_pos": null,
+          "fade_beam": null,
+          "delay_beam": null,
+          "fade_zoom": null,
+          "delay_zoom": null,
+          "mib": "Off",
+          "cmd": "",
+          "fixture_values": {
+            "61fb8491-f00d-4281-ad71-a19e6076726d": {
+              "values": {
+                "dimmer": 100
+              }
+            },
+            "2f0b3785-8c74-499b-9d00-2dae99448bef": {
+              "values": {
+                "dimmer": 100
+              }
+            },
+            "aaddb018-4773-4102-b509-9ea76b09ee0b": {
+              "values": {
+                "dimmer": 100
+              }
+            },
+            "e0aec888-b730-4807-88cb-7c66317e6c7c": {
+              "values": {
+                "dimmer": 100
+              }
+            },
+            "17b5c7ea-63eb-4c3c-84c6-af729180052d": {
+              "values": {
+                "dimmer": 100
+              }
+            }
+          },
+          "fx": {},
+          "fx_order": {},
+          "fx_fade_in": 0.0,
+          "fx_fade_out": 0.0
+        }
+      ]
+    }
+  },
+  "active_cuelist_id": "1601e49b-0022-4a72-8c6a-7b4e05c6a01b",
+  "media": {},
+  "runtime_state": {
+    "grand_master": 100.0,
+    "cuelist_masters": {},
+    "active_cue_ids": {
+      "1601e49b-0022-4a72-8c6a-7b4e05c6a01b": "feda2b9f-925b-4dd7-b64d-178f4b77c0b7"
+    },
+    "fx_assignments": {},
+    "programmer_values": {},
+    "programmer_refs": {},
+    "dmx_universes": {}
+  }
+}

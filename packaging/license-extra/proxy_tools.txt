@@ -1,0 +1,8 @@
+proxy_tools 0.1.0
+Jonathan Tushman <jonathan@zefr.com>
+https://github.com/jtushman/proxy_tools
+
+proxy_tools ships no licence file. Its package metadata declares the MIT licence; the source file states:
+  "Proxy. Extracted from Werkzeug  :copyright: (c) 2013 by Armin Ronacher (adapted by Jonathan Tushman 2014).  :license: BSD"
+Werkzeug is licensed under the BSD 3-Clause licence (Copyright 2007 Pallets); the full text is available at
+https://github.com/pallets/werkzeug/blob/main/LICENSE.txt . proxy_tools is a small helper that pywebview needs on Windows.

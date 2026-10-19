@@ -1,0 +1,374 @@
+[
+  {
+    "name": "fastapi",
+    "version": "0.141.1",
+    "license": "MIT",
+    "purpose": "Web framework (server)",
+    "url": "https://github.com/fastapi/fastapi",
+    "files": [
+      "fastapi/LICENSE"
+    ]
+  },
+  {
+    "name": "starlette",
+    "version": "1.7.0",
+    "license": "BSD-3-Clause",
+    "purpose": "Web toolkit used by FastAPI",
+    "url": "https://github.com/Kludex/starlette",
+    "files": [
+      "starlette/LICENSE.md"
+    ]
+  },
+  {
+    "name": "pydantic",
+    "version": "2.13.5",
+    "license": "MIT",
+    "purpose": "Data validation (FastAPI)",
+    "url": "https://github.com/pydantic/pydantic",
+    "files": [
+      "pydantic/LICENSE"
+    ]
+  },
+  {
+    "name": "pydantic_core",
+    "version": "2.46.5",
+    "license": "MIT",
+    "purpose": "Core of pydantic",
+    "url": "https://github.com/pydantic",
+    "files": [
+      "pydantic_core/LICENSE"
+    ]
+  },
+  {
+    "name": "annotated-types",
+    "version": "0.8.0",
+    "license": "MIT",
+    "purpose": "pydantic",
+    "url": "https://github.com/annotated-types/annotated-types",
+    "files": [
+      "annotated-types/LICENSE"
+    ]
+  },
+  {
+    "name": "annotated-doc",
+    "version": "0.0.5",
+    "license": "MIT",
+    "purpose": "FastAPI",
+    "url": "https://github.com/fastapi/annotated-doc",
+    "files": [
+      "annotated-doc/LICENSE"
+    ]
+  },
+  {
+    "name": "typing_extensions",
+    "version": "4.16.0",
+    "license": "PSF-2.0",
+    "purpose": "Typing backports",
+    "url": "https://github.com/python/typing_extensions",
+    "files": [
+      "typing_extensions/LICENSE"
+    ]
+  },
+  {
+    "name": "typing-inspection",
+    "version": "0.4.4",
+    "license": "MIT",
+    "purpose": "pydantic",
+    "url": "https://github.com/pydantic/typing-inspection",
+    "files": [
+      "typing-inspection/LICENSE"
+    ]
+  },
+  {
+    "name": "anyio",
+    "version": "4.15.1",
+    "license": "MIT",
+    "purpose": "Async foundation",
+    "url": "",
+    "files": [
+      "anyio/LICENSE"
+    ]
+  },
+  {
+    "name": "idna",
+    "version": "3.20",
+    "license": "BSD-3-Clause",
+    "purpose": "Domain names",
+    "url": "https://github.com/kjd/idna",
+    "files": [
+      "idna/LICENSE.md"
+    ]
+  },
+  {
+    "name": "uvicorn",
+    "version": "0.53.0",
+    "license": "BSD-3-Clause",
+    "purpose": "HTTP/WebSocket server",
+    "url": "https://uvicorn.dev/",
+    "files": [
+      "uvicorn/LICENSE.md"
+    ]
+  },
+  {
+    "name": "click",
+    "version": "8.5.0",
+    "license": "BSD-3-Clause",
+    "purpose": "uvicorn",
+    "url": "https://github.com/pallets/click/",
+    "files": [
+      "click/LICENSE.txt"
+    ]
+  },
+  {
+    "name": "h11",
+    "version": "0.16.0",
+    "license": "MIT License",
+    "purpose": "HTTP (uvicorn)",
+    "url": "https://github.com/python-hyper/h11",
+    "files": [
+      "h11/LICENSE.txt"
+    ]
+  },
+  {
+    "name": "httptools",
+    "version": "0.8.0",
+    "license": "MIT",
+    "purpose": "HTTP (uvicorn)",
+    "url": "https://github.com/MagicStack/httptools",
+    "files": [
+      "httptools/LICENSE",
+      "httptools/LICENSE-MIT",
+      "httptools/LICENSE"
+    ]
+  },
+  {
+    "name": "websockets",
+    "version": "17.1",
+    "license": "BSD-3-Clause",
+    "purpose": "WebSocket (uvicorn)",
+    "url": "https://github.com/python-websockets/websockets",
+    "files": [
+      "websockets/LICENSE"
+    ]
+  },
+  {
+    "name": "python-dotenv",
+    "version": "1.2.3",
+    "license": "BSD-3-Clause",
+    "purpose": "uvicorn (optional)",
+    "url": "https://github.com/theskumar/python-dotenv",
+    "files": [
+      "python-dotenv/LICENSE"
+    ]
+  },
+  {
+    "name": "PyYAML",
+    "version": "6.0.3",
+    "license": "MIT License",
+    "purpose": "uvicorn (optional)",
+    "url": "https://pyyaml.org/",
+    "files": [
+      "PyYAML/LICENSE"
+    ]
+  },
+  {
+    "name": "Jinja2",
+    "version": "3.1.6",
+    "license": "BSD License",
+    "purpose": "HTML templates",
+    "url": "https://github.com/pallets/jinja/",
+    "files": [
+      "Jinja2/LICENSE.txt"
+    ]
+  },
+  {
+    "name": "MarkupSafe",
+    "version": "3.0.3",
+    "license": "BSD-3-Clause",
+    "purpose": "Jinja2",
+    "url": "https://github.com/pallets/markupsafe/",
+    "files": [
+      "MarkupSafe/LICENSE.txt"
+    ]
+  },
+  {
+    "name": "pywebview",
+    "version": "6.2.1",
+    "license": "BSD License",
+    "purpose": "Application window (WebView2)",
+    "url": "https://pywebview.flowrl.com/",
+    "files": [
+      "pywebview/LICENSE"
+    ]
+  },
+  {
+    "name": "pythonnet",
+    "version": "3.1.0",
+    "license": "MIT",
+    "purpose": "pywebview: .NET bridge",
+    "url": "https://pythonnet.github.io/",
+    "files": [
+      "pythonnet/AUTHORS.md",
+      "pythonnet/LICENSE"
+    ]
+  },
+  {
+    "name": "clr_loader",
+    "version": "0.3.1",
+    "license": "see licence file",
+    "purpose": "pythonnet",
+    "url": "",
+    "files": [
+      "clr_loader/LICENSE"
+    ]
+  },
+  {
+    "name": "cffi",
+    "version": "2.1.1",
+    "license": "MIT-0",
+    "purpose": "clr_loader",
+    "url": "",
+    "files": [
+      "cffi/LICENSE"
+    ]
+  },
+  {
+    "name": "pycparser",
+    "version": "3.0",
+    "license": "BSD-3-Clause",
+    "purpose": "cffi",
+    "url": "https://github.com/eliben/pycparser",
+    "files": [
+      "pycparser/LICENSE"
+    ]
+  },
+  {
+    "name": "proxy_tools",
+    "version": "0.1.0",
+    "license": "MIT License",
+    "purpose": "pywebview",
+    "url": "http://github.com/jtushman/proxy_tools",
+    "files": [
+      "proxy_tools/proxy_tools.txt"
+    ]
+  },
+  {
+    "name": "bottle",
+    "version": "0.13.4",
+    "license": "MIT License",
+    "purpose": "pywebview",
+    "url": "https://github.com/bottlepy/bottle",
+    "files": [
+      "bottle/LICENSE"
+    ]
+  },
+  {
+    "name": "sacn",
+    "version": "1.11.0",
+    "license": "MIT License",
+    "purpose": "sACN output",
+    "url": "https://www.github.com/Hundemeier/sacn",
+    "files": [
+      "sacn/LICENSE"
+    ]
+  },
+  {
+    "name": "stupidArtnet",
+    "version": "1.6.0",
+    "license": "MIT License",
+    "purpose": "Art-Net output",
+    "url": "https://github.com/cpvalente/stupidArtnet",
+    "files": [
+      "stupidArtnet/LICENSE"
+    ]
+  },
+  {
+    "name": "pyserial",
+    "version": "3.5",
+    "license": "BSD License",
+    "purpose": "USB DMX (Enttec)",
+    "url": "https://github.com/pyserial/pyserial",
+    "files": [
+      "pyserial/pyserial.txt"
+    ]
+  },
+  {
+    "name": "pygdtf",
+    "version": "1.4.5",
+    "license": "see licence file",
+    "purpose": "Reading GDTF fixture files",
+    "url": "https://github.com/open-stage/python-gdtf.git",
+    "files": [
+      "pygdtf/LICENSE"
+    ]
+  },
+  {
+    "name": "assimp_py",
+    "version": "1.2.0",
+    "license": "see licence file",
+    "purpose": "3D models inside GDTF files (Assimp)",
+    "url": "https://github.com/ranjian0/assimp_py",
+    "files": [
+      "assimp_py/LICENSE",
+      "assimp_py/assimp-LICENSE"
+    ]
+  },
+  {
+    "name": "segno",
+    "version": "1.6.6",
+    "license": "BSD License",
+    "purpose": "QR codes (remote access)",
+    "url": "https://github.com/heuer/segno/",
+    "files": [
+      "segno/LICENSE"
+    ]
+  },
+  {
+    "name": "FFmpeg",
+    "version": "8.1 (gyan.dev essentials build)",
+    "license": "GPL-3.0 (build with --enable-gpl --enable-version3)",
+    "purpose": "Camera capture on the main device (separate program, ffmpeg/ffmpeg.exe)",
+    "url": "https://ffmpeg.org/",
+    "files": [
+      "FFmpeg/LICENSE.txt"
+    ]
+  },
+  {
+    "name": "three.js",
+    "version": "r186",
+    "license": "MIT",
+    "purpose": "3D simulation and fixture model viewer (static/vendor/three)",
+    "url": "https://threejs.org/",
+    "files": [
+      "three.js/LICENSE"
+    ]
+  },
+  {
+    "name": "Python",
+    "version": "3.13.9",
+    "license": "PSF-2.0",
+    "purpose": "Runtime bundled by PyInstaller",
+    "url": "https://www.python.org/",
+    "files": [
+      "Python/LICENSE.txt"
+    ]
+  },
+  {
+    "name": "Microsoft Edge WebView2",
+    "version": "Runtime installed separately",
+    "license": "Microsoft software licence terms",
+    "purpose": "Renders the application window",
+    "url": "https://developer.microsoft.com/microsoft-edge/webview2/",
+    "files": []
+  },
+  {
+    "name": "GDTF Share (online service)",
+    "version": "online",
+    "license": "Terms and Conditions of GDTF Share; files belong to their uploaders",
+    "purpose": "Optional download of fixture files by the user - no GDTF files are bundled",
+    "url": "https://gdtf-share.com/landing/pages/termsAndConditions.php",
+    "files": [
+      "GDTF Share (online service)/gdtf-share.txt"
+    ]
+  }
+]

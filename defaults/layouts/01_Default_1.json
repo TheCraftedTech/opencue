@@ -1,0 +1,101 @@
+{
+  "name": {
+    "de": "Default_1",
+    "en": "Default_1"
+  },
+  "panels": [
+    {
+      "type": "fixtures",
+      "x": 54.2968,
+      "y": 0.0,
+      "width": 45.7032,
+      "height": 36.3407
+    },
+    {
+      "type": "programmer",
+      "x": 0.0,
+      "y": 43.3491,
+      "width": 54.2968,
+      "height": 56.6509,
+      "module_config": {
+        "view_mode": "combined",
+        "sel_color": "#ffe600",
+        "sel_glow": true,
+        "fader_color": "#00ff00",
+        "dimmer_width_pct": 0,
+        "pan_width_pct": 0,
+        "tilt_width_pct": 0,
+        "show_hsv": true,
+        "show_cmy": true,
+        "show_rgb": true,
+        "show_picker": true,
+        "default_view_color": "fader",
+        "default_view_position": "coarse",
+        "default_view_beam": "shutter"
+      }
+    },
+    {
+      "type": "cuelist",
+      "x": 0.0,
+      "y": 0.0,
+      "width": 54.2968,
+      "height": 43.3491,
+      "module_config": {
+        "show_progress_bar": true,
+        "show_list_select": true,
+        "cuelist_id": ""
+      }
+    },
+    {
+      "type": "executor",
+      "x": 54.2968,
+      "y": 36.3407,
+      "width": 12.6032,
+      "height": 63.6593,
+      "module_config": {
+        "cuelist_id": "",
+        "show_fader": true,
+        "show_go": true,
+        "show_pause": true,
+        "show_back": true,
+        "show_stop": true,
+        "size_go": "normal",
+        "size_pause": "normal",
+        "size_back": "normal",
+        "size_stop": "normal",
+        "show_title": true,
+        "compact": false,
+        "smart": true,
+        "fader_color": ""
+      }
+    },
+    {
+      "type": "command_line",
+      "x": 66.9325,
+      "y": 36.3407,
+      "width": 33.0675,
+      "height": 33.058,
+      "module_config": {
+        "text_color": "#e6e6e6",
+        "success_color": "#00ff66",
+        "error_color": "#ff5555"
+      }
+    },
+    {
+      "type": "command_buttons",
+      "x": 66.9,
+      "y": 69.3987,
+      "width": 20.0,
+      "height": 30.6013,
+      "show_header": false
+    },
+    {
+      "type": "command_numpad",
+      "x": 86.9,
+      "y": 69.3987,
+      "width": 13.1,
+      "height": 30.6013,
+      "show_header": false
+    }
+  ]
+}

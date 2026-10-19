@@ -1,0 +1,140 @@
+/*
+ * theme.css
+ * Design-Tokens von OpenCue (siehe styleguide.md). Wird VOR style.css geladen.
+ *
+ * Alle FARB-Tokens sind vom Nutzer einstellbar (Settings -> Farben). Ein Theme ist ein flaches
+ * Objekt { tokenName: "#rrggbb" }; app.js setzt jeden Eintrag per style.setProperty auf :root und
+ * schaltet mit [data-theme="dark" | "light"] die Basis-Palette um. Die beiden Basis-Paletten stehen
+ * ausschliesslich in dieser Datei (Dark: Block ":root", Light: Block ":root[data-theme="light"]").
+ * Form, Abstand, Schrift und Bewegung sind nicht Teil des Themes - bis auf den "Rundungsgrad", der
+ * --radius-sm/md/lg gemeinsam und proportional skaliert.
+ */
+
+:root {
+  color-scheme: dark;
+
+  /* Flaechen. Die Stufen liegen bewusst etwas weiter auseinander als im Styleguide-Entwurf,
+     damit sie auch auf schlechten Displays (niedriger Kontrast, Projektor) noch trennen. */
+  --bg:            #0a0a0b;   /* App-Hintergrund */
+  --surface-1:     #151517;   /* Panels, Toolbar, Modale */
+  --surface-2:     #1e1e21;   /* Felder, Karten, Panel-Inhalt */
+  --surface-3:     #29292d;   /* erhoehte Elemente: Dropdown, Popover, Hover */
+  --border:        #323237;   /* Standard-Rahmen */
+  --border-strong: #4a4a51;   /* Rahmen bei Hover, Modale, Dropdowns */
+
+  /* Text */
+  --text-1: #ededf0;          /* Haupttext */
+  --text-2: #a2a2aa;          /* Sekundaertext, Labels */
+  --text-3: #80808b;          /* deaktiviert, Platzhalter */
+
+  /* Bereichsflaechen. Standardmaessig aus den Flaechen oben abgeleitet; jede einzeln einstellbar. */
+  --toolbar-bg:      var(--surface-1);
+  --menu-bg:         var(--surface-3);
+  --panel-bg:        var(--surface-1);
+  --panel-border:    var(--border);
+  --panel-header-bg: var(--panel-bg);
+
+  /* Akzent */
+  --accent:      #ffb000;
+  --accent-ink:  #1a1200;     /* Text auf Akzentflaeche - app.js berechnet ihn aus dem Akzent */
+  --accent-soft: color-mix(in srgb, var(--accent) 16%, transparent);
+
+  /* Status (fest) */
+  --ok:    #34d96b;
+  --warn:  #ffb000;
+  --error: #ff4d43;
+  --live:  #ff4d43;           /* "auf Sendung" / aktive DMX-Ausgabe */
+  --error-soft: color-mix(in srgb, var(--error) 16%, transparent);
+  --ok-soft:    color-mix(in srgb, var(--ok) 16%, transparent);
+
+  /* Form */
+  /* Standard: eckig. Der Rundungsgrad (Einstellungen -> Farben -> Form) setzt alle drei Stufen
+     proportional (4 : 7 : 12); die Werte hier gelten nur vor dem Laden des Themes. */
+  --radius-sm:   0px;         /* Chips, kleine Buttons, Eingabefelder */
+  --radius-md:   0px;         /* Karten, Panels, Buttons */
+  --radius-lg:   0px;         /* Modale, grosse Container */
+  --radius-pill: 999px;
+
+  /* Abstand (4px-Raster bei 100 %). In rem: waechst mit der GUI-Skalierung (html { font-size }). */
+  --sp-1: 0.25rem;  --sp-2: 0.5rem;   --sp-3: 0.75rem;
+  --sp-4: 1rem;     --sp-5: 1.25rem;  --sp-6: 1.75rem;
+
+  /* Typografie. Groessenstufen: 12 / 13 / 15 / 18 / 24 px */
+  --font-ui:   "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+  /* in rem (bei 100 %: 12 / 13 / 15 / 18 / 24 px), damit Text mit der GUI-Skalierung waechst */
+  --fs-xs: 0.75rem; --fs-sm: 0.8125rem; --fs-md: 0.9375rem; --fs-lg: 1.125rem; --fs-xl: 1.5rem;
+
+  /* Bewegung */
+  --ease: cubic-bezier(.2, .7, .3, 1);
+  --dur-fast: 100ms;
+  --dur: 160ms;
+
+  /* Schatten - nur zur Ebenentrennung */
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, .4);
+  --shadow-2: 0 6px 20px rgba(0, 0, 0, .5);
+
+  /* Hoehen der Bedienelemente: zwei Groessen */
+  --control-sm: 1.75rem;   /* 28px bei 100 % */
+  --control-md: 2.25rem;   /* 36px bei 100 % */
+
+  /* --------------------------------------------------------------------------------------
+   * Bisherige Variablennamen (style.css) zeigen auf die Tokens. So folgt auch Altes dem
+   * neuen Stil, ohne dass jede Regel einzeln angefasst werden muss. Neuer Code nutzt die
+   * Tokens oben; diese Zeilen verschwinden, sobald style.css bereinigt ist.
+   * ------------------------------------------------------------------------------------ */
+  --bg-color:          var(--bg);
+  --dialog-header-bg:  var(--surface-1);
+  --border-color:      var(--border);
+  --color-border-light: var(--border-strong);
+  --text-main:         var(--text-1);
+  --secondary-text:    var(--text-2);
+  --accent-color:      var(--accent);
+  --logo-color:        var(--accent);
+  --highlight-color:   var(--accent);
+  --toolbar-text:      var(--text-1);
+  --toolbar-icon:      var(--text-2);
+  --edit-mode-color:   #a855f7;
+  --base-radius:       var(--radius-md);
+  --menubar-height:    2.5rem;
+}
+
+/* ---------------------------------------------------------------------------------------------
+ * Light: gleiche Tokennamen, helle Werte. Kontrast gerechnet (WCAG, Text gegen --surface-1 #ffffff):
+ * Text-1 17,8:1, Text-2 7,9:1, Text-3 4,6:1, Akzent #a35f00 5,0:1 (auf --surface-2 4,5:1) und weisse
+ * Schrift auf Akzentflaechen 5,0:1, Gruen 5,0:1, Fehler 4,8:1. Dark: Text-1 15,6:1, Text-2 7,2:1,
+ * Text-3 4,7:1, Akzent 9,9:1. Flaechen- und Rahmen-Trennung ist wie im Dark-Theme bewusst leise
+ * (Rahmen 1,7:1, Rahmen-stark 2,9:1) - das ist kein WCAG-Wert fuer Bedienelemente, siehe styleguide.md.
+ * Schatten sind im hellen Thema leichter.
+ * ------------------------------------------------------------------------------------------- */
+:root[data-theme="light"] {
+  color-scheme: light;
+
+  --bg:            #e8eaee;
+  --surface-1:     #ffffff;
+  --surface-2:     #f2f3f6;
+  --surface-3:     #e4e6eb;
+  --border:        #c3c8d2;
+  --border-strong: #8f97a6;
+
+  --text-1: #16181d;
+  --text-2: #4b5260;
+  --text-3: #6f7686;
+
+  --accent:      #a35f00;
+  --accent-ink:  #ffffff;
+
+  --ok:    #15803d;
+  --warn:  #a35f00;
+  --error: #d92d20;
+  --live:  #d92d20;
+
+  --toolbar-bg:      #ffffff;
+  --menu-bg:         #ffffff;
+  --panel-bg:        #ffffff;
+  --panel-border:    #c3c8d2;
+  --panel-header-bg: #f6f7f9;
+
+  --shadow-1: 0 1px 2px rgba(20, 24, 40, .14);
+  --shadow-2: 0 8px 24px rgba(20, 24, 40, .22);
+}

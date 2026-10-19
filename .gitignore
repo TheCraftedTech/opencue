@@ -1,0 +1,10 @@
+venv/
+__pycache__/
+*.pyc
+showfiles/*.json
+panel_layouts/*.json
+!showfiles/.gitkeep
+.vscode/
+*.log
+build/
+dist/

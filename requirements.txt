@@ -1,0 +1,11 @@
+fastapi==0.141.1
+uvicorn[standard]==0.53.0
+pywebview==6.2.1
+sacn==1.11.0
+stupidArtnet==1.6.0
+jinja2>=3.1
+pygdtf==1.4.5
+pyserial==3.5
+assimp-py==1.2.0
+
+segno==1.6.6

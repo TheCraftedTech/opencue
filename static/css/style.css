@@ -1,0 +1,4585 @@
+/*
+ * style.css
+ * Main stylesheet of OpenCue.
+ *
+ * Contrast scheme: pure black main background, dark gray module panels,
+ * crisp contour lines. Neon green marks active DMX signals.
+ *
+ * SCALING MODEL (important):
+ * --gui-scale drives the ROOT FONT-SIZE (html { font-size }), not a global
+ * zoom/transform. Every internal measurement that should visually scale
+ * with it (text, icons, padding, gaps) is expressed in `rem`, which is
+ * always relative to that root font-size. The outer viewport (100vw x
+ * 100vh) stays in viewport units and therefore stays geometrically rigid
+ * regardless of --gui-scale - only the content inside it breathes.
+ */
+
+:root {
+  /* Farben, Radien und Abstaende liegen in theme.css (Design-Tokens, siehe styleguide.md).
+     Hier bleiben nur Werte, die zur Skalierung gehoeren. */
+
+  /* GUI scaling factor - changed via the menu bar's GUI Scale slider */
+  --gui-scale: 1.0;
+
+  /* Base spacing, expressed in rem so it scales with --gui-scale */
+  --base-gap: 0.5rem;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  /* The only place --gui-scale is ever converted to a pixel value. 16px
+     is the neutral 100% baseline; every `rem` elsewhere in this file scales
+     proportionally from here. */
+  font-size: calc(16px * var(--gui-scale));
+  height: 100vh;
+  height: 100dvh;
+  width: 100vw;
+  overflow: hidden;
+}
+
+/* ---- Custom Scrollbars (Webkit + Firefox) -------------------------------- */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 3px;
+}
+@media (hover: hover) {
+  ::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in srgb, var(--border-color) 50%, var(--accent-color) 50%);
+}
+}
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-color) transparent;
+}
+
+body {
+  background-color: var(--bg-color);
+  color: var(--text-main);
+  font-family: "Segoe UI", "Inter", system-ui, sans-serif;
+  font-size: 0.875rem;
+  height: 100vh;
+  height: 100dvh;
+  width: 100vw;
+  overflow: hidden;
+  user-select: none;
+}
+
+/* ---------------------------------------------------------------------
+ * Viewport: the single, unbreakable boundary of the whole application.
+ * Nothing may ever exceed 100vw / 100vh or create a scrollbar here.
+ * ------------------------------------------------------------------- */
+.viewport {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  height: 100dvh;
+  width: 100vw;
+  overflow: hidden;
+  box-sizing: border-box;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right)
+           env(safe-area-inset-bottom) env(safe-area-inset-left);
+}
+
+/* =======================================================================
+ * Menu bar - dense, flat, pinned to the top. Its height is intentionally
+ * rem-based (~2rem) so it stays legible across GUI-scale levels, unlike
+ * the rigid module grid below it.
+ * ===================================================================== */
+.menubar {
+  display: flex;
+  align-items: center;
+  flex: 0 0 var(--menubar-height);
+  height: var(--menubar-height);
+  padding: 0 0.5rem;
+  gap: 0.25rem;
+  background-color: var(--toolbar-bg);
+  border-bottom: 1px solid var(--border-color);
+  font-size: 0.8rem;
+  /* Explicit on purpose: dropdowns and nested submenus below are
+     position:absolute and DO extend outside this bar's own box. Any
+     overflow:hidden here (or on .menu__dropdown below) would clip them. */
+  overflow: visible;
+}
+
+.menubar__brand {
+  color: var(--logo-color);
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  padding: 0 0.75rem 0 0.25rem;
+  font-size: 0.85rem;
+}
+
+/* ---- Dropdown menus (File / View / Language) ------------------------- */
+.menu {
+  position: relative;
+  height: 100%;
+}
+
+.menu__trigger {
+  height: 100%;
+  padding: 0 0.6rem;
+  background: transparent;
+  border: none;
+  color: var(--toolbar-text);
+  font: inherit;
+  letter-spacing: 0.03em;
+  cursor: pointer;
+}
+@media (hover: hover) {
+  .menu__trigger:hover {
+  background-color: rgba(255, 255, 255, 0.06);
+}
+}
+
+.menu--open .menu__trigger {
+  background-color: color-mix(in srgb, var(--highlight-color) 10%, transparent);
+  color: var(--highlight-color);
+}
+
+.menu__dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  min-width: 11rem;
+  list-style: none;
+  background-color: var(--panel-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 0 0 var(--base-radius) var(--base-radius);
+  box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.5);
+  /* Same high band as the other fixed UI chrome (see .smart-guide) so a
+     panel's user-adjustable z_index can never render over an open menu. */
+  z-index: 100002;
+  /* No overflow:hidden here - it would clip the .menu__submenu flyout that
+     nests inside this dropdown (Edit -> Add Panel -> Settings). The rounded
+     bottom corners are instead applied directly to the last item below. */
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-0.25rem);
+  transition: opacity 0.12s ease, transform 0.12s ease;
+}
+
+/* Opens on hover (flush against the trigger - no dead zone to cross) AND
+   stays open once opened via click (.menu--open, toggled in app.js), so it
+   holds stable even if the mouse briefly leaves and comes back. */
+.menu--open .menu__dropdown {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0);
+}
+/* Toolbar-Menues oeffnen ausschliesslich ueber .menu--open (setupMenuBar in app.js). */
+
+.menu__item {
+  padding: 0.5rem 0.85rem;
+  font-size: 0.8rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+/* Compensates for the dropdown no longer clipping its own rounded bottom
+   corners (see .menu__dropdown comment above). */
+.menu__dropdown > .menu__item:last-child {
+  border-radius: 0 0 var(--base-radius) var(--base-radius);
+}
+@media (hover: hover) {
+  .menu__item:hover {
+  background-color: color-mix(in srgb, var(--highlight-color) 12%, transparent);
+  color: var(--highlight-color);
+}
+}
+
+.menu__item--active {
+  color: var(--highlight-color);
+}
+
+.menu__item--active-edit {
+  color: var(--edit-mode-color);
+}
+
+/* Edit-only actions (e.g. Add Panel...) - inert and dimmed while Live Mode
+   is active; setEditMode() in app.js toggles this. */
+.menu__item--disabled {
+  pointer-events: none;
+  opacity: 0.5;
+}
+
+/* Checkbox-style toggle item (e.g. View -> Fullscreen): a small square that
+   fills in as a checkmark while active, plus a dimmed shortcut-key hint
+   pushed to the far right of the row. */
+.menu__item--checkbox {
+  display: flex;
+  align-items: center;
+}
+
+.menu__item--checkbox::before {
+  content: "";
+  display: inline-block;
+  width: 0.65rem;
+  height: 0.65rem;
+  margin-right: 0.6rem;
+  border: 1px solid var(--secondary-text);
+  flex-shrink: 0;
+}
+
+.menu__item--checkbox.menu__item--checked::before {
+  content: "\2713";
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--accent-color);
+  border-color: var(--accent-color);
+  color: var(--bg-color);
+  font-size: 0.55rem;
+}
+
+.menu__shortcut-hint {
+  margin-left: auto;
+  padding-left: 1rem;
+  color: var(--secondary-text);
+  font-size: 0.7rem;
+  letter-spacing: 0.03em;
+}
+
+.menu__separator {
+  height: 1px;
+  margin: 0.25rem 0;
+  background-color: var(--border-color);
+}
+
+/* ---- Nested submenus (e.g. Edit -> Add Panel -> Settings) ------------- */
+.menu__item--has-submenu {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.menu__item--has-submenu::after {
+  content: "\25B8";
+  margin-left: 0.75rem;
+  color: var(--secondary-text);
+}
+
+.menu__submenu {
+  position: absolute;
+  top: 0;
+  left: 100%;
+  min-width: 11.25rem; /* ~180px at the 16px baseline */
+  list-style: none;
+  background-color: var(--panel-bg);
+  border: 1px solid var(--border-color);
+  border-radius: var(--base-radius);
+  box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.5);
+  /* High enough to clear the panel context menu and any panel's own
+     user-adjustable z_index (see .smart-guide above for the same reasoning). */
+  z-index: 100002;
+  /* No overflow:hidden - see .menu__dropdown above for why. Rounded corners
+     hold up fine here regardless since this submenu currently only ever has
+     one row, so there's no square-cornered hover highlight to worry about. */
+  opacity: 0;
+  pointer-events: none;
+  transform: translateX(-0.25rem);
+  transition: opacity 0.12s ease, transform 0.12s ease;
+}
+
+/* Same hover + stays-open-via-click pattern as the top-level dropdown
+   above. pointer-events:none on a disabled (Live Mode) parent li already
+   blocks :hover from ever matching it, so the disabled state "just works"
+   here without any extra guarding. */
+.menu__item--submenu-open .menu__submenu {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateX(0);
+}
+@media (hover: hover) {
+  .menu__item--has-submenu:hover .menu__submenu {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateX(0);
+}
+}
+
+.menubar__spacer {
+  flex: 1 1 auto;
+}
+
+.menubar__showfile-name {
+  color: var(--secondary-text);
+  font-size: 0.78rem;
+  padding: 0 0 0 0.75rem;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  opacity: 0.85;
+}
+
+/* Separator-Border sitzt am Name-Span wenn kein Dirty-Stern, sonst am Stern */
+.menubar__showfile-name--sep {
+  padding-right: 0.75rem;
+  border-right: 1px solid color-mix(in srgb, var(--border-color) 50%, transparent);
+  margin-right: 0.25rem;
+}
+
+.toolbar__dirty-star {
+  color: var(--accent-color);
+  font-size: 0.82rem;
+  font-weight: 700;
+  padding-right: 0.75rem;
+  border-right: 1px solid color-mix(in srgb, var(--border-color) 50%, transparent);
+  margin-right: 0.25rem;
+}
+
+.menubar__clock {
+  color: var(--secondary-text);
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums; /* stops digit-width jitter every second */
+  padding: 0 0.5rem;
+}
+
+/* File list badges (open dialogs) */
+.file-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  font-size: 0.7rem;
+  padding: 0.1rem 0.35rem;
+  border-radius: 3px;
+  margin-left: 0.4rem;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+.file-badge--local {
+  background: color-mix(in srgb, var(--secondary-text) 15%, transparent);
+  color: var(--secondary-text);
+}
+
+.file-list-group-header {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--secondary-text);
+  padding: 0.5rem 0.5rem 0.2rem;
+  opacity: 0.7;
+}
+
+/* Settings gear button - plain stroked SVG (currentColor), no emoji. */
+.menubar__icon-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  padding: 0;
+  margin-left: 0.4rem;
+  background: transparent;
+  border: none;
+  border-radius: var(--base-radius);
+  color: var(--toolbar-icon);
+  cursor: pointer;
+}
+@media (hover: hover) {
+  .menubar__icon-button:hover {
+  background-color: rgba(255, 255, 255, 0.06);
+  color: var(--highlight-color);
+}
+}
+
+.menubar__icon-button svg {
+  width: 1.1rem;
+  height: 1.1rem;
+}
+
+/* ---- Toast Notifications --------------------------------------------- */
+#toast-container {
+  position: fixed;
+  top: 2.6rem;
+  right: 1rem;
+  z-index: 100500; /* ueber allen Dialogen (100003-100200): Rueckmeldungen aus einem Dialog heraus muessen sichtbar sein */
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  pointer-events: none;
+}
+
+.toast {
+  background: var(--dialog-header-bg);
+  border: 1px solid var(--border-color);
+  border-left: 3px solid var(--secondary-text);
+  border-radius: var(--base-radius);
+  color: var(--text-main);
+  font-size: 0.76rem;
+  padding: 0.5rem 0.85rem;
+  max-width: 16.25rem;
+  pointer-events: all;
+  cursor: pointer;
+  opacity: 0;
+  transform: translateX(calc(100% + 1.5rem));
+  transition: opacity 0.3s ease, transform 0.3s ease;
+  user-select: none;
+}
+
+.toast--visible {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.toast--hiding {
+  opacity: 0;
+  transform: translateX(calc(100% + 1.5rem));
+}
+
+.toast--error  { border-left-color: #ff5555; }
+.toast--ok     { border-left-color: var(--accent-color); }
+.toast--warn   { border-left-color: #ffa040; }
+
+/* ---- DMX Heart button ------------------------------------------------- */
+@keyframes dmx-heartbreak {
+  0%   { transform: scale(1.35) rotate(-12deg); }
+  25%  { transform: scale(0.85) rotate(10deg); }
+  55%  { transform: scale(1.10) rotate(-6deg); }
+  80%  { transform: scale(0.95) rotate(3deg); }
+  100% { transform: scale(1.00) rotate(0deg); }
+}
+
+@keyframes dmx-heartbeat {
+  0%   { transform: scale(1);    }
+  10%  { transform: scale(1.30); }
+  20%  { transform: scale(1);    }
+  30%  { transform: scale(1.20); }
+  40%  { transform: scale(1);    }
+  100% { transform: scale(1);    }
+}
+
+.menubar__dmx-heart-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  color: var(--secondary-text);
+  padding: 0.3rem;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.15s;
+  margin-left: 0.3rem;
+}
+@media (hover: hover) {
+  .menubar__dmx-heart-btn:hover {
+  background-color: rgba(255, 255, 255, 0.06);
+}
+}
+
+.menubar__dmx-heart {
+  width: 1.05rem;
+  height: 1.05rem;
+  fill: currentColor;
+  stroke: none;
+  transition: color 0.3s;
+}
+
+.menubar__dmx-heart--active {
+  color: #4fa3e0;
+  animation: dmx-heartbeat 1s ease-in-out infinite;
+}
+
+.menubar__dmx-heart--error {
+  color: #ff5555;
+}
+
+.menubar__dmx-heart--broken {
+  color: #ff5555;
+  animation: dmx-heartbreak 0.5s ease-out forwards;
+}
+
+.dmx-heart__crack {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.85);
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  display: none;
+}
+.menubar__dmx-heart--error .dmx-heart__crack,
+.menubar__dmx-heart--broken .dmx-heart__crack {
+  display: block;
+}
+
+/* ---- Protocol status badges in Settings (Art-Net / sACN) ------------- */
+.settings-protocol-status-row {
+  min-height: 1.1rem;
+}
+
+.settings-protocol-status {
+  font-size: 0.72rem;
+  flex: 1;
+}
+
+.settings-protocol-status--ok {
+  color: var(--accent-color);
+}
+
+.settings-protocol-status--inactive {
+  color: var(--secondary-text);
+  opacity: 0.7;
+}
+
+/* =======================================================================
+ * Workspace: the free-form panel desktop below the menu bar. Panels are
+ * positioned absolutely within it as percentages of its own box, so their
+ * layout is independent of window size and --gui-scale. Fills the
+ * remaining viewport height exactly (flex:1 inside the .viewport column),
+ * so it never causes root-level overflow.
+ * ===================================================================== */
+.workspace {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* Edit Mode: glowing accent line around the whole workspace signals that
+   panels can now be dragged/resized/right-clicked. */
+.viewport.edit-mode .workspace {
+  box-shadow:
+    inset 0 0 0 0.15rem var(--edit-mode-color),
+    inset 0 0 1.5rem rgba(168, 85, 247, 0.35);
+}
+
+/* ---------------------------------------------------------------------
+ * Workspace panels - dynamically created/positioned by app.js.
+ * ------------------------------------------------------------------- */
+.workspace-panel {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--panel-bg);
+  border: 1px solid var(--color-border-light); /* overridden inline per panel (borderColor) */
+  border-radius: var(--base-radius);
+  overflow: hidden;
+  min-width: 0;
+  min-height: 0;
+  box-shadow: 0 0.25rem 0.75rem rgba(0, 0, 0, 0.4);
+}
+
+.workspace-panel .panel__header {
+  display: flex;
+  align-items: center;
+  padding: 0 0.75rem;
+  height: 2rem;
+  flex-shrink: 0;
+  background-color: var(--dialog-header-bg);
+  border-bottom: 1px solid var(--border-color);
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: inherit; /* see the panel text-color cascade note below */
+}
+
+/* "Show Panel Header" toggle (Panel Properties -> General) sets .hidden via
+   JS - needed explicitly because author styles always beat the browser's
+   own [hidden] rule regardless of specificity, and the plain `display:flex`
+   above would otherwise silently win. */
+.workspace-panel .panel__header[hidden] {
+  display: none;
+}
+
+/* Grabbable from anywhere on the box in Edit Mode, not just the header -
+   panel__content is pointer-events:none while editing (below), so a
+   mousedown there already lands on the panel itself in practice. */
+.edit-mode .workspace-panel {
+  cursor: grab;
+}
+
+.edit-mode .workspace-panel:active {
+  cursor: grabbing;
+}
+
+.workspace-panel .panel__content {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  padding: 0.75rem;
+}
+
+/* Subtle, dim scrollbar for panel content that doesn't fit (WebKit/Chromium -
+   this is a WebView2 app, no separate Firefox `scrollbar-*` fallback needed). */
+.workspace-panel .panel__content::-webkit-scrollbar {
+  width: 0.5rem;
+}
+
+.workspace-panel .panel__content::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.workspace-panel .panel__content::-webkit-scrollbar-thumb {
+  background-color: var(--border-color);
+  border-radius: 999px;
+}
+@media (hover: hover) {
+  .workspace-panel .panel__content::-webkit-scrollbar-thumb:hover {
+  background-color: var(--secondary-text);
+}
+}
+
+/* Edit Mode locks interactive panel content to prevent accidental clicks
+   while arranging the desktop; Live Mode (default) leaves it interactive. */
+.edit-mode .workspace-panel .panel__content {
+  pointer-events: none;
+  user-select: none;
+}
+
+/* ---- Resize handles - invisible & inert outside Edit Mode ------------- */
+.resize-handle {
+  position: absolute;
+  width: 0.75rem;
+  height: 0.75rem;
+  background-color: var(--edit-mode-color);
+  border: 1px solid var(--bg-color);
+  opacity: 0;
+  pointer-events: none;
+  z-index: 5;
+}
+
+.edit-mode .resize-handle {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.resize-handle--nw { top: -0.375rem; left: -0.375rem; cursor: nwse-resize; }
+.resize-handle--ne { top: -0.375rem; right: -0.375rem; cursor: nesw-resize; }
+.resize-handle--sw { bottom: -0.375rem; left: -0.375rem; cursor: nesw-resize; }
+.resize-handle--se { bottom: -0.375rem; right: -0.375rem; cursor: nwse-resize; }
+
+/* =======================================================================
+ * Smart guides - thin alignment lines drawn across the workspace while
+ * dragging a panel in Edit Mode, shown when an edge/center comes within
+ * snapping tolerance of another panel's edge/center (see app.js). Created
+ * and removed dynamically for the duration of a single drag - never part
+ * of the persisted panel markup.
+ * ===================================================================== */
+.smart-guide {
+  position: absolute;
+  background-color: #ff0000;
+  pointer-events: none;
+  /* Panels now carry a user-adjustable z_index (Bring to Front / Send to
+     Back / layer reordering - see app.js), so this and the other fixed UI
+     chrome below (context menu, submenu, modal) all sit on a deliberately
+     high z-index band no panel could realistically reach, rather than a
+     small fixed number that a few "Bring to Front" clicks could exceed. */
+  z-index: 100000;
+}
+
+.smart-guide--vertical {
+  top: 0;
+  bottom: 0;
+  width: 1px;
+}
+
+.smart-guide--horizontal {
+  left: 0;
+  right: 0;
+  height: 1px;
+}
+
+/* =======================================================================
+ * Button / Fader panel types — registered via window.__panelPlugins
+ * ===================================================================== */
+[data-panel-type="button"] .panel__content {
+  padding: 0;
+  overflow: hidden;
+  display: flex;
+}
+[data-panel-type="button"] .panel-btn__wrap {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+[data-panel-type="button"] .panel-btn {
+  width: 100%;
+  height: 100%;
+  background: transparent;
+  border: none;
+  color: inherit;
+  font-family: inherit;
+  cursor: pointer;
+  font-weight: 600;
+  transition: filter 0.08s;
+  padding: 0.3rem;
+}
+@media (hover: hover) {
+  [data-panel-type="button"] .panel-btn:not(.edit-mode *):hover {
+  filter: brightness(1.15);
+}
+}
+[data-panel-type="button"] .panel-btn:not(.edit-mode *):active {
+  filter: brightness(1.4);
+}
+
+[data-panel-type="fader"] .panel__content {
+  padding: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+[data-panel-type="fader"] .panel-fader__wrap {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 0.1rem;
+  gap: 0.15rem;
+}
+[data-panel-type="fader"] .panel-fader__label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-align: center;
+  opacity: 0.85;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+[data-panel-type="fader"] .panel-fader__track {
+  flex: 1;
+  min-height: 0 !important;
+  width: 100%;
+  cursor: ns-resize;
+  touch-action: none;
+}
+[data-panel-type="fader"] .vfader__fill {
+  background: var(--accent-color, #00ff66);
+}
+[data-panel-type="fader"] .vfader__thumb {
+  border-color: var(--accent-color, #00ff66);
+}
+
+
+/* =======================================================================
+ * Settings panel form controls (DMX/Network + Interface sections).
+ * ===================================================================== */
+.settings-section {
+  margin-bottom: 1.25rem;
+}
+
+.settings-section:last-child {
+  margin-bottom: 0;
+}
+
+.settings-section__title {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--secondary-text);
+  margin-bottom: 0.6rem;
+  padding-bottom: 0.35rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.settings-field {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.6rem;
+}
+
+.settings-field:last-child {
+  margin-bottom: 0;
+}
+
+.settings-field label {
+  color: var(--secondary-text);
+  font-size: 0.8rem;
+}
+
+.settings-field input[type="text"],
+.settings-field input[type="number"],
+.settings-field select {
+  background-color: var(--bg-color);
+  border: 1px solid var(--border-color);
+  border-radius: var(--base-radius);
+  color: var(--text-main);
+  font: inherit;
+  padding: 0.3rem 0.5rem;
+  width: 9rem;
+}
+
+/* Standalone text input used in modal bodies (e.g. Save Show As) */
+.settings__text-input {
+  background-color: var(--bg-color);
+  border: 1px solid var(--border-color);
+  border-radius: var(--base-radius);
+  color: var(--text-main);
+  font: inherit;
+  font-size: 0.875rem;
+  padding: 0.35rem 0.55rem;
+  transition: border-color 0.12s;
+}
+.settings__text-input:focus {
+  outline: none;
+  border-color: var(--accent-color);
+}
+
+.settings-field button {
+  padding: 0.35rem 0.8rem;
+  border-radius: var(--base-radius);
+  border: 1px solid var(--border-color);
+  background-color: transparent;
+  color: var(--text-main);
+  font: inherit;
+  cursor: pointer;
+}
+@media (hover: hover) {
+  .settings-field button:hover {
+  border-color: var(--highlight-color);
+  color: var(--highlight-color);
+}
+}
+
+/* Panel text-color cascade: .settings-section__title / .settings-field
+   label/input/select/button above all hard-code --secondary-text or
+   --text-main (correct for the toolbar's Settings panel and the central
+   Settings modal, which aren't user-colorable) - but the SAME classes are
+   also reused inside workspace panels (see buildSettingsPanelContent() in
+   app.js), where a panel's own Text Color (Panel Properties -> Advanced)
+   is applied as a plain inline `color` on .workspace-panel and is supposed
+   to reach every text element inside it. `color: inherit`, scoped to only
+   this context, lets that inline color cascade through normally instead of
+   being silently overridden back to the fixed dim gray. */
+.workspace-panel .settings-section__title,
+.workspace-panel .settings-field label,
+.workspace-panel .settings-field input[type="text"],
+.workspace-panel .settings-field input[type="number"],
+.workspace-panel .settings-field select,
+.workspace-panel .settings-field button {
+  color: inherit;
+}
+
+/* ---- Enttec port row: select + refresh button side by side ----------- */
+.settings-enttec-port-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.settings-enttec-port-row select {
+  flex: 1;
+  min-width: 0;
+  width: auto;
+}
+
+.settings-enttec-refresh-btn {
+  flex-shrink: 0;
+  padding: 0.3rem 0.55rem;
+  font-size: 1rem;
+  line-height: 1;
+  min-width: 2rem;
+}
+
+.settings-enttec-status-row {
+  min-height: 1.1rem;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.settings-enttec-reconnect-btn {
+  flex-shrink: 0;
+  padding: 0.2rem 0.6rem;
+  font-size: 0.72rem;
+  min-width: auto;
+}
+
+.settings-enttec-status {
+  font-size: 0.72rem;
+  flex: 1;
+}
+
+.settings-enttec-status--ok {
+  color: var(--accent-color);
+}
+
+.settings-enttec-status--error {
+  color: #ff5555;
+}
+
+.settings-enttec-status--warn {
+  color: #ffa040;
+}
+
+/* ---- Toggle switch (DMX Output Enable/Disable) ------------------------ */
+.toggle-switch {
+  position: relative;
+  display: inline-block;
+  width: 2.6rem;
+  height: 1.4rem;
+  flex-shrink: 0;
+  /* Schutz gegen externe Breiten-Overrides: ".modal__field label" (siehe
+     Panel-Properties -> Erscheinungsbild) setzt "min-width: 8rem" fuer
+     normale Text-Labels - trifft ungewollt auch dieses <label>, da der
+     Toggle selbst technisch ein <label> ist. Der Toggle bleibt dadurch
+     IMMER kompakt, unabhaengig vom umgebenden Kontext. */
+  min-width: 2.6rem !important;
+  max-width: 2.6rem;
+}
+
+.toggle-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.toggle-switch__track {
+  position: absolute;
+  inset: 0;
+  background-color: var(--border-color);
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.toggle-switch__track::before {
+  content: "";
+  position: absolute;
+  width: 1.1rem;
+  height: 1.1rem;
+  left: 0.15rem;
+  top: 0.15rem;
+  background-color: var(--text-main);
+  border-radius: 50%;
+  transition: transform 0.15s ease;
+}
+
+.toggle-switch input:checked + .toggle-switch__track {
+  background-color: var(--accent-color);
+}
+
+.toggle-switch input:checked + .toggle-switch__track::before {
+  transform: translateX(1.2rem);
+  background-color: var(--bg-color);
+}
+
+/* ---------------------------------------------------------------------
+ * Signal indicators (for later modules: faders, meters, channels)
+ * ------------------------------------------------------------------- */
+.signal-active {
+  color: var(--accent-color);
+  text-shadow: 0 0 0.4em rgba(0, 255, 102, 0.6);
+}
+
+.border-active {
+  border-color: var(--accent-color) !important;
+}
+
+/* =======================================================================
+ * Modal system - reusable backdrop+dialog pattern. Any number of
+ * [data-modal-backdrop="<id>"] blocks can exist; Modal.open()/close() in
+ * app.js just toggle the --visible class. Backdrop clicks are intentionally
+ * NOT wired to close the modal (see app.js) - only its own controls can.
+ * ===================================================================== */
+.modal-backdrop {
+  display: none;
+  position: fixed;
+  inset: 0;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  z-index: 100003; /* topmost of all fixed UI chrome - see .smart-guide */
+  box-sizing: border-box;
+  height: 100vh;
+  height: 100dvh;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right)
+           env(safe-area-inset-bottom) env(safe-area-inset-left);
+}
+
+.modal-backdrop--visible {
+  display: flex;
+}
+
+.modal {
+  width: 22rem;
+  max-width: calc(100vw - 2rem);
+  max-height: calc(100vh - 2rem);
+  max-height: calc(100dvh - 2rem - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+  background-color: var(--panel-bg);
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--base-radius);
+  box-shadow: 0 1rem 2rem rgba(0, 0, 0, 0.6);
+  overflow: hidden;
+}
+
+.modal__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.6rem 0.9rem;
+  background-color: var(--dialog-header-bg);
+  border-bottom: 1px solid var(--border-color);
+  font-size: 0.85rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--secondary-text);
+}
+
+.modal__close {
+  background: transparent;
+  border: none;
+  color: var(--secondary-text);
+  font-size: 1.2rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0.1rem 0.35rem;
+}
+@media (hover: hover) {
+  .modal__close:hover {
+  color: var(--highlight-color);
+}
+}
+
+.modal__body {
+  padding: 1.25rem 1.25rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+}
+
+.modal__field {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.modal__field--row {
+  justify-content: center;
+}
+
+#gui-scale-modal-slider {
+  flex: 1 1 auto;
+  accent-color: var(--accent-color);
+}
+
+#gui-scale-modal-number {
+  width: 5rem;
+  padding: 0.3rem 0.5rem;
+  background-color: var(--bg-color);
+  border: 1px solid var(--border-color);
+  border-radius: var(--base-radius);
+  color: var(--text-main);
+  font: inherit;
+  text-align: right;
+}
+
+.modal__unit {
+  color: var(--secondary-text);
+}
+
+/* ---- Panel Properties modal (right-click -> Panel Properties...) -----
+   Restructured analogous to the central Settings modal: a sidebar of
+   categories (General / Appearance & Colors / Module Settings) on the
+   left, the active category's fields on the right - see the shared
+   .settings-modal__* rules further below, reused by both modals. Color
+   pairs (border/background/text/accent) share these two classes rather
+   than one-off #panel-properties-color-* IDs. */
+.color-swatch-input {
+  width: 2.75rem;
+  height: 2.75rem;
+  padding: 0;
+  border: 1px solid var(--border-color);
+  background: none;
+  cursor: pointer;
+}
+
+/* Native <input type=color> swatches carry their own inner chrome per
+   browser - strip it back to a flat, square field matching the rest of
+   the UI instead of the default inset/rounded look. */
+.color-swatch-input::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+
+.color-swatch-input::-webkit-color-swatch {
+  border: none;
+}
+
+.color-hex-input {
+  flex: 1 1 auto;
+  padding: 0.4rem 0.6rem;
+  background-color: var(--bg-color);
+  border: 1px solid var(--border-color);
+  border-radius: var(--base-radius);
+  color: var(--text-main);
+  font: inherit;
+  text-transform: uppercase;
+}
+
+/* Subtle inline link style - a plain button would visually compete too much
+   with the Cancel/Save & Close (or & Apply) footer. Reused for "Reset
+   Defaults" in the Settings modal's sidebar (see further below). */
+.modal__button--link {
+  align-self: flex-start;
+  padding: 0.3rem 0;
+  border: none;
+  background: none;
+  color: var(--secondary-text);
+  font: inherit;
+  font-weight: 600;
+  text-decoration: underline;
+  cursor: pointer;
+}
+@media (hover: hover) {
+  .modal__button--link:hover {
+  color: var(--highlight-color);
+}
+}
+
+.modal__field-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+  margin-bottom: 1.1rem;
+}
+
+.modal__field-grid-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.modal__field-grid-item label {
+  color: var(--secondary-text);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.modal__field-grid-item input {
+  padding: 0.35rem 0.5rem;
+  background-color: var(--bg-color);
+  border: 1px solid var(--border-color);
+  border-radius: var(--base-radius);
+  color: var(--text-main);
+  font: inherit;
+}
+
+.settings-modal__pane .modal__field:not(:last-child) {
+  margin-bottom: 1.1rem;
+}
+
+/* Accent Color row in Panel Properties: inert/dimmed while "Use Global
+   Accent Color" is checked, since the picker underneath it has no effect
+   in that state. */
+.modal__field--disabled {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+/* Standard footer for every modal: Cancel on the left, the primary
+   commit action on the right (space-between with exactly two buttons
+   naturally pins them to opposite ends). */
+.modal__footer {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.75rem 1rem;
+  border-top: 1px solid var(--border-color);
+}
+
+.modal__button {
+  padding: 0.45rem 1.1rem;
+  border-radius: var(--base-radius);
+  border: 1px solid var(--border-color);
+  background-color: transparent;
+  color: var(--text-main);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+@media (hover: hover) {
+  .modal__button:hover {
+  border-color: var(--text-main);
+}
+}
+
+.modal__button--primary {
+  border-color: var(--accent-color);
+  background-color: var(--accent-color);
+  color: var(--bg-color);
+}
+@media (hover: hover) {
+  .modal__button--primary:hover {
+  filter: brightness(1.1);
+}
+}
+
+.modal__button--danger {
+  border-color: #c53030;
+  background-color: #c53030;
+  color: #fff;
+}
+@media (hover: hover) {
+  .modal__button--danger:hover { background-color: #9b2c2c; border-color: #9b2c2c; }
+}
+
+/* =======================================================================
+ * Two-column "sidebar modal" layout, shared by the central Settings modal
+ * (toolbar gear icon) and the restructured Panel Properties modal: a
+ * category sidebar on the left, the active category's fields on the
+ * right. Reuses .settings-field / .settings-section / .color-swatch-input
+ * / .color-hex-input / .toggle-switch from elsewhere in this file.
+ * ===================================================================== */
+.modal--settings,
+.modal--panel-properties {
+  /* Fixed, not just bounded: a size that stayed purely content-driven (like
+     a plain max-height) would visibly grow/shrink every time the sidebar
+     category changes, since different panes hold different amounts of
+     content - this keeps both dialogs a constant size no matter which
+     category is active, with .settings-modal__content (see below)
+     scrolling internally instead. max-width/max-height are still needed as
+     a floor against tiny windows or high --gui-scale. */
+  width: 47.5rem;
+  height: 33.75rem;
+  max-width: 90vw;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.settings-modal__body {
+  display: flex;
+  flex: 1 1 auto;
+  min-height: 0; /* lets the flex item shrink below its content's height so the children's own overflow-y:auto can kick in */
+}
+
+.settings-modal__sidebar {
+  display: flex;
+  flex-direction: column;
+  flex: 0 0 10rem;
+  gap: 0.25rem;
+  padding: 0.5rem;
+  background-color: var(--panel-bg);
+  border-right: 1px solid var(--border-color);
+  max-height: 100%;
+  overflow-y: auto;
+}
+
+/* Pushed to the bottom of the sidebar's flex column via margin-top:auto -
+   visually separated from the category list above it, since it's a
+   destructive, rarely-used action rather than another category. */
+.settings-modal__sidebar .modal__button--link {
+  margin-top: auto;
+}
+
+.settings-modal__category {
+  display: block;
+  width: 100%;
+  padding: 0.55rem 0.75rem;
+  background: transparent;
+  border: none;
+  border-radius: var(--base-radius);
+  color: var(--secondary-text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+@media (hover: hover) {
+  .settings-modal__category:hover {
+  background-color: rgba(255, 255, 255, 0.06);
+  color: var(--text-main);
+}
+}
+
+/* Selector repeats the class so this beats the plain :hover rule above on
+   specificity (0,2,0 vs 0,1,0) - without it, hovering a just-clicked
+   category (the mouse naturally stays over the button after a real click)
+   would visually fall back to the hover color instead of staying
+   accent-highlighted. */
+.settings-modal__category--active {
+  /* color-mix so this tracks the custom Active Item/Highlight color from
+     the Colors pane instead of staying hardcoded to the default green. */
+  background-color: color-mix(in srgb, var(--highlight-color) 15%, transparent);
+  color: var(--highlight-color);
+}
+@media (hover: hover) {
+  .settings-modal__category.settings-modal__category--active:hover {
+  /* color-mix so this tracks the custom Active Item/Highlight color from
+     the Colors pane instead of staying hardcoded to the default green. */
+  background-color: color-mix(in srgb, var(--highlight-color) 15%, transparent);
+  color: var(--highlight-color);
+}
+}
+
+.settings-modal__content {
+  flex: 1 1 auto;
+  max-height: 100%;
+  padding: 1.25rem;
+  overflow-y: auto;
+}
+
+.settings-modal__pane {
+  display: none;
+}
+
+.settings-modal__pane--active {
+  display: block;
+}
+
+/* "Module Settings" placeholder pane (Panel Properties) - no module-
+   specific options exist yet for any panel type. */
+.settings-modal__placeholder {
+  color: var(--secondary-text);
+  font-size: 0.85rem;
+}
+
+/* =======================================================================
+ * Multi-dialog stacking: a confirmation dialog opened from within an
+ * already-open modal (e.g. Settings -> "Reset Defaults" -> "Are you
+ * sure?") needs to render strictly above it. Both are still plain
+ * .modal-backdrop elements (z-index 100003, see the modal system above) -
+ * this class bumps a specific one into the next band up, rather than
+ * relying on DOM/paint order between two backdrops of equal z-index.
+ * ===================================================================== */
+.modal-backdrop--stacked {
+  z-index: 100004;
+}
+
+/* =======================================================================
+ * Add Panel modal: list of registered panel types (Edit -> Add Panel...).
+ * Each item is a full-width button styled like a menu row.
+ * ===================================================================== */
+.add-panel__type-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  padding: 0;
+  min-width: 18rem;
+}
+
+.add-panel__type-item {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 0.7rem 1rem;
+  background: transparent;
+  border: 1px solid var(--border-color);
+  border-radius: var(--base-radius);
+  color: var(--text-main);
+  font: inherit;
+  font-size: 0.85rem;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.1s, color 0.1s;
+}
+@media (hover: hover) {
+  .add-panel__type-item:hover {
+  border-color: var(--highlight-color);
+  color: var(--highlight-color);
+}
+}
+
+/* ── Showfile-Liste im Open-Show-Modal ───────────────────────── */
+.showfile-list__item {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 1rem;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border-color);
+  cursor: pointer;
+  transition: background 0.1s;
+}
+@media (hover: hover) {
+  .showfile-list__item:hover { background: color-mix(in srgb, var(--accent-color) 10%, transparent); }
+}
+.showfile-list__name { font-weight: 500; }
+.showfile-list__date { font-size: 0.8em; color: var(--text-dim); white-space: nowrap; }
+
+/* ── Fixture-Type-Anzeige im Add-Fixtures-Formular ───────────── */
+.fx-type-display {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  background: color-mix(in srgb, var(--border-color) 30%, transparent);
+  border: 1px solid var(--border-color);
+  border-radius: var(--base-radius, 3px);
+  padding: 0.3rem 0.5rem;
+}
+.fx-type-display__name {
+  flex: 1;
+  font-size: 0.87rem;
+  color: var(--text-main);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── Mengen-Steuerung (+/- Buttons) ─────────────────────────── */
+.fx-qty-control {
+  display: inline-flex;
+  align-items: stretch;
+  gap: 0;
+  width: fit-content;
+}
+.fx-qty-btn {
+  width: 2rem;
+  height: 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--dialog-header-bg);
+  border: 1px solid var(--border-color);
+  color: var(--text-main);
+  cursor: pointer;
+  font-size: 1rem;
+  flex-shrink: 0;
+  transition: background 0.1s;
+}
+.fx-qty-btn:first-child { border-radius: var(--base-radius, 3px) 0 0 var(--base-radius, 3px); }
+.fx-qty-btn:last-child  { border-radius: 0 var(--base-radius, 3px) var(--base-radius, 3px) 0; }
+@media (hover: hover) {
+  .fx-qty-btn:hover { background: color-mix(in srgb, var(--accent-color) 20%, transparent); border-color: var(--accent-color); }
+}
+.fx-qty-input {
+  border-radius: 0 !important;
+  border-left: none !important;
+  border-right: none !important;
+  text-align: center;
+  width: 3.5rem;
+  flex-shrink: 0;
+}
+
+/* ── Fixture Library (3-Spalten-Browser) ─────────────────────── */
+.fx-library-backdrop {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0,0,0,0.6);
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+  z-index: 100250;   /* ueber den statischen Dialogen (Modal-Stack ab 100100) */
+}
+.fx-library-modal {
+  display: flex;
+  flex-direction: column;
+  width: min(90vw, 900px);
+  height: min(85vh, 640px);
+  background: var(--panel-bg, var(--bg-color));
+  border: 1px solid var(--border-color);
+  border-radius: var(--base-radius, 4px);
+  box-shadow: 0 8px 40px rgba(0,0,0,0.7);
+  overflow: hidden;
+}
+.fx-library-search {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border-color);
+  background: var(--dialog-header-bg);
+}
+.fx-library-search .fx-form-input { margin: 0; }
+.fx-library-browser {
+  display: grid;
+  grid-template-columns: 1fr 1.4fr 1fr;
+  flex: 1;
+  overflow: hidden;
+  border-bottom: 1px solid var(--border-color);
+}
+.fx-library-col {
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--border-color);
+  overflow: hidden;
+}
+.fx-library-col:last-child { border-right: none; }
+.fx-library-col__header {
+  padding: 6px 10px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--secondary-text, var(--text-dim));
+  background: var(--dialog-header-bg);
+  border-bottom: 1px solid var(--border-color);
+  flex-shrink: 0;
+}
+.fx-library-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  overflow-y: auto;
+  flex: 1;
+}
+.fx-library-item {
+  padding: 6px 10px;
+  cursor: pointer;
+  font-size: 0.84rem;
+  color: var(--text-main);
+  border-bottom: 1px solid color-mix(in srgb, var(--border-color) 40%, transparent);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  user-select: none;
+}
+@media (hover: hover) {
+  .fx-library-item:hover { background: color-mix(in srgb, var(--accent-color) 12%, transparent); }
+}
+.fx-library-item--active {
+  background: color-mix(in srgb, var(--accent-color) 25%, transparent);
+  color: var(--accent-color);
+  font-weight: 600;
+}
+
+/* ── DMX Monitor ─────────────────────────────────────────────── */
+[data-panel-type="dmx_monitor"] .panel__content {
+  padding: 0;
+}
+.dmx-monitor {
+  width: 100%;
+  height: 100%;
+  overflow-y: auto;
+  overflow-x: auto;
+}
+.dmx-monitor__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.7rem;
+  table-layout: fixed;
+}
+.dmx-monitor__table thead {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+.dmx-monitor__corner {
+  background: var(--panel-bg);
+  color: var(--secondary-text);
+  font-size: 0.6rem;
+  font-weight: 600;
+  text-align: center;
+  padding: 3px 4px;
+  border: 1px solid var(--border-color);
+  white-space: nowrap;
+  width: 3.8rem;
+}
+.dmx-monitor__col-header {
+  background: var(--panel-bg);
+  color: var(--secondary-text);
+  font-size: 0.65rem;
+  font-weight: 600;
+  text-align: center;
+  padding: 3px 2px;
+  border: 1px solid var(--border-color);
+  min-width: 2rem;
+}
+.dmx-monitor__row-header {
+  background: var(--panel-bg);
+  color: var(--secondary-text);
+  font-size: 0.6rem;
+  text-align: right;
+  padding: 2px 5px 2px 3px;
+  border: 1px solid var(--border-color);
+  white-space: nowrap;
+  user-select: none;
+}
+.dmx-cell {
+  text-align: center;
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 2px 1px;
+  border: 1px solid var(--border-color);
+  cursor: default;
+  height: 1.5rem;
+  position: relative;
+  overflow: hidden;
+  text-shadow: 0 0 3px rgba(0, 0, 0, 0.65);
+  /* Kein Farb-Uebergang: bei 25 Aktualisierungen pro Sekunde ist er nicht sichtbar, kostet aber in jedem Bild Neuzeichnen */
+}
+/* FID-Nummernbadge in der ersten Zelle jeder Fixture-Gruppe */
+.dmx-cell__v {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+.dmx-cell[data-fid-label]::after {
+  content: attr(data-fid-label);
+  position: absolute;
+  top: 1px;
+  left: 2px;
+  font-size: 0.48rem;
+  font-weight: 700;
+  line-height: 1;
+  color: rgba(255, 255, 255, 0.65);
+  pointer-events: none;
+}
+@media (hover: hover) {
+  .dmx-cell:hover {
+  outline: 1px solid var(--highlight-color);
+  outline-offset: -1px;
+}
+}
+.dmx-cell--empty {
+  background: transparent;
+  border-color: transparent;
+}
+/* Fixture-Gruppierung: farbige Perimeter-Umrandung via box-shadow (nicht
+   border!) um zusammengehoerige DMX-Adressen eines Fixtures - Seiten zum
+   selben Fixture bleiben transparent (--grp-* per JS gesetzt in
+   applyFixtureGrouping). Das normale Grundraster (border: 1px solid
+   var(--border-color), siehe .dmx-cell) bleibt dadurch IMMER sichtbar,
+   auch innerhalb einer Gruppe. */
+.dmx-cell--grouped {
+  box-shadow:
+    inset 2px 0 0 0 var(--grp-l, transparent),
+    inset -2px 0 0 0 var(--grp-r, transparent),
+    inset 0 2px 0 0 var(--grp-t, transparent),
+    inset 0 -2px 0 0 var(--grp-b, transparent);
+}
+
+/* ── Fixtures Panel ───────────────────────────────────────────── */
+[data-panel-type="fixtures"] .panel__content {
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ── CueList Panel: gleiche Full-Bleed-Behandlung wie die Scheinwerfer-
+   liste - keine seitlichen Abstaende, die Tabelle nutzt die volle
+   Panel-Breite. ─────────────────────────────────────────────────── */
+[data-panel-type="cuelist"] .panel__content {
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ── Command Line Panel: Log oben, Eingabezeile unten - ebenfalls
+   Full-Bleed (siehe app/command_line.py / documentation/commands.md). ──────── */
+[data-panel-type="command_line"] .panel__content {
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ── Programmer Panel: gleiche Full-Bleed-Behandlung wie oben ──── */
+[data-panel-type="programmer"] .panel__content {
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.fx-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 8px;
+  border-bottom: 1px solid var(--border-color);
+  flex-shrink: 0;
+  background: var(--dialog-header-bg);
+}
+.fx-btn {
+  padding: 4px 10px;
+  border: 1px solid var(--border-color);
+  background: transparent;
+  color: var(--text-main);
+  border-radius: var(--base-radius, 3px);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.78em;
+  letter-spacing: 0.03em;
+  transition: background 0.12s, border-color 0.12s;
+}
+@media (hover: hover) {
+  .fx-btn:hover { border-color: var(--accent-color); background: color-mix(in srgb, var(--accent-color) 15%, transparent); }
+}
+.fx-btn:disabled { opacity: 0.35; cursor: default; }
+.fx-table-wrap {
+  flex: 1;
+  overflow: auto;
+}
+.fx-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8em;
+  table-layout: fixed;
+}
+.fx-table thead {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--dialog-header-bg);
+}
+.fx-th, .fx-td {
+  padding: 4px 8px;
+  border-bottom: 1px solid color-mix(in srgb, var(--border-color) 60%, transparent);
+  border-right: 1px solid color-mix(in srgb, var(--border-color) 40%, transparent);
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.fx-th {
+  font-weight: 600;
+  color: var(--secondary-text, var(--text-dim));
+  font-size: 0.88em;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  user-select: none;
+  border-bottom: 1px solid var(--border-color);
+}
+.fx-th--fid    { width: 42px; }
+.fx-th--name   { width: auto; }
+.fx-th--type   { width: 120px; }
+.fx-th--univ   { width: 52px; }
+.fx-th--addr   { width: 52px; }
+.fx-th--ch     { width: 40px; }
+.fx-row { cursor: pointer; }
+@media (hover: hover) {
+  .fx-row:hover .fx-td { background: color-mix(in srgb, var(--accent-color) 9%, transparent); }
+}
+.fx-row--selected .fx-td { background: color-mix(in srgb, var(--accent-color) 20%, transparent); }
+.fx-empty {
+  text-align: center;
+  color: var(--secondary-text, var(--text-dim));
+  padding: 32px 16px;
+  font-size: 0.88em;
+  line-height: 1.5;
+}
+.fx-unnamed {
+  font-style: italic;
+  color: var(--secondary-text, var(--text-dim));
+  font-weight: 400;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+ * DOT2 PROGRAMMER / FIXTURES PANEL
+ * Layout: fxprog (flex row) → fxprog-main (flex:1) | fxprog-tabs (44px strip, right)
+ * Panes inside fxprog-main switch exclusively; tab strip always visible on the right.
+ * ═══════════════════════════════════════════════════════════════ */
+
+/* ── Root container: row layout (full bleed, keine Raender) ──────── */
+.fxprog,
+.fxprog-main,
+.fxprog-pane {
+  margin: 0 !important;
+  padding: 0 !important;
+  box-sizing: border-box !important;
+  border: none !important;
+}
+.fxprog-tabs { margin: 0 !important; padding: 0 !important; box-sizing: border-box !important; }
+.fxprog {
+  display: flex;
+  flex-direction: row;
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100% !important;
+  height: 100% !important;
+  overflow: hidden;
+  font-size: 0.82rem;
+}
+
+/* ── Main area: all panes (exclusive) ──────────────────────────── */
+.fxprog-main {
+  flex: 1;
+  min-width: 0;
+  width: 100% !important;
+  height: 100% !important;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ── Panes: only one active at a time ──────────────────────────── */
+.fxprog-pane {
+  display: none;
+  flex-direction: column;
+  flex: 1;
+  width: 100% !important;
+  height: 100% !important;
+  overflow: hidden;
+}
+.fxprog-pane--active { display: flex; }
+
+/* ── Fixture Sheet (inside fixtures pane) ──────────────────────── */
+.fxprog-sheet {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0.5rem 0.6rem;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* ── Type Group ────────────────────────────────────────────────── */
+.fxprog-group { margin-bottom: 0.75rem; }
+.fxprog-group__label {
+  font-size: 0.67rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--secondary-text, var(--text-dim));
+  padding: 0 2px 4px;
+  border-bottom: 1px solid color-mix(in srgb, var(--border-color) 50%, transparent);
+  margin-bottom: 6px;
+}
+/* Benannte Gruppe (Klick auf den Kopf waehlt alle ihre Scheinwerfer): Akzentkante statt reiner Typ-Ueberschrift */
+.fxprog-group__label--group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  color: var(--text-1, var(--text-main));
+  border-left: 3px solid var(--accent-color);
+  padding-left: 0.4rem;
+}
+.fxprog-group__label--group.fxprog-group__label--selected {
+  background: color-mix(in srgb, var(--accent-color) 16%, transparent);
+  color: var(--accent-color);
+}
+.fxprog-group__count {
+  margin-left: auto;
+  font-weight: 600;
+  letter-spacing: 0;
+  color: var(--secondary-text, var(--text-dim));
+}
+.fxprog-group__empty { padding: 0.25rem 0.5rem 0.5rem; color: var(--secondary-text, var(--text-dim)); font-size: 0.7rem; }
+.fx-form-error { margin-top: 0.35rem; color: var(--error, #ff5555); font-size: 0.75rem; }
+.fxprog-group__tiles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+/* ── Fixture Tile ──────────────────────────────────────────────── */
+.fxprog-tile {
+  position: relative;
+  width: 60px;
+  height: 76px;
+  background: var(--panel-bg, #1a1a1a);
+  border: 1px solid var(--border-color);
+  border-radius: 3px;
+  cursor: pointer;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  user-select: none;
+  transition: border-color 0.08s;
+  /* Verhindert, dass ein Touch-Wisch ueber mehrere Tiles vom Browser als
+     Scroll-Geste statt als Wisch-Selektion interpretiert wird. */
+  touch-action: none;
+}
+@media (hover: hover) {
+  .fxprog-tile:hover:not(.fxprog-tile--selected) { border-color: var(--secondary-text, #888); }
+}
+
+/* Gelbes Auswahl-Lasso: waehrend eines Drags ueber der Fixture-Sheet */
+.fxprog-lasso {
+  position: fixed;
+  z-index: 9999;
+  border: 2px solid #ffff00;
+  background: rgba(255, 255, 0, 0.15);
+  pointer-events: none;
+}
+
+/* Selektion: gelbe Umrandung (Farbe via CSS-Variable, konfigurierbar) */
+.fxprog-tile--selected {
+  border: 2px solid var(--prog-sel-color, #ffe600);
+  box-shadow: 0 0 6px rgba(255, 230, 0, 0.4);
+}
+.fxprog--no-glow .fxprog-tile--selected { box-shadow: none; }
+/* Lasso-Vorschau (waehrend des Ziehens, vor pointerup): gedaempfte,
+   halbtransparente gelbe Umrandung - noch KEINE echte Selektion. */
+.fxprog-tile--preview {
+  border-color: rgba(255, 255, 0, 0.55);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 0, 0.35), 0 0 4px rgba(255, 255, 0, 0.25);
+}
+
+/* Dimmer-Balken (linke Kante, füllt von unten) */
+.fxprog-tile__dimbar {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  height: 100%;
+  width: 4px;
+  background: var(--accent-color);
+  /* Fuellstand per Transform (laeuft auf der Grafikkarte) statt per Hoehe: eine Hoehen-Animation loest Layout in jedem Bild aus */
+  transform: scaleY(0);
+  transform-origin: bottom;
+  transition: transform 0.15s ease-out;
+}
+
+/* FID oben links */
+.fxprog-tile__id {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--text-main);
+  padding: 3px 3px 0 7px;
+  line-height: 1;
+  flex-shrink: 0;
+  z-index: 1;
+}
+
+/* Farb-Vorschau (Mitte) */
+.fxprog-tile__color {
+  flex: 1;
+  margin: 2px 3px 2px 7px;
+  background: #111;
+  border-radius: 2px;
+  border: 1px solid color-mix(in srgb, var(--border-color) 60%, transparent);
+}
+
+/* Helligkeits-Prozent (unten, cyan bei aktiv) */
+.fxprog-tile__pct {
+  font-size: 0.63rem;
+  text-align: center;
+  color: var(--secondary-text, #888);
+  padding: 1px 2px 3px;
+  flex-shrink: 0;
+}
+.fxprog-tile--active .fxprog-tile__pct { color: #0ff; }
+
+/* Leere-State im Sheet */
+.fxprog-empty {
+  padding: 1.5rem;
+  text-align: center;
+  color: var(--secondary-text, var(--text-dim));
+  font-size: 0.82rem;
+}
+
+/* ── Rechter Tab-Streifen (immer sichtbar) ─────────────────────── */
+.fxprog-tabs {
+  width: 44px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  border-left: 1px solid var(--border-color);
+  background: var(--dialog-header-bg);
+  overflow-y: auto;
+}
+.fxprog-tab {
+  position: relative;
+  padding: 12px 4px;
+  font-size: 0.6rem;
+  font-weight: 600;
+  text-align: center;
+  cursor: pointer;
+  color: var(--secondary-text, var(--text-dim));
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  transform: rotate(180deg);
+  transition: color 0.1s, background 0.1s;
+  border-bottom: 1px solid var(--border-color);
+  user-select: none;
+}
+@media (hover: hover) {
+  .fxprog-tab:hover { color: var(--text-main); background: color-mix(in srgb, var(--accent-color) 8%, transparent); }
+}
+.fxprog-tab--active {
+  color: var(--accent-color);
+  background: color-mix(in srgb, var(--accent-color) 12%, transparent);
+  border-left: 2px solid var(--accent-color);
+}
+/* Markierung "ungespeicherte Aenderung": dezente Linie am Aussenrand des Tabs (Themefarbe) statt eines roten Punkts */
+.fxprog-tab--dirty::before {
+  content: '';
+  position: absolute;
+  top: 6px;
+  bottom: 6px;
+  left: 0;
+  width: 2px;
+  background: var(--warn, #e0a000);
+  opacity: 0.85;
+}
+/* Deaktivierter Tab: kein passendes Feature in der aktuellen Selektion */
+.fxprog-tab--disabled {
+  opacity: 0.32;
+  pointer-events: none;
+  cursor: not-allowed;
+  filter: grayscale(0.6);
+}
+
+/* ── Dimmer-Pane & Position-Pane ────────────────────────────────── */
+.fxprog-dimmer,
+.fxprog-pos {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  box-sizing: border-box;
+}
+.fxprog-dimmer-layout {
+  flex: 1;
+  display: flex;
+  gap: 6px;
+  padding: 6px;
+  min-height: 0;
+  overflow: hidden;
+  align-items: stretch;
+  box-sizing: border-box;
+}
+/* Ohne Fixture-Selektion: Steuerelemente bleiben layoutstabil sichtbar,
+   werden nur ausgegraut & unbedienbar (kein Platzhaltertext). */
+.fxprog-ctrl-gated--disabled {
+  opacity: 0.4;
+  pointer-events: none;
+  filter: grayscale(0.5);
+  transition: opacity 0.12s ease-out;
+}
+.fxprog-ctrl-gated--disabled button:disabled { cursor: not-allowed; }
+.fxprog-quickbtns {
+  flex: 1;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  grid-auto-rows: min-content;
+  gap: 5px;
+  align-content: start;
+}
+/* Vereinfachter Dimmer-Tab: genau 5 Buttons (100/75/50/25/0%), einspaltig,
+   dehnen sich gleichmaessig ueber die volle verfuegbare Hoehe aus. */
+.fxprog-quickbtns--dimmer {
+  grid-template-columns: 1fr;
+  grid-template-rows: repeat(5, 1fr);
+  align-content: stretch;
+  height: 100%;
+}
+.fxprog-quickbtns--dimmer .fxprog-qbtn {
+  font-size: 0.85rem;
+  font-weight: 800;
+}
+.fxprog-qbtn {
+  padding: 0.45rem 0.25rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  background: var(--dialog-header-bg);
+  border: 1px solid var(--border-color);
+  color: var(--text-main);
+  border-radius: 2px;
+  cursor: pointer;
+  text-align: center;
+  transition: background 0.1s;
+  min-height: 32px;
+}
+@media (hover: hover) {
+  .fxprog-qbtn:hover { background: color-mix(in srgb, var(--accent-color) 20%, transparent); border-color: var(--accent-color); }
+}
+.fxprog-qbtn--delta { opacity: 0.8; }
+@media (hover: hover) {
+  .fxprog-qbtn--delta:hover { opacity: 1; }
+}
+.fxprog-aimbtn { display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem; text-align: center; }
+.fxprog-aimbtn[hidden] { display: none; }
+.fxprog-aimbtn .ico { width: 1.1rem; height: 1.1rem; flex: 0 0 auto; }
+.fxprog-aimbtn:disabled { opacity: 0.45; cursor: default; }
+.fxprog-qbtn--big.fxprog-aimbtn { font-size: 0.9rem !important; line-height: 1.2; padding: 0.4rem; flex-direction: column; }
+.fxprog-qbtn--big.fxprog-aimbtn .ico { width: 1.5rem; height: 1.5rem; }
+.fxprog-qbtn--active { background: color-mix(in srgb, var(--accent-color) 30%, transparent); color: var(--accent-color); }
+
+/* ── Vertikaler Fader (dot2-Konsolen-Stil) ────────────────────── */
+.vfader {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  min-height: 0;
+  flex: 0 0 52px;
+  width: 52px;
+}
+/* Dimmer-/Position-Fader: im Auto-Modus standardmaessig BREIT fuellend
+   (statt ein schmaler Strich) - je Fader-Typ per Panel-Property (0%=Auto,
+   siehe dimmer_width_pct/pan_width_pct/tilt_width_pct in _applyProgConfig)
+   exakt erzwingbar. Wirkt NICHT auf Beam-/Fokus-Fader (.fxprog-attrpane
+   .vfader hat dort per !important Vorrang, siehe dort). */
+.vfader--main {
+  flex: 0 0 45%;
+  width: 45%;
+}
+.vfader[data-fader-id="dimmer"] {
+  flex: 0 0 var(--dimmer-fader-pct, 45%) !important;
+  width: var(--dimmer-fader-pct, 45%) !important;
+}
+.vfader__track {
+  flex: 1;
+  min-height: 60px;
+  background: rgba(18,18,18,0.92);
+  border: 1px solid rgba(255,255,255,0.1);
+  position: relative;
+  cursor: pointer;
+  /* Vertikal bewegt JS den Fader, horizontal scrollt die Fader-Reihe (siehe _makeVFader) */
+  touch-action: pan-x;
+  overflow: hidden;
+}
+.vfader__fill {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: var(--prog-fader-color, #00ff00);
+  pointer-events: none;
+  opacity: 0.7;
+}
+.vfader__thumb {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 18px;
+  box-sizing: border-box;
+  bottom: clamp(0px, calc(var(--fv, 0%) - 9px), calc(100% - 18px));
+  background: rgba(10,10,10,0.9);
+  border: 1px solid var(--prog-fader-color, #00ff00);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.62rem;
+  font-weight: 800;
+  color: #fff;
+  pointer-events: none;
+  z-index: 1;
+  letter-spacing: 0.01em;
+}
+.vfader__label {
+  font-size: 0.58rem;
+  font-weight: 600;
+  color: var(--secondary-text, var(--text-dim));
+  text-transform: uppercase;
+  text-align: center;
+  padding: 3px 2px 0;
+  flex-shrink: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* Hue-Fader ist ein Positions-Selektor (kein Level) -> Regenbogen-Track,
+   Marker zeigt die gewaehlte Position, kein Fill. */
+.vfader__track--hue {
+  background: linear-gradient(to top,
+    hsl(0,100%,50%) 0%, hsl(60,100%,50%) 17%, hsl(120,100%,50%) 33%,
+    hsl(180,100%,50%) 50%, hsl(240,100%,50%) 67%, hsl(300,100%,50%) 83%,
+    hsl(360,100%,50%) 100%) !important;
+}
+.vfader__track--hue .vfader__fill { display: none; }
+.vfader__track--hue .vfader__thumb { border-color: #fff; }
+
+/* Farb-Level-Fader (Red/Green/Blue/Cyan/Magenta/Yellow), dot2-Look:
+   Track bleibt IMMER dunkel/aus oberhalb des Markers. Der Fill (Hoehe = X%,
+   siehe _makeVFader) zeigt einen Verlauf von dunkel (unten) zu voller
+   Leuchtfarbe (oben) - identisch zum dot2-Referenzscreenshot. Bei < 100%
+   ist der Bereich oberhalb des Fills daher zwangslaeufig dunkel/aus. */
+.vfader__track--red     .vfader__fill { background: linear-gradient(to top, #3d0000, #ff2020); opacity: 1; }
+.vfader__track--green   .vfader__fill { background: linear-gradient(to top, #003d00, #20ff20); opacity: 1; }
+.vfader__track--blue    .vfader__fill { background: linear-gradient(to top, #00103d, #3070ff); opacity: 1; }
+.vfader__track--cyan    .vfader__fill { background: linear-gradient(to top, #003d3d, #00ffff); opacity: 1; }
+.vfader__track--magenta .vfader__fill { background: linear-gradient(to top, #3d003d, #ff00ff); opacity: 1; }
+.vfader__track--yellow  .vfader__fill { background: linear-gradient(to top, #3d3d00, #ffff00); opacity: 1; }
+/* Marker-Box: dunkler Hintergrund, Rahmen in der jeweiligen Kanalfarbe */
+.vfader__track--red     .vfader__thumb { border-color: #ff2020; }
+.vfader__track--green   .vfader__thumb { border-color: #20ff20; }
+.vfader__track--blue    .vfader__thumb { border-color: #3070ff; }
+.vfader__track--cyan    .vfader__thumb { border-color: #00ffff; }
+.vfader__track--magenta .vfader__thumb { border-color: #ff00ff; }
+.vfader__track--yellow  .vfader__thumb { border-color: #ffff00; }
+/* Neutraler Fader (Dimmer, Pan, Tilt): grau statt akzent-grün */
+.vfader--neutral .vfader__fill { background: linear-gradient(to top, #2a2a2a, #999); opacity: 1; }
+
+/* Bright.-Fader: schwarz -> weiss (Helligkeit) */
+.vfader__track--bright .vfader__fill { background: linear-gradient(to top, #000, #fff); opacity: 1; }
+/* Sat.-Fader: grau -> aktuelle Hue-Farbe (folgt dynamisch --sat-hue, per JS gesetzt) */
+.vfader__track--sat .vfader__fill {
+  background: linear-gradient(to top, #555, hsl(var(--sat-hue, 200), 90%, 55%));
+  opacity: 1;
+}
+
+/* ── Position-Pane Fader-Spalten ───────────────────────────────── */
+.fxprog-pos-fader-col {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  flex-shrink: 0;
+  width: 32%;
+  gap: 4px;
+}
+.fxprog-pos-fader-col[data-axis="pan"] {
+  flex: 0 0 var(--pan-fader-pct, 32%) !important;
+  width: var(--pan-fader-pct, 32%) !important;
+}
+.fxprog-pos-fader-col[data-axis="tilt"] {
+  flex: 0 0 var(--tilt-fader-pct, 32%) !important;
+  width: var(--tilt-fader-pct, 32%) !important;
+}
+.fxprog-pos-fader-col .vfader {
+  flex: 1 !important;
+  min-height: 0;
+  width: 100% !important;
+}
+.fxprog-center-btn {
+  flex-shrink: 0;
+  font-size: 0.6rem !important;
+  padding: 0.28rem 0 !important;
+  min-height: 24px !important;
+}
+
+/* Grosse Haupt-Buttons (Home / Flip) im Position-Tab */
+.fxprog-pos-mainbtns {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+.fxprog-qbtn--big {
+  flex: 1;
+  font-size: 1rem !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.03em;
+  min-height: 48px !important;
+}
+
+/* ── Color-Pane (full-width) ───────────────────────────────────── */
+.fxprog-color { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+.fxprog-subtabs {
+  display: flex;
+  border-bottom: 1px solid var(--border-color);
+  background: var(--dialog-header-bg);
+  flex-shrink: 0;
+}
+.fxprog-subtab {
+  flex: 1;
+  padding: 0.35rem 0.5rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-align: center;
+  cursor: pointer;
+  color: var(--secondary-text, var(--text-dim));
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  border-bottom: 2px solid transparent;
+  transition: color 0.1s;
+}
+@media (hover: hover) {
+  .fxprog-subtab:hover { color: var(--text-main); }
+}
+.fxprog-subtab--active { color: var(--accent-color); border-bottom-color: var(--accent-color); }
+.fxprog-color-faders {
+  flex: 1;
+  display: flex;
+  flex-direction: row;
+  padding: 4px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  min-height: 0;
+  gap: 0;
+  align-items: stretch;
+  box-sizing: border-box;
+  width: 100%;
+}
+.fxprog-cf-group {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  border-left: 1px solid var(--border-color);
+}
+.fxprog-cf-group:first-child { border-left: none; }
+.fxprog-cf-group--first-visible { border-left: none !important; }
+.fxprog-cf-group__label {
+  font-size: 0.55rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  text-align: center;
+  color: var(--secondary-text);
+  padding: 2px 0;
+  flex-shrink: 0;
+  letter-spacing: 0.04em;
+}
+.fxprog-cf-group__faders {
+  flex: 1;
+  display: flex;
+  flex-direction: row;
+  gap: 2px;
+  padding: 2px;
+  min-height: 0;
+}
+.fxprog-cf-group__faders .vfader {
+  flex: 1 !important;
+  min-width: 28px;
+  width: auto !important;
+}
+.fxprog-color-picker-wrap {
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  flex: 1;
+  overflow: hidden;
+  width: 100%;
+  box-sizing: border-box;
+}
+.fxprog-color-picker {
+  flex: 1;
+  min-height: 80px;
+  width: 100%;
+  border: none;
+  border-bottom: 1px solid var(--border-color);
+  cursor: crosshair;
+  display: block;
+}
+.fxprog-color-preview {
+  width: 100%;
+  height: 40px;
+  flex-shrink: 0;
+  border: none;
+  border-top: 1px solid var(--border-color);
+}
+
+/* ── Beam-Pane (mit Sub-Tabs: Shutter/Gobo/Prism) ────────────────── */
+.fxprog-beam {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-height: 0;
+}
+.fxprog-beam-content { flex: 1; }
+
+/* Gobo-Content: Fader oben (fixe Hoehe), Thumbnail-Strip unten (Scroll) */
+.fxprog-beam-content--gobo {
+  flex-direction: column !important;
+  gap: 0 !important;
+  padding: 0 !important;
+}
+.fxprog-beam-faders {
+  display: flex;
+  flex-direction: row;
+  flex: 0 0 45%;
+  min-height: 60px;
+  padding: 6px;
+  gap: 8px;
+  box-sizing: border-box;
+}
+.fxprog-beam-faders .vfader { flex: 1; min-width: 44px; }
+/* Gobo-Spalten: jedes Wheel belegt gleich viel Breite (50/50 bei 2 Wheels) */
+.fxprog-gobo-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  min-width: 44px;
+  gap: 2px;
+}
+.fxprog-gobo-col__label {
+  font-size: 0.55rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  text-align: center;
+  color: var(--secondary-text);
+  letter-spacing: 0.03em;
+  padding: 1px 0;
+  flex-shrink: 0;
+}
+.fxprog-gobo-col .vfader { flex: 1; width: auto; }
+.fxprog-gobo-strip {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 4px 6px 6px;
+  min-height: 0;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-color) transparent;
+}
+.fxprog-gobo-strip__wheel-label {
+  font-size: 0.62rem;
+  color: var(--text-dim);
+  margin: 4px 0 3px;
+  letter-spacing: 0.02em;
+}
+.fxprog-gobo-strip__row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+}
+.fxprog-gobo-btn {
+  width: var(--gobo-btn-size, 46px);
+  height: calc(var(--gobo-btn-size, 46px) + 8px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  background: var(--panel-bg, var(--bg-color));
+  border: 1px solid var(--border-color);
+  border-radius: 3px;
+  cursor: pointer;
+  padding: 2px;
+  overflow: hidden;
+  transition: background 0.1s, border-color 0.1s;
+  color: var(--text-main);
+}
+@media (hover: hover) {
+  .fxprog-gobo-btn:hover {
+  background: color-mix(in srgb, var(--accent-color) 12%, transparent);
+  border-color: var(--accent-color);
+}
+}
+.fxprog-gobo-btn--selected {
+  background: color-mix(in srgb, var(--accent-color) 20%, transparent);
+  border-color: var(--accent-color);
+}
+.fxprog-gobo-btn__img {
+  width: var(--gobo-img-size, 32px);
+  height: var(--gobo-img-size, 32px);
+  object-fit: contain;
+  border-radius: 2px;
+  filter: invert(1) brightness(0.85);
+}
+.fxprog-gobo-btn__name {
+  font-size: 0.52rem;
+  color: var(--text-dim);
+  max-width: 42px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: center;
+  line-height: 1.1;
+}
+.fxprog-gobo-btn__swatch {
+  width: var(--gobo-img-size, 32px);
+  height: var(--gobo-img-size, 32px);
+  border-radius: 50%;
+  border: 1px solid var(--border-color);
+  box-sizing: border-box;
+}
+.fxprog-gobo-btn__swatch--open { background: radial-gradient(circle, #fff 0, #c8ccd4 100%); }
+.fxprog-gobo-btn__facets {
+  width: var(--gobo-img-size, 32px);
+  height: var(--gobo-img-size, 32px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--accent-color);
+}
+.fxprog-gobo-btn--text {
+  font-size: 0.58rem;
+  text-align: center;
+  line-height: 1.2;
+  word-break: break-word;
+  padding: 3px;
+  justify-content: center;
+}
+
+/* ── Fokus-Pane (Focus/Zoom Spalten mit Preset-Buttons) ─────────── */
+.fxprog-focus-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
+}
+.fxprog-focus-presets {
+  display: flex;
+  flex-direction: row;
+  gap: 3px;
+  padding: 0 2px;
+  flex-shrink: 0;
+}
+.fxprog-focus-presets .fxprog-qbtn {
+  flex: 1;
+  font-size: 0.65rem;
+  padding: 3px 2px;
+}
+/* ── Zusatz-Fader (Position: Speed; Fokus: Iris/Frost) ── */
+.fxprog-pos-fader-col[data-axis="speed"] { flex: 0 0 var(--speed-fader-pct, 16%); width: var(--speed-fader-pct, 16%); }
+.fxprog-pos-has-speed .fxprog-pos-fader-col[data-axis="pan"],
+.fxprog-pos-has-speed .fxprog-pos-fader-col[data-axis="tilt"] { flex-basis: min(var(--pan-fader-pct, 32%), 27%) !important; width: min(var(--pan-fader-pct, 32%), 27%) !important; }
+.fxprog-rawpresets { display: flex; flex-direction: column; gap: 4px; flex-shrink: 0; }
+.fxprog-shutter-presets { flex-wrap: wrap; }
+.fxprog-shutter-presets .fxprog-qbtn { flex: 1 1 28%; }
+
+/* ── Beam-/Fokus-Pane (Strobe/Gobo/Prism bzw. Focus/Zoom) ────────── */
+.fxprog-attrpane {
+  flex: 1;
+  display: flex;
+  flex-direction: row;
+  padding: 6px;
+  gap: 8px;
+  min-height: 0;
+  box-sizing: border-box;
+}
+.fxprog-attrpane .vfader { flex: 1; min-width: 44px; width: auto; }
+
+/* ── DMX-Direct-Pane (ein Fader pro GDTF-Kanal, horizontaler Scroll) */
+.fxprog-dmxdirect {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-height: 0;
+}
+.fxprog-dmxdirect__faders {
+  flex: 1;
+  display: flex;
+  flex-direction: row;
+  overflow-x: auto;
+  overflow-y: hidden;
+  touch-action: pan-x;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+  gap: 4px;
+  padding: 6px;
+  min-height: 0;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-color) transparent;
+}
+.fxprog-dmxdirect__faders .vfader {
+  /* Auto: flex:1 wie Color-Fader (28px Mindestbreite), scrollt bei vielen Kanaelen.
+     Override [data-override="true"]: feste Prozentbreite per --dmx-fader-pct. */
+  flex: 1 1 28px;
+  min-width: 28px;
+}
+.fxprog-dmxdirect__faders[data-override="true"] .vfader {
+  flex: 0 0 var(--dmx-fader-pct, 28px);
+}
+.fxprog-dmxdirect__faders .vfader__label {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  text-align: center;
+  line-height: 1.1;
+  padding: 1px 1px 0;
+}
+.fxprog-dmxdirect__faders .vfader__label-ch {
+  font-size: 0.50rem;
+  color: var(--secondary-text);
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+.fxprog-dmxdirect__faders .vfader__label-attr {
+  font-size: 0.55rem;
+  color: var(--text-main);
+  word-break: break-word;
+  hyphens: auto;
+  max-width: 100%;
+  line-height: 1.15;
+}
+
+/* ── Stub Pane ─────────────────────────────────────────────────── */
+.fxprog-stub {
+  padding: 1.5rem 0.75rem;
+  text-align: center;
+  color: var(--secondary-text, var(--text-dim));
+  font-size: 0.78rem;
+  line-height: 1.6;
+}
+
+/* ── Panel-Properties: Modul-Einstellungs-Felder ───────────────── */
+.modal__input {
+  background-color: var(--bg-color);
+  border: 1px solid var(--border-color);
+  border-radius: var(--base-radius);
+  color: var(--text-main);
+  font: inherit;
+  font-size: 0.82rem;
+  padding: 0.3rem 0.5rem;
+  flex: 1;
+}
+.modal__input:focus { outline: none; border-color: var(--accent-color); }
+.modal__field label {
+  font-size: 0.8rem;
+  color: var(--secondary-text);
+  flex-shrink: 0;
+  min-width: 8rem;
+}
+.modal__field--checkbox {
+  gap: 0.5rem;
+  cursor: pointer;
+}
+.modal__field--checkbox label {
+  min-width: unset;
+  color: var(--text-main);
+  cursor: pointer;
+}
+
+/* Kleine Zwischenueberschrift innerhalb der Moduleinstellungen (z.B.
+   "Fader-Breiten" vor dem Dimmer/Pan/Tilt-Prozent-Grid). */
+.modal__field-grid-title {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--secondary-text, var(--text-dim));
+  margin: 0.6rem 0 0.2rem;
+}
+/* Klares zweispaltiges Grid: Label links, Prozent-Slider + Wertanzeige
+   rechts - eindeutig erkennbar, welcher Regler zu welchem Fader gehoert. */
+.fxprog-propgrid {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+  margin-bottom: 0.5rem;
+}
+.fxprog-propgrid label {
+  font-size: 0.8rem;
+  color: var(--secondary-text);
+  min-width: unset;
+}
+.fxprog-propgrid__control {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.fxprog-propgrid__control input[type="range"] { flex: 1; }
+.fxprog-propgrid__value {
+  min-width: 3.4em;
+  text-align: right;
+  font-size: 0.78rem;
+  color: var(--text-main);
+  flex-shrink: 0;
+}
+.fx-panel-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0,0,0,0.6);
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+  z-index: 100200;   /* ueber den statischen Dialogen (Modal-Stack ab 100100) */
+}
+.fx-panel-modal-sm { width: 22rem; }
+/* Scheinwerfer-Dialog (Name, Adresse, Gruppe, Sortier-Index): grosszuegiger als die kleinen Dialoge - Abstaende aus den
+   Styleguide-Tokens (--sp-*), Felder in Touch-Hoehe, Luft zwischen den Feldern statt gequetschter Zeilen. */
+/* Alle Masse in rem: der Dialog waechst und schrumpft mit der UI-Skalierung wie alles andere. Er passt sich zusaetzlich dem
+   sichtbaren Bildschirm an (max. Hoehe/Breite, Inhalt scrollt) - bei grosser Skalierung auf kleinem Bildschirm ragt er nie heraus. */
+.fx-panel-modal-fixture {
+  width: min(29rem, calc(100vw - 2rem));
+  max-height: calc(100vh - 2rem);
+  max-height: calc(100dvh - 2rem);
+  display: flex;
+  flex-direction: column;
+}
+.fx-panel-modal-fixture .fx-form-body {            /* aeusserer Dialog-Koerper: Innenabstand, scrollt bei Platzmangel */
+  padding: var(--sp-5) !important;
+  min-height: 0;
+}
+.fx-panel-modal-fixture .fx-form-fields { display: flex; flex-direction: column; gap: var(--sp-4); }
+.fx-form-fields { display: flex; flex-direction: column; gap: var(--sp-3); }          /* kleine Dialoge (Gruppe loeschen ...): Luft zwischen Auswahl und Text */
+.fx-panel-modal-fixture .fx-form-field { gap: var(--sp-1); min-width: 0; }
+.fx-panel-modal-fixture .fx-form-row-2 { gap: var(--sp-4); }
+.fx-panel-modal-fixture .fx-form-input,
+.fx-panel-modal-fixture .fx-form-select {
+  min-height: 2.5rem !important;         /* schlaegt die allgemeine Feldregel '.modal input:not(...)' (modern.css) */
+  padding: var(--sp-1) var(--sp-3) !important;
+  font-size: var(--fs-md, 0.95rem) !important;
+}
+.fx-panel-modal-fixture .fx-form-hint { margin-top: calc(var(--sp-2) * -1); font-size: var(--fs-sm, 0.8rem); }
+.fx-panel-modal-fixture .modal__footer { gap: var(--sp-3); padding: var(--sp-3) var(--sp-5); flex: none; }
+.fx-panel-modal-fixture .modal__header { flex: none; }
+.fx-panel-modal-lg {
+  width: min(90vw, 900px);
+  height: min(85vh, 640px);
+  border-radius: var(--base-radius, 4px) !important;
+  box-shadow: 0 8px 40px rgba(0,0,0,0.7) !important;
+  display: flex;
+  flex-direction: column;
+}
+.fx-form-body {
+  gap: 0 !important;
+  flex: 1;
+  overflow-y: auto;
+  padding: 1.25rem 1.5rem !important;
+}
+.fx-add-form {
+  display: grid;
+  grid-template-columns: 1.3fr 1fr;
+  gap: 1.5rem;
+}
+.fx-add-form__col {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+.fx-form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+.fx-form-field > label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--secondary-text, var(--text-dim));
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.fx-form-input,
+.fx-form-select {
+  padding: 0.38rem 0.55rem;
+  background: var(--bg-color);
+  border: 1px solid var(--border-color);
+  border-radius: var(--base-radius, 3px);
+  color: var(--text-main);
+  font: inherit;
+  font-size: 0.87rem;
+  width: 100%;
+  box-sizing: border-box;
+  transition: border-color 0.12s;
+}
+.fx-form-input:focus,
+.fx-form-select:focus {
+  outline: none;
+  border-color: var(--accent-color);
+}
+.fx-form-row-3 {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 0.75rem;
+}
+.fx-form-row-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+.fx-form-hint {
+  font-size: 0.72rem;
+  color: var(--secondary-text, var(--text-dim));
+  margin-top: 2px;
+}
+.fx-form-warn {
+  font-size: 0.78rem;
+  color: #e89020;
+  padding: 0.3rem 0.55rem;
+  background: color-mix(in srgb, #e89020 12%, transparent);
+  border-left: 2px solid #e89020;
+  border-radius: 0 var(--base-radius, 3px) var(--base-radius, 3px) 0;
+  line-height: 1.4;
+  margin-top: 0.25rem;
+}
+.fx-form-idx-hint {
+  font-size: 0.72rem;
+  color: var(--accent-color);
+  margin-top: 2px;
+}
+
+/* =======================================================================
+ * Layout Preset System
+ * ===================================================================== */
+
+/* Layouts submenu: scrollbar wenn viele Einträge vorhanden */
+.menu__submenu--layouts {
+  min-width: 14rem;
+  max-height: 18rem;
+  overflow-y: auto;
+}
+
+/* Einzelne Layout-Zeile: Stern + Name + Lösch-Button */
+.menu__item--layout {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.4rem 0.6rem;
+}
+
+.menu__item--layout .layout-item__name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.layout-star {
+  background: none;
+  border: none;
+  color: var(--secondary-text);
+  cursor: pointer;
+  font-size: 0.9rem;
+  padding: 0 0.05rem;
+  flex-shrink: 0;
+  line-height: 1;
+  opacity: 0.35;
+  transition: opacity 0.12s;
+}
+
+.layout-star--active {
+  color: var(--highlight-color);
+  opacity: 1;
+}
+@media (hover: hover) {
+  .layout-star:hover {
+  opacity: 1;
+}
+}
+
+.layout-delete-btn {
+  background: none;
+  border: none;
+  color: var(--secondary-text);
+  cursor: pointer;
+  font-size: 0.72rem;
+  padding: 0 0.1rem;
+  flex-shrink: 0;
+  opacity: 0;
+  line-height: 1;
+  transition: opacity 0.1s, color 0.1s;
+}
+@media (hover: hover) {
+  .menu__item--layout:hover .layout-delete-btn {
+  opacity: 0.55;
+}
+}
+@media (hover: hover) {
+  .layout-delete-btn:hover {
+  color: #e74c3c;
+  opacity: 1 !important;
+}
+}
+
+/* Aktives Layout hervorheben – Accent-Hintergrund + linker Balken + Checkmark.
+   Kein font-weight: 600, da dies im kompakten Menü die Breite verschiebt. */
+.menu__item--layout.menu__item--active {
+  background-color: color-mix(in srgb, var(--accent-color) 13%, transparent);
+  box-shadow: inset 3px 0 0 var(--accent-color);
+}
+
+.menu__item--layout.menu__item--active .layout-item__name {
+  color: var(--accent-color);
+}
+
+/* Kleines Häkchen rechts vom Namen als zweites visuelles Identifier-Signal */
+.menu__item--layout.menu__item--active .layout-item__name::after {
+  content: " ✓";
+  font-size: 0.75em;
+  opacity: 0.85;
+  margin-left: 0.2em;
+}
+
+/* Trennlinie zwischen dem aktiven Layout und den restlichen Einträgen */
+.layout-separator {
+  height: 1px;
+  background-color: var(--border-color);
+  margin: 3px 0.4rem;
+  pointer-events: none;
+  list-style: none;
+}
+
+/* Leerer Platzhalter-Eintrag */
+.menu__item--empty {
+  color: var(--secondary-text);
+  font-style: italic;
+  pointer-events: none;
+  opacity: 0.7;
+}
+
+/* Warnung im "Neues Layout" Dialog */
+.layout-new-warning {
+  font-size: 0.8rem;
+  color: #e67e22;
+  margin: 6px 0 0 0;
+  padding: 6px 8px;
+  background: rgba(230, 126, 34, 0.1);
+  border-left: 2px solid #e67e22;
+  border-radius: 2px;
+  line-height: 1.4;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   Presets Panel
+═══════════════════════════════════════════════════════════════════ */
+
+.preset-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.4rem 0.5rem;
+  border-bottom: 1px solid var(--border-color);
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+
+.preset-toolbar__btn {
+  background: var(--dialog-header-bg);
+  border: 1px solid var(--border-color);
+  color: var(--text-main);
+  border-radius: var(--base-radius);
+  padding: 0.22rem 0.55rem;
+  font-size: 0.72rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+@media (hover: hover) {
+  .preset-toolbar__btn:hover { border-color: var(--accent-color); color: var(--accent-color); }
+}
+@media (hover: hover) {
+  .preset-toolbar__btn--danger:hover { border-color: #ff5555; color: #ff5555; }
+}
+
+.preset-filter {
+  display: flex;
+  gap: 0.2rem;
+  margin-left: auto;
+}
+
+.preset-filter__btn {
+  background: transparent;
+  border: 1px solid var(--border-color);
+  color: var(--secondary-text);
+  border-radius: var(--base-radius);
+  padding: 0.2rem 0.45rem;
+  font-size: 0.68rem;
+  cursor: pointer;
+}
+.preset-filter__btn--active {
+  background: var(--accent-color);
+  border-color: var(--accent-color);
+  color: #000;
+}
+
+/* Anordnung nach Typ / Gruppe (Umschalter) und Typ-Abschnitte */
+.preset-sort { display: flex; gap: 0.2rem; margin-left: auto; }
+.preset-filter { margin-left: 0; }
+.preset-sort__btn {
+  background: transparent;
+  border: 1px solid var(--border-color);
+  color: var(--secondary-text);
+  border-radius: var(--base-radius);
+  padding: 0.2rem 0.45rem;
+  font-size: 0.68rem;
+  cursor: pointer;
+}
+.preset-sort__btn--active { background: var(--accent-color); border-color: var(--accent-color); color: #000; }
+.preset-type-header {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  width: 100%;
+  margin: 0.15rem 0 0.4rem;
+  padding: 0.35rem 0.2rem;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--border-color);
+  font: inherit;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  cursor: pointer;
+  text-align: left;
+}
+.preset-type-header__icon { width: 1.1rem; height: 1.1rem; flex: none; }
+.preset-type-header__name { flex: 1 1 auto; }
+.preset-type-header__count { font-weight: 400; color: var(--secondary-text); font-variant-numeric: tabular-nums; }
+.preset-type-header__chevron { width: 0.9rem; height: 0.9rem; flex: none; color: var(--secondary-text); }
+.preset-tile__type { display: flex; align-items: center; justify-content: center; gap: 0.25rem; max-width: 100%; }
+.preset-tile__type .ico { width: 0.8rem; height: 0.8rem; flex: none; }
+.preset-tile__type span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.preset-scroll {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0.5rem;
+}
+
+.preset-group-header {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--secondary-text);
+  padding: 0.3rem 0 0.2rem 0;
+  margin-bottom: 0.3rem;
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.preset-group-header__delete {
+  background: none;
+  border: none;
+  color: var(--secondary-text);
+  cursor: pointer;
+  font-size: 0.75rem;
+  padding: 0 0.15rem;
+  opacity: 0.5;
+}
+@media (hover: hover) {
+  .preset-group-header__delete:hover { opacity: 1; color: #ff5555; }
+}
+
+.preset-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-bottom: 0.6rem;
+}
+
+.preset-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+  width: 80px;
+  padding: 0.35rem 0.3rem;
+  background: var(--dialog-header-bg);
+  border: 1px solid var(--border-color);
+  border-radius: var(--base-radius);
+  cursor: pointer;
+  user-select: none;
+  position: relative;
+  transition: border-color 0.15s;
+}
+@media (hover: hover) {
+  .preset-tile:hover { border-color: var(--accent-color); }
+}
+.preset-tile--selected { border-color: var(--accent-color); box-shadow: 0 0 0 1px var(--accent-color); }
+
+.preset-tile__preview {
+  width: 44px;
+  height: 32px;
+  border-radius: 3px;
+  border: 1px solid rgba(255,255,255,0.08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #fff;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.7);
+  background: var(--border-color);
+  overflow: hidden;
+}
+
+.preset-tile__name {
+  font-size: 0.65rem;
+  text-align: center;
+  color: var(--text-main);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.preset-tile__type {
+  font-size: 0.58rem;
+  color: var(--secondary-text);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.preset-empty {
+  padding: 1.5rem;
+  text-align: center;
+  color: var(--secondary-text);
+  font-size: 0.8rem;
+}
+
+/* Preset-Dropdown in Programmer Panel (above dimmer/color/position panes) */
+.fxprog-preset-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.25rem 0.5rem 0;
+  flex-shrink: 0;
+}
+
+.fxprog-preset-row__label {
+  font-size: 0.65rem;
+  color: var(--secondary-text);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.fxprog-preset-row__select {
+  flex: 1;
+  box-sizing: border-box;
+  min-width: 0;                 /* schrumpft in schmalen Panels auf allen Geraeten gleich (Touch-Auswahlfeld hat 2 rem Innenabstand) */
+  height: 1.4rem;               /* feste rem-Hoehe: sonst ist das native Auswahlfeld (Maus) anders hoch als das angepasste (Touch) */
+  background: var(--dialog-header-bg);
+  border: 1px solid var(--border-color);
+  border-radius: var(--base-radius);
+  color: var(--text-main);
+  font-size: 0.68rem;
+  padding: 0.15rem 0.3rem;
+  cursor: pointer;
+}
+.fxprog-preset-row__select:focus { border-color: var(--accent-color); outline: none; }
+.fxprog-preset-row__select--active { border-color: var(--accent-color); }
+
+/* Context menu for preset tiles */
+
+/* ═══════════════════════════════════════════════════════════════════
+   CueList Panel - Toolbar/Tabelle teilen sich bewusst die fx-*-Basis-
+   klassen der Scheinwerferliste (siehe JS buildContent) fuer 1:1
+   identisches Erscheinungsbild; hier nur noch CueList-spezifische
+   Ergaenzungen (Select-Dropdown, Akzentfarben, Spaltenbreiten,
+   Status-Punkt, aktive Zeile, Inline-Editing).
+═══════════════════════════════════════════════════════════════════ */
+
+.cuelist-select {
+  background: var(--dialog-header-bg);
+  border: 1px solid var(--border-color);
+  color: var(--text-main);
+  border-radius: var(--base-radius);
+  padding: 0.22rem 0.4rem;
+  font-size: 0.72rem;
+  max-width: 160px;
+}
+@media (hover: hover) {
+  .cuelist-toolbar__btn--save:hover { border-color: var(--accent-color); color: var(--accent-color); }
+}
+.cuelist-toolbar__btn--go {
+  background: color-mix(in srgb, #00ff66 18%, var(--dialog-header-bg));
+  border-color: #00ff66;
+  color: #00ff66;
+  font-weight: 700;
+}
+@media (hover: hover) {
+  .cuelist-toolbar__btn--go:hover { background: color-mix(in srgb, #00ff66 30%, var(--dialog-header-bg)); }
+}
+
+/* Dot2-Stil: viele schmale Spalten. Feste Spaltenbreiten (<colgroup>, per Ziehen am
+   Spaltenrand oder Doppelklick auf den Kopf einstellbar, siehe _setupCueColumns in app.js);
+   ist die Summe breiter als das Panel, scrollt .cuelist-table-wrap horizontal. */
+.cuelist-table {
+  table-layout: fixed;
+  width: auto;
+  min-width: 0;
+}
+.cuelist-table-wrap {
+  overflow-x: auto;
+  overflow-y: auto;
+}
+/* Dezente, dunkle Custom-Scrollbar im OpenCue-Design (WebKit/Chromium -
+   diese App laeuft ausschliesslich in einer WebView2-Umgebung). */
+.cuelist-table-wrap::-webkit-scrollbar {
+  height: 10px;
+  width: 10px;
+}
+.cuelist-table-wrap::-webkit-scrollbar-track {
+  background: var(--bg-color, #000);
+}
+.cuelist-table-wrap::-webkit-scrollbar-thumb {
+  background-color: var(--border-color);
+  border-radius: 999px;
+}
+@media (hover: hover) {
+  .cuelist-table-wrap::-webkit-scrollbar-thumb:hover {
+  background-color: var(--secondary-text);
+}
+}
+
+
+.cue-row { cursor: context-menu; }
+@media (hover: hover) {
+  .cue-row:hover .fx-td { background: color-mix(in srgb, var(--accent-color) 9%, transparent); }
+}
+.cue-row--active .fx-td { background: color-mix(in srgb, #00ff66 16%, transparent); }
+
+.cue-status-dot {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--border-color);
+}
+.cue-status-dot--active {
+  background: #00ff66;
+  box-shadow: 0 0 6px #00ff66;
+}
+
+/* Fade-Fortschrittsbalken unter dem Cue-Namen (cuelist_progress-Broadcast,
+   siehe cue_engine.py): schmal und dezent, liegt als Overlay INNERHALB der
+   bestehenden Zellenhoehe - blaeht die Zeile nicht auf und verschiebt den
+   Namenstext nicht. Bleibt bei 100% gefuellt stehen, bis derselbe Cue
+   erneut getriggert wird (JS setzt den Fuellstand dann wieder auf 0%).
+   EXKLUSIV beim aktiven Cue sichtbar: app.js rendert das Balken-Markup nur
+   fuer die .cue-row--active-Zeile - diese Regel ist eine zusaetzliche
+   Absicherung, falls eine inaktive Zeile (z.B. aus einem alten Render)
+   doch noch ein Balken-Element enthalten sollte. */
+.cue-row:not(.cue-row--active) .cue-progress-bar {
+  display: none;
+}
+.cue-td--name {
+  position: relative;
+}
+.cue-name-text {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.cue-progress-bar {
+  /* Liegt INNERHALB des bestehenden 4px-Zellen-Innenabstands (siehe
+     .fx-td padding) statt ihn zu vergroessern - die Zeilenhoehe bleibt
+     dadurch exakt wie bei jeder anderen Spalte. */
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  bottom: 1px;
+  height: 2px;
+  border-radius: 1px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+.cue-progress-bar__fill {
+  display: block;
+  height: 100%;
+  width: 100%;
+  background: #ffb300;
+  /* Der Fuellstand ist transform: scaleX() statt width: die Animation (eine lineare Transition ueber die
+     Restzeit, von app.js gesetzt) laeuft auf dem Compositor und loest kein Layout aus. */
+  transform: scaleX(0);
+  transform-origin: 0 50%;
+  will-change: transform;
+}
+
+.cuelist-empty {
+  text-align: center;
+  color: var(--secondary-text, var(--text-dim));
+  padding: 32px 16px;
+  font-size: 0.88em;
+  line-height: 1.5;
+}
+
+/* "active/touched": Fixture hat manuell veraenderte Programmer-Werte oder
+   ein zugewiesenes Preset, die noch nicht per "Cue Speichern" gesichert
+   wurden (siehe ProgrammerState.touchedAttrs). Bewusst dezent - KEINE
+   flaechige Zeilenfarbe, nur ein kleiner Status-Punkt neben der FID. */
+.fx-td--fid {
+  position: relative;
+  padding-right: 14px !important;
+}
+.fx-touched-dot {
+  position: absolute;
+  top: 20%;
+  bottom: 20%;
+  right: 3px;
+  width: 2px;
+  background: var(--warn, #e0a000);
+  opacity: 0.85;
+}
+
+/* Steuerungs-Panels (Dimmer/Position/Farbe/Beam/DMX Direct): statt einer
+   flaechigen roten Markierung nur eine duenne rote Akzentlinie an der
+   rechten Seite des Fader-Tracks - analog zur Interaktionslogik des
+   gruenen Fuellstands, aber als eigenstaendiges "touched"-Signal. */
+.vfader--touched .vfader__track {
+  box-shadow: inset -2px 0 0 0 var(--warn, #e0a000);
+}
+
+/* Cue-Edit-Dialog (Rechtsklick -> Bearbeiten): GROSSZUEGIGER Container
+   (Breite/Hoehe/Innenabstand) fuer ein uebersichtliches, nicht gequetschtes
+   Layout - Schrift/Eingabefelder/Buttons bleiben bewusst in normaler
+   Standardgroesse (keine eigenen font-size/padding-Overrides je Element),
+   nur der Dialog selbst bekommt mehr Platz. display:flex + flex:1 1 auto
+   auf .modal__body sorgt dafuer, dass der Footer trotz der grossen
+   min-height immer direkt unter dem Inhalt bleibt (nicht mittendrin
+   "floatet" wie mit der frueher verwendeten .modal--panel-properties-
+   Groesse, deren zweispaltiges Sidebar-Layout dafuer einen fixen Rahmen
+   braucht - dieses einfache Formular stattdessen ueber eigene, dafuer
+   passende Flex-Regeln). */
+.modal--cue-edit {
+  width: min(45rem, 94vw);
+  min-height: 38.75rem;
+  max-height: 92vh;
+  display: flex;
+  flex-direction: column;
+}
+.modal--cue-edit .modal__body {
+  flex: 1 1 auto;
+  padding: 1.5rem 1.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+  overflow-y: auto;
+}
+.modal--cue-edit .modal__field label,
+.modal--cue-edit .modal__field-grid-item label {
+  display: block;
+}
+.modal--cue-edit .modal__field input,
+.modal--cue-edit .modal__field-grid-item input,
+.modal--cue-edit .modal__field-grid-item select {
+  width: 100%;
+  box-sizing: border-box;
+}
+.modal--cue-edit .modal__field-grid {
+  grid-template-columns: 1fr 1fr;
+  gap: 1.1rem 1.4rem;
+  margin-bottom: 0;
+}
+/* .modal__field-grid-title traegt normalerweise einen eigenen margin-top
+   (siehe Basisregel) - innerhalb des flex:column .modal__body hier sorgt
+   bereits der "gap" fuer gleichmaessigen Abstand zwischen allen Abschnitten,
+   ein zusaetzlicher eigener margin wuerde die Sektionen nur unregelmaessig
+   auseinanderziehen. Die erste Section-Ueberschrift braucht zudem keinen
+   oberen Abstand zum Dialog-Rand (der kommt bereits vom .modal__body-Padding). */
+.modal--cue-edit .modal__field-grid-title {
+  margin: 0;
+}
+/* Abbrechen + Speichern nebeneinander, unten rechts (statt der sonst
+   ueblichen space-between-Aufteilung Cancel-links/Primary-rechts) -
+   Button-Groesse bleibt der app-weite .modal__button-Standard. */
+.modal--cue-edit .modal__footer {
+  justify-content: flex-end;
+  gap: 0.7rem;
+  padding: 1rem 1.75rem;
+}
+
+/* Inline-Editing im CueList-Panel (Doppelklick auf Name/Nummer/Fade) */
+.cue-td--editing {
+  padding: 0;
+}
+.cue-td-edit-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 3px 7px;
+  background: var(--bg-color);
+  border: 1px solid var(--accent-color);
+  color: var(--text-main);
+  font: inherit;
+  font-size: inherit;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   Command Line Panel (dot2-/MA-Lighting-Stil, siehe documentation/commands.md)
+═══════════════════════════════════════════════════════════════════ */
+
+.cmdline-log {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0.5rem 0.6rem;
+  font-family: "Consolas", "Courier New", monospace;
+  font-size: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  /* Log-Text muss markier-/kopierbar sein (siehe Punkt 3) - .panel__content
+     deaktiviert Textselektion standardmaessig nicht, aber ein expliziter
+     Cursor-Hinweis macht es fuer die Nutzerin sofort erkennbar. */
+  user-select: text;
+  cursor: text;
+  /* Sanftes Scrollen zum neuesten Eintrag (siehe _renderLog() in app.js). */
+  scroll-behavior: smooth;
+}
+.cmdline-log__entry {
+  display: flex;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+  line-height: 1.4;
+}
+.cmdline-log__time {
+  color: var(--cmdline-timestamp-color, var(--secondary-text, var(--text-dim)));
+  flex-shrink: 0;
+  opacity: 0.75;
+}
+.cmdline--no-ts .cmdline-log__time {
+  display: none;
+}
+.cmdline-log__prompt {
+  color: var(--accent-color);
+  font-weight: 700;
+  flex-shrink: 0;
+}
+.cmdline-log__cmd {
+  color: var(--cmdline-text-color, var(--text-main));
+  flex-shrink: 0;
+}
+.cmdline-log__msg {
+  color: var(--cmdline-text-color, var(--secondary-text, var(--text-dim)));
+  word-break: break-word;
+}
+.cmdline-log__entry--ok .cmdline-log__msg {
+  color: var(--cmdline-success-color, #00ff66);
+}
+.cmdline-log__entry--error .cmdline-log__msg {
+  color: var(--cmdline-error-color, #ff5555);
+}
+.cmdline-log__entry--system .cmdline-log__msg {
+  color: var(--secondary-text, var(--text-dim, #888));
+  font-style: italic;
+}
+.cmdline-log__prompt--sys {
+  color: var(--secondary-text, var(--text-dim, #888));
+  font-weight: 700;
+  flex-shrink: 0;
+}
+.cmdline-log__entry--system.cmdline-log__entry--error .cmdline-log__msg {
+  color: var(--cmdline-error-color, #ff5555);
+  font-style: italic;
+}
+
+.cmdline-input-row {
+  position: relative; /* Verankerung fuer .cmdline-suggestions (oeffnet nach oben) */
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.6rem;
+  border-top: 1px solid var(--border-color);
+  background: var(--dialog-header-bg);
+  flex-shrink: 0;
+}
+
+/* Kontextsensitives Autocomplete-Overlay (Tab/Maus, siehe app.js
+   get_suggestions()-Konsument) - oeffnet direkt ueber dem Eingabefeld, da
+   dieses typischerweise am unteren Rand des Panels sitzt. */
+.cmdline-suggestions {
+  position: absolute;
+  left: 0.6rem;
+  right: 0.6rem;
+  bottom: 100%;
+  margin-bottom: 0.3rem;
+  max-height: 220px;
+  overflow-y: auto;
+  background: var(--panel-bg, var(--dialog-header-bg));
+  border: 1px solid var(--border-color);
+  border-radius: var(--base-radius);
+  box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.5);
+  z-index: 100003;
+}
+.cmdline-suggestions::-webkit-scrollbar {
+  width: 0.5rem;
+}
+.cmdline-suggestions::-webkit-scrollbar-track {
+  background: transparent;
+}
+.cmdline-suggestions::-webkit-scrollbar-thumb {
+  background-color: var(--border-color);
+  border-radius: 999px;
+}
+@media (hover: hover) {
+  .cmdline-suggestions::-webkit-scrollbar-thumb:hover {
+  background-color: var(--secondary-text);
+}
+}
+.cmdline-suggestion {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.35rem 0.7rem;
+  font-family: "Consolas", "Courier New", monospace;
+  font-size: 0.8rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.cmdline-suggestion--info {
+  cursor: default;
+  font-style: italic;
+  color: var(--secondary-text, var(--text-dim));
+}
+@media (hover: hover) {
+  .cmdline-suggestions .cmdline-suggestion--info:hover {
+    background-color: transparent;
+    color: var(--secondary-text, var(--text-dim));
+  }
+}
+.cmdline-suggestion--active {
+  background-color: color-mix(in srgb, var(--highlight-color) 12%, transparent);
+  color: var(--highlight-color);
+}
+@media (hover: hover) {
+  .cmdline-suggestion:hover {
+  background-color: color-mix(in srgb, var(--highlight-color) 12%, transparent);
+  color: var(--highlight-color);
+}
+}
+.cmdline-suggestion__label {
+  font-weight: 700;
+  color: inherit;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.cmdline-suggestion__hint {
+  color: var(--secondary-text, var(--text-dim));
+  opacity: 0.75;
+  font-size: 0.72rem;
+  flex-shrink: 0;
+}
+.cmdline-suggestion--active .cmdline-suggestion__hint {
+  color: inherit;
+  opacity: 0.85;
+}
+@media (hover: hover) {
+  .cmdline-suggestion:hover .cmdline-suggestion__hint {
+  color: inherit;
+  opacity: 0.85;
+}
+}
+.cmdline-prompt {
+  font-family: "Consolas", "Courier New", monospace;
+  font-weight: 700;
+  color: var(--accent-color);
+  flex-shrink: 0;
+}
+.cmdline-input {
+  flex: 1;
+  min-width: 0;
+  background: var(--bg-color);
+  border: 1px solid var(--border-color);
+  border-radius: var(--base-radius);
+  color: var(--text-main);
+  font-family: "Consolas", "Courier New", monospace;
+  font-size: 0.85rem;
+  padding: 0.45rem 0.6rem;
+  box-sizing: border-box;
+}
+.cmdline-input:focus {
+  outline: none;
+  border-color: var(--accent-color);
+}
+
+/* Menu items that carry a shortcut hint need flex layout */
+.menu__item--with-shortcut {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* Small shortcut badge on layout submenu items (Ctrl+1 … Ctrl+9) */
+.layout-item__shortcut {
+  flex-shrink: 0;
+  color: var(--secondary-text);
+  font-size: 0.68rem;
+  letter-spacing: 0.03em;
+  opacity: 0.7;
+  margin-right: 0.15rem;
+}
+
+/* kbd badge used in the Keyboard Shortcuts help modal */
+kbd {
+  display: inline-block;
+  padding: 0.15rem 0.45rem;
+  font-size: 0.72rem;
+  font-family: inherit;
+  background: var(--dialog-header-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 3px;
+  box-shadow: 0 1px 0 var(--border-color);
+  color: var(--text-main);
+  white-space: nowrap;
+}
+
+/* Larger shortcuts modal */
+.modal--shortcuts {
+  width: min(53.125rem, 90vw);
+  min-width: min(43.75rem, 90vw);
+  max-width: 90vw;
+}
+
+/* Keyboard Shortcuts modal body */
+.shortcuts-modal {
+  padding: 0.75rem 0.25rem;
+  overflow-y: auto;
+  max-height: 70vh;
+}
+
+/* 2-column grid for shortcut categories */
+.shortcuts-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem 2.5rem;
+}
+
+.shortcuts-section {
+  min-width: 0;
+}
+
+.shortcuts-cat__title {
+  font-size: 0.65rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--accent-color);
+  margin-top: 0;
+  margin-bottom: 0.6rem;
+  padding-bottom: 0.25rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.shortcuts-table {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.shortcuts-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.shortcuts-row kbd {
+  min-width: 7rem;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.shortcuts-row span {
+  color: var(--text-main);
+  font-size: 0.8rem;
+}
+
+/* Locked pane when a preset is active */
+.fxprog-pane--preset-active .fxprog-ctrl-gated {
+  opacity: 0.45;
+  pointer-events: none;
+}
+.fxprog-pane--preset-active .fxprog-preset-row { pointer-events: all; }
+/* Fokus, Zoom und Gobo sperren nur das, was ihr Preset/Effekt gerade steuert */
+.fxprog-pane--lock-focus .fxprog-focus-col:has(> [data-fader-id="focus"]),
+.fxprog-pane--lock-zoom .fxprog-focus-col:has(> [data-fader-id="zoom"]),
+.fxprog-pane--lock-gobo .fxprog-gobo-faders-wrap,
+.fxprog-pane--lock-gobo .fxprog-gobo-strip:not(.fxprog-prism-strip) { opacity: 0.45; pointer-events: none; }
+/* Position: ein Effekt, der nur Pan (oder nur Tilt) setzt, sperrt nur diese Achse */
+.fxprog-pane--lock-pan .fxprog-pos-fader-col[data-axis="pan"],
+.fxprog-pane--lock-pan .fxprog-posfine__col[data-axis="pan"],
+.fxprog-pane--lock-tilt .fxprog-pos-fader-col[data-axis="tilt"],
+.fxprog-pane--lock-tilt .fxprog-posfine__col[data-axis="tilt"],
+.fxprog-pane--lock-pan .fxprog-pos-mainbtns,
+.fxprog-pane--lock-tilt .fxprog-pos-mainbtns { opacity: 0.45; pointer-events: none; }
+.fxprog-preset-rows { display: flex; flex-wrap: wrap; gap: 0 0.8rem; }
+.fxprog-preset-rows .fxprog-preset-row { flex: 1 1 14rem; min-width: 0; }
+.fxprog-pane--preset-active .fxprog-preset-row__select { pointer-events: all; cursor: pointer; }
+
+/* ── Command Numpad & Command Buttons Panels (replace the old combined
+   Command Keypad) ────────────────────────────────────────────────────────── */
+[data-panel-type="command_numpad"] .panel__content,
+[data-panel-type="command_buttons"] .panel__content {
+  padding: 0;
+  display: flex;
+  overflow: hidden;
+}
+
+/* Shared button look, used by both panels + the Command Line input row. */
+.cmdbtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2rem;
+  padding: 0.15rem 0.3rem;
+  border: 1px solid var(--border-color);
+  border-radius: var(--base-radius, 0px);
+  background: var(--dialog-header-bg);
+  color: var(--text-main);
+  font-family: inherit;
+  font-size: 0.82rem;
+  font-weight: 500;
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: manipulation;
+  transition: background 0.08s, border-color 0.08s, color 0.08s;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1;
+}
+@media (hover: hover) {
+  .cmdbtn:hover {
+  background: color-mix(in srgb, var(--dialog-header-bg) 60%, var(--panel-bg));
+  border-color: var(--accent-color);
+}
+}
+
+.cmdbtn:active {
+  background: color-mix(in srgb, var(--accent-color) 25%, var(--dialog-header-bg));
+  border-color: var(--accent-color);
+}
+
+/* Backspace key */
+.cmdbtn--back {
+  color: var(--secondary-text);
+  font-size: 1.1rem;
+}
+
+/* Please = Enter — uses the global accent color */
+.cmdbtn--please {
+  background: color-mix(in srgb, var(--accent-color) 12%, var(--panel-bg));
+  border-color: color-mix(in srgb, var(--accent-color) 55%, var(--border-color));
+  color: var(--accent-color);
+  font-weight: 700;
+}
+@media (hover: hover) {
+  .cmdbtn--please:hover {
+  background: color-mix(in srgb, var(--accent-color) 22%, var(--panel-bg));
+  border-color: var(--accent-color);
+}
+}
+
+.cmdbtn--please:active {
+  background: color-mix(in srgb, var(--accent-color) 45%, var(--panel-bg));
+  border-color: var(--accent-color);
+  color: var(--panel-bg);
+}
+
+/* Clear = amber — minimal hardcoded tint on top of theme base */
+.cmdbtn--clear {
+  background: color-mix(in srgb, #7a3a00 15%, var(--panel-bg));
+  border-color: color-mix(in srgb, #cc8800 40%, var(--border-color));
+  color: #ffaa33;
+  font-weight: 700;
+}
+@media (hover: hover) {
+  .cmdbtn--clear:hover {
+  background: color-mix(in srgb, #7a3a00 28%, var(--panel-bg));
+  border-color: #cc8800;
+  color: #ffcc55;
+}
+}
+
+.cmdbtn--clear:active {
+  background: color-mix(in srgb, #7a3a00 55%, var(--panel-bg));
+  border-color: #cc8800;
+  color: #fff;
+}
+
+/* ── Panel 1: Command Numpad ──────────────────────────────────────────────
+   Fixed 4x5 grid (4 cols x 5 rows: digits/syntax + full-width Please row).
+   repeat(N, 1fr) on both axes makes every cell scale proportionally with
+   the panel's actual size - no clipped buttons, no leftover empty space. */
+.cnp {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  grid-template-rows: repeat(5, 1fr);
+  gap: 0.25rem;
+  width: 100%;
+  height: 100%;
+  padding: 0.3rem;
+  box-sizing: border-box;
+}
+
+/* Eigene Anzeige des Eingabepuffers - nur sichtbar, wenn das Layout keine Befehlszeile enthaelt */
+.cnp__display {
+  display: none;
+  grid-column: 1 / -1;
+  align-items: center;
+  gap: 0.4rem;
+  min-height: 1.9rem;
+  padding: 0 0.5rem;
+  overflow: hidden;
+  white-space: nowrap;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 0.85rem;
+  background: var(--bg-color);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius, 0);
+}
+.cnp--standalone { grid-template-rows: auto repeat(5, 1fr); }
+.cnp--standalone .cnp__display { display: flex; }
+.cnp__prompt { color: var(--accent-color); flex: none; }
+.cnp__text { overflow: hidden; text-overflow: ellipsis; }
+.cnp__display--error { color: #e5484d; }
+
+/* Numpad buttons: slightly bolder/larger than keyword buttons */
+.cnp .cmdbtn {
+  background: var(--panel-bg);
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+/* Please spans the full width as its own closing row */
+.cnp .cmdbtn--please {
+  grid-column: 1 / -1;
+  font-size: 0.82rem;
+}
+
+/* ── Panel 2: Command Buttons ──────────────────────────────────────────────
+   Fully responsive grid: as many columns as fit at >= ~5.6rem each, wraps
+   into additional rows automatically - a button is never clipped. */
+.cbtn {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(5.6rem, 1fr));
+  grid-auto-rows: minmax(2.2rem, auto);
+  gap: 0.3rem;
+  align-content: start;
+  width: 100%;
+  height: 100%;
+  padding: 0.3rem;
+  box-sizing: border-box;
+  overflow-y: auto;
+}
+
+/* ---- Beenden-Dialog: touch-optimiert (große Ziele, Dark-Design) ---------- */
+.modal--touch {
+  width: min(27.5rem, calc(100vw - 2rem));
+}
+
+.modal__header--touch {
+  padding: 0.6rem 0.9rem;
+  font-size: 0.95rem;
+}
+
+.modal__body--touch {
+  padding: 1.1rem 1.1rem 0.8rem;
+  font-size: 1rem;
+}
+
+.modal__footer--stack {
+  flex-direction: column;
+  gap: 0.6rem;
+  padding: 0.8rem 1rem 1rem;
+}
+
+.touch-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 46px;
+  padding: 0.5rem 1rem;
+  border: 2px solid transparent;
+  border-radius: var(--base-radius);
+  font: inherit;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: manipulation;
+  transition: filter 0.1s, transform 0.05s;
+}
+@media (hover: hover) {
+  .touch-btn:hover { filter: brightness(1.12); }
+}
+.touch-btn:active { transform: scale(0.98); }
+.touch-btn:focus-visible { outline: 2px solid var(--text-main); outline-offset: 2px; }
+
+/* Primär: Akzentfarbe des Designs */
+.touch-btn--save {
+  background-color: var(--accent-color);
+  color: var(--bg-color);
+}
+
+/* Warnung: Orange-Rot */
+.touch-btn--discard {
+  background-color: #d9480f;
+  color: #ffffff;
+}
+
+/* Neutral: dunkles Grau */
+.touch-btn--cancel {
+  background-color: #2b2b2b;
+  border-color: #3d3d3d;
+  color: var(--text-main);
+}
+
+/* ---- Variablen / Effekte: zweispaltige Segment-Steuerung im Panel-Kopf
+   (gleiche Optik wie die Unterkategorien im Farbe-Tab der Scheinwerfersteuerung,
+   Klassen .fxprog-subtabs / .fxprog-subtab) ------------------------------ */
+.preset-mode {
+  flex: 0 0 auto;
+  width: 100%;
+  margin: 0;
+  border: none;
+  border-bottom: 1px solid var(--border-color);
+  border-radius: 0;
+}
+
+.preset-mode .fxprog-subtab {
+  border-bottom: none;
+}
+
+.preset-mode .fxprog-subtab + .fxprog-subtab {
+  border-left: 1px solid var(--border-color);
+}
+
+.preset-mode .fxprog-subtab--active {
+  background: color-mix(in srgb, var(--accent-color) 12%, transparent);
+}
+
+/* ---- Effekt-Dialog: groesser, mit Luft fuer Regler und Texte --------------- */
+.modal--effect {
+  width: min(36.25rem, calc(100vw - 2rem));
+  min-width: min(33.75rem, calc(100vw - 2rem));
+}
+
+.modal--effect .modal__body {
+  padding: 1.25rem 1.5rem;
+}
+
+.modal--effect .modal__field {
+  margin-bottom: 0.9rem;
+}
+
+.modal--effect .modal__field label {
+  display: block;
+  margin-bottom: 0.35rem;
+}
+
+/* ---- Variablen-Dialog: gross, mit Luft; je Wert eine Zeile aus Beschriftung, Regler und Zahlenfeld ---- */
+.modal--preset {
+  width: min(44rem, calc(100vw - 2rem));
+  max-height: calc(100vh - 2rem);
+  display: flex;
+  flex-direction: column;
+}
+.modal--preset .modal__body { padding: 1.25rem 1.5rem; overflow-y: auto; min-height: 0; }
+.modal--preset .modal__field { margin-bottom: 0.9rem; }
+.modal--preset .modal__field label { display: block; margin-bottom: 0.35rem; }
+.pe-hint { margin: 0 0 0.75rem; font-size: 0.8rem; line-height: 1.4; color: var(--secondary-text); }
+.pe-row { display: grid; grid-template-columns: 9.5rem 1fr; align-items: center; gap: 0.5rem 1rem; padding: 0.55rem 0; border-top: 1px solid color-mix(in srgb, var(--secondary-text) 18%, transparent); }
+.pe-row:first-of-type { border-top: 0; }
+.pe-row__label { display: flex; align-items: center; gap: 0.5rem; font-weight: 600; }
+.pe-row__controls { display: flex; align-items: center; gap: 0.75rem; min-width: 0; }
+.pe-row--off .pe-row__label, .pe-row--off .pe-row__controls { opacity: 0.45; }
+.pe-row__controls .pe-range { flex: 1 1 auto; min-width: 6rem; }
+.pe-number { width: 6rem; flex: 0 0 auto; text-align: right; font-variant-numeric: tabular-nums; }
+.pe-check { width: 1.15rem; height: 1.15rem; accent-color: var(--accent-color); }
+.pe-axis__cell { display: flex; flex-direction: column; gap: 0.2rem; flex: 1 1 0; min-width: 0; font-size: 0.72rem; color: var(--secondary-text); }
+.pe-row__controls--axis { gap: 0.9rem; }
+.pe-axis { margin-bottom: 0.25rem; }
+@media (max-width: 36rem) {
+  .pe-row { grid-template-columns: 1fr; }
+}
+
+.fx-edit__readout {
+  min-width: 4.5rem;
+  text-align: right;
+  font-size: 0.8rem;
+  color: var(--secondary-text);
+}
+
+/* ---- Variablen / Effekte: Panel nutzt die volle Flaeche ------------------- */
+[data-panel-type="presets"] .panel__content {
+  padding: 0;
+  margin: 0;
+  overflow: hidden;
+}
+
+[data-panel-type="presets"] .panel__content > div {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+}
+
+[data-panel-type="presets"] .preset-mode,
+[data-panel-type="presets"] .preset-toolbar,
+[data-panel-type="presets"] .preset-scroll {
+  margin: 0;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* ---- Effekt-Dialog: Parameter aus dem Skript ------------------------------- */
+.fx-edit__params {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+
+.fx-edit__param {
+  display: grid;
+  grid-template-columns: 7rem 1fr;
+  align-items: center;
+  gap: 0.6rem;
+  color: var(--secondary-text);
+  font-size: 0.85rem;
+}
+
+.fx-edit__param input[type="color"] {
+  width: 2.4rem;
+  height: 1.6rem;
+  padding: 0;
+  border: none;
+  background: none;
+}
+
+.fx-edit__slider {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.fx-edit__slider input[type="range"] {
+  flex: 1;
+}
+
+/* ---- Effekt-Studio ------------------------------------------------------------ */
+:root {
+  --fxs-hl-kw: #c586c0; --fxs-hl-type: #4ec9b0; --fxs-hl-num: #b5cea8; --fxs-hl-com: #6a9955; --fxs-hl-dir: #e3b341;
+  --fxs-hl-const: #569cd6; --fxs-hl-sys: #9cdcfe; --fxs-hl-out: #ffb000; --fxs-hl-fn: #dcdcaa; --fxs-hl-param: #ce9178;
+}
+:root[data-theme="light"] {
+  --fxs-hl-kw: #af00db; --fxs-hl-type: #267f99; --fxs-hl-num: #098658; --fxs-hl-com: #008000; --fxs-hl-dir: #a35e00;
+  --fxs-hl-const: #0451a5; --fxs-hl-sys: #0070c1; --fxs-hl-out: #b25800; --fxs-hl-fn: #795e26; --fxs-hl-param: #a31515;
+}
+.hl-kw { color: var(--fxs-hl-kw); }
+.hl-type { color: var(--fxs-hl-type); }
+.hl-num { color: var(--fxs-hl-num); }
+.hl-com { color: var(--fxs-hl-com); font-style: italic; }
+.hl-dir { color: var(--fxs-hl-dir); font-weight: 700; }
+.hl-const { color: var(--fxs-hl-const); }
+.hl-sys { color: var(--fxs-hl-sys); }
+.hl-out { color: var(--fxs-hl-out); font-weight: 700; }
+.hl-fn { color: var(--fxs-hl-fn); }
+.hl-fn2 { color: var(--fxs-hl-fn); font-weight: 700; }
+.hl-param { color: var(--fxs-hl-param); }
+
+/* Randlos wie Scheinwerferliste und Cue-Liste: Studio und Timecode (der hat seinen Innenabstand selbst: .tcp) nutzen den ganzen Rand des Panels */
+[data-panel-type="timecode"] .panel__content { padding: 0; display: flex; flex-direction: column; overflow: hidden; }
+[data-panel-type="timecode"] .tcp { flex: 1 1 auto; min-height: 0; }
+[data-panel-type="fx_studio"] .panel__content { padding: 0; display: flex; flex-direction: column; overflow: hidden; }
+.fxs-root { display: flex; flex: 1 1 auto; flex-direction: column; width: 100%; height: 100%; min-height: 0; margin: 0; overflow: hidden; }
+.fxs-head { display: flex; flex-wrap: wrap; align-items: center; gap: 0.35rem; padding: 0.4rem; border-bottom: 1px solid var(--border-color); flex-shrink: 0; }
+.fxs-btn { padding: 0.3rem 0.6rem; border: 1px solid var(--border-color); border-radius: var(--base-radius); background: var(--dialog-header-bg); color: var(--text-main); font: inherit; font-size: 0.8rem; cursor: pointer; touch-action: manipulation; }
+@media (hover: hover) { .fxs-btn:hover:not(:disabled) { border-color: var(--accent-color); } }
+.fxs-btn--primary { border-color: var(--accent-color); color: var(--accent-color); }
+.fxs-btn--danger { border-color: #c53030; color: #ff7b72; }
+@media (hover: hover) { .fxs-btn--danger:hover:not(:disabled) { background: #3a1212; } }
+.fxs-btn:disabled { opacity: 0.4; cursor: default; }
+.fxs-title { display: flex; align-items: center; gap: 0.45rem; flex: 1 1 9rem; min-width: 6rem; padding: 0 0.3rem; overflow: hidden; white-space: nowrap; }
+.fxs-title__name { font-weight: 700; overflow: hidden; text-overflow: ellipsis; }
+.fxs-title__origin, .fxs-title__rate { font-size: 0.7rem; color: var(--secondary-text); }
+.fxs-dot { color: var(--warn, #f0b429); }
+.fxs-dot[hidden] { display: none; }
+.fxs-tag { flex: 0 0 auto; font-size: 0.62rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; padding: 0.08rem 0.4rem; border-radius: 99px; border: 1px solid currentColor; }
+.fxs-tag--dimmer { color: #e3b341; }
+.fxs-tag--color { color: #58a6ff; }
+.fxs-tag--position { color: #3fb950; }
+.fxs-tag--zoom { color: #d2a8ff; }
+.fxs-tag--focus { color: #ff9bce; }
+.fxs-tag--gobo { color: #79c0ff; }
+
+
+/* Editor: durchsichtiges Textfeld ueber einer gefaerbten Kopie des Textes */
+.fxs-main { display: flex; flex: 1; min-height: 0; overflow: hidden; }
+.fxs-editor { display: flex; flex: 1 1 56%; min-width: 0; min-height: 0; overflow: hidden; font-family: var(--font-mono, Consolas, "Courier New", monospace); font-size: 0.82rem; line-height: 1.45; }
+.fxs--no-preview .fxs-editor { flex-basis: 100%; }
+.fxs-gutter { padding: 0.4rem 0.5rem 0.4rem 0.4rem; min-width: 2.6rem; text-align: right; white-space: pre; color: var(--secondary-text); background: var(--dialog-header-bg); border-right: 1px solid var(--border-color); overflow: hidden; user-select: none; }
+.fxs-ln { display: block; }
+.fxs-ln--err { color: #ff7b72; font-weight: 700; background: rgba(255, 123, 114, 0.16); }
+.fxs-editor:focus-within .fxs-gutter { border-right-color: var(--accent-color); }
+.fxs-code { position: relative; flex: 1; min-width: 0; overflow: hidden; background: var(--bg-color); }
+.fxs-hl, .fxs-text { position: absolute; inset: 0; margin: 0; padding: 0.4rem 0.5rem; border: 0; font: inherit; line-height: inherit; white-space: pre; tab-size: 2; letter-spacing: 0; }
+.fxs-hl { overflow: visible; pointer-events: none; color: var(--text-main); will-change: transform; }
+.fxs-hl code { font: inherit; }
+.fxs-text { z-index: 1; resize: none; overflow: auto; outline: none; background: transparent; color: transparent; caret-color: var(--text-main); -webkit-text-fill-color: transparent; }
+.fxs-text::selection { background: rgba(88, 166, 255, 0.35); }
+.fxs-errband { position: absolute; left: 0; right: 0; pointer-events: none; background: rgba(255, 123, 114, 0.14); border-bottom: 1px solid rgba(255, 123, 114, 0.5); }
+.fxs-errband[hidden] { display: none; }
+
+/* Vorschau */
+.fxs-preview { flex: 0 0 44%; min-width: 14rem; display: flex; flex-direction: column; gap: 0.4rem; padding: 0.5rem; overflow: hidden; border-left: 1px solid var(--border-color); background: var(--panel-bg); }
+.fxs-preview[hidden] { display: none; }
+.fxs--narrow .fxs-main { flex-direction: column; }
+.fxs--narrow .fxs-preview { flex: 0 0 46%; min-width: 0; border-left: 0; border-top: 1px solid var(--border-color); overflow: auto; }
+.fxs--narrow .fxs-pv-time, .fxs--narrow .fxs-pv-extra { flex: 0 0 auto; height: 9rem; }
+.fxs-pv-head { display: flex; flex-wrap: wrap; align-items: center; gap: 0.3rem 0.8rem; }
+.fxs-pv-title { font-weight: 700; margin-right: auto; }
+.fxs-pv-field { display: flex; align-items: center; gap: 0.35rem; font-size: 0.75rem; color: var(--secondary-text); }
+.fxs-pv-number { width: 3.6rem; padding: 0.2rem 0.3rem; background: var(--bg-color); color: var(--text-main); border: 1px solid var(--border-color); border-radius: var(--base-radius); font: inherit; }
+.fxs-pv-params { display: flex; flex-direction: column; gap: 0.2rem; max-height: 8rem; overflow: auto; flex: 0 0 auto; }
+.fxs-param { display: grid; grid-template-columns: minmax(3rem, 6rem) 1fr 3.4rem; align-items: center; gap: 0.5rem; font-size: 0.78rem; }
+.fxs-param__name { font-family: Consolas, "Courier New", monospace; overflow: hidden; text-overflow: ellipsis; }
+.fxs-param__range { width: 100%; min-width: 0; }
+.fxs-param__value { text-align: right; font-variant-numeric: tabular-nums; color: var(--secondary-text); }
+.fxs-pv-hint { font-size: 0.75rem; color: var(--secondary-text); }
+.fxs-pv-time { flex: 1 1 55%; min-height: 6rem; width: 100%; display: block; }
+.fxs-pv-extra { flex: 1 1 38%; min-height: 4.5rem; width: 100%; display: block; }
+.fxs-pv-extra[hidden] { display: none; }
+.fxs-preview--stale canvas { opacity: 0.35; }
+.fxs-pv-msg { flex: 0 0 auto; min-height: 1em; font-size: 0.72rem; color: var(--warn, #f0b429); }
+.fxs-status { display: flex; gap: 1rem; padding: 0.35rem 0.6rem; font-size: 0.8rem; border-top: 1px solid var(--border-color); flex-shrink: 0; white-space: pre-wrap; }
+.fxs-status__msg { flex: 1 1 auto; min-width: 0; }
+.fxs-status__pos { flex: 0 0 auto; color: var(--secondary-text); }
+.fxs-status--ok { color: #3fb950; }
+.fxs-status--error { color: #ff7b72; }
+
+.fx-edit__desc { margin-top: 0.3rem; font-size: 0.74rem; color: var(--secondary-text); }
+
+/* Dialog "Effekt oeffnen": Kategorien links (Klassen des Panel-Dialogs), rechts Suche + Kartenraster (Feinschliff in modern.css) */
+.modal--fxs-open { width: min(64rem, calc(100vw - 2rem)); height: min(38rem, calc(100dvh - 2rem)); display: flex; flex-direction: column; }
+.modal--fxs-open .modal__body { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: row; gap: 1rem; overflow: hidden; }
+.modal--fxs-open .modal__footer { justify-content: space-between; }
+.fxs-open__list { flex: 1 1 auto; min-height: 0; overflow-y: auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr)); gap: 0.6rem; align-content: start; padding: 0 0.25rem 0.25rem 0; }
+.fxs-open__empty { grid-column: 1 / -1; padding: 2rem 1rem; text-align: center; color: var(--secondary-text); }
+.fxs-open__row { position: relative; display: flex; align-items: flex-start; gap: 0.75rem; padding: 0.75rem 0.8rem; border: 1px solid var(--border-color); border-radius: var(--base-radius); cursor: pointer; min-width: 0; }
+@media (hover: hover) { .fxs-open__row:hover { border-color: var(--accent-color); } }
+.fxs-open__row:focus-visible { outline: 2px solid var(--accent-color); outline-offset: 1px; }
+.fxs-open__row--error { border-color: #ff7b72; }
+.fxs-open__row--error .fxs-open__desc { color: #ff7b72; }
+.fxs-open__row .fxs-open__icon { width: 1.7rem; height: 1.7rem; flex: none; stroke-width: 1.7; color: var(--accent-color); }
+.fxs-open__text { display: flex; flex-direction: column; gap: 0.2rem; min-width: 0; flex: 1 1 auto; }
+.fxs-open__name { display: flex; gap: 0.5rem; align-items: center; font-weight: 700; padding-right: 4.6rem; }
+.fxs-open__title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fxs-open__label { font-size: 0.74rem; color: var(--secondary-text); }
+.fxs-open__desc { font-size: 0.76rem; line-height: 1.35; color: var(--secondary-text); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.fxs-open__meta { display: flex; flex-wrap: wrap; align-items: center; gap: 0.2rem 0.5rem; font-size: 0.72rem; color: var(--secondary-text); margin-top: 0.15rem; }
+.fxs-cat--dimmer { color: #e3b341 !important; }
+.fxs-cat--color { color: #58a6ff !important; }
+.fxs-cat--position { color: #3fb950 !important; }
+.fxs-cat--zoom { color: #d2a8ff !important; }
+.fxs-cat--focus { color: #ff9bce !important; }
+.fxs-cat--gobo { color: #79c0ff !important; }
+.fxs-badge { flex: 0 0 auto; align-self: center; font-size: 0.62rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; padding: 0.08rem 0.4rem; border-radius: 99px; border: 1px solid var(--border-color); color: var(--secondary-text); }
+.fxs-open__fav--on { color: var(--accent-color); }
+.fxs-open__fav--on .ico { fill: currentColor; }
+.fxs-open__acts { position: absolute; top: 0.3rem; right: 0.3rem; display: flex; gap: 0.1rem; }
+.fxs-open__act { display: inline-flex; align-items: center; justify-content: center; width: 2.1rem; height: 2.1rem; background: transparent; border: 1px solid transparent; border-radius: var(--base-radius); color: var(--secondary-text); cursor: pointer; }
+.fxs-open__act .ico { width: 1.05em; height: 1.05em; }
+.fxs-open__fav:hover { border-color: var(--border-color); color: var(--accent-color); }
+.fxs-open__del:hover:not(:disabled) { border-color: var(--border-color); color: var(--error, #e5484d); }
+.fxs-open__del:disabled { opacity: 0.25; cursor: default; }
+@media (max-width: 42rem) {
+  .modal--fxs-open .modal__body { flex-direction: column; gap: 0.5rem; }
+  .fxs-open__cats { width: auto; flex-direction: row; overflow-x: auto; overflow-y: hidden; padding: 0 0 0.5rem; border-right: 0; border-bottom: 1px solid var(--border-color); }
+  .fxs-open__list { grid-template-columns: 1fr; }
+}
+
+/* Dialog "Neuer Effekt" */
+.modal--fxs-new { width: min(48rem, 96vw); display: flex; flex-direction: column; max-height: min(46rem, 94vh); }
+.modal--fxs-new .modal__body { flex: 1 1 auto; min-height: 0; overflow: auto; }
+.fxs-new__title { margin: 0.9rem 0 0.4rem; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--secondary-text); }
+.fxs-new__title:first-child { margin-top: 0; }
+.fxs-new__cats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.6rem; }
+.fxs-new__cat { display: flex; flex-direction: column; align-items: flex-start; gap: 0.25rem; padding: 0.7rem; text-align: left; background: var(--dialog-header-bg); border: 1px solid var(--border-color); border-radius: var(--base-radius); color: var(--text-main); font: inherit; cursor: pointer; }
+.fxs-new__cat--on { border-color: var(--accent-color); background: var(--accent-soft, rgba(255, 176, 0, 0.14)); }
+.fxs-new__cat .fxs-new__cat-icon { width: 1.7rem; height: 1.7rem; color: var(--accent-color); }
+.fxs-new__cat-name { font-weight: 700; }
+.fxs-new__cat-desc { font-size: 0.74rem; color: var(--secondary-text); }
+.fxs-new__templates { display: flex; flex-direction: column; border: 1px solid var(--border-color); border-radius: var(--base-radius); }
+.fxs-new__tpl { display: flex; gap: 0.7rem; align-items: flex-start; padding: 0.5rem 0.7rem; border-bottom: 1px solid var(--border-color); cursor: pointer; }
+.fxs-new__tpl:last-child { border-bottom: 0; }
+.fxs-new__tpl--on { background: var(--accent-soft, rgba(255, 176, 0, 0.14)); }
+.fxs-new__tpl input { margin-top: 0.25rem; }
+.fxs-new__tpl-name { font-weight: 700; }
+.fxs-new__tpl-desc { font-size: 0.74rem; color: var(--secondary-text); }
+.fxs-new__rate { display: flex; align-items: center; gap: 0.8rem; }
+.fxs-new__rate input[type="range"] { flex: 1 1 auto; }
+.fxs-new__rate-number { width: 4.5rem; }
+.fxs-new__rate-unit { font-size: 0.8rem; color: var(--secondary-text); white-space: nowrap; }
+
+/* Dialog "Hilfe" (Anleitung als Markdown) */
+.modal--fxs-help { width: min(74rem, 96vw); height: min(48rem, 92vh); display: flex; flex-direction: column; }
+.modal--fxs-help .modal__body { flex: 1 1 auto; min-height: 0; padding: 0; overflow: hidden; }
+.fxs-help { display: grid; grid-template-columns: 15rem minmax(0, 1fr); height: 100%; }
+.fxs-help__nav { display: flex; flex-direction: column; gap: 0.1rem; padding: 0.6rem; overflow: auto; border-right: 1px solid var(--border-color); background: var(--dialog-header-bg); }
+.fxs-help__nav a { padding: 0.35rem 0.5rem; border-radius: var(--base-radius); color: var(--text-main); font-size: 0.8rem; text-decoration: none; }
+.fxs-help__nav a:hover { background: rgba(255, 255, 255, 0.06); }
+.fxs-help__content { overflow: auto; padding: 0.8rem 1.2rem 2rem; }
+@media (max-width: 760px) { .fxs-help { grid-template-columns: 1fr; } .fxs-help__nav { display: none; } .fxs-new__cats { grid-template-columns: 1fr; } }
+.fxs-md h1 { font-size: 1.5rem; margin: 0.2rem 0 0.8rem; }
+.fxs-md h2 { font-size: 1.15rem; margin: 1.8rem 0 0.6rem; padding-bottom: 0.25rem; border-bottom: 1px solid var(--border-color); }
+.fxs-md h3 { font-size: 1rem; margin: 1.2rem 0 0.4rem; }
+.fxs-md p, .fxs-md li { line-height: 1.55; }
+.fxs-md ul, .fxs-md ol { padding-left: 1.4rem; }
+.fxs-md hr { border: 0; border-top: 1px solid var(--border-color); margin: 1.4rem 0; }
+.fxs-md-code-inline { padding: 0.05rem 0.3rem; border-radius: 3px; background: var(--dialog-header-bg); font-family: Consolas, "Courier New", monospace; font-size: 0.85em; }
+.fxs-md-pre { margin: 0.6rem 0; padding: 0.7rem 0.9rem; overflow: auto; background: var(--bg-color); border: 1px solid var(--border-color); border-radius: var(--base-radius); font-family: Consolas, "Courier New", monospace; font-size: 0.82rem; line-height: 1.45; color: var(--text-main); }
+.fxs-md-table { border-collapse: collapse; margin: 0.6rem 0; font-size: 0.85rem; }
+.fxs-md-table th, .fxs-md-table td { padding: 0.3rem 0.7rem; border: 1px solid var(--border-color); text-align: left; vertical-align: top; }
+.fxs-md-table th { background: var(--dialog-header-bg); }
+
+/* ---- Remote-Einstellungen ---------------------------------------------------- */
+.settings-remote-password {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.settings-remote-password input { flex: 1; min-width: 0; }
+
+.settings-remote-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin: 0.4rem 0;
+}
+
+.settings-remote-url {
+  padding: 0.4rem 0.6rem;
+  border: 1px solid var(--border-color);
+  border-radius: var(--base-radius);
+  font-family: ui-monospace, Consolas, monospace;
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+.settings-remote-restart {
+  color: #e3b341;
+  font-size: 0.8rem;
+}
+
+.settings-remote-status {
+  font-size: 0.85rem;
+  color: var(--secondary-text);
+  margin-top: 0.4rem;
+}
+.settings-remote-status--on { color: var(--success-color, #3fb950); font-weight: 600; }
+
+.settings-remote-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+}
+.settings-remote-row .settings-remote-url { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.settings-remote-row--selected .settings-remote-url { border-color: var(--accent-color); }
+.settings-remote-row--idle { cursor: default; opacity: 0.65; }
+.settings-remote-copy { flex-shrink: 0; }
+
+.settings-remote-hint { font-size: 0.78rem; color: var(--secondary-text); }
+.settings-remote-error { font-size: 0.78rem; color: var(--error-color, #ff5555); }
+.settings-section__head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.9rem;
+  border-bottom: 1px solid var(--border-color);
+}
+.settings-section__head .settings-section__title { margin: 0; border-bottom: 0; flex: 1 1 auto; }
+.settings-section__head .modal__button { margin-bottom: 0.4rem; }
+.settings-remote-refresh { display: inline-flex; align-items: center; gap: 0.4rem; flex: 0 0 auto; }
+.settings-remote-refresh .ico { width: 1.05em; height: 1.05em; }
+.settings-remote-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 1.25rem;
+  align-items: start;
+}
+.settings-remote-grid > .settings-remote-qr[hidden] { display: none !important; }
+@media (max-width: 760px) { .settings-remote-grid { grid-template-columns: minmax(0, 1fr); } }
+
+.settings-remote-qr {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4rem;
+  width: 12rem;
+  text-align: center;
+}
+.settings-remote-qr__code {
+  width: 11rem;
+  height: 11rem;
+  padding: 0.35rem;
+  background: #ffffff;
+  border-radius: var(--base-radius);
+  line-height: 0;
+}
+.settings-remote-qr__code svg { width: 100%; height: 100%; display: block; }
+.settings-remote-qr[hidden] { display: none !important; }
+
+/* ---- Touch / Tablet ---------------------------------------------------------- */
+html, body {
+  /* kein Doppeltipp-Zoom, kein Pull-to-Refresh/Gummiband, kein Antippen-Highlight */
+  touch-action: manipulation;
+  overscroll-behavior: none;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  -webkit-text-size-adjust: 100%;
+}
+
+body, .viewport {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* Eingabefelder bleiben auswaehl- und bearbeitbar */
+input, textarea, [contenteditable="true"] {
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+/* Ziehflaechen: der Browser darf hier weder scrollen noch zoomen */
+.panel-fader__track,
+.resize-handle,
+canvas {
+  touch-action: none;
+}
+
+/* iOS zoomt beim Fokus in Felder unter 16px - verhindern */
+@media (pointer: coarse) {
+  input, select, textarea { font-size: max(16px, 1em); }
+}
+
+
+.settings-modal__category[hidden],
+.settings-remote-restart[hidden] { display: none !important; }
+
+/* ---- iPad: Seite fest verankern (kein Gummiband, kein Verschieben) ------------- */
+@supports (-webkit-touch-callout: none) {
+  html, body {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    overflow: hidden;
+  }
+}
+
+/* ---- Befehls-Buttons: kurzes Aufleuchten, wenn auf einem anderen Geraet ausgeloest */
+.panel-btn--pulse {
+  filter: brightness(1.7);
+  transform: scale(0.97);
+}
+
+.panel-btn { transition: filter 0.15s, transform 0.15s; }
+
+/* ---- Remote-Indikator in der Toolbar (neben dem Herz) ----------------------- */
+.menubar__remote-btn {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  padding: 0.3rem;
+  border-radius: 4px;
+  cursor: pointer;
+  margin-left: 0.3rem;
+  transition: background-color 0.15s, color 0.15s;
+}
+
+.menubar__remote-btn:disabled { cursor: default; }
+
+@media (hover: hover) {
+  .menubar__remote-btn:not(:disabled):hover { background-color: rgba(255, 255, 255, 0.06); }
+}
+
+
+.menubar__remote-icon { width: 1.05rem; height: 1.05rem; }
+
+.remote-badge {
+  position: absolute;
+  top: -0.15rem;
+  right: -0.25rem;
+  min-width: 0.95rem;
+  height: 0.95rem;
+  padding: 0 0.22rem;
+  box-sizing: border-box;
+  border-radius: 999px;
+  background: var(--accent-color);
+  color: #fff;
+  font-size: 0.62rem;
+  font-weight: 700;
+  line-height: 0.95rem;
+  text-align: center;
+}
+
+.remote-badge[hidden] { display: none; }
+
+
+/* ---- Cue-Liste: Spalten-Resizer ------------------------------------------------- */
+.cuelist-table .fx-th { position: relative; }
+
+.cue-col-resizer {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 10px;
+  height: 100%;
+  cursor: col-resize;
+  touch-action: none;
+  z-index: 3;
+}
+
+.cue-col-resizer::after {
+  content: "";
+  position: absolute;
+  right: 3px;
+  top: 22%;
+  bottom: 22%;
+  width: 2px;
+  border-radius: 1px;
+  background: var(--border-color);
+  transition: background-color 0.12s;
+}
+
+.cue-col-resizer:hover::after,
+.cue-col-resizer.is-dragging::after { background: var(--accent-color); }
+
+@media (pointer: coarse) {
+  .cue-col-resizer { width: 22px; }
+  .cue-col-resizer::after { right: 9px; width: 3px; }
+}
+
+/* ---- Toolbar-Remote-Icon: ausblenden / neutral / gruen ------------------------------ */
+.menubar__remote-btn[hidden] { display: none; }
+.menubar__remote-btn--idle { color: var(--secondary-text); opacity: 0.85; }
+.menubar__remote-btn--active { color: #3fb950; opacity: 1; }
+.remote-badge { background: #3fb950; color: #04210b; }
+
+/* ---- Remote-Dialog: Tabellenkopf und Zusammenfassung ----------------------------------- */
+.remote-clients-summary { padding-top: 0.6rem; font-size: 0.8rem; color: var(--secondary-text); }
+
+/* ---- Startup: Seite erst zeigen, wenn die Sprachdateien geladen sind -------------------- */
+html.i18n-loading body { visibility: hidden; }
+
+/* ---- Remote-Geraete: absolut kein Scrollen/Ziehen der Seite ------------------------------ */
+html.is-remote,
+html.is-remote body,
+html.is-remote .viewport {
+  overflow: hidden;
+  overscroll-behavior: none;
+  height: 100vh;
+  height: 100dvh;
+}
+
+html.is-remote body {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+}
+
+/* ---- Standby / Reconnect: Vollbild-Overlay ------------------------------------------------- */
+.connection-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100400;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(8, 10, 12, 0.78);
+  -webkit-backdrop-filter: blur(3px);
+  backdrop-filter: blur(3px);
+  touch-action: none;
+}
+
+.connection-overlay[hidden] { display: none; }
+
+.connection-overlay__box {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  padding: 1rem 1.4rem;
+  border: 1px solid var(--border-color);
+  border-radius: 0.6rem;
+  background: var(--panel-bg);
+  color: var(--text-main);
+  font-size: 1rem;
+}
+
+.connection-overlay__spinner {
+  width: 1.3rem;
+  height: 1.3rem;
+  border: 3px solid var(--border-color);
+  border-top-color: var(--accent-color);
+  border-radius: 50%;
+  animation: connection-spin 0.9s linear infinite;
+}
+
+@keyframes connection-spin { to { transform: rotate(360deg); } }
+
+.cue-th-label { display: block; overflow: hidden; text-overflow: ellipsis; padding-right: 8px; }
+
+/* ---- Client-Verwaltung: feste Tabelle ---------------------------------------------------- */
+.modal--remote-clients { width: min(36rem, calc(100vw - 2rem)); }
+
+.remote-table {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.remote-table[hidden] { display: none; }
+
+.remote-col--ip { width: 32%; }
+.remote-col--device { width: 22%; }
+.remote-col--time { width: 22%; }
+.remote-col--action { width: 24%; }
+
+.remote-table th,
+.remote-cell {
+  padding: 0.6rem 0.75rem;
+  text-align: left;
+  vertical-align: middle;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.remote-table th {
+  border-bottom: 1px solid var(--border-color);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--secondary-text);
+}
+
+.remote-row .remote-cell { border-bottom: 1px solid color-mix(in srgb, var(--border-color) 60%, transparent); }
+
+.remote-cell--ip { font-family: ui-monospace, Consolas, monospace; }
+.remote-cell--time { font-variant-numeric: tabular-nums; }
+.remote-cell--action,
+.remote-table th:last-child { text-align: right; }
+
+.remote-client__kick { min-height: 2.2rem; padding: 0 1rem; border-color: #c53030; color: #ff7b72; }
+
+.remote-clients-empty { padding: 1.2rem 0.25rem; color: var(--secondary-text); }
+.remote-clients-empty[hidden] { display: none; }
+
+.remote-clients-summary { padding-top: 0.75rem; font-size: 0.8rem; color: var(--secondary-text); }
+
+/* ---- Scheinwerfer-Raster: Scrollen und Lasso trennen ------------------------------------------- */
+.fxprog-sheet { overscroll-behavior: contain; }
+
+/* Lasso wird gezeichnet: das Raster darf nicht mehr scrollen, die Kacheln bleiben stehen */
+.fxprog-sheet--lasso {
+  overflow: hidden;
+  touch-action: none;
+}
+
+/* Lasso ist scharf (Halten auf dem Zwischenraum): dezentes Feedback */
+.fxprog-sheet--arming { box-shadow: inset 0 0 0 2px var(--prog-sel-color, #ffe600); }
+
+/* ---- Auswahllisten auf Touch-Geraeten ------------------------------------------------------------ */
+:where(select:not([multiple])) {
+  background-color: var(--panel-bg);
+  color: var(--text-main);
+  border: 1px solid var(--border-color);
+  border-radius: var(--base-radius);
+}
+
+@media (pointer: coarse) {
+  /* iOS rendert <select> sonst mit nativem Aussehen (heller Verlauf, falsche Farben) */
+  select:not([multiple]) {
+    -webkit-appearance: none;
+    appearance: none;
+    padding-right: 2rem;
+    text-overflow: ellipsis;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'><path d='M1 1.5l5 5 5-5' fill='none' stroke='%239aa3ad' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/></svg>") !important;
+    background-repeat: no-repeat !important;
+    background-position: right 0.65rem center !important;
+    background-size: 0.8rem !important;
+  }
+
+  select option { background: var(--panel-bg); color: var(--text-main); }
+}
+
+/* ---- Cue-Liste: naechster Cue (wird mit Go gestartet) ------------------------------------- */
+.cue-row--next .fx-td { box-shadow: inset 0 1px 0 var(--accent-color), inset 0 -1px 0 var(--accent-color); }
+.cue-row--next .cue-td--status { box-shadow: inset 3px 0 0 var(--accent-color), inset 0 1px 0 var(--accent-color), inset 0 -1px 0 var(--accent-color); }
+.cue-status-dot--next { background: transparent; border: 2px solid var(--accent-color); box-sizing: border-box; }
