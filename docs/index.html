@@ -1,1 +1,229 @@
-Hello World!
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark light">
+  <meta name="theme-color" content="#0a0a0b">
+  <title>OpenCue – Open-source DMX lighting console for Windows</title>
+  <meta name="description" content="OpenCue is a free, open-source lighting control console for DMX on Windows: patch fixtures, program cues and effects, preview the stage in 3D and control the show from a tablet. Works offline.">
+  <link rel="icon" href="assets/logo-mark.svg" type="image/svg+xml">
+  <link rel="icon" href="assets/icon-192.png" sizes="192x192" type="image/png">
+  <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+  <link rel="stylesheet" href="assets/style.css">
+  <script src="assets/theme.js"></script>
+  <script src="assets/main.js" defer></script>
+</head>
+<body>
+  <a class="skip" href="#main" data-i18n="skip">Skip to content</a>
+
+  <header class="site-header">
+    <div class="wrap bar">
+      <a class="brand" href="#top" aria-label="OpenCue">
+        <img src="assets/logo-mark.svg" width="36" height="36" alt="">
+        <span class="brand-name">Open<span>Cue</span></span>
+      </a>
+      <nav class="nav" aria-label="Main" data-i18n-aria-label="nav.label">
+        <a href="#features" data-i18n="nav.features">Features</a>
+        <a href="#workflow" data-i18n="nav.workflow">How it works</a>
+        <a href="#download" data-i18n="nav.download">Download</a>
+        <a href="https://github.com/TheCraftedTech/opencue" rel="noopener">GitHub</a>
+      </nav>
+      <div class="lang" role="group" aria-label="Language" data-i18n-aria-label="lang.label">
+        <button type="button" data-lang="en" lang="en" aria-pressed="true">EN</button>
+        <button type="button" data-lang="de" lang="de" aria-pressed="false">DE</button>
+      </div>
+      <button type="button" class="theme-btn" id="theme-toggle" aria-label="Switch to light theme" title="Switch to light theme" data-i18n-aria-label="theme.toLight" data-i18n-title="theme.toLight">
+        <svg class="ico-sun" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/></svg>
+        <svg class="ico-moon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <main id="main">
+    <section class="hero" id="top">
+      <div class="wrap hero-grid">
+        <div class="hero-text">
+          <p class="eyebrow" data-i18n="hero.eyebrow">Open-source DMX lighting console for Windows</p>
+          <h1 data-i18n="hero.title">Program the light. See it in 3D.</h1>
+          <p class="lead" data-i18n="hero.lead">OpenCue turns a Windows PC into a complete lighting desk: patch fixtures, program cues and effects, preview the stage in 3D and run the show from a tablet. Free, offline, no account.</p>
+          <div class="actions">
+            <a class="btn primary" href="https://github.com/TheCraftedTech/opencue/releases/latest" rel="noopener" data-download><span data-i18n="hero.download">Download for Windows</span><span class="btn-sub" data-version></span></a>
+            <a class="btn" href="https://github.com/TheCraftedTech/opencue" rel="noopener" data-i18n="hero.source">View source on GitHub</a>
+          </div>
+          <p class="fine" data-i18n="hero.fine">Windows 10/11 · 64-bit · free · GPL-3.0-or-later</p>
+        </div>
+
+        <div class="hero-visual">
+          <img class="logo-tile" src="assets/logo.svg" width="320" height="320" alt="The OpenCue logo: a pixel-art spotlight with an amber light cone above the word OpenCue" data-i18n-alt="hero.logoAlt">
+          <figure class="cmd" aria-label="Examples of OpenCue command line input" data-i18n-aria-label="hero.cmdLabel">
+            <div class="cmd-head"><span class="dot"></span><span data-i18n="hero.cmdTitle">Command line in OpenCue</span></div>
+<pre><code><span class="p">&gt;</span> Fixture 1 Thru 5 At Full
+<span class="p">&gt;</span> Group Front At 80 Zoom 30
+<span class="p">&gt;</span> Store Cue 3 "Intro"
+<span class="p">&gt;</span> Go Cue 3
+<span class="p">&gt;</span> Timecode At 4.3 Play</code></pre>
+          </figure>
+        </div>
+      </div>
+    </section>
+
+    <section class="band" aria-labelledby="why-title">
+      <div class="wrap">
+        <h2 id="why-title" class="sr-only" data-i18n="why.title">Why OpenCue</h2>
+        <ul class="why">
+          <li>
+            <strong data-i18n="why.offline.t">Fully offline</strong>
+            <span data-i18n="why.offline.d">No account, no licence key, no cloud, no tracking. It works in a venue without internet.</span>
+          </li>
+          <li>
+            <strong data-i18n="why.open.t">Free and open source</strong>
+            <span data-i18n="why.open.d">GNU GPL v3 or later. Read the code, build it yourself, fix it, share it.</span>
+          </li>
+          <li>
+            <strong data-i18n="why.one.t">One interface for desk and tablet</strong>
+            <span data-i18n="why.one.d">The tablet or phone shows the same interface with the same rights – installable as a web app.</span>
+          </li>
+          <li>
+            <strong data-i18n="why.files.t">Readable files</strong>
+            <span data-i18n="why.files.d">Shows, layouts and themes are plain JSON files – easy to back up, copy and share.</span>
+          </li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="section" id="features" aria-labelledby="features-title">
+      <div class="wrap">
+        <h2 id="features-title" data-i18n="features.title">Everything a small to mid-size show needs</h2>
+        <p class="section-lead" data-i18n="features.lead">For bands, theatres, schools, clubs and home studios.</p>
+
+        <div class="cards">
+          <article class="card">
+            <h3 data-i18n="f.fix.t">Fixtures and programmer</h3>
+            <p data-i18n="f.fix.d">GDTF fixture library with patching, groups, presets and variables. Every channel gets its own control: dimmer, colour, position, beam, focus, gobo, prism and shutter.</p>
+          </article>
+          <article class="card">
+            <h3 data-i18n="f.cue.t">Cues and executors</h3>
+            <p data-i18n="f.cue.d">Cue lists with fades, delays and Go, Follow or Timecode triggers. Run several lists at once, each with its own mix fader.</p>
+          </article>
+          <article class="card">
+            <h3 data-i18n="f.fx.t">Effects and scripting</h3>
+            <p data-i18n="f.fx.d">A real-time effect engine with 60 ready-made effects, and an Effect Studio to write your own in a small C++/Arduino-like script language.</p>
+          </article>
+          <article class="card">
+            <h3 data-i18n="f.cmd.t">Command line</h3>
+            <p data-i18n="f.cmd.d">Type commands such as Fixture 1 Thru 5 At Full: Tab autocomplete, input checking, plus keypad and command-button panels for touch screens.</p>
+          </article>
+          <article class="card">
+            <h3 data-i18n="f.sim.t">3D simulation</h3>
+            <p data-i18n="f.sim.d">Build a stage, hang fixtures with their real GDTF models and watch beams, light pools, gobos, strobe and focus follow the DMX signal. Aim moving heads by clicking a point on the stage.</p>
+          </article>
+          <article class="card">
+            <h3 data-i18n="f.dmx.t">DMX output</h3>
+            <p data-i18n="f.dmx.d">Art-Net, sACN (E1.31) and USB DMX (Enttec DMX USB Pro and compatibles), any number of universes, with blackout, grand master and a DMX monitor.</p>
+          </article>
+          <article class="card">
+            <h3 data-i18n="f.tc.t">Timecode and media</h3>
+            <p data-i18n="f.tc.d">Global timecode that can start cues, a video and audio player panel that follows it, and a camera and livestream panel.</p>
+          </article>
+          <article class="card">
+            <h3 data-i18n="f.rem.t">Remote control</h3>
+            <p data-i18n="f.rem.d">Operate from a tablet or phone on the local network, with a password and a QR code. Off by default and switchable at any time.</p>
+          </article>
+          <article class="card">
+            <h3 data-i18n="f.ui.t">Your layout</h3>
+            <p data-i18n="f.ui.d">Free panel layouts with an edit mode, colour themes, touch support and GUI scaling. English and German. Export and import whole shows as ZIP.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="section alt" id="workflow" aria-labelledby="workflow-title">
+      <div class="wrap">
+        <h2 id="workflow-title" data-i18n="flow.title">From install to first cue</h2>
+        <ol class="steps">
+          <li>
+            <h3 data-i18n="flow.1.t">Install</h3>
+            <p data-i18n="flow.1.d">Run the installer. OpenCue opens with a small demo show.</p>
+          </li>
+          <li>
+            <h3 data-i18n="flow.2.t">Add and patch</h3>
+            <p data-i18n="flow.2.d">Import fixtures from the GDTF library and give them a universe and address.</p>
+          </li>
+          <li>
+            <h3 data-i18n="flow.3.t">Select and set</h3>
+            <p data-i18n="flow.3.d">Pick fixtures by tile, lasso, group or command line, then set brightness, colour, position and beam.</p>
+          </li>
+          <li>
+            <h3 data-i18n="flow.4.t">Store and Go</h3>
+            <p data-i18n="flow.4.d">Store looks as cues, add effects, and run them from the executor.</p>
+          </li>
+          <li>
+            <h3 data-i18n="flow.5.t">Output or simulate</h3>
+            <p data-i18n="flow.5.d">Send Art-Net, sACN or USB DMX – or just watch everything in the 3D simulation, no hardware needed.</p>
+          </li>
+        </ol>
+      </div>
+    </section>
+
+    <section class="section" id="download" aria-labelledby="download-title">
+      <div class="wrap dl">
+        <div>
+          <h2 id="download-title" data-i18n="dl.title">Download OpenCue</h2>
+          <p class="section-lead" data-i18n="dl.lead">The Windows installer lets you choose the language, program folder and data folder. Later versions update through the same installer, and OpenCue tells you when a new version is out.</p>
+          <div class="actions">
+            <a class="btn primary" href="https://github.com/TheCraftedTech/opencue/releases/latest" rel="noopener" data-download><span data-i18n="dl.button">Download installer</span><span class="btn-sub" data-version></span></a>
+            <a class="btn" href="https://github.com/TheCraftedTech/opencue/releases" rel="noopener" data-i18n="dl.all">All releases</a>
+            <a class="btn" href="https://github.com/TheCraftedTech/opencue/blob/main/CHANGELOG.md" rel="noopener" data-i18n="dl.changelog">Changelog</a>
+          </div>
+          <p class="fine"><span data-i18n="dl.file">Installer file:</span> <code data-filename>OpenCue-Setup-v&lt;version&gt;.exe</code> · <span data-i18n="dl.newer">Newer versions are on the GitHub releases page.</span></p>
+        </div>
+
+        <div class="info-grid">
+          <div class="info">
+            <h3 data-i18n="req.title">Requirements</h3>
+            <ul>
+              <li data-i18n="req.1">Windows 10 or 11, 64-bit</li>
+              <li data-i18n="req.2">Microsoft Edge WebView2 Runtime – part of Windows 11; the installer fetches it if missing (internet needed once)</li>
+              <li data-i18n="req.3">For real lights: an Art-Net or sACN network node, or a USB DMX interface</li>
+            </ul>
+          </div>
+          <div class="info">
+            <h3 data-i18n="lim.title">Good to know</h3>
+            <ul>
+              <li data-i18n="lim.1">Windows only – no macOS or Linux installer.</li>
+              <li data-i18n="lim.2">Version 1.0 and a one-person project: test your show before you rely on it live.</li>
+              <li data-i18n="lim.3">Fixture files are not included. You import GDTF files or download them from GDTF Share (a free account there is required).</li>
+            </ul>
+          </div>
+          <div class="info wide">
+            <h3 data-i18n="src.title">Run from source</h3>
+            <p data-i18n="src.d">You need Python 3.13 (64-bit) and internet for the first start. run.bat sets everything up.</p>
+<pre><code>git clone https://github.com/TheCraftedTech/opencue.git
+cd opencue
+run.bat</code></pre>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap foot">
+      <div>
+        <p class="foot-brand">Open<span>Cue</span></p>
+        <p data-i18n="foot.copy">© 2026 Samuel Zenker. Licensed under the GNU General Public License v3.0 or later.</p>
+        <p data-i18n="foot.privacy">This website uses no cookies, no analytics and no third-party fonts or scripts. It only asks GitHub for the newest installer version.</p>
+      </div>
+      <ul class="foot-links">
+        <li><a href="https://github.com/TheCraftedTech/opencue" rel="noopener" data-i18n="foot.source">Source code</a></li>
+        <li><a href="https://github.com/TheCraftedTech/opencue/releases" rel="noopener" data-i18n="foot.releases">Releases</a></li>
+        <li><a href="https://github.com/TheCraftedTech/opencue/blob/main/CHANGELOG.md" rel="noopener" data-i18n="foot.changelog">Changelog</a></li>
+        <li><a href="https://github.com/TheCraftedTech/opencue/blob/main/LICENSE" rel="noopener" data-i18n="foot.license">License</a></li>
+      </ul>
+    </div>
+  </footer>
+
+  <noscript><style>.lang{display:none}</style></noscript>
+</body>
+</html>
