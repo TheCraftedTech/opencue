@@ -1,10 +1,37 @@
-venv/
+# Vorlage fuer die .gitignore des OEFFENTLICHEN Repositories (packaging\export_public.ps1 schreibt sie dorthin).
+# Prinzip "Whitelist": Alles ist ausgeschlossen, ausser den hier ausdruecklich genannten Dateien und Ordnern.
+# So landet nichts Privates (lokale Arbeitsdateien, venv, Tests ...) versehentlich auf GitHub.
+
+/*
+
+# Quellcode und Programmdateien
+!/app/
+!/static/
+!/templates/
+!/defaults/
+!/packaging/
+!/ffmpeg/
+!/main.py
+!/requirements.txt
+!/run.bat
+
+# Website (GitHub Pages: Ordner /docs)
+!/docs/
+
+# Projektdateien
+!/README.md
+!/CHANGELOG.md
+!/LICENSE
+!/.gitignore
+
+# Auch innerhalb der erlaubten Ordner nie hochladen
 __pycache__/
 *.pyc
+*.log
+venv/
+build/
+dist/
 showfiles/*.json
 panel_layouts/*.json
 !showfiles/.gitkeep
 .vscode/
-*.log
-build/
-dist/

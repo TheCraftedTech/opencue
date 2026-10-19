@@ -23,7 +23,7 @@ for required in (ICON, VERSION_FILE, os.path.join(ROOT, "ffmpeg", "ffmpeg.exe"),
     if not os.path.exists(required):
         raise SystemExit(f"Fehlt fuer den Build: {required}  (packaging\\build.ps1 erzeugt die Versions- und Lizenzdateien)")
 
-# ---- mitgelieferte Dateien (Quelle, Ziel relativ zu _internal). documentation/, _old/, READMEs, venv/ gehoeren NICHT dazu.
+# ---- mitgelieferte Dateien (Quelle, Ziel relativ zu _internal). _old/, READMEs, venv/ gehoeren NICHT dazu.
 datas = [
     (os.path.join(ROOT, "static"), "static"),
     (os.path.join(ROOT, "templates"), "templates"),
