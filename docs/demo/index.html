@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en" data-page="demo">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Live demo – OpenCue</title>
+  <meta name="description" content="Try OpenCue in your browser: fixture control, cue list, executor, effects and a real 3D stage – built like the real lighting console.">
+  <script src="../assets/boot.js"></script>
+</head>
+<body>
+  <header id="site-header"></header>
+
+  <main id="main">
+    <div class="wrap dm-wrap">
+      <div class="dm-titlebar">
+        <div>
+          <nav class="crumbs" aria-label="Breadcrumb" data-i18n-aria-label="common.crumbs">
+            <a href="@" data-i18n="foot.home">Home</a><span aria-hidden="true">/</span><span data-i18n="nav.demo">Live demo</span>
+          </nav>
+          <h1 data-i18n="demo.title">Try OpenCue in your browser</h1>
+          <p data-i18n="demo.lead">A simplified OpenCue for the web: the default layout's panels, a real 3D stage and effects. Nothing is sent anywhere.</p>
+        </div>
+        <a class="btn primary small" href="https://github.com/TheCraftedTech/opencue/releases/latest" data-download><span data-i18n="home.download">Download for Windows</span><span class="btn-sub" data-version></span></a>
+      </div>
+
+      <div id="demo" aria-live="off">
+        <p class="state" data-i18n="demo.loading">Loading the demo …</p>
+      </div>
+    </div>
+
+    <section class="band alt" style="margin-top:2.5rem">
+      <div class="wrap dm-wrap">
+        <div class="dm-notes" style="margin-top:0;padding-block:2.5rem">
+          <div class="info">
+            <h3 data-i18n="demo.tips.title">Handy to know</h3>
+            <ul>
+              <li data-i18n="demo.tips.1">In the 3D view: drag to orbit, Ctrl + scroll (or pinch) to zoom, click or tap a fixture or its number to select it. "Fullscreen" gives the stage the whole screen.</li>
+              <li data-i18n="demo.tips.2">Drag over the fixture tiles to select several at once – hold Shift to add.</li>
+              <li data-i18n="demo.tips.3">Double-click or double-tap a cue to play it. Manual values stay on top of cues until you clear them.</li>
+              <li data-i18n="demo.tips.4">Drag the faders or use the arrow keys. The Mix fader fades the cue level.</li>
+            </ul>
+          </div>
+          <div class="info">
+            <h3 data-i18n="demo.diff.title">What the real program adds</h3>
+            <ul>
+              <li data-i18n="demo.diff.1">Real fixtures from the GDTF library and your own 3D stages with their models.</li>
+              <li data-i18n="demo.diff.2">DMX output over Art-Net, sACN and USB – plus timecode, media, remote control and more panels.</li>
+              <li data-i18n="demo.diff.3">The command line with its full command set and the Effect Studio with its script language.</li>
+            </ul>
+            <div class="actions" style="margin-top:auto;padding-top:.6rem">
+              <a class="btn small" href="@features/" data-i18n="demo.allFeatures">All features</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer id="site-footer"></footer>
+</body>
+</html>

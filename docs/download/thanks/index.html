@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en" data-page="download" data-meta="download-thanks">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>Thank you for downloading OpenCue</title>
+  <meta name="description" content="Your OpenCue download is starting. Here is how to install and what to do next.">
+  <script src="../../assets/boot.js"></script>
+</head>
+<body>
+  <header id="site-header"></header>
+
+  <main id="main">
+    <section class="band" style="border-top:0">
+      <div class="wrap narrow">
+        <div class="thanks" id="thanks">
+          <div class="loader" aria-hidden="true"></div>
+          <h1 id="thanks-title" aria-live="polite">Preparing your download …</h1>
+          <p class="lead" id="thanks-lead">OpenCue is free – the installer starts in a moment.</p>
+          <div class="progress" aria-hidden="true"><i></i></div>
+          <p class="fallback">
+            <span id="thanks-fallback-text">Nothing happening?</span>
+            <a data-direct href="https://github.com/TheCraftedTech/opencue/releases/latest" rel="noopener" id="thanks-manual">Download manually</a>
+            <code data-filename id="thanks-file" hidden></code>
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <section class="band alt pad">
+      <div class="wrap">
+        <div class="sec-head" data-reveal>
+          <p class="kicker" data-i18n="thanks.next.kicker">What next</p>
+          <h2 data-i18n="thanks.next.title">Your first minutes with OpenCue</h2>
+        </div>
+        <div class="next-steps">
+          <div class="info" data-reveal>
+            <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" aria-hidden="true"><path d="M12 3v13M6 11l6 6 6-6M4 21h16"/></svg>
+            <h3 data-i18n="thanks.s1.t">Run the installer</h3>
+            <p data-i18n="thanks.s1.d">Open the downloaded file. Choose the language, the program folder and the data folder, then finish the setup.</p>
+          </div>
+          <div class="info" data-reveal>
+            <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" aria-hidden="true"><path d="M3 4h18v16H3zM7 9l3 3-3 3M12 15h5"/></svg>
+            <h3 data-i18n="thanks.s2.t">Start with the demo show</h3>
+            <p data-i18n="thanks.s2.d">OpenCue opens a small demo show. Import fixtures from the library, patch them and store your first cue.</p>
+          </div>
+          <div class="info" data-reveal>
+            <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16.5v.5"/></svg>
+            <h3 data-i18n="thanks.s3.t">Questions or problems?</h3>
+            <p data-i18n="thanks.s3.d">Read the guides, or tell us what went wrong – every report helps.</p>
+            <div class="actions" style="margin-top:auto;padding-top:.5rem">
+              <a class="btn small" href="@guide/" data-i18n="nav.guide">Docs</a>
+              <a class="btn small" href="https://github.com/TheCraftedTech/opencue/issues" rel="noopener" data-i18n="foot.issues">Report a problem</a>
+            </div>
+          </div>
+        </div>
+        <div class="actions" style="justify-content:center;margin-top:2.5rem">
+          <a class="btn" href="@demo/" data-i18n="home.tryDemo">Try the live demo</a>
+          <a class="btn" href="@" data-i18n="thanks.home">Back to the home page</a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer id="site-footer"></footer>
+</body>
+</html>

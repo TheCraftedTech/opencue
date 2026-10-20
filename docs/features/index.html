@@ -1,0 +1,297 @@
+<!doctype html>
+<html lang="en" data-page="features">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Features – OpenCue</title>
+  <meta name="description" content="Everything OpenCue can do: GDTF fixtures and programmer, cues and executors, effects with a script language, command line, 3D simulation, Art-Net, sACN and USB DMX, timecode, media and remote control.">
+  <script src="../assets/boot.js"></script>
+</head>
+<body>
+  <header id="site-header"></header>
+
+  <main id="main">
+    <div class="page-head">
+      <div class="wrap">
+        <nav class="crumbs" aria-label="Breadcrumb" data-i18n-aria-label="common.crumbs">
+          <a href="@" data-i18n="foot.home">Home</a><span aria-hidden="true">/</span><span data-i18n="nav.features">Features</span>
+        </nav>
+        <h1 data-i18n="feat.title">Features</h1>
+        <p class="lead" data-i18n="feat.lead">A lighting desk for Windows that is inspired by the classic console workflow – with a 3D simulation, an effect script language and remote control on top.</p>
+      </div>
+    </div>
+
+    <!-- 1 -->
+    <section class="band pad feat-sec" id="fixtures" aria-labelledby="fixtures-h">
+      <div class="wrap"><div class="row" data-reveal>
+        <div class="row-text">
+          <svg class="feat-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" aria-hidden="true"><path d="M4 6h3M4 12h3M4 18h3M10 4v4M10 10v4M10 16v4M17 5v14M14 8h6M14 15h6"/></svg>
+          <h2 id="fixtures-h" data-i18n="feat.fixtures.title">Fixtures and programmer</h2>
+          <p data-i18n="feat.fixtures.lead">Fixture types come in the open GDTF format. Patch them to a universe and address, select them, and set every function with its own control.</p>
+          <ul class="checks">
+            <li data-i18n="feat.fixtures.1">GDTF library with manufacturer, device and mode, 16-bit channels, online search in GDTF Share and a preview with the 3D model and gobo and colour wheels. Three built-in generics (dimmer, RGBW par, moving head) are always there.</li>
+            <li data-i18n="feat.fixtures.2">Patching with universe and start address, and a warning when a fixture overflows 512 channels.</li>
+            <li data-i18n="feat.fixtures.3">The programmer gives every GDTF function a control: dimmer, position (pan and tilt coarse and fine, swipe to fine-tune), colour (HSV, CMY or RGB faders, or a colour wheel), beam and focus (shutter and strobe, gobos with preview images, prism, focus, zoom) and direct DMX access.</li>
+            <li data-i18n="feat.fixtures.4">Select by tile, lasso, group or command line. Groups, presets and variables – a variable is a living placeholder: change it once and every place that uses it follows.</li>
+            <li data-i18n="feat.fixtures.5">Aim moving heads by clicking a point on the 3D stage, with automatic focus and zoom for the throw distance.</li>
+          </ul>
+        </div>
+        <figure class="shot">
+          <img data-src="@assets/img/program-fixture-control.webp" width="870" height="485" loading="lazy" alt="The fixture control with colour faders in HSV, CMY and RGB" data-i18n-alt="feat.fixtures.alt">
+          <figcaption><span><b data-i18n="home.cap.program">From the program</b> · <span data-i18n="feat.fixtures.cap">fixture control with colour faders</span></span></figcaption>
+        </figure>
+      </div></div>
+    </section>
+
+    <!-- 2 -->
+    <section class="band alt pad feat-sec" id="cues" aria-labelledby="cues-h">
+      <div class="wrap"><div class="row flip" data-reveal>
+        <div class="row-text">
+          <svg class="feat-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" aria-hidden="true"><path d="M5 4h14v4H5zM5 10h14v4H5zM5 16h14v4H5z"/></svg>
+          <h2 id="cues-h" data-i18n="feat.cues.title">Cues and executors</h2>
+          <p data-i18n="feat.cues.lead">Store looks as cues and run them with the executor – several lists at the same time.</p>
+          <ul class="checks">
+            <li data-i18n="feat.cues.1">Cue lists with numbers (also 1.5), names, fade times (separate for colour, position and beam), delay, and triggers: Go, Follow or Timecode.</li>
+            <li data-i18n="feat.cues.2">MIB (move in black) and a command of its own per cue.</li>
+            <li data-i18n="feat.cues.3">Executor with a mix fader per cue list, Go, Pause, Back and Stop. Cues are tracking: they only contain changes.</li>
+            <li data-i18n="feat.cues.4">Store, Update and Delete with dialogs that show what will happen.</li>
+          </ul>
+        </div>
+        <figure class="shot">
+          <img data-src="@assets/img/program-cue-list.webp" width="870" height="375" loading="lazy" alt="The cue list with five cues, the active one highlighted" data-i18n-alt="feat.cues.alt">
+          <figcaption><span><b data-i18n="home.cap.program">From the program</b> · <span data-i18n="feat.cues.cap">the cue list with the active and the next cue</span></span></figcaption>
+        </figure>
+      </div></div>
+    </section>
+
+    <!-- 3 -->
+    <section class="band pad feat-sec" id="effects" aria-labelledby="effects-h">
+      <div class="wrap"><div class="row" data-reveal>
+        <div class="row-text">
+          <svg class="feat-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" aria-hidden="true"><path d="M3 12h3l3-8 4 16 3-8h5"/></svg>
+          <h2 id="effects-h" data-i18n="feat.effects.title">Effects and scripting</h2>
+          <p data-i18n="feat.effects.lead">A real-time effect engine – and a studio to write your own effects.</p>
+          <ul class="checks">
+            <li data-i18n="feat.effects.1">Each effect controls one category: dimmer, colour, position, focus, zoom, gobo and more.</li>
+            <li data-i18n="feat.effects.2">60 ready-made effects come with OpenCue: chase, rainbow, fire, radar, gobo change, zoom pulse and many more.</li>
+            <li data-i18n="feat.effects.3">The Effect Studio uses a small C++/Arduino-like language with variables, if, for and while, functions, setup() and loop(), and #RATE. It has a live preview and built-in help.</li>
+          </ul>
+          <a class="more" href="@guide/effect-studio/" data-i18n="feat.effects.guide">Read the Effect Studio guide</a>
+        </div>
+        <figure class="shot">
+          <img data-src="@assets/img/program-studio.webp" width="1600" height="860" loading="lazy" alt="The Effect Studio with a sine effect and its preview curve" data-i18n-alt="home.r4.alt">
+          <figcaption><span><b data-i18n="home.cap.program">From the program</b> · <span data-i18n="home.r4.shot">the Effect Studio with live preview</span></span></figcaption>
+        </figure>
+      </div></div>
+    </section>
+
+    <!-- 4 -->
+    <section class="band alt pad feat-sec" id="simulation" aria-labelledby="sim-h">
+      <div class="wrap"><div class="row flip" data-reveal>
+        <div class="row-text">
+          <svg class="feat-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" aria-hidden="true"><path d="M12 2l9 5v10l-9 5-9-5V7zM12 12l9-5M12 12v10M12 12L3 7"/></svg>
+          <h2 id="sim-h" data-i18n="feat.sim.title">3D simulation</h2>
+          <p data-i18n="feat.sim.lead">See the show without any hardware – and plan a stage before you build it.</p>
+          <ul class="checks">
+            <li data-i18n="feat.sim.1">Build a stage from boxes, cylinders, spheres, wedges and a room.</li>
+            <li data-i18n="feat.sim.2">Hang fixtures with their real GDTF 3D models.</li>
+            <li data-i18n="feat.sim.3">Light cones, light pools, gobos, strobe and focus follow the DMX signal live.</li>
+            <li data-i18n="feat.sim.4">Stages are saved as files; undo and redo are built in.</li>
+          </ul>
+        </div>
+        <figure class="shot">
+          <img data-src="@assets/img/program-sim.webp" width="1600" height="800" loading="lazy" alt="OpenCue's 3D simulation: a rock stage with magenta, cyan and white light beams" data-i18n-alt="home.r2.alt">
+          <figcaption><span><b data-i18n="home.cap.program">From the program</b> · <span data-i18n="home.r2.cap">the 3D simulation panel</span></span></figcaption>
+        </figure>
+      </div></div>
+    </section>
+
+    <!-- 5 -->
+    <section class="band pad feat-sec" id="commandline" aria-labelledby="cmd-h">
+      <div class="wrap"><div class="row" data-reveal>
+        <div class="row-text">
+          <svg class="feat-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" aria-hidden="true"><path d="M3 4h18v16H3zM7 9l3 3-3 3M12 15h5"/></svg>
+          <h2 id="cmd-h" data-i18n="feat.cmd.title">Command line</h2>
+          <p data-i18n="feat.cmd.lead">Everything can be typed: select, set, store, play. Tab completes, and the input is checked as you type.</p>
+          <div class="chips" aria-label="Examples" data-i18n-aria-label="common.examples">
+            <code class="chip">Fixture 1 Thru 5 At Full</code>
+            <code class="chip">Group Front At 80 Zoom 30</code>
+            <code class="chip">Store Cue 3 "Intro"</code>
+            <code class="chip">Go Cue 3</code>
+            <code class="chip">Cuelist "Default" Go</code>
+            <code class="chip">Blackout On</code>
+            <code class="chip">Timecode At 4.3 Play</code>
+          </div>
+          <ul class="checks" style="margin-top:1.2rem">
+            <li data-i18n="feat.cmd.1">Keypad and command-button panels make the command line usable on a touch screen.</li>
+            <li data-i18n="feat.cmd.2">Several commands in one line, separated by commas.</li>
+          </ul>
+        </div>
+        <figure class="shot">
+          <img data-src="@assets/img/program-fixtures.webp" width="1600" height="900" loading="lazy" alt="The default layout with the command line, command buttons and numpad at the bottom right" data-i18n-alt="feat.cmd.alt">
+          <figcaption><span><b data-i18n="home.cap.program">From the program</b> · <span data-i18n="feat.cmd.cap">command line, command buttons and numpad</span></span></figcaption>
+        </figure>
+      </div></div>
+    </section>
+
+    <!-- 6 -->
+    <section class="band alt pad feat-sec" id="dmx" aria-labelledby="dmx-h">
+      <div class="wrap"><div class="row flip" data-reveal>
+        <div class="row-text">
+          <svg class="feat-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" aria-hidden="true"><path d="M7 3v5M17 3v5M5 8h14v4a7 7 0 0 1-14 0zM12 19v2"/></svg>
+          <h2 id="dmx-h" data-i18n="feat.dmx.title">DMX output</h2>
+          <p data-i18n="feat.dmx.lead">Network or USB – whatever your rig uses.</p>
+          <ul class="checks">
+            <li><strong>Art-Net</strong> – <span data-i18n="feat.dmx.artnet">Network output to nodes and consoles. Switchable; the target IP is yours to set.</span></li>
+            <li><strong>sACN (E1.31)</strong> – <span data-i18n="feat.dmx.sacn">Streaming ACN over multicast or unicast. Off by default and only opens its port when switched on.</span></li>
+            <li><strong data-i18n="feat.dmx.usb.t">USB DMX</strong> – <span data-i18n="feat.dmx.usb.d">Enttec DMX USB Pro and compatible interfaces.</span></li>
+            <li><strong data-i18n="feat.dmx.universes.t">Universes and output</strong> – <span data-i18n="feat.dmx.1">Any number of universes, a dedicated output thread that has priority over the interface, blackout and grand master.</span></li>
+            <li><strong data-i18n="feat.dmx.monitor.t">DMX monitor</strong> – <span data-i18n="feat.dmx.2">A DMX monitor panel shows the values of the universes live.</span></li>
+          </ul>
+        </div>
+        <figure class="shot">
+          <img data-src="@assets/img/program-dmx.webp" width="1600" height="262" loading="lazy" alt="The DMX monitor panel with live channel values in green" data-i18n-alt="feat.dmx.alt">
+          <figcaption><span><b data-i18n="home.cap.program">From the program</b> · <span data-i18n="feat.dmx.cap">the DMX monitor shows every channel live</span></span></figcaption>
+        </figure>
+      </div></div>
+    </section>
+
+    <!-- 7 -->
+    <section class="band pad feat-sec" id="timecode" aria-labelledby="tc-h">
+      <div class="wrap"><div class="row" data-reveal>
+        <div class="row-text">
+          <svg class="feat-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" aria-hidden="true"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l3 2M9 2h6"/></svg>
+          <h2 id="tc-h" data-i18n="feat.tc.title">Timecode and media</h2>
+          <p data-i18n="feat.tc.lead">Tie lighting to time, video, audio and cameras.</p>
+          <ul class="checks">
+            <li><strong data-i18n="feat.tc.a.t">Global timecode</strong> – <span data-i18n="feat.tc.1">Run, pause, step, 0.1× to 8×, jump. Cues can start by timecode, and there are timecode commands for the command line.</span></li>
+            <li><strong data-i18n="feat.tc.b.t">Video and audio</strong> – <span data-i18n="feat.tc.2">A video and audio player panel that runs in sync with the timecode or freely.</span></li>
+            <li><strong data-i18n="feat.tc.c.t">Cameras and streams</strong> – <span data-i18n="feat.tc.3">A livestream and camera panel: IP cameras by MJPEG, HLS or video URL, and cameras on the main computer through ffmpeg. Full-screen view included.</span></li>
+          </ul>
+        </div>
+        <figure class="shot">
+          <img data-src="@assets/img/program-timecode.webp" width="1600" height="740" loading="lazy" alt="The timecode panel with large clock, transport buttons, jump field and speed, above the media player and the cue list" data-i18n-alt="feat.tc.alt">
+          <figcaption><span><b data-i18n="home.cap.program">From the program</b> · <span data-i18n="feat.tc.cap">timecode, media player and cue list in one layout</span></span></figcaption>
+        </figure>
+      </div></div>
+    </section>
+
+    <!-- 8 -->
+    <section class="band alt pad feat-sec" id="remote" aria-labelledby="remote-h">
+      <div class="wrap"><div class="row flip" data-reveal>
+        <div class="row-text">
+          <svg class="feat-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" aria-hidden="true"><rect x="5" y="2" width="14" height="20"/><path d="M11 18h2"/></svg>
+          <h2 id="remote-h" data-i18n="feat.rem.title">Remote control</h2>
+          <p data-i18n="feat.rem.lead">Operate OpenCue from a tablet or phone in the same network – the very same interface.</p>
+          <ul class="checks">
+            <li><strong data-i18n="feat.rem.a.t">Same interface, same rights</strong> – <span data-i18n="feat.rem.1">Password with lock-out after failed attempts, QR code, installable as a web app.</span></li>
+            <li><strong data-i18n="feat.rem.b.t">Off by default</strong> – <span data-i18n="feat.rem.2">Switchable at runtime. Live data is throttled for slow devices.</span></li>
+          </ul>
+        </div>
+        <figure class="device">
+          <img data-src="@assets/img/program-tablet.webp" width="1560" height="1135" loading="lazy" alt="A tablet showing OpenCue in its browser: 3D simulation with coloured light beams, cue list, executor and fixture control" data-i18n-alt="feat.rem.alt">
+          <figcaption data-i18n="feat.rem.cap">The same interface in a tablet's browser.</figcaption>
+        </figure>
+      </div></div>
+    </section>
+
+    <!-- 9 -->
+    <section class="band pad feat-sec" id="interface" aria-labelledby="ui-h">
+      <div class="wrap"><div class="row" data-reveal>
+        <div class="row-text">
+          <svg class="feat-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" aria-hidden="true"><path d="M3 3h8v8H3zM13 3h8v5h-8zM13 10h8v11h-8zM3 13h8v8H3z"/></svg>
+          <h2 id="ui-h" data-i18n="feat.ui.title">Layouts and themes</h2>
+          <p data-i18n="feat.ui.lead">The interface is yours to arrange.</p>
+          <ul class="checks">
+            <li data-i18n="feat.ui.1">Free panel layouts with an edit mode, snapping, layers, copy and paste, and undo. Layouts are files; switch with Ctrl+1…9 or by swiping.</li>
+            <li data-i18n="feat.ui.2">Your own buttons and faders on the work surface that run commands.</li>
+            <li data-i18n="feat.ui.3">Colour themes: dark, light and your own. GUI scaling from 50 to 200 % per device, touch friendly.</li>
+            <li data-i18n="feat.ui.4">English and German interface, switchable with Ctrl+Shift+L.</li>
+          </ul>
+        </div>
+        <div class="shot-stack">
+        <figure class="shot">
+          <img data-src="@assets/img/program-stage.webp" width="1600" height="900" loading="lazy" alt="A second layout: the 3D simulation on the left, cue list, executor and fixture control on the right" data-i18n-alt="feat.ui.alt">
+          <figcaption><span><b data-i18n="home.cap.program">From the program</b> · <span data-i18n="feat.ui.cap">another layout: 3D simulation with cue list, executor and fixture control</span></span></figcaption>
+        </figure>
+        <figure class="shot">
+          <img data-src="@assets/img/program-colors.webp" width="1312" height="800" loading="lazy" alt="The colour settings with dark, light and custom themes and colour fields for every surface" data-i18n-alt="feat.ui.alt2">
+          <figcaption><span><b data-i18n="home.cap.program">From the program</b> · <span data-i18n="feat.ui.cap2">colour themes: dark, light or your own</span></span></figcaption>
+        </figure>
+        </div>
+      </div></div>
+    </section>
+
+    <!-- 10 -->
+    <section class="band alt pad feat-sec" id="files" aria-labelledby="files-h">
+      <div class="wrap"><div class="row flip" data-reveal>
+        <div class="row-text">
+          <svg class="feat-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" aria-hidden="true"><path d="M3 5h7l2 3h9v11H3z"/></svg>
+          <h2 id="files-h" data-i18n="feat.files.title">Files and data</h2>
+          <p data-i18n="feat.files.lead">Everything is stored as simple, readable files – easy to back up, copy and share.</p>
+          <ul class="checks">
+            <li><strong data-i18n="feat.files.a.t">File manager</strong> – <span data-i18n="feat.files.1">A file manager for shows, layouts, 3D stages, effects, colour themes and fixtures.</span></li>
+            <li><strong data-i18n="feat.files.b.t">Export and import</strong> – <span data-i18n="feat.files.2">Export and import a whole show as a ZIP, including the fixture files and effect scripts it needs.</span></li>
+            <li><strong data-i18n="feat.files.c.t">Your data folder</strong> – <span data-i18n="feat.files.3">The data folder is chosen in the installer and can be moved later in the settings.</span></li>
+          </ul>
+        </div>
+        <figure class="shot">
+          <img data-src="@assets/img/program-files.webp" width="1312" height="800" loading="lazy" alt="The file manager with the list of shows and buttons to load, rename, copy, download and delete" data-i18n-alt="feat.files.alt">
+          <figcaption><span><b data-i18n="home.cap.program">From the program</b> · <span data-i18n="feat.files.cap">the file manager</span></span></figcaption>
+        </figure>
+      </div></div>
+    </section>
+
+    <!-- 11 -->
+    <section class="band pad feat-sec" id="panels" aria-labelledby="panels-h">
+      <div class="wrap"><div class="row" data-reveal>
+        <div class="row-text">
+          <svg class="feat-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" aria-hidden="true"><path d="M4 4h7v7H4zM13 4h7v4h-7zM13 10h7v10h-7zM4 13h7v7H4z"/></svg>
+          <h2 id="panels-h" data-i18n="feat.panels.title">Panel types</h2>
+          <p data-i18n="feat.panels.lead">Add these through "Add Panel" and combine them as you like.</p>
+          <div class="chips" style="margin-top:1.2rem">
+            <span class="chip">DMX Monitor</span>
+            <span class="chip">Fixtures</span>
+            <span class="chip">Fixture Control</span>
+            <span class="chip">Variables / Effects</span>
+            <span class="chip">Cue List</span>
+            <span class="chip">Executor</span>
+            <span class="chip">Command Line</span>
+            <span class="chip">Command Numpad</span>
+            <span class="chip">Command Buttons</span>
+            <span class="chip">Effect Studio</span>
+            <span class="chip">Button</span>
+            <span class="chip">Fader</span>
+            <span class="chip">Timecode</span>
+            <span class="chip">Video/Audio Player</span>
+            <span class="chip">Livestream / Camera</span>
+            <span class="chip">3D Simulation</span>
+          </div>
+        </div>
+        <figure class="shot">
+          <img data-src="@assets/img/program-addpanel.webp" width="1000" height="580" loading="lazy" alt="The &quot;Add Panel&quot; dialog with categories and panel types" data-i18n-alt="feat.panels.alt">
+          <figcaption><span><b data-i18n="home.cap.program">From the program</b> · <span data-i18n="feat.panels.cap">the &quot;Add Panel&quot; dialog</span></span></figcaption>
+        </figure>
+      </div></div>
+    </section>
+
+    <!-- 12 -->
+    <section class="band alt pad feat-sec" id="limits" aria-labelledby="limits-h">
+      <div class="wrap">
+        <div class="sec-head" data-reveal>
+          <svg class="feat-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16.5v.5"/></svg>
+          <h2 id="limits-h" data-i18n="feat.limits.title">Good to know</h2>
+          <p class="lead" data-i18n="feat.limits.lead">What OpenCue is not – so nothing comes as a surprise.</p>
+        </div>
+        <div class="facts" data-reveal>
+          <div class="fact"><p data-i18n="lim.1">Windows only – no macOS or Linux installer.</p></div>
+          <div class="fact"><p data-i18n="lim.2">Version 1.0: test your show before you rely on it live.</p></div>
+          <div class="fact"><p data-i18n="lim.3">Fixture files are not included. You import GDTF files or download them from GDTF Share (a free account there is required).</p></div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer id="site-footer"></footer>
+</body>
+</html>

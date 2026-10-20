@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en" data-page="download">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Download – OpenCue</title>
+  <meta name="description" content="Download the OpenCue installer for Windows 10/11 (64-bit), see the requirements, or run OpenCue from source. Free and open source.">
+  <script src="../assets/boot.js"></script>
+</head>
+<body>
+  <header id="site-header"></header>
+
+  <main id="main">
+    <div class="page-head">
+      <div class="wrap">
+        <nav class="crumbs" aria-label="Breadcrumb" data-i18n-aria-label="common.crumbs">
+          <a href="@" data-i18n="foot.home">Home</a><span aria-hidden="true">/</span><span data-i18n="nav.download">Download</span>
+        </nav>
+        <h1 data-i18n="dl.title">Download OpenCue</h1>
+        <p class="lead" data-i18n="dl.lead">The Windows installer lets you choose the language, program folder and data folder. Later versions update through the same installer, and OpenCue tells you when a new version is out.</p>
+      </div>
+    </div>
+
+    <section class="download-band" style="border-top:0">
+      <div class="wrap dl-hero compact">
+        <div data-reveal>
+          <p class="kicker" data-i18n="dl.card.kicker">Latest version</p>
+          <h2 data-i18n="dl.card.title">OpenCue for Windows</h2>
+          <div class="actions">
+            <a class="btn primary lg" href="https://github.com/TheCraftedTech/opencue/releases/latest" data-download>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="square" aria-hidden="true"><path d="M12 3v13M6 11l6 6 6-6M4 21h16"/></svg>
+              <span data-i18n="dl.button">Download installer</span><span class="btn-sub" data-version></span>
+            </a>
+            <a class="btn" href="#versions" data-i18n="dl.all">All versions</a>
+            <a class="btn" href="@changelog/" data-i18n="dl.changelog">Changelog</a>
+          </div>
+          <dl class="dl-meta">
+            <div><dt data-i18n="dl.meta.version">Version</dt><dd data-version>–</dd></div>
+            <div><dt data-i18n="dl.meta.size">Size</dt><dd data-release-size>–</dd></div>
+            <div><dt data-i18n="dl.meta.date">Released</dt><dd data-release-date>–</dd></div>
+            <div><dt data-i18n="dl.meta.license">Licence</dt><dd>GPL-3.0+</dd></div>
+          </dl>
+          <p class="fine"><span data-i18n="dl.file">Installer file:</span> <code data-filename>OpenCue-Setup-v&lt;version&gt;.exe</code></p>
+        </div>
+        <div class="dl-visual" data-reveal>
+          <img class="dl-logo" data-src="@assets/logo.svg" width="272" height="272" alt="The OpenCue logo: a pixel-art spotlight with an amber light cone above the word OpenCue" data-i18n-alt="home.dl.logoAlt">
+        </div>
+      </div>
+    </section>
+
+    <section class="band pad">
+      <div class="wrap">
+        <div class="sec-head" data-reveal>
+          <p class="kicker" data-i18n="dl.setup.kicker">Setup</p>
+          <h2 data-i18n="dl.setup.title">Install, requirements and more</h2>
+        </div>
+
+        <div class="grid-eq" style="margin-top:2.2rem">
+          <div class="info" data-reveal>
+            <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" aria-hidden="true"><path d="M12 3v13M6 11l6 6 6-6M4 21h16"/></svg>
+            <h3 data-i18n="dl.install.title">Install in four steps</h3>
+            <ol>
+              <li data-i18n="dl.install.1">Download the installer and start it.</li>
+              <li data-i18n="dl.install.2">Choose the language, the program folder and the data folder.</li>
+              <li data-i18n="dl.install.3">Finish the setup. OpenCue opens with a small demo show (Default_1 with five dimmers).</li>
+              <li data-i18n="dl.install.4">Import fixtures in the fixture library, patch them – and light up.</li>
+            </ol>
+          </div>
+
+          <div class="info" data-reveal>
+            <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" aria-hidden="true"><path d="M3 4.5l8-1.3v8.3H3zM13 3l8-1.3v9.8h-8zM3 12.5h8v8.3l-8-1.3zM13 12.5h8v9.8l-8-1.3z"/></svg>
+            <h3 data-i18n="req.title">Requirements</h3>
+            <ul>
+              <li data-i18n="req.1">Windows 10 or 11, 64-bit</li>
+              <li data-i18n="req.2">Microsoft Edge WebView2 Runtime – part of Windows 11; the installer fetches it if missing (internet needed once)</li>
+              <li data-i18n="req.3">For real lights: an Art-Net or sACN network node, or a USB DMX interface</li>
+            </ul>
+          </div>
+
+          <div class="info" data-reveal>
+            <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16.5v.5"/></svg>
+            <h3 data-i18n="lim.title">Good to know</h3>
+            <ul>
+              <li data-i18n="lim.1">Windows only – no macOS or Linux installer.</li>
+              <li data-i18n="lim.2">Version 1.0: test your show before you rely on it live.</li>
+              <li data-i18n="lim.3">Fixture files are not included. You import GDTF files or download them from GDTF Share (a free account there is required).</li>
+            </ul>
+          </div>
+
+          <div class="info" data-reveal>
+            <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" aria-hidden="true"><path d="M3 4h18v16H3zM7 9l3 3-3 3M12 15h5"/></svg>
+            <h3 data-i18n="src.title">Run from source</h3>
+            <p data-i18n="src.d">You need Python 3.13 (64-bit) and internet for the first start. run.bat sets everything up.</p>
+            <figure class="code-block" data-label="Terminal">
+<pre><code>git clone https://github.com/TheCraftedTech/opencue.git
+cd opencue
+run.bat</code></pre>
+            </figure>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="band alt pad" id="versions" aria-labelledby="versions-h">
+      <div class="wrap">
+        <div class="sec-head" data-reveal>
+          <p class="kicker" data-i18n="ver.kicker">Versions</p>
+          <h2 id="versions-h" data-i18n="ver.title">All versions</h2>
+          <p class="lead" data-i18n="ver.lead">Every published installer. For most people the newest version is the right one.</p>
+        </div>
+        <div id="versions-list" class="ver-list" aria-live="polite" data-reveal>
+          <p class="state" data-i18n="common.loading">Loading from GitHub …</p>
+        </div>
+        <p class="fine"><a href="https://github.com/TheCraftedTech/opencue/releases" rel="noopener" data-i18n="ver.github">All releases on GitHub</a></p>
+      </div>
+    </section>
+  </main>
+
+  <footer id="site-footer"></footer>
+</body>
+</html>
