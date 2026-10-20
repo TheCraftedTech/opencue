@@ -1,7 +1,7 @@
 /*
  * OpenCue website – pages/guide.js
- * Loads the Effect Studio guide (static/help/effect-studio.<lang>.md) from GitHub in the site's language,
- * renders it and builds the "On this page" list from its headings.
+ * Loads a guide (static/help/<name>.<lang>.md, the name comes from data-doc on #guide) from GitHub in the site's
+ * language, renders it and builds the "On this page" list from its headings.
  */
 (function () {
   "use strict";
@@ -13,7 +13,9 @@
 
   var cache = {};
 
-  function path(lang) { return "static/help/effect-studio." + lang + ".md"; }
+  var DOC = box.getAttribute("data-doc") || "effect-studio";
+
+  function path(lang) { return "static/help/" + DOC + "." + lang + ".md"; }
 
   function showError(lang) {
     box.innerHTML = "";

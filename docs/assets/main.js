@@ -25,7 +25,7 @@
   var RELEASE_API = "https://api.github.com/repos/" + REPO + "/releases/latest";
   var RELEASES_API = "https://api.github.com/repos/" + REPO + "/releases?per_page=30";
   var DOWNLOAD_PREFIX = "https://github.com/" + REPO + "/releases/download/";
-  var CACHE_KEY = "opencue-latest-release";
+  var CACHE_KEY = "opencue-latest-release-2";
   var LIST_KEY = "opencue-releases";
   var CACHE_MS = 60 * 60 * 1000;
 
@@ -269,7 +269,8 @@
   function readCache() {
     try {
       var cached = JSON.parse(store(CACHE_KEY) || "null");
-      if (cached && cached.rel && String(cached.rel.url).indexOf(DOWNLOAD_PREFIX) === 0) { return cached; }
+      // only a complete entry counts: an older or damaged one (no size or date) is fetched again
+      if (cached && cached.rel && String(cached.rel.url).indexOf(DOWNLOAD_PREFIX) === 0 && cached.rel.size && cached.rel.date) { return cached; }
     } catch (e) { /* damaged cache: ignore */ }
     return null;
   }
@@ -283,11 +284,11 @@
       .then(function (response) { return response.ok ? response.json() : Promise.reject(new Error("HTTP " + response.status)); })
       .then(function (json) {
         var rel = parseRelease(json);
-        if (!rel) { return; }
+        if (!rel) { loadList(); return; }
         showRelease(rel);
         store(CACHE_KEY, JSON.stringify({ time: Date.now(), rel: rel }));
       })
-      .catch(function () { /* offline or rate limited: the buttons stay links to the releases page */ });
+      .catch(function () { loadList(); /* the list is a second source; offline or rate limited: the buttons stay links to the releases page */ });
   }
 
   // All published installers (newest first), for the version list and the per-release download buttons.
@@ -297,6 +298,8 @@
 
   function showList(list) {
     listData = list;
+    // the list carries the same data: use it if the newest-release lookup failed or came back incomplete
+    if (list.length && (!releaseData || !releaseData.size || !releaseData.date)) { showRelease(list[0]); }
     listCallbacks.forEach(function (fn) { try { fn(list); } catch (e) { /* ignore */ } });
   }
 
