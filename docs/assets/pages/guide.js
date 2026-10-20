@@ -13,6 +13,50 @@
 
   var cache = {};
 
+  // reading order = order of the cards on the docs overview: [folder, text key, English title]
+  var ORDER = [
+    ["getting-started", "guide.start.t", "Getting started"],
+    ["commands", "guide.cmd.t", "Command reference"],
+    ["fixtures", "guide.fix.t", "Fixtures and patching"],
+    ["effect-studio", "guide.fx.t", "Effect Studio guide"],
+    ["remote", "guide.rem.t", "Remote control"],
+    ["keyboard-shortcuts", "guide.keys.t", "Keyboard shortcuts"]
+  ];
+
+  // "Previous / Next" buttons below the guide, so the chapters can be read one after the other
+  var nav = null;
+  function buildNav() {
+    var at = -1;
+    ORDER.forEach(function (g, i) { if (g[0] === DOC) { at = i; } });
+    if (at < 0 || !sourceLink || !sourceLink.parentNode) { return; }
+    nav = document.createElement("nav");
+    nav.className = "guide-nav";
+    nav.setAttribute("aria-label", OC.t("guide.nav", "More guides"));
+    nav.setAttribute("data-i18n-aria-label", "guide.nav");
+    [[-1, "guide.prev", "Previous", "prev"], [1, "guide.next", "Next", "next"]].forEach(function (d) {
+      var g = ORDER[at + d[0]];
+      var a = document.createElement(g ? "a" : "span");
+      a.className = "guide-nav-" + d[3];
+      if (!g) { nav.appendChild(a); return; }
+      a.href = OC.root + "guide/" + g[0] + "/";
+      a.setAttribute("rel", d[3]);
+      var dir = document.createElement("span");
+      dir.className = "dir"; dir.setAttribute("data-i18n", d[1]); dir.setAttribute("data-en", d[2]);
+      dir.textContent = OC.t(d[1], d[2]);
+      var name = document.createElement("strong");
+      name.setAttribute("data-i18n", g[1]); name.setAttribute("data-en", g[2]);
+      name.textContent = OC.t(g[1], g[2]);
+      a.appendChild(dir); a.appendChild(name);
+      nav.appendChild(a);
+    });
+    sourceLink.parentNode.parentNode.insertBefore(nav, sourceLink.parentNode);
+  }
+  function labelNav() {
+    if (!nav) { return; }
+    nav.setAttribute("aria-label", OC.t("guide.nav", "More guides"));
+    nav.querySelectorAll("[data-i18n]").forEach(function (el) { el.textContent = OC.t(el.getAttribute("data-i18n"), el.getAttribute("data-en")); });
+  }
+
   var DOC = box.getAttribute("data-doc") || "effect-studio";
 
   function path(lang) { return "static/help/" + DOC + "." + lang + ".md"; }
@@ -59,8 +103,7 @@
   function load(lang) {
     sourceLink.href = OC.blob(path(lang));
     if (cache[lang]) { show(cache[lang], lang); return; }
-    window.fetch(OC.raw(path(lang)))
-      .then(function (r) { return r.ok ? r.text() : Promise.reject(new Error("HTTP " + r.status)); })
+    OC.fetchText(path(lang))
       .then(function (text) { cache[lang] = text; show(text, lang); })
       .catch(function () {
         // no translation of this guide yet: fall back to English
@@ -69,7 +112,8 @@
   }
 
   OC.whenReady(function () {
+    buildNav();
     load(OC.lang());
-    OC.onLang(function (lang) { load(lang); });
+    OC.onLang(function (lang) { labelNav(); load(lang); });
   });
 })();

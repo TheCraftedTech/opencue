@@ -36,7 +36,7 @@
 
   // English texts for the generated header/footer (German: locales/de.js)
   var CHROME_EN = {
-    "nav.features": "Features", "nav.demo": "Live demo", "nav.download": "Download",
+    "nav.home": "Home", "nav.features": "Features", "nav.demo": "Live demo", "nav.download": "Download",
     "nav.guide": "Docs", "nav.changelog": "Changelog",
     "nav.menu": "Menu", "fab.download": "Download", "nav.label": "Main", "lang.label": "Language",
     "theme.toLight": "Switch to light theme", "theme.toDark": "Switch to dark theme",
@@ -67,6 +67,7 @@
   // ------------------------------------------------------------------ header and footer
 
   var NAV = [
+    { id: "home",      href: "",           key: "nav.home" },
     { id: "features",  href: "features/",  key: "nav.features" },
     { id: "demo",      href: "demo/",      key: "nav.demo" },
     { id: "download",  href: "download/",  key: "nav.download" },
@@ -394,6 +395,21 @@
     });
   }
 
+  // ------------------------------------------------------------------ project text files
+
+  // Text files of the project (guides in static/help, CHANGELOG.md): GitHub first, so the site always shows the newest
+  // text; if GitHub cannot be reached, the same file relative to this site (<site root>/../<path>). That second
+  // address only exists where the whole repository is served - e.g. locally from the repository folder; GitHub Pages
+  // publishes only docs/, so there the fallback finds nothing and the page shows its normal error message.
+  function fetchText(path) {
+    var sources = ["https://raw.githubusercontent.com/" + REPO + "/main/" + path, ROOT + "../" + path];
+    function get(src) {
+      return window.fetch(src).then(function (r) { return r.ok ? r.text() : Promise.reject(new Error("HTTP " + r.status)); })
+        .then(function (text) { return /^\s*<(!doctype|html)/i.test(text) ? Promise.reject(new Error("not a text file")) : text; });
+    }
+    return sources.reduce(function (chain, src) { return chain.catch(function () { return get(src); }); }, Promise.reject(new Error("start")));
+  }
+
   // ------------------------------------------------------------------ scroll aids
   // A thin progress line, and a "Download" pill that shows up once the visitor has scrolled past the first screen
   // (on the home page it jumps to the download band, elsewhere to the download page). Not shown where it would be redundant.
@@ -416,9 +432,14 @@
       document.body.appendChild(fab);
     }
 
-    var targetVisible = false;
-    if (fab && target && "IntersectionObserver" in window) {
-      new IntersectionObserver(function (entries) { targetVisible = entries[0].isIntersecting; update(); }).observe(target);
+    // the pill steps aside while the download band or the footer is on screen
+    var hidden = {};
+    if (fab && "IntersectionObserver" in window) {
+      var seen = new IntersectionObserver(function (entries) {
+        entries.forEach(function (e) { hidden[e.target.id] = e.isIntersecting; });
+        update();
+      });
+      [target, document.getElementById("site-footer")].forEach(function (el) { if (el) { seen.observe(el); } });
     }
 
     var ticking = false;
@@ -427,7 +448,7 @@
       var max = document.documentElement.scrollHeight - window.innerHeight;
       var y = window.pageYOffset || document.documentElement.scrollTop || 0;
       bar.style.transform = "scaleX(" + (max > 0 ? Math.min(1, y / max) : 0) + ")";
-      if (fab) { fab.classList.toggle("show", y > Math.max(500, window.innerHeight * .8) && !targetVisible); }
+      if (fab) { fab.classList.toggle("show", y > Math.max(500, window.innerHeight * .8) && !hidden.download && !hidden["site-footer"]); }
     }
     window.addEventListener("scroll", function () { if (!ticking) { ticking = true; window.requestAnimationFrame(update); } }, { passive: true });
     window.addEventListener("resize", update);
@@ -475,6 +496,7 @@
     onReleases: function (fn) { listCallbacks.push(fn); if (listData) { fn(listData); } },
     root: ROOT,
     repo: REPO,
+    fetchText: fetchText,
     raw: function (path) { return "https://raw.githubusercontent.com/" + REPO + "/main/" + path; },
     blob: function (path) { return "https://github.com/" + REPO + "/blob/main/" + path; }
   };

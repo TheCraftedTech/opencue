@@ -106,8 +106,7 @@
   });
 
   OC.whenReady(function () {
-    window.fetch(OC.raw(SOURCE))
-      .then(function (r) { return r.ok ? r.text() : Promise.reject(new Error("HTTP " + r.status)); })
+    OC.fetchText(SOURCE)
       .then(render)
       .catch(showError);
   });

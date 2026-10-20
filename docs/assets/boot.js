@@ -35,6 +35,11 @@
     "changelog":      { js: ["assets/md.js", "assets/pages/changelog.js"] },
     "guide":          {},
     "guide-effects":  { js: ["assets/md.js", "assets/toc.js", "assets/pages/guide.js"] },
+    "guide-start": { js: ["assets/md.js", "assets/toc.js", "assets/pages/guide.js"] },
+    "guide-cmd": { js: ["assets/md.js", "assets/toc.js", "assets/pages/guide.js"] },
+    "guide-fix": { js: ["assets/md.js", "assets/toc.js", "assets/pages/guide.js"] },
+    "guide-rem": { js: ["assets/md.js", "assets/toc.js", "assets/pages/guide.js"] },
+    "guide-keys": { js: ["assets/md.js", "assets/toc.js", "assets/pages/guide.js"] },
     "demo":           { css: ["assets/demo.css"], js: ["assets/demo/show.js", "assets/demo/stage.js", "assets/demo/ui.js", "assets/pages/demo.js"] },
     "e404":           {}
   };

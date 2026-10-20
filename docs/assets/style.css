@@ -159,7 +159,7 @@ code, kbd { font-family: var(--font-mono); }
 :root[data-theme="light"] .theme-btn .ico-moon { display: block; }
 .menu-btn { display: none; }
 
-@media (max-width: 54rem) {
+@media (max-width: 60rem) {
   .menu-btn { display: inline-grid; margin-left: auto; }
   .tools { order: 2; }
   .nav {
@@ -460,6 +460,7 @@ code, kbd { font-family: var(--font-mono); }
 .prose .code-block pre { font-size: .875rem; line-height: 1.65; }
 .prose blockquote { border-left: 3px solid var(--accent-fill); margin-left: 0; padding: .2rem 0 .2rem 1rem; color: var(--text-2); }
 .prose hr { border: 0; border-top: 1px solid var(--border); margin-block: 2rem; }
+.prose hr + h2 { border-top: 0; padding-top: 0; margin-top: 2rem; }   /* the guides separate chapters with --- already */
 .prose .table-wrap { overflow-x: auto; border: 1px solid var(--border); }
 .prose table { border-collapse: collapse; width: 100%; font-size: .9rem; }
 .prose th, .prose td { text-align: left; vertical-align: top; padding: .55rem .75rem; border-bottom: 1px solid var(--border); }
@@ -540,7 +541,7 @@ code, kbd { font-family: var(--font-mono); }
 .nav a.nav-cta { color: var(--accent-ink); background: var(--accent-fill); border-bottom-color: var(--accent-fill); font-weight: 600; margin-left: .35rem; }
 .nav a.nav-cta:hover { color: var(--accent-ink); background: color-mix(in srgb, var(--accent-fill) 88%, white); }
 .nav a.nav-cta[aria-current="page"] { color: var(--accent-ink); }
-@media (max-width: 54rem) { .nav a.nav-cta { margin: .5rem 0 0; text-align: center; } }
+@media (max-width: 60rem) { .nav a.nav-cta { margin: .5rem 0 0; text-align: center; } }
 
 .scroll-progress { position: fixed; left: 0; right: 0; top: 0; height: 3px; z-index: 60; pointer-events: none; }
 .scroll-progress i { display: block; height: 100%; background: var(--accent-fill); transform-origin: 0 50%; transform: scaleX(0); }
@@ -554,6 +555,26 @@ code, kbd { font-family: var(--font-mono); }
 }
 .fab-dl.show { opacity: 1; transform: none; visibility: visible; }
 .fab-dl:hover { background: color-mix(in srgb, var(--accent-fill) 88%, white); text-decoration: none; }
+
+/* ====================================================================== Guide: previous / next */
+
+.guide-nav { display: grid; grid-template-columns: minmax(0, 1fr); gap: .8rem; margin-top: 3rem; padding-top: 2rem; border-top: 1px solid var(--border); }
+.guide-nav a {
+  display: flex; flex-direction: column; gap: .15rem; padding: .9rem 1.1rem; text-decoration: none; color: var(--text-1);
+  background: var(--surface-1); border: 1px solid var(--border); transition: border-color .2s, background-color .2s, box-shadow .2s;
+}
+.guide-nav a:hover { border-color: var(--accent-fill); background: color-mix(in srgb, var(--accent-fill) 8%, var(--surface-1)); box-shadow: 0 0 0 1px var(--accent-fill), 0 0 26px -2px var(--glow); }
+.guide-nav .dir { color: var(--text-3); font-size: .78rem; letter-spacing: .12em; text-transform: uppercase; }
+.guide-nav strong { font-size: 1.0625rem; }
+.guide-nav a:hover strong { color: var(--accent); }
+.guide-nav .guide-nav-prev .dir::before { content: "← "; }
+.guide-nav .guide-nav-next .dir::after { content: " →"; }
+.guide-nav .guide-nav-next { text-align: right; }
+span.guide-nav-prev:empty, span.guide-nav-next:empty { display: none; }
+@media (min-width: 36rem) {
+  .guide-nav { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .guide-nav .guide-nav-next { grid-column: 2; }
+}
 
 /* ====================================================================== Version list (download page) */
 
