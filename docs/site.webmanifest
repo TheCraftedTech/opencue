@@ -1,0 +1,14 @@
+{
+  "name": "OpenCue",
+  "short_name": "OpenCue",
+  "description": "Free, open-source DMX lighting console for Windows.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "browser",
+  "background_color": "#0a0a0b",
+  "theme_color": "#0a0a0b",
+  "icons": [
+    { "src": "assets/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "assets/icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}

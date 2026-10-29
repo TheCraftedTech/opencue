@@ -1,0 +1,7 @@
+# OpenCue website (https://thecraftedtech.github.io/opencue/)
+# Note: crawlers only read robots.txt at the root of a domain. This file documents the intent and the sitemap;
+# the thank-you page and the 404 page carry their own "noindex" meta tag.
+User-agent: *
+Allow: /
+
+Sitemap: https://thecraftedtech.github.io/opencue/sitemap.xml

@@ -5,7 +5,7 @@
  *
  *   - ROOT      the absolute address of the site's root folder, worked out from where this very file was loaded
  *               (https://thecraftedtech.github.io/opencue/ when published, file:///…/docs/ when opened from disk)
- *   - PRODUCTION  the published address, stored once here (used for the canonical link)
+ *   - PRODUCTION  the published address, stored once here (the static canonical links in the pages use the same address)
  *   - PAGES     which style sheets and scripts each page needs
  *   - links     in the page text, a link written as href="@features/" means "<ROOT>features/" (see main.js)
  *
@@ -30,6 +30,7 @@
     "*":              { css: ["assets/style.css"], js: ["assets/locales/de.js", "assets/main.js"] },
     "home":           { js: ["assets/demo/show.js", "assets/demo/stage.js", "assets/pages/home.js"] },
     "features":       {},
+    "panels":         {},
     "download":       { js: ["assets/pages/versions.js"] },
     "download-thanks": { js: ["assets/pages/thanks.js"] },
     "changelog":      { js: ["assets/md.js", "assets/pages/changelog.js"] },
@@ -57,13 +58,13 @@
   }
 
   addMeta("color-scheme", "dark light");
-  addMeta("theme-color", "#0a0a0b");
-  addLink({ rel: "icon", href: url("assets/logo-mark.svg"), type: "image/svg+xml" });
-  addLink({ rel: "icon", href: url("assets/icon-192.png"), sizes: "192x192", type: "image/png" });
-  addLink({ rel: "apple-touch-icon", href: url("assets/apple-touch-icon.png") });
-  if (/^https?:/.test(location.protocol) && PAGE !== "e404") {
-    var rel = location.href.indexOf(ROOT) === 0 ? location.href.slice(ROOT.length).replace(/[?#].*$/, "") : "";
-    addLink({ rel: "canonical", href: PRODUCTION + rel });
+  // canonical address, Open Graph, icons and theme colour are written statically into each page's <head> (crawlers
+  // and link previews do not run scripts); only pages without them (thank-you page, 404) get icons from here
+  if (!doc.head.querySelector('link[rel="icon"]')) {
+    addMeta("theme-color", "#0a0a0b");
+    addLink({ rel: "icon", href: url("assets/logo-mark.svg"), type: "image/svg+xml" });
+    addLink({ rel: "icon", href: url("assets/icon-192.png"), sizes: "192x192", type: "image/png" });
+    addLink({ rel: "apple-touch-icon", href: url("assets/apple-touch-icon.png") });
   }
 
   var common = PAGES["*"], mine = PAGES[PAGE] || {};

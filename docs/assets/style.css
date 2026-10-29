@@ -586,3 +586,17 @@ span.guide-nav-prev:empty, span.guide-nav-next:empty { display: none; }
 .ver-meta { color: var(--text-2); font-family: var(--font-mono); font-size: .875rem; }
 .ver-actions { display: flex; flex-wrap: wrap; gap: .5rem; }
 @media (min-width: 46rem) { .ver-row { grid-template-columns: minmax(8rem, 1fr) minmax(0, 1fr) auto; } }
+
+/* ====================================================================== Panels gallery */
+
+.panel-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1.2rem; margin-top: 2rem; }
+@media (min-width: 52rem) { .panel-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.pcard { display: flex; flex-direction: column; background: var(--surface-1); border: 1px solid var(--border); transition: border-color .2s, box-shadow .2s; }
+.alt .pcard { background: var(--surface-2); }
+.pcard:hover { border-color: var(--accent-fill); box-shadow: 0 0 0 1px var(--accent-fill), 0 0 26px -2px var(--glow); }
+.pcard-img { display: grid; place-items: center; height: 17rem; padding: 1rem; background: #050506; border-bottom: 1px solid var(--border); }
+.pcard-img img { width: auto; height: auto; max-width: 100%; max-height: 15rem; object-fit: contain; border: 1px solid #323237; }
+.pcard-body { display: grid; gap: .4rem; padding: 1.1rem 1.3rem 1.3rem; align-content: start; }
+.pcard h3 { font-size: 1.15rem; }
+.pcard p { color: var(--text-2); font-size: .9375rem; }
+.pcard .pcard-lead { color: var(--text-1); }

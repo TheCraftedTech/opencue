@@ -1,0 +1,205 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
+  <url>
+    <loc>https://thecraftedtech.github.io/opencue/</loc>
+    <lastmod>2026-10-29</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>1.0</priority>
+    <image:image>
+      <image:loc>https://thecraftedtech.github.io/opencue/assets/img/demo-window.webp</image:loc>
+      <image:title>The live demo window: 3D stage, cue list, executor, fixture control, presets and effects</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>https://thecraftedtech.github.io/opencue/assets/img/program-sim.webp</image:loc>
+      <image:title>OpenCue's 3D simulation: a rock stage with magenta, cyan and white light beams</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>https://thecraftedtech.github.io/opencue/assets/img/program-overview.webp</image:loc>
+      <image:title>OpenCue's default layout: cue list, fixture list, executor, command line and the colour faders of the fixture control</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://thecraftedtech.github.io/opencue/features/</loc>
+    <lastmod>2026-10-29</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.9</priority>
+    <image:image>
+      <image:loc>https://thecraftedtech.github.io/opencue/assets/img/program-fixture-control.webp</image:loc>
+      <image:title>The fixture control with colour faders in HSV, CMY and RGB</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>https://thecraftedtech.github.io/opencue/assets/img/program-cue-list.webp</image:loc>
+      <image:title>The cue list with five cues, the active one highlighted</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>https://thecraftedtech.github.io/opencue/assets/img/program-studio.webp</image:loc>
+      <image:title>The Effect Studio with a sine effect and its preview curve</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>https://thecraftedtech.github.io/opencue/assets/img/program-sim.webp</image:loc>
+      <image:title>OpenCue's 3D simulation: a rock stage with magenta, cyan and white light beams</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>https://thecraftedtech.github.io/opencue/assets/img/program-fixtures.webp</image:loc>
+      <image:title>The default layout with the command line, command buttons and numpad at the bottom right</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>https://thecraftedtech.github.io/opencue/assets/img/program-dmx.webp</image:loc>
+      <image:title>The DMX monitor panel with live channel values in green</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>https://thecraftedtech.github.io/opencue/assets/img/program-timecode.webp</image:loc>
+      <image:title>The timecode panel with large clock, transport buttons, jump field and speed, above the media player and the cue list</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>https://thecraftedtech.github.io/opencue/assets/img/program-tablet.webp</image:loc>
+      <image:title>A tablet showing OpenCue in its browser: 3D simulation with coloured light beams, cue list, executor and fixture control</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>https://thecraftedtech.github.io/opencue/assets/img/program-stage.webp</image:loc>
+      <image:title>A second layout: the 3D simulation on the left, cue list, executor and fixture control on the right</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>https://thecraftedtech.github.io/opencue/assets/img/program-colors.webp</image:loc>
+      <image:title>The colour settings with dark, light and custom themes and colour fields for every surface</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>https://thecraftedtech.github.io/opencue/assets/img/program-files.webp</image:loc>
+      <image:title>The file manager with the list of shows and buttons to load, rename, copy, download and delete</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>https://thecraftedtech.github.io/opencue/assets/img/program-addpanel.webp</image:loc>
+      <image:title>The "Add Panel" dialog with categories and panel types</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://thecraftedtech.github.io/opencue/panels/</loc>
+    <lastmod>2026-10-29</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://thecraftedtech.github.io/opencue/assets/img/panel-dmx-monitor.webp</image:loc>
+      <image:title>The OpenCue “DMX Monitor” panel</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>https://thecraftedtech.github.io/opencue/assets/img/panel-fixture-list.webp</image:loc>
+      <image:title>The OpenCue “Fixture List” panel</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>https://thecraftedtech.github.io/opencue/assets/img/panel-fixture-control.webp</image:loc>
+      <image:title>The OpenCue “Fixture Control” panel</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>https://thecraftedtech.github.io/opencue/assets/img/panel-variables-effects.webp</image:loc>
+      <image:title>The OpenCue “Variables / Effects” panel</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>https://thecraftedtech.github.io/opencue/assets/img/panel-effect-studio.webp</image:loc>
+      <image:title>The OpenCue “Effect Studio” panel</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>https://thecraftedtech.github.io/opencue/assets/img/panel-cue-list.webp</image:loc>
+      <image:title>The OpenCue “Cue List” panel</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>https://thecraftedtech.github.io/opencue/assets/img/panel-executor.webp</image:loc>
+      <image:title>The OpenCue “Executor (cue playback)” panel</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>https://thecraftedtech.github.io/opencue/assets/img/panel-command-line.webp</image:loc>
+      <image:title>The OpenCue “Command Line” panel</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>https://thecraftedtech.github.io/opencue/assets/img/panel-command-numpad.webp</image:loc>
+      <image:title>The OpenCue “Command Numpad” panel</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>https://thecraftedtech.github.io/opencue/assets/img/panel-command-buttons.webp</image:loc>
+      <image:title>The OpenCue “Command Buttons” panel</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>https://thecraftedtech.github.io/opencue/assets/img/panel-button.webp</image:loc>
+      <image:title>The OpenCue “Button” panel</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>https://thecraftedtech.github.io/opencue/assets/img/panel-fader.webp</image:loc>
+      <image:title>The OpenCue “Fader” panel</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>https://thecraftedtech.github.io/opencue/assets/img/panel-timecode.webp</image:loc>
+      <image:title>The OpenCue “Timecode” panel</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>https://thecraftedtech.github.io/opencue/assets/img/panel-video-audio-player.webp</image:loc>
+      <image:title>The OpenCue “Video/Audio Player” panel</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>https://thecraftedtech.github.io/opencue/assets/img/panel-livestream-camera.webp</image:loc>
+      <image:title>The OpenCue “Livestream / Camera” panel</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>https://thecraftedtech.github.io/opencue/assets/img/panel-3d-simulation.webp</image:loc>
+      <image:title>The OpenCue “3D Simulation” panel</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://thecraftedtech.github.io/opencue/demo/</loc>
+    <lastmod>2026-10-29</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://thecraftedtech.github.io/opencue/download/</loc>
+    <lastmod>2026-10-29</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://thecraftedtech.github.io/opencue/changelog/</loc>
+    <lastmod>2026-10-29</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://thecraftedtech.github.io/opencue/guide/</loc>
+    <lastmod>2026-10-29</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://thecraftedtech.github.io/opencue/guide/getting-started/</loc>
+    <lastmod>2026-10-29</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://thecraftedtech.github.io/opencue/guide/commands/</loc>
+    <lastmod>2026-10-29</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://thecraftedtech.github.io/opencue/guide/fixtures/</loc>
+    <lastmod>2026-10-29</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://thecraftedtech.github.io/opencue/guide/effect-studio/</loc>
+    <lastmod>2026-10-29</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://thecraftedtech.github.io/opencue/guide/remote/</loc>
+    <lastmod>2026-10-29</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://thecraftedtech.github.io/opencue/guide/keyboard-shortcuts/</loc>
+    <lastmod>2026-10-29</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+  </url>
+</urlset>
