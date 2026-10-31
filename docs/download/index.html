@@ -82,7 +82,18 @@
           <h2 data-i18n="dl.setup.title">Install, requirements and more</h2>
         </div>
 
-        <div class="grid-eq" style="margin-top:2.2rem">
+        <div class="info notice" id="warning" data-reveal style="margin-top:2.2rem">
+          <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" aria-hidden="true"><path d="M12 3l9 16H3zM12 10v4M12 17v.5"/></svg>
+          <h3 data-i18n="dl.warn.title">Windows or your browser warns about the download?</h3>
+          <p data-i18n="dl.warn.lead">The installer is not code-signed yet – a signing certificate costs money, and OpenCue is a free project. So Windows and some browsers see it as a file they do not know. That is a missing certificate, not a virus finding.</p>
+          <ul>
+            <li data-i18n="dl.warn.b1">In the browser: open the download list, open the “…” menu of the file and choose “Keep” (in Edge, if asked again: “Show more” → “Keep anyway”).</li>
+            <li data-i18n="dl.warn.b2">When starting the installer: if Windows shows “Windows protected your PC”, click “More info” and then “Run anyway”.</li>
+          </ul>
+          <p class="fine" style="margin-top:.2rem" data-i18n="dl.warn.src">OpenCue is open source, so you can read the code or build it yourself – see “Run from source” below.</p>
+        </div>
+
+        <div class="grid-eq" style="margin-top:1rem">
           <div class="info" data-reveal>
             <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" aria-hidden="true"><path d="M12 3v13M6 11l6 6 6-6M4 21h16"/></svg>
             <h3 data-i18n="dl.install.title">Install in four steps</h3>

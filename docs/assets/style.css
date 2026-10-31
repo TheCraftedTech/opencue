@@ -600,3 +600,13 @@ span.guide-nav-prev:empty, span.guide-nav-next:empty { display: none; }
 .pcard h3 { font-size: 1.15rem; }
 .pcard p { color: var(--text-2); font-size: .9375rem; }
 .pcard .pcard-lead { color: var(--text-1); }
+
+/* ====================================================================== Download hint (unsigned installer) */
+
+.notice h3 { font-size: 1.0625rem; }
+.notice ul { margin-top: .1rem; }
+.thanks-note {
+  display: grid; gap: .3rem; max-width: 40rem; margin: 2.2rem auto 0; padding: 1rem 1.2rem; text-align: left;
+  background: var(--surface-1); border: 1px solid var(--border-strong); font-size: .9rem; color: var(--text-2);
+}
+.thanks-note strong { color: var(--text-1); font-size: .9375rem; }
