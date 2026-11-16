@@ -48,7 +48,7 @@
     "foot.latest": "Latest version",
     "foot.label": "Project links",
     "foot.source": "Source code", "foot.releases": "Releases", "foot.license": "License",
-    "foot.issues": "Report a problem",
+    "foot.issues": "Report a problem", "foot.codesigning": "Code Signing Policy",
     "copy": "Copy", "copied": "Copied"
   };
 
@@ -129,6 +129,7 @@
               '<li><a href="' + base + '/releases" rel="noopener" data-i18n="foot.releases">' + CHROME_EN["foot.releases"] + "</a></li>" +
               '<li><a href="' + base + '/issues" rel="noopener" data-i18n="foot.issues">' + CHROME_EN["foot.issues"] + "</a></li>" +
               '<li><a href="' + base + '/blob/main/LICENSE" rel="noopener" data-i18n="foot.license">' + CHROME_EN["foot.license"] + "</a></li>" +
+              '<li><a href="' + url("code-signing/") + '" data-i18n="foot.codesigning">' + CHROME_EN["foot.codesigning"] + "</a></li>" +
             "</ul></nav>" +
             '<div class="foot-col"><h2 data-i18n="foot.privacyTitle">' + CHROME_EN["foot.privacyTitle"] + '</h2><p data-i18n="foot.privacy">' + CHROME_EN["foot.privacy"] + "</p></div>" +
           "</div>" +

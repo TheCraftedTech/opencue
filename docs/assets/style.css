@@ -610,3 +610,16 @@ span.guide-nav-prev:empty, span.guide-nav-next:empty { display: none; }
   background: var(--surface-1); border: 1px solid var(--border-strong); font-size: .9rem; color: var(--text-2);
 }
 .thanks-note strong { color: var(--text-1); font-size: .9375rem; }
+
+/* ====================================================================== Code signing policy */
+
+.cs-note { margin-top: 1.2rem; padding: .7rem 1rem; max-width: 34rem; background: var(--surface-2); border: 1px solid var(--border-strong); font-size: .9rem; color: var(--text-2); }
+.cs-note a { font-weight: 700; margin-right: .3rem; }
+.cs-dl { display: grid; gap: .6rem; margin: 1.2rem 0 0; }
+.cs-dl > div { display: grid; grid-template-columns: minmax(0, 1fr); gap: .1rem; padding: .7rem 1rem; background: var(--surface-1); border: 1px solid var(--border); }
+.cs-dl dt { font-size: .72rem; letter-spacing: .1em; text-transform: uppercase; color: var(--text-3); }
+.cs-dl dd { margin: 0; overflow-wrap: anywhere; }
+@media (min-width: 40rem) { .cs-dl > div { grid-template-columns: 9rem minmax(0, 1fr); gap: 1rem; align-items: baseline; } }
+.cs-attr { margin-top: .4rem; }
+.cs-attr strong { color: var(--text-1); }
+.prose blockquote { font-size: 1.0625rem; }

@@ -31,6 +31,7 @@
     "home":           { js: ["assets/demo/show.js", "assets/demo/stage.js", "assets/pages/home.js"] },
     "features":       {},
     "panels":         {},
+    "code-signing":   {},
     "download":       { js: ["assets/pages/versions.js"] },
     "download-thanks": { js: ["assets/pages/thanks.js"] },
     "changelog":      { js: ["assets/md.js", "assets/pages/changelog.js"] },
