@@ -16,11 +16,24 @@
   // reading order = order of the cards on the docs overview: [folder, text key, English title]
   var ORDER = [
     ["getting-started", "guide.start.t", "Getting started"],
+    ["whatsnew", "guide.whatsnew.t", "What's new"],
     ["commands", "guide.cmd.t", "Command reference"],
+    ["keyboard-shortcuts", "guide.keys.t", "Keyboard shortcuts"],
     ["fixtures", "guide.fix.t", "Fixtures and patching"],
+    ["fixture-editor", "guide.fixture-editor.t", "Own fixtures (editor)"],
     ["effect-studio", "guide.fx.t", "Effect Studio guide"],
+    ["timeline", "guide.timeline.t", "Timeline editor and LTC"],
+    ["audio", "guide.audio.t", "Audio: lights that react to music"],
     ["remote", "guide.rem.t", "Remote control"],
-    ["keyboard-shortcuts", "guide.keys.t", "Keyboard shortcuts"]
+    ["api", "guide.api.t", "REST API"],
+    ["midi", "guide.midi.t", "MIDI"],
+    ["automation", "guide.automation.t", "Schedule, time of day and OSC"],
+    ["dmx-input", "guide.dmx-input.t", "DMX input (receive Art-Net and sACN)"],
+    ["voice-commands", "guide.voice-commands.t", "Voice commands"],
+    ["assistant", "guide.assistant.t", "AI assistant"],
+    ["show-safety", "guide.show-safety.t", "Backups, locks and quitting safely"],
+    ["startup-options", "guide.startup-options.t", "Startup options and server mode"],
+    ["error-codes", "guide.error-codes.t", "Error codes and troubleshooting"]
   ];
 
   // "Previous / Next" buttons below the guide, so the chapters can be read one after the other

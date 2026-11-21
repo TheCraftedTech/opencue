@@ -3,11 +3,12 @@
  *
  *  1. Header and footer: built here from ONE definition, so every page shares them.
  *  2. Links written as href="@features/" are turned into <site root>features/ (the root comes from boot.js).
- *  3. Language: English is the page's own text; German comes from locales/de.js (window.OC_DE).
- *     Choice: ?lang=de|en, else the saved choice, else the first browser language we translate.
- *     The saved choice lives in localStorage (this browser only; no cookies).
- *  4. Newest release: read from the GitHub API (the repository is hosted there anyway), cached for an
- *     hour. Buttons marked data-download switch from the releases page to the installer's direct link.
+ *  3. Language: English is the page's own text; every other language is a dictionary file locales/<code>.js (en, de, fr, nl, it, es).
+ *     boot.js picks the language first (?lang=xx, else the saved choice, else the first browser language we translate) and loads
+ *     only that dictionary; the language menu in the header loads another one when it is chosen. The choice is saved in
+ *     localStorage (this browser only; no cookies).
+ *  4. Newest release: read from the GitHub API (the repository is hosted there anyway), cached, but always
+ *     checked again (ETag), so a new release shows up at once. Buttons marked data-download switch from the releases page to the installer's direct link.
  *
  * Public helpers for page scripts: window.OC = { t, lang, onLang, whenReady, onRelease, root, raw, blob, … }.
  */
@@ -22,21 +23,19 @@
   var META_DESC = "meta.desc." + META;
 
   var REPO = "TheCraftedTech/opencue";
-  var RELEASE_API = "https://api.github.com/repos/" + REPO + "/releases/latest";
   var RELEASES_API = "https://api.github.com/repos/" + REPO + "/releases?per_page=30";
   var DOWNLOAD_PREFIX = "https://github.com/" + REPO + "/releases/download/";
-  var CACHE_KEY = "opencue-latest-release-2";
-  var LIST_KEY = "opencue-releases";
-  var CACHE_MS = 60 * 60 * 1000;
+  var LIST_KEY = "opencue-releases-3";
+  var FRESH_MS = 30 * 1000;                 // a cached list younger than this is used as is; older ones are checked against GitHub (ETag, free when unchanged)
 
-  var DE = window.OC_DE || {};
+  var LOCALES = window.OC_LOCALES = window.OC_LOCALES || {};     // dictionaries per language (assets/locales/<code>.js), loaded on demand
   var EN = {};               // English texts, collected from the page itself
   var current = "en";
   var listeners = [];
 
-  // English texts for the generated header/footer (German: locales/de.js)
+  // English texts for the generated header/footer (other languages: locales/<code>.js)
   var CHROME_EN = {
-    "nav.home": "Home", "nav.features": "Features", "nav.demo": "Live demo", "nav.download": "Download",
+    "nav.home": "Home", "nav.features": "Features", "nav.panels": "Panels", "nav.demo": "Live demo", "nav.download": "Download",
     "nav.guide": "Docs", "nav.changelog": "Changelog",
     "nav.menu": "Menu", "fab.download": "Download", "nav.label": "Main", "lang.label": "Language",
     "theme.toLight": "Switch to light theme", "theme.toDark": "Switch to dark theme",
@@ -66,9 +65,44 @@
 
   // ------------------------------------------------------------------ header and footer
 
+  // the languages of the site, with their own names (shown in the language menu)
+  var LANGUAGES = [
+    { code: "en", name: "English" }, { code: "de", name: "Deutsch" }, { code: "fr", name: "Français" },
+    { code: "nl", name: "Nederlands" }, { code: "it", name: "Italiano" }, { code: "es", name: "Español" }
+  ];
+  var LANGUAGE_CODES = LANGUAGES.map(function (l) { return l.code; });
+
+  var SVG_ATTR = ' viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" aria-hidden="true"';
+
+  // desktop: a button with the current language that opens a list
+  function langDropdown() {
+    var items = LANGUAGES.map(function (l) {
+      return '<li role="none"><button type="button" role="menuitemradio" aria-checked="false" data-lang="' + l.code + '" lang="' + l.code + '">' +
+        '<span class="lang-name">' + l.name + '</span><span class="lang-code">' + l.code.toUpperCase() + "</span></button></li>";
+    }).join("");
+    return '<div class="lang">' +
+      '<button type="button" class="lang-btn" id="lang-btn" aria-haspopup="true" aria-expanded="false" aria-controls="lang-menu" aria-label="' + CHROME_EN["lang.label"] + '" data-i18n-aria-label="lang.label">' +
+        '<svg width="16" height="16"' + SVG_ATTR + '><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18"/></svg>' +
+        '<span class="lang-cur">EN</span>' +
+        '<svg class="chev" width="14" height="14"' + SVG_ATTR + '><path d="M6 9l6 6 6-6"/></svg>' +
+      "</button>" +
+      '<ul class="lang-menu" id="lang-menu" role="menu" hidden>' + items + "</ul>" +
+    "</div>";
+  }
+
+  // phone: the same choice as a block of buttons at the end of the opened menu
+  function langChips() {
+    var chips = LANGUAGES.map(function (l) {
+      return '<button type="button" data-lang="' + l.code + '" lang="' + l.code + '" aria-pressed="false">' + l.name + "</button>";
+    }).join("");
+    return '<div class="nav-extra"><p class="nav-extra-title" data-i18n="lang.label">' + CHROME_EN["lang.label"] + "</p>" +
+      '<div class="lang-chips" role="group" aria-label="' + CHROME_EN["lang.label"] + '" data-i18n-aria-label="lang.label">' + chips + "</div></div>";
+  }
+
   var NAV = [
     { id: "home",      href: "",           key: "nav.home" },
     { id: "features",  href: "features/",  key: "nav.features" },
+    { id: "panels",    href: "panels/",    key: "nav.panels" },
     { id: "demo",      href: "demo/",      key: "nav.demo" },
     { id: "download",  href: "download/",  key: "nav.download" },
     { id: "guide",     href: "guide/",     key: "nav.guide" },
@@ -95,19 +129,16 @@
             '<img src="' + url("assets/logo-mark.svg") + '" width="36" height="36" alt="">' +
             '<span class="brand-name">Open<span>Cue</span></span>' +
           "</a>" +
-          '<nav id="site-nav" class="nav" aria-label="Main" data-i18n-aria-label="nav.label">' + links + "</nav>" +
+          '<nav id="site-nav" class="nav" aria-label="Main" data-i18n-aria-label="nav.label">' + links + langChips() + "</nav>" +
           '<div class="tools">' +
-            '<div class="lang" role="group" aria-label="Language" data-i18n-aria-label="lang.label">' +
-              '<button type="button" data-lang="en" lang="en" aria-pressed="true">EN</button>' +
-              '<button type="button" data-lang="de" lang="de" aria-pressed="false">DE</button>' +
-            "</div>" +
+            langDropdown() +
             '<button type="button" class="icon-btn theme-btn" id="theme-toggle">' +
               '<svg class="ico-sun" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/></svg>' +
               '<svg class="ico-moon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg>' +
             "</button>" +
           "</div>" +
           '<button type="button" class="icon-btn menu-btn" aria-expanded="false" aria-controls="site-nav" aria-label="' + CHROME_EN["nav.menu"] + '" data-i18n-aria-label="nav.menu">' +
-            '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" aria-hidden="true"><path d="M3 6h18M3 12h18M3 18h18"/></svg>' +
+            '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" aria-hidden="true"><path class="ico-burger" d="M3 6h18M3 12h18M3 18h18"/><path class="ico-x" d="M5 5l14 14M19 5L5 19"/></svg>' +
           "</button>" +
         "</div>";
     }
@@ -137,23 +168,78 @@
         "</div>";
     }
 
-    var menuBtn = document.querySelector(".menu-btn");
-    var nav = document.getElementById("site-nav");
-    if (menuBtn && nav) {
-      menuBtn.addEventListener("click", function () {
-        var open = nav.classList.toggle("open");
-        menuBtn.setAttribute("aria-expanded", open ? "true" : "false");
-      });
-      nav.addEventListener("click", function (e) {
-        if (e.target.tagName === "A") { nav.classList.remove("open"); menuBtn.setAttribute("aria-expanded", "false"); }
-      });
-      document.addEventListener("keydown", function (e) {
-        if (e.key === "Escape" && nav.classList.contains("open")) { nav.classList.remove("open"); menuBtn.setAttribute("aria-expanded", "false"); menuBtn.focus(); }
-      });
-    }
+    var backdrop = document.createElement("div");
+    backdrop.className = "nav-backdrop";
+    document.body.appendChild(backdrop);
+    setupMenus();
 
     var themeBtn = document.getElementById("theme-toggle");
     if (themeBtn) { themeBtn.addEventListener("click", function () { OCBoot.theme.toggle(); labelTheme(); }); }
+  }
+
+  // phone menu (burger) and language menu (dropdown): open/close, outside click, Escape, arrow keys
+  function setupMenus() {
+    var menuBtn = document.querySelector(".menu-btn");
+    var nav = document.getElementById("site-nav");
+    var backdrop = document.querySelector(".nav-backdrop");
+    var langBtn = document.getElementById("lang-btn");
+    var langMenu = document.getElementById("lang-menu");
+
+    function setMenu(open, focusCurrent) {
+      if (!langBtn || !langMenu) { return; }
+      langMenu.hidden = !open;
+      langBtn.setAttribute("aria-expanded", open ? "true" : "false");
+      if (open && focusCurrent) { (langMenu.querySelector('[aria-checked="true"]') || langMenu.querySelector("button")).focus(); }
+    }
+    function setNav(open) {
+      if (!menuBtn || !nav) { return; }
+      nav.classList.toggle("open", open);
+      html.classList.toggle("nav-open", open);
+      menuBtn.setAttribute("aria-expanded", open ? "true" : "false");
+      if (open) { setMenu(false); }
+    }
+
+    if (menuBtn && nav) {
+      menuBtn.addEventListener("click", function () { setNav(!nav.classList.contains("open")); });
+      nav.addEventListener("click", function (e) { if (e.target.closest("a")) { setNav(false); } });
+      if (backdrop) { backdrop.addEventListener("click", function () { setNav(false); }); }
+    }
+    if (langBtn && langMenu) {
+      langBtn.addEventListener("click", function () { setMenu(langMenu.hidden, true); });
+      langBtn.addEventListener("keydown", function (e) {
+        if (e.key === "ArrowDown" || e.key === "ArrowUp") { e.preventDefault(); setMenu(true, true); }
+      });
+      langMenu.addEventListener("keydown", function (e) {
+        var items = Array.prototype.slice.call(langMenu.querySelectorAll("button"));
+        var i = items.indexOf(document.activeElement);
+        if (e.key === "ArrowDown") { e.preventDefault(); items[(i + 1) % items.length].focus(); }
+        else if (e.key === "ArrowUp") { e.preventDefault(); items[(i - 1 + items.length) % items.length].focus(); }
+        else if (e.key === "Home") { e.preventDefault(); items[0].focus(); }
+        else if (e.key === "End") { e.preventDefault(); items[items.length - 1].focus(); }
+        else if (e.key === "Tab") { setMenu(false); }
+      });
+    }
+
+    document.addEventListener("click", function (e) {
+      var choice = e.target.closest(".lang-menu [data-lang], .lang-chips [data-lang]");
+      if (choice) {
+        setLanguage(choice.getAttribute("data-lang"));
+        setMenu(false);
+        if (choice.closest(".lang-chips")) { setNav(false); } else if (langBtn) { langBtn.focus(); }
+        return;
+      }
+      if (langMenu && !langMenu.hidden && !e.target.closest(".lang")) { setMenu(false); }
+    });
+    document.addEventListener("keydown", function (e) {
+      if (e.key !== "Escape") { return; }
+      if (langMenu && !langMenu.hidden) { setMenu(false); if (langBtn) { langBtn.focus(); } }
+      else if (nav && nav.classList.contains("open")) { setNav(false); if (menuBtn) { menuBtn.focus(); } }
+    });
+    if (window.matchMedia) {         // back to a wide window: the phone menu closes by itself
+      var wide = window.matchMedia("(min-width: 66.0625rem)");
+      var onWide = function (m) { if (m.matches) { setNav(false); } };
+      if (wide.addEventListener) { wide.addEventListener("change", onWide); } else if (wide.addListener) { wide.addListener(onWide); }
+    }
   }
 
   // in page text, href="@features/" means "<site root>features/"
@@ -194,13 +280,32 @@
 
   // t(key) for page texts; t(key, englishFallback) for texts that only exist in a script
   function t(key, fallback) {
-    if (current === "de" && DE[key] !== undefined) { return DE[key]; }
+    var dict = LOCALES[current];
+    if (current !== "en" && dict && dict[key] !== undefined) { return dict[key]; }
     if (EN[key] !== undefined) { return EN[key]; }
     return fallback !== undefined ? fallback : key;
   }
 
+  // shows which language is active: the code in the dropdown button, the tick in the list, the pressed chip in the phone menu
+  function markLanguage() {
+    var name = current;
+    LANGUAGES.forEach(function (l) { if (l.code === current) { name = l.name; } });
+    document.querySelectorAll(".lang-cur").forEach(function (el) { el.textContent = current.toUpperCase(); });
+    var btn = document.getElementById("lang-btn");
+    if (btn) { btn.setAttribute("aria-label", t("lang.label") + ": " + name); }
+    document.querySelectorAll(".lang-menu [data-lang]").forEach(function (b) { b.setAttribute("aria-checked", b.getAttribute("data-lang") === current ? "true" : "false"); });
+    document.querySelectorAll(".lang-chips [data-lang]").forEach(function (b) { b.setAttribute("aria-pressed", b.getAttribute("data-lang") === current ? "true" : "false"); });
+  }
+
+  // loads the dictionary if needed, remembers the choice, switches the page
+  function setLanguage(code) {
+    if (LANGUAGE_CODES.indexOf(code) < 0) { return; }
+    store(OCBoot.languageKey, code);
+    OCBoot.loadLocale(code).then(function () { applyLanguage(code); }, function () { /* dictionary not reachable: stay in the current language */ });
+  }
+
   function applyLanguage(lang) {
-    current = lang === "de" ? "de" : "en";
+    current = LANGUAGE_CODES.indexOf(lang) >= 0 && (lang === "en" || LOCALES[lang]) ? lang : "en";
     html.lang = current;
     document.title = t(META_TITLE);
     var meta = document.querySelector('meta[name="description"]');
@@ -215,41 +320,44 @@
         el.setAttribute(attr, t(el.getAttribute("data-i18n-" + attr)));
       });
     });
-    document.querySelectorAll(".lang button").forEach(function (btn) {
-      btn.setAttribute("aria-pressed", btn.getAttribute("data-lang") === current ? "true" : "false");
-    });
+    markLanguage();
     labelTheme();
     labelCopyButtons();
     listeners.forEach(function (fn) { try { fn(current); } catch (e) { /* a page script failed: keep going */ } });
   }
 
-  function initialLanguage() {
-    var fromUrl = /[?&]lang=(de|en)\b/.exec(window.location.search);
-    if (fromUrl) { return fromUrl[1]; }
-    var saved = store("opencue-lang");
-    if (saved === "de" || saved === "en") { return saved; }
-    // first browser language we have a translation for (e.g. ["fr-CH", "de-AT", "en"] -> de)
-    var langs = navigator.languages && navigator.languages.length ? navigator.languages : [navigator.language || "en"];
-    for (var i = 0; i < langs.length; i++) {
-      var code = String(langs[i]).slice(0, 2).toLowerCase();
-      if (code === "de" || code === "en") { return code; }
-    }
-    return "en";
-  }
+  function initialLanguage() { return OCBoot.language; }     // chosen in boot.js, whose dictionary is already loaded
 
-  // ------------------------------------------------------------------ newest release
+  // ------------------------------------------------------------------ releases (one source: the list of published installers)
+  //
+  // The list (newest first) also gives "the newest release": the download button and the version list can never disagree.
+  // Cached copy: shown at once (no empty buttons), then ALWAYS checked against GitHub in the background - unless it is
+  // younger than FRESH_MS. The check is a conditional request (ETag): an unchanged answer (304) costs no API quota.
+  // Pages that START a download (pages/thanks.js) wait for the checked ("fresh") answer; callbacks get (data, fresh).
 
   var releaseCallbacks = [];
   var releaseData = null;
+  var releaseFresh = false;
+  var listCallbacks = [];
+  var listData = null;
+  var listFresh = false;
 
-  function showRelease(rel) {
+  function showRelease(rel, fresh) {
     releaseData = rel;
+    releaseFresh = !!fresh;
     document.querySelectorAll("[data-direct]").forEach(function (a) { a.setAttribute("href", rel.url); });
     document.querySelectorAll("[data-version]").forEach(function (el) { el.textContent = "v" + rel.version; });
     document.querySelectorAll("[data-filename]").forEach(function (el) { el.textContent = rel.file; });
     document.querySelectorAll("[data-release-size]").forEach(function (el) { el.textContent = rel.size ? (rel.size / 1048576).toFixed(1) + " MB" : "–"; });
     document.querySelectorAll("[data-release-date]").forEach(function (el) { el.textContent = rel.date ? rel.date.slice(0, 10) : "–"; });
-    releaseCallbacks.forEach(function (fn) { try { fn(rel); } catch (e) { /* ignore */ } });
+    releaseCallbacks.forEach(function (fn) { try { fn(rel, releaseFresh); } catch (e) { /* ignore */ } });
+  }
+
+  function showList(list, fresh) {
+    listData = list;
+    listFresh = !!fresh;
+    if (list.length) { showRelease(list[0], fresh); }
+    listCallbacks.forEach(function (fn) { try { fn(list, listFresh); } catch (e) { /* ignore */ } });
   }
 
   // GitHub release JSON -> { version, url, file, size, date } or null (only accepts this repository's installer)
@@ -268,71 +376,63 @@
     return null;
   }
 
-  function readCache() {
-    try {
-      var cached = JSON.parse(store(CACHE_KEY) || "null");
-      // only a complete entry counts: an older or damaged one (no size or date) is fetched again
-      if (cached && cached.rel && String(cached.rel.url).indexOf(DOWNLOAD_PREFIX) === 0 && cached.rel.size && cached.rel.date) { return cached; }
-    } catch (e) { /* damaged cache: ignore */ }
-    return null;
-  }
-
-  function loadRelease() {
-    var cached = readCache();
-    if (cached) { showRelease(cached.rel); }
-    if (cached && Date.now() - cached.time < CACHE_MS) { return; }
-    if (!window.fetch) { return; }
-    window.fetch(RELEASE_API, { headers: { "Accept": "application/vnd.github+json" } })
-      .then(function (response) { return response.ok ? response.json() : Promise.reject(new Error("HTTP " + response.status)); })
-      .then(function (json) {
-        var rel = parseRelease(json);
-        if (!rel) { loadList(); return; }
-        showRelease(rel);
-        store(CACHE_KEY, JSON.stringify({ time: Date.now(), rel: rel }));
-      })
-      .catch(function () { loadList(); /* the list is a second source; offline or rate limited: the buttons stay links to the releases page */ });
-  }
-
-  // All published installers (newest first), for the version list and the per-release download buttons.
-  // Same idea as the newest-release lookup: GitHub API, cached for an hour, nothing else leaves the page.
-  var listCallbacks = [];
-  var listData = null;
-
-  function showList(list) {
-    listData = list;
-    // the list carries the same data: use it if the newest-release lookup failed or came back incomplete
-    if (list.length && (!releaseData || !releaseData.size || !releaseData.date)) { showRelease(list[0]); }
-    listCallbacks.forEach(function (fn) { try { fn(list); } catch (e) { /* ignore */ } });
-  }
-
   function parseList(json) {
     var out = [];
     (Array.isArray(json) ? json : []).forEach(function (r) {
       if (r.draft || r.prerelease) { return; }
       var rel = parseRelease(r);
-      if (rel) { rel.tag = String(r.tag_name || ""); out.push(rel); }
+      if (rel && rel.size && rel.date) { rel.tag = String(r.tag_name || ""); out.push(rel); }
     });
     return out;
   }
 
-  function loadList() {
+  function readCache() {
     try {
       var cached = JSON.parse(store(LIST_KEY) || "null");
-      if (cached && Array.isArray(cached.list)) {
-        showList(cached.list);
-        if (Date.now() - cached.time < CACHE_MS) { return; }
-      }
+      // only a complete entry counts (every item with installer link, size and date)
+      if (cached && Array.isArray(cached.list) && cached.list.length && cached.list.every(function (r) {
+        return r && String(r.url).indexOf(DOWNLOAD_PREFIX) === 0 && r.size && r.date;
+      })) { return cached; }
     } catch (e) { /* damaged cache: ignore */ }
-    if (!window.fetch) { return; }
-    window.fetch(RELEASES_API, { headers: { "Accept": "application/vnd.github+json" } })
-      .then(function (response) { return response.ok ? response.json() : Promise.reject(new Error("HTTP " + response.status)); })
-      .then(function (json) {
-        var list = parseList(json);
-        if (!list.length) { return; }
-        showList(list);
-        store(LIST_KEY, JSON.stringify({ time: Date.now(), list: list }));
+    return null;
+  }
+
+  function forgetOldCaches() {
+    // earlier versions of this script kept two separate caches (newest release and list) that could disagree
+    ["opencue-latest-release-2", "opencue-latest-release-3", "opencue-releases", "opencue-releases-2"].forEach(function (k) {
+      try { window.localStorage.removeItem(k); } catch (e) { /* blocked: fine */ }
+    });
+  }
+
+  function loadReleases() {
+    forgetOldCaches();
+    var cached = readCache();
+    var young = !!cached && Date.now() - cached.time < FRESH_MS;
+    if (cached) { showList(cached.list, young); }
+    if (young || !window.fetch) { return; }
+
+    function request(useEtag) {
+      var headers = { "Accept": "application/vnd.github+json" };
+      if (useEtag && cached && cached.etag) { headers["If-None-Match"] = cached.etag; }
+      return window.fetch(RELEASES_API, { headers: headers }).then(function (response) {
+        if (response.status === 304 && cached) { return { list: cached.list, etag: cached.etag || "" }; }
+        if (!response.ok) { return Promise.reject(new Error("HTTP " + response.status)); }
+        var etag = response.headers.get("ETag") || "";
+        return response.json().then(function (json) { return { list: parseList(json), etag: etag }; });
+      });
+    }
+
+    request(true)
+      .catch(function (err) {
+        // a conditional request needs a preflight; if that is blocked somewhere, ask once more without it
+        return cached && cached.etag ? request(false) : Promise.reject(err);
       })
-      .catch(function () { /* offline or rate limited: pages fall back to the releases page */ });
+      .then(function (res) {
+        if (!res.list.length) { return; }
+        store(LIST_KEY, JSON.stringify({ time: Date.now(), etag: res.etag, list: res.list }));
+        showList(res.list, true);
+      })
+      .catch(function () { /* offline or rate limited: what was cached stays; without a cache the buttons stay links to the releases page */ });
   }
 
   // ------------------------------------------------------------------ scroll reveal and copy buttons
@@ -467,20 +567,12 @@
     // every download button leads to the thank-you page, which starts the actual download (pages/thanks.js)
     document.querySelectorAll("[data-download]").forEach(function (a) { a.setAttribute("href", url("download/thanks/")); a.removeAttribute("rel"); });
     collectEnglish();
-    loadRelease();
-    if (PAGE === "changelog" || PAGE === "download") { loadList(); }
+    loadReleases();
     makeCopyable();
     setupReveal();
     setupScrollAids();
-    document.querySelectorAll(".lang button").forEach(function (btn) {
-      btn.addEventListener("click", function () {
-        var lang = btn.getAttribute("data-lang");
-        applyLanguage(lang);
-        store("opencue-lang", lang);
-      });
-    });
     var lang = initialLanguage();
-    if (lang !== "en") { applyLanguage(lang); } else { labelTheme(); }
+    if (lang !== "en") { applyLanguage(lang); } else { labelTheme(); markLanguage(); }
     isReady = true;
     document.dispatchEvent(new CustomEvent("opencue:ready"));
     readyFns.splice(0).forEach(function (fn) { try { fn(); } catch (e) { console.error(e); } });
@@ -493,8 +585,8 @@
     t: t,
     lang: function () { return current; },
     onLang: function (fn) { listeners.push(fn); },
-    onRelease: function (fn) { releaseCallbacks.push(fn); if (releaseData) { fn(releaseData); } },
-    onReleases: function (fn) { listCallbacks.push(fn); if (listData) { fn(listData); } },
+    onRelease: function (fn) { releaseCallbacks.push(fn); if (releaseData) { fn(releaseData, releaseFresh); } },
+    onReleases: function (fn) { listCallbacks.push(fn); if (listData) { fn(listData, listFresh); } },
     root: ROOT,
     repo: REPO,
     fetchText: fetchText,

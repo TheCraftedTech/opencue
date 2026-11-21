@@ -78,7 +78,37 @@
       </div>
     </section>
 
-    <section class="band pad" aria-labelledby="r1-title">
+    <!-- panels-box:start -->
+    <section class="band pad" id="all-panels" aria-labelledby="allpanels-h">
+      <div class="wrap">
+        <div class="row flip" data-reveal>
+          <div class="row-text">
+            <p class="kicker"><span data-i18n="pan.box.kicker">Panels</span> <span class="badge-new" data-i18n="pan.box.new">New</span></p>
+            <h2 id="allpanels-h" data-i18n="pan.box.title">Every panel, with pictures</h2>
+            <p data-i18n="pan.box.lead">OpenCue is built from 21 panels that you arrange freely – from the DMX monitor and the cue list to the timeline, audio analysis and the AI assistant. See each one with a screenshot and what it does.</p>
+            <ul class="row-facts">
+              <li data-i18n="pan.box.f1">21 panels, each with a screenshot from the real program</li>
+              <li data-i18n="pan.box.f2">What every panel is for and how you use it</li>
+              <li data-i18n="pan.box.f3">New: Timeline Editor, Audio, AI Assistant, Simple Control and Toggle</li>
+            </ul>
+            <div class="actions"><a class="btn primary" href="@panels/" data-i18n="pan.box.btn">Browse all 21 panels</a></div>
+          </div>
+          <figure class="shot pm-shot">
+            <div class="pm-grid">
+              <a class="pm-tile" href="@panels/#timeline" tabindex="-1" aria-hidden="true"><img data-src="@assets/img/panel-timeline.webp" width="1200" height="455" loading="lazy" alt=""></a>
+              <a class="pm-tile" href="@panels/#simple" tabindex="-1" aria-hidden="true"><img data-src="@assets/img/panel-simple.webp" width="1200" height="756" loading="lazy" alt=""></a>
+              <a class="pm-tile" href="@panels/#audio" tabindex="-1" aria-hidden="true"><img data-src="@assets/img/panel-audio.webp" width="1200" height="986" loading="lazy" alt=""></a>
+              <a class="pm-tile" href="@panels/#3d-simulation" tabindex="-1" aria-hidden="true"><img data-src="@assets/img/panel-3d-simulation.webp" width="1200" height="749" loading="lazy" alt=""></a>
+            </div>
+            <figcaption><span><b data-i18n="home.cap.program">From the program</b> · <span data-i18n="pan.box.cap">four of the 21 panels</span></span></figcaption>
+          </figure>
+        </div>
+      </div>
+    </section>
+    <!-- panels-box:end -->
+
+
+    <section class="band alt pad" aria-labelledby="r1-title">
       <div class="wrap">
         <div class="row" data-reveal>
           <div class="row-text">
@@ -102,7 +132,7 @@
       </div>
     </section>
 
-    <section class="band alt pad" aria-labelledby="r2-title">
+    <section class="band pad" aria-labelledby="r2-title">
       <div class="wrap">
         <div class="row flip" data-reveal>
           <div class="row-text">
@@ -124,7 +154,7 @@
       </div>
     </section>
 
-    <section class="band pad" aria-labelledby="r3-title">
+    <section class="band alt pad" aria-labelledby="r3-title">
       <div class="wrap">
         <div class="row" data-reveal>
           <div class="row-text">
@@ -146,9 +176,33 @@
       </div>
     </section>
 
-    <section class="band alt pad" aria-labelledby="r4-title">
+    <!-- home-ai:start -->
+    <section class="band pad" id="ai" aria-labelledby="ai-title">
       <div class="wrap">
         <div class="row flip" data-reveal>
+          <div class="row-text">
+            <p class="kicker"><span data-i18n="home.k5">AI assistant</span> <span class="badge-new" data-i18n="pan.box.new">New</span></p>
+            <h2 id="ai-title" data-i18n="home.ai.title">Let an AI help you program</h2>
+            <p data-i18n="home.ai.lead">A language model on your own computer reads your show and prepares it with you – nothing leaves your network.</p>
+            <ul class="row-facts">
+              <li data-i18n="home.ai.f1">Patch, group, store cues and build effects by chat</li>
+              <li data-i18n="home.ai.f2">You decide what it may do on its own</li>
+              <li data-i18n="home.ai.f3">Private and free – runs through Ollama</li>
+            </ul>
+            <a class="more" href="@features/#ai" data-i18n="home.ai.more">About the AI assistant →</a>
+          </div>
+          <figure class="shot">
+            <img data-src="@assets/img/panel-assistant.webp" width="1200" height="1002" loading="lazy" alt="The AI Assistant panel: a chat that explains how to store a cue with a fade time" data-i18n-alt="feat.ai.alt">
+            <figcaption><span><b data-i18n="home.cap.program">From the program</b> · <span data-i18n="feat.ai.cap">the AI Assistant panel with a chat</span></span></figcaption>
+          </figure>
+        </div>
+      </div>
+    </section>
+    <!-- home-ai:end -->
+
+    <section class="band alt pad" aria-labelledby="r4-title">
+      <div class="wrap">
+        <div class="row" data-reveal>
           <div class="row-text">
             <p class="kicker"><span data-i18n="home.k4">Effects</span></p>
             <h2 id="r4-title" data-i18n="home.r4.title">Write your own effects</h2>
@@ -206,7 +260,7 @@
           <div class="tile" data-reveal>
             <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" aria-hidden="true"><path d="M3 3h8v8H3zM13 3h8v5h-8zM13 10h8v11h-8zM3 13h8v8H3z"/></svg>
             <h3 data-i18n="home.t.ui.t">Your layout</h3>
-            <p data-i18n="home.t.ui.d">Free panel layouts, themes, touch support, English and German.</p>
+            <p data-i18n="home.t.ui.d">Free panel layouts, themes, touch support, six languages.</p>
           </div>
           <div class="tile" data-reveal>
             <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" aria-hidden="true"><path d="M3 5h7l2 3h9v11H3z"/></svg>

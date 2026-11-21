@@ -61,12 +61,17 @@
     render();
     OC.onLang(render);
     if (wanted) {
-      OC.onReleases(function (list) {
+      // a particular version never changes, so the cached list is fine for it; "not found" only counts after GitHub was asked
+      OC.onReleases(function (list, fresh) {
         for (var i = 0; i < list.length; i++) { if (list[i].version === wanted) { start(list[i]); return; } }
-        if (!release) { state = "failed"; render(); }
+        if (fresh && !release) { state = "failed"; render(); }
       });
     } else {
-      OC.onRelease(start);
+      // the newest release is only taken from an answer that was checked against GitHub - never from an old cached copy ...
+      var cachedRelease = null;
+      OC.onRelease(function (rel, fresh) { if (fresh) { start(rel); } else { cachedRelease = rel; } });
+      // ... unless GitHub does not answer in time (offline, rate limit): then the cached one is better than nothing
+      setTimeout(function () { if (!release && cachedRelease) { start(cachedRelease); } }, 3500);
     }
     setTimeout(function () {
       if (!release) { state = "failed"; render(); }

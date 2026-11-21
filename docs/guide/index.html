@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Documentation – OpenCue</title>
-  <meta name="description" content="Guides for OpenCue: getting started, command reference, fixtures and patching, Effect Studio, remote control and keyboard shortcuts.">
+  <meta name="description" content="Guides for OpenCue: getting started, commands, fixtures, effects, timeline, audio, AI assistant, REST API, MIDI, remote control, backups and more.">
   <!-- seo:start -->
   <link rel="canonical" href="https://thecraftedtech.github.io/opencue/guide/">
   <meta name="robots" content="index, follow, max-image-preview:large">
@@ -17,7 +17,7 @@
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="OpenCue">
   <meta property="og:title" content="Documentation – OpenCue">
-  <meta property="og:description" content="Guides for OpenCue: getting started, command reference, fixtures and patching, Effect Studio, remote control and keyboard shortcuts.">
+  <meta property="og:description" content="Guides for OpenCue: getting started, commands, fixtures, effects, timeline, audio, AI assistant, REST API, MIDI, remote control, backups and more.">
   <meta property="og:url" content="https://thecraftedtech.github.io/opencue/guide/">
   <meta property="og:image" content="https://thecraftedtech.github.io/opencue/assets/img/og/guide.jpg">
   <meta property="og:image:width" content="1200">
@@ -27,7 +27,7 @@
   <meta property="og:locale:alternate" content="de_DE">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="Documentation – OpenCue">
-  <meta name="twitter:description" content="Guides for OpenCue: getting started, command reference, fixtures and patching, Effect Studio, remote control and keyboard shortcuts.">
+  <meta name="twitter:description" content="Guides for OpenCue: getting started, commands, fixtures, effects, timeline, audio, AI assistant, REST API, MIDI, remote control, backups and more.">
   <meta name="twitter:image" content="https://thecraftedtech.github.io/opencue/assets/img/og/guide.jpg">
   <meta name="twitter:image:alt" content="OpenCue – Docs">
   <script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Home","item":"https://thecraftedtech.github.io/opencue/"},{"@type":"ListItem","position":2,"name":"Docs","item":"https://thecraftedtech.github.io/opencue/guide/"}]}]}</script>
@@ -44,36 +44,105 @@
           <a href="@" data-i18n="foot.home">Home</a><span aria-hidden="true">/</span><span data-i18n="nav.guide">Docs</span>
         </nav>
         <h1 data-i18n="guide.title">Documentation</h1>
-        <p class="lead" data-i18n="guide.lead">Guides and references for OpenCue: from the first start to the command line, effects and remote control.</p>
+        <p class="lead" data-i18n="guide.lead">Guides and references for OpenCue: from the first start to effects, the AI assistant, the REST API and remote control.</p>
       </div>
     </div>
 
     <div class="wrap page-body">
-      <div class="cards" style="margin-top:0">
+      <div class="doc-search" role="search">
+        <input id="doc-q" type="search" autocomplete="off" spellcheck="false" placeholder="Search the guides …" aria-label="Search the guides">
+        <p class="doc-status" id="doc-status" aria-live="polite"></p>
+        <div id="doc-results" hidden></div>
+      </div>
+      <div id="doc-groups">
+      <h2 class="doc-group" data-i18n="guide.grp.start">Start here</h2>
+      <div class="cards doc-cards">
         <a class="card doc-card" href="@guide/getting-started/">
           <h3><span data-i18n="guide.start.t">Getting started</span></h3>
           <p data-i18n="guide.start.d">From the installer to your first cue: patching, selecting, programming and playing back.</p>
+        </a>
+        <a class="card doc-card" href="@guide/whatsnew/">
+          <h3><span data-i18n="guide.whatsnew.t">What&#x27;s new</span></h3>
+          <p data-i18n="guide.whatsnew.d">The most important changes of this version at a glance.</p>
         </a>
         <a class="card doc-card" href="@guide/commands/">
           <h3><span data-i18n="guide.cmd.t">Command reference</span></h3>
           <p data-i18n="guide.cmd.d">Every command of the command line with its syntax and examples.</p>
         </a>
+        <a class="card doc-card" href="@guide/keyboard-shortcuts/">
+          <h3><span data-i18n="guide.keys.t">Keyboard shortcuts</span></h3>
+          <p data-i18n="guide.keys.d">All shortcuts at a glance – layouts, language, edit mode and more.</p>
+        </a>
+      </div>
+      <h2 class="doc-group" data-i18n="guide.grp.content">Programming and content</h2>
+      <div class="cards doc-cards">
         <a class="card doc-card" href="@guide/fixtures/">
           <h3><span data-i18n="guide.fix.t">Fixtures and patching</span></h3>
           <p data-i18n="guide.fix.d">Using the GDTF library, importing fixture files and patching them to universes.</p>
+        </a>
+        <a class="card doc-card" href="@guide/fixture-editor/">
+          <h3><span data-i18n="guide.fixture-editor.t">Own fixtures (editor)</span></h3>
+          <p data-i18n="guide.fixture-editor.d">Build a real GDTF file for a device that has none: a dimmer, an RGB par, a fog machine or a moving head.</p>
         </a>
         <a class="card doc-card" href="@guide/effect-studio/">
           <h3><span data-i18n="guide.fx.t">Effect Studio guide</span></h3>
           <p data-i18n="guide.fx.d">The script language for your own effects: commands, time, waveforms, sliders and examples.</p>
         </a>
+        <a class="card doc-card" href="@guide/timeline/">
+          <h3><span data-i18n="guide.timeline.t">Timeline editor and LTC</span></h3>
+          <p data-i18n="guide.timeline.d">Place cues and commands on a time axis over the waveform of your song – and run in time with LTC.</p>
+        </a>
+        <a class="card doc-card" href="@guide/audio/">
+          <h3><span data-i18n="guide.audio.t">Audio: lights that react to music</span></h3>
+          <p data-i18n="guide.audio.d">Bass, kick, snare, hi-hat and tempo as variables for effects, plus ready-made audio effects.</p>
+        </a>
+      </div>
+      <h2 class="doc-group" data-i18n="guide.grp.control">Control and connections</h2>
+      <div class="cards doc-cards">
         <a class="card doc-card" href="@guide/remote/">
           <h3><span data-i18n="guide.rem.t">Remote control</span></h3>
           <p data-i18n="guide.rem.d">Switch on remote access, set a password and operate OpenCue from a tablet.</p>
         </a>
-        <a class="card doc-card" href="@guide/keyboard-shortcuts/">
-          <h3><span data-i18n="guide.keys.t">Keyboard shortcuts</span></h3>
-          <p data-i18n="guide.keys.d">All shortcuts at a glance – layouts, language, edit mode and more.</p>
+        <a class="card doc-card" href="@guide/api/">
+          <h3><span data-i18n="guide.api.t">REST API</span></h3>
+          <p data-i18n="guide.api.d">Control OpenCue from scripts, apps and other programs over HTTP – with tokens and per-token permissions.</p>
         </a>
+        <a class="card doc-card" href="@guide/midi/">
+          <h3><span data-i18n="guide.midi.t">MIDI</span></h3>
+          <p data-i18n="guide.midi.d">Control OpenCue from controllers, keys, pads and faders – and send MIDI out. Mapped to command-line commands.</p>
+        </a>
+        <a class="card doc-card" href="@guide/automation/">
+          <h3><span data-i18n="guide.automation.t">Schedule, time of day and OSC</span></h3>
+          <p data-i18n="guide.automation.d">Start commands and cues without pressing Go: a schedule, times of day and OSC messages from other programs.</p>
+        </a>
+        <a class="card doc-card" href="@guide/dmx-input/">
+          <h3><span data-i18n="guide.dmx-input.t">DMX input (receive Art-Net and sACN)</span></h3>
+          <p data-i18n="guide.dmx-input.d">Receive Art-Net and sACN from another desk or program, forward and mix it, or use channels as triggers.</p>
+        </a>
+        <a class="card doc-card" href="@guide/voice-commands/">
+          <h3><span data-i18n="guide.voice-commands.t">Voice commands</span></h3>
+          <p data-i18n="guide.voice-commands.d">Say the wake word and a command-line command – it runs at once. Offline, no AI needed.</p>
+        </a>
+        <a class="card doc-card" href="@guide/assistant/">
+          <h3><span data-i18n="guide.assistant.t">AI assistant</span></h3>
+          <p data-i18n="guide.assistant.d">A chat with a language model on your own computer: it explains the program, reads your show and – after asking – builds it.</p>
+        </a>
+      </div>
+      <h2 class="doc-group" data-i18n="guide.grp.ops">Operation and safety</h2>
+      <div class="cards doc-cards">
+        <a class="card doc-card" href="@guide/show-safety/">
+          <h3><span data-i18n="guide.show-safety.t">Backups, locks and quitting safely</span></h3>
+          <p data-i18n="guide.show-safety.d">Background backups, crash recovery, a lock for finished shows and a careful quit dialog.</p>
+        </a>
+        <a class="card doc-card" href="@guide/startup-options/">
+          <h3><span data-i18n="guide.startup-options.t">Startup options and server mode</span></h3>
+          <p data-i18n="guide.startup-options.d">Start options, running without a window (server mode), start with Windows, administrator rights and the firewall rule.</p>
+        </a>
+        <a class="card doc-card" href="@guide/error-codes/">
+          <h3><span data-i18n="guide.error-codes.t">Error codes and troubleshooting</span></h3>
+          <p data-i18n="guide.error-codes.d">What every OC error code means and how to fix it – plus how to copy the details for a bug report.</p>
+        </a>
+      </div>
       </div>
       <p class="fine"><span data-i18n="guide.hint">The texts come straight from the project on GitHub, so they are always as current as the program.</span> <a href="https://github.com/TheCraftedTech/opencue" rel="noopener" data-i18n="foot.source">Source code</a></p>
     </div>

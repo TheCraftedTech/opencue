@@ -27,7 +27,7 @@
 
   // style sheets and scripts per page, relative to ROOT; "*" is loaded everywhere (scripts run in the order listed)
   var PAGES = {
-    "*":              { css: ["assets/style.css"], js: ["assets/locales/de.js", "assets/main.js"] },
+    "*":              { css: ["assets/style.css"], js: ["assets/main.js"] },        // the dictionary of the chosen language is put in front (see "language" below)
     "home":           { js: ["assets/demo/show.js", "assets/demo/stage.js", "assets/pages/home.js"] },
     "features":       {},
     "panels":         {},
@@ -35,14 +35,16 @@
     "download":       { js: ["assets/pages/versions.js"] },
     "download-thanks": { js: ["assets/pages/thanks.js"] },
     "changelog":      { js: ["assets/md.js", "assets/pages/changelog.js"] },
-    "guide":          {},
+    "guide":          { js: ["assets/md.js", "assets/pages/guide-search.js"] },
     "guide-effects":  { js: ["assets/md.js", "assets/toc.js", "assets/pages/guide.js"] },
     "guide-start": { js: ["assets/md.js", "assets/toc.js", "assets/pages/guide.js"] },
     "guide-cmd": { js: ["assets/md.js", "assets/toc.js", "assets/pages/guide.js"] },
     "guide-fix": { js: ["assets/md.js", "assets/toc.js", "assets/pages/guide.js"] },
     "guide-rem": { js: ["assets/md.js", "assets/toc.js", "assets/pages/guide.js"] },
     "guide-keys": { js: ["assets/md.js", "assets/toc.js", "assets/pages/guide.js"] },
+    "guide-doc": { js: ["assets/md.js", "assets/toc.js", "assets/pages/guide.js"] },          // every other guide page (guide-<name>): same scripts
     "demo":           { css: ["assets/demo.css"], js: ["assets/demo/show.js", "assets/demo/stage.js", "assets/demo/ui.js", "assets/pages/demo.js"] },
+    "gsc":            {},          // google-search-console/ (helper page for the owner, noindex)
     "e404":           {}
   };
 
@@ -68,7 +70,7 @@
     addLink({ rel: "apple-touch-icon", href: url("assets/apple-touch-icon.png") });
   }
 
-  var common = PAGES["*"], mine = PAGES[PAGE] || {};
+  var common = PAGES["*"], mine = PAGES[PAGE] || (PAGE.indexOf("guide-") === 0 ? PAGES["guide-doc"] : {});
   (common.css || []).concat(mine.css || []).forEach(function (c) { addLink({ rel: "stylesheet", href: url(c) }); });
 
   // ---------------------------------------------------------------- theme (before first paint)
@@ -88,6 +90,29 @@
       return next;
     }
   };
+
+  // ---------------------------------------------------------------- language
+  // Chosen here, before anything else is loaded, so the dictionary of that language arrives together with main.js and the first
+  // paint is already in the right language. Order: ?lang=xx, the saved choice, the first browser language we translate, English.
+  // English is the page's own text; every other language is a dictionary file assets/locales/<code>.js (window.OC_LOCALES.<code>).
+  var LANGUAGES = ["en", "de", "fr", "nl", "it", "es"];
+  var LANG_KEY = "opencue-lang";
+  function chooseLanguage() {
+    var fromUrl = /[?&]lang=([a-z]{2})\b/.exec(location.search);
+    if (fromUrl && LANGUAGES.indexOf(fromUrl[1]) >= 0) { return fromUrl[1]; }
+    var saved = null;
+    try { saved = g.localStorage.getItem(LANG_KEY); } catch (e) { /* blocked: fine */ }
+    if (LANGUAGES.indexOf(saved) >= 0) { return saved; }
+    var list = navigator.languages && navigator.languages.length ? navigator.languages : [navigator.language || "en"];
+    for (var i = 0; i < list.length; i++) {
+      var code = String(list[i]).slice(0, 2).toLowerCase();
+      if (LANGUAGES.indexOf(code) >= 0) { return code; }
+    }
+    return "en";
+  }
+  var language = chooseLanguage();
+  g.OC_LOCALES = g.OC_LOCALES || {};
+  html.lang = language;
 
   // ---------------------------------------------------------------- scripts
   // loads scripts in parallel but runs them in the given order; resolves when the last one has run
@@ -119,10 +144,17 @@
   var api = g.OCBoot = {
     root: ROOT, production: PRODUCTION, page: PAGE, theme: theme,
     url: url, loadScripts: loadScripts, domReady: domReady,
+    language: language, languages: LANGUAGES, languageKey: LANG_KEY,
+    // makes sure the dictionary of `code` is there (English needs none); resolves when it is
+    loadLocale: function (code) {
+      if (code === "en" || g.OC_LOCALES[code] || LANGUAGES.indexOf(code) < 0) { return Promise.resolve(); }
+      return loadScripts(["assets/locales/" + code + ".js"]);
+    },
     onDom: function (fn) { if (domReady) { fn(); } else { domFns.push(fn); } }
   };
 
-  loadScripts((common.js || []).concat(mine.js || [])).catch(function (e) {
+  var dictionary = language === "en" ? [] : ["assets/locales/" + language + ".js"];
+  loadScripts(dictionary.concat(common.js || [], mine.js || [])).catch(function (e) {
     if (g.console) { console.error(e); }
   });
 })(window);
