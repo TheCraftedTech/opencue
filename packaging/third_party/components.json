@@ -324,6 +324,297 @@
     ]
   },
   {
+    "name": "zeroconf",
+    "version": "0.153.0",
+    "license": "LGPL-2.1-or-later",
+    "purpose": "Network name opencue.local (mDNS)",
+    "url": "https://github.com/python-zeroconf/python-zeroconf",
+    "files": [
+      "zeroconf/COPYING"
+    ]
+  },
+  {
+    "name": "ifaddr",
+    "version": "0.2.0",
+    "license": "MIT License",
+    "purpose": "zeroconf",
+    "url": "https://github.com/pydron/ifaddr",
+    "files": [
+      "ifaddr/LICENSE.txt"
+    ]
+  },
+  {
+    "name": "cryptography",
+    "version": "50.0.2",
+    "license": "Apache-2.0 OR BSD-3-Clause",
+    "purpose": "Self-signed https certificate",
+    "url": "https://github.com/pyca/cryptography",
+    "files": [
+      "cryptography/LICENSE",
+      "cryptography/LICENSE.APACHE",
+      "cryptography/LICENSE.BSD"
+    ]
+  },
+  {
+    "name": "numpy",
+    "version": "2.5.4",
+    "license": "BSD-3-Clause AND 0BSD AND MIT AND Zlib AND CC0-1.0",
+    "purpose": "Audio analysis (spectrum, beat detection)",
+    "url": "https://numpy.org",
+    "files": [
+      "numpy/LICENSE.txt",
+      "numpy/LICENSE.txt",
+      "numpy/COPYING",
+      "numpy/LICENSE",
+      "numpy/dragon4_LICENSE.txt",
+      "numpy/LICENSE.md",
+      "numpy/LICENSE",
+      "numpy/LICENSE.md",
+      "numpy/LICENSE.txt",
+      "numpy/LICENSE",
+      "numpy/LICENSE.md",
+      "numpy/LICENSE.md",
+      "numpy/LICENSE.md",
+      "numpy/LICENSE.md",
+      "numpy/LICENSE.md",
+      "numpy/LICENSE.md",
+      "numpy/LICENSE.md"
+    ]
+  },
+  {
+    "name": "PyAudioWPatch",
+    "version": "0.2.12.9",
+    "license": "Apache Software License",
+    "purpose": "Audio capture (PortAudio, WASAPI)",
+    "url": "https://github.com/s0d3s/PyAudioWPatch/",
+    "files": [
+      "PyAudioWPatch/LICENSE.txt"
+    ]
+  },
+  {
+    "name": "python-rtmidi",
+    "version": "1.5.8",
+    "license": "MIT License",
+    "purpose": "MIDI input and output (RtMidi)",
+    "url": "https://github.com/SpotlightKid/python-rtmidi",
+    "files": [
+      "python-rtmidi/LICENSE.md"
+    ]
+  },
+  {
+    "name": "vosk",
+    "version": "0.3.45",
+    "license": "Apache Software License",
+    "purpose": "Offline speech recognition (wake word)",
+    "url": "https://github.com/alphacep/vosk-api",
+    "files": [
+      "vosk/vosk.txt"
+    ]
+  },
+  {
+    "name": "requests",
+    "version": "2.34.2",
+    "license": "Apache Software License",
+    "purpose": "vosk",
+    "url": "https://github.com/psf/requests",
+    "files": [
+      "requests/LICENSE",
+      "requests/NOTICE"
+    ]
+  },
+  {
+    "name": "urllib3",
+    "version": "2.8.0",
+    "license": "MIT",
+    "purpose": "requests",
+    "url": "",
+    "files": [
+      "urllib3/LICENSE.txt"
+    ]
+  },
+  {
+    "name": "certifi",
+    "version": "2026.10.23",
+    "license": "Mozilla Public License 2.0 (MPL 2.0)",
+    "purpose": "requests",
+    "url": "https://github.com/certifi/python-certifi",
+    "files": [
+      "certifi/LICENSE"
+    ]
+  },
+  {
+    "name": "charset-normalizer",
+    "version": "3.5.2",
+    "license": "MIT",
+    "purpose": "requests",
+    "url": "",
+    "files": [
+      "charset-normalizer/LICENSE"
+    ]
+  },
+  {
+    "name": "tqdm",
+    "version": "4.70.1",
+    "license": "MPL-2.0 AND MIT",
+    "purpose": "vosk",
+    "url": "https://tqdm.github.io",
+    "files": [
+      "tqdm/LICENCE"
+    ]
+  },
+  {
+    "name": "colorama",
+    "version": "0.4.6",
+    "license": "BSD License",
+    "purpose": "tqdm",
+    "url": "https://github.com/tartley/colorama",
+    "files": [
+      "colorama/LICENSE.txt"
+    ]
+  },
+  {
+    "name": "srt",
+    "version": "3.5.3",
+    "license": "MIT License",
+    "purpose": "vosk",
+    "url": "https://github.com/cdown/srt",
+    "files": [
+      "srt/LICENSE"
+    ]
+  },
+  {
+    "name": "faster-whisper",
+    "version": "1.2.1",
+    "license": "MIT License",
+    "purpose": "Offline dictation: speech to text (Whisper)",
+    "url": "https://github.com/SYSTRAN/faster-whisper",
+    "files": [
+      "faster-whisper/LICENSE"
+    ]
+  },
+  {
+    "name": "ctranslate2",
+    "version": "4.8.5",
+    "license": "MIT",
+    "purpose": "Inference engine of faster-whisper",
+    "url": "https://github.com/OpenNMT/CTranslate2",
+    "files": [
+      "ctranslate2/ctranslate2.txt"
+    ]
+  },
+  {
+    "name": "onnxruntime",
+    "version": "1.31.1",
+    "license": "MIT License",
+    "purpose": "Voice activity detection (faster-whisper)",
+    "url": "https://onnxruntime.ai",
+    "files": [
+      "onnxruntime/onnxruntime.txt"
+    ]
+  },
+  {
+    "name": "tokenizers",
+    "version": "0.23.3",
+    "license": "Apache Software License",
+    "purpose": "Text tokenizer of the Whisper model",
+    "url": "https://github.com/huggingface/tokenizers",
+    "files": [
+      "tokenizers/tokenizers.txt"
+    ]
+  },
+  {
+    "name": "huggingface_hub",
+    "version": "2.4.0",
+    "license": "Apache Software License",
+    "purpose": "Downloads the Whisper model once",
+    "url": "https://github.com/huggingface/huggingface_hub",
+    "files": [
+      "huggingface_hub/LICENSE"
+    ]
+  },
+  {
+    "name": "filelock",
+    "version": "4.2.7",
+    "license": "MIT",
+    "purpose": "huggingface_hub",
+    "url": "https://github.com/tox-dev/filelock",
+    "files": [
+      "filelock/LICENSE"
+    ]
+  },
+  {
+    "name": "fsspec",
+    "version": "2026.9.0",
+    "license": "BSD-3-Clause",
+    "purpose": "huggingface_hub",
+    "url": "https://github.com/fsspec/filesystem_spec",
+    "files": [
+      "fsspec/LICENSE"
+    ]
+  },
+  {
+    "name": "httpx2",
+    "version": "2.16.0",
+    "license": "BSD-3-Clause",
+    "purpose": "huggingface_hub",
+    "url": "https://github.com/pydantic/httpx2",
+    "files": [
+      "httpx2/LICENSE.md"
+    ]
+  },
+  {
+    "name": "httpcore2",
+    "version": "2.16.0",
+    "license": "BSD-3-Clause",
+    "purpose": "httpx2",
+    "url": "https://github.com/pydantic/httpx2",
+    "files": [
+      "httpcore2/LICENSE.md"
+    ]
+  },
+  {
+    "name": "truststore",
+    "version": "0.10.5",
+    "license": "MIT",
+    "purpose": "httpx2",
+    "url": "https://github.com/sethmlarson/truststore",
+    "files": [
+      "truststore/LICENSE"
+    ]
+  },
+  {
+    "name": "packaging",
+    "version": "26.3",
+    "license": "Apache-2.0 OR BSD-2-Clause",
+    "purpose": "huggingface_hub",
+    "url": "https://github.com/pypa/packaging",
+    "files": [
+      "packaging/LICENSE",
+      "packaging/LICENSE.APACHE",
+      "packaging/LICENSE.BSD"
+    ]
+  },
+  {
+    "name": "protobuf",
+    "version": "7.36.2",
+    "license": "3-Clause BSD License",
+    "purpose": "onnxruntime",
+    "url": "https://developers.google.com/protocol-buffers/",
+    "files": [
+      "protobuf/LICENSE"
+    ]
+  },
+  {
+    "name": "flatbuffers",
+    "version": "25.12.19",
+    "license": "Apache Software License",
+    "purpose": "onnxruntime",
+    "url": "https://github.com/google/flatbuffers",
+    "files": [
+      "flatbuffers/flatbuffers.txt"
+    ]
+  },
+  {
     "name": "FFmpeg",
     "version": "8.1 (gyan.dev essentials build)",
     "license": "GPL-3.0 (build with --enable-gpl --enable-version3)",
@@ -351,6 +642,46 @@
     "url": "https://www.python.org/",
     "files": [
       "Python/LICENSE.txt"
+    ]
+  },
+  {
+    "name": "Vosk speech model (small, English)",
+    "version": "0.15",
+    "license": "Apache-2.0",
+    "purpose": "Wake word recognition, offline (downloaded once on request into the data folder: voice/vosk-model-small-en-us-0.15)",
+    "url": "https://alphacephei.com/vosk/models",
+    "files": [
+      "Vosk speech model (small, English)/vosk.txt"
+    ]
+  },
+  {
+    "name": "Whisper speech models (base, small; CTranslate2 conversion)",
+    "version": "1.2",
+    "license": "MIT",
+    "purpose": "Offline dictation (loaded once from Hugging Face into the data folder: models/whisper)",
+    "url": "https://huggingface.co/Systran",
+    "files": [
+      "Whisper speech models (base, small; CTranslate2 conversion)/whisper.txt"
+    ]
+  },
+  {
+    "name": "Inter (font)",
+    "version": "4 (Fontsource 5.2.5, variable)",
+    "license": "OFL-1.1",
+    "purpose": "User interface font (static/fonts)",
+    "url": "https://rsms.me/inter/",
+    "files": [
+      "Inter (font)/Inter-OFL.txt"
+    ]
+  },
+  {
+    "name": "JetBrains Mono (font)",
+    "version": "2 (Fontsource 5.2.5, variable)",
+    "license": "OFL-1.1",
+    "purpose": "Monospace font for values and the command line (static/fonts)",
+    "url": "https://www.jetbrains.com/lp/mono/",
+    "files": [
+      "JetBrains Mono (font)/JetBrainsMono-OFL.txt"
     ]
   },
   {

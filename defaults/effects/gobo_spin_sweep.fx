@@ -1,5 +1,7 @@
 #NAME Gobo Spin Sweep
-#DESCRIPTION Wählt ein Gobo und lässt seine Drehung langsam zwischen zwei Werten pendeln. first = Gobo-Nummer, low/high = Drehung in %, speed = Pendel pro Sekunde.
+#DESCRIPTION en One gobo whose rotation sweeps between low and high.
+#DESCRIPTION de Ein Gobo, dessen Rotation zwischen low und high pendelt.
+#TAGS advanced, sweep
 #CATEGORY gobo
 #RATE 40
 #VAR speed Slider 0.2 0.05 2 0.05

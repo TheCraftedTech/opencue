@@ -1,0 +1,75 @@
+# Apparecchi propri (editor)
+
+L'editor crea dispositivi per i quali non esiste un file GDTF adatto – una macchina del fumo, un semplice dimmer, un par RGB, una testa mobile. Il risultato è un **vero file GDTF** (formato GDTF 1.2, costruito come i file su GDTF Share). Per questo **non** serve un account GDTF Share.
+
+---
+
+## 1. Aprirlo
+
+**Libreria → Libreria apparecchi… → «Apparecchio proprio…».** La finestra ha le dimensioni della libreria e tre schede: **Generale**, **Modi e canali**, **Immagine e 3D**.
+
+- Modificare in seguito un tipo proprio: fate clic su **Modifica** nell'elenco dei tipi installati (solo per i tipi creati con l'editor, contrassegnati «Proprio · non verificato»).
+- Usare un tipo esistente come punto di partenza (**caricare da un altro apparecchio**): nell'editor, nella scheda *Generale* in alto, la scelta **«Parti da un apparecchio esistente»**, oppure sulla scheda nella libreria **Altro → Modifica una copia**. Vengono ripresi: dati di base, modi, canali, nomi delle funzioni, intervalli e l'immagine del profilo. **Non** vengono ripresi: le ruote (gobo, ruote colori), la geometria e le parti 3D; l'editor indica cosa è stato tralasciato.
+
+---
+
+## 2. Generale
+
+| Campo | Significato |
+|---|---|
+| Produttore, Nome | Obbligatori. Il nome del file diventa `Produttore@Nome@Eigen.gdtf`. Se il tipo esiste già, l'editor lo segnala. |
+| Nome breve | Facoltativo, al massimo 8 caratteri. |
+| Categoria | Testa mobile, barra LED, par, dimmer, stroboscopio, effetto, altro – oppure «Automatica» (riconosciuta dai canali). Potete filtrare la libreria per categoria. |
+| Peso, Descrizione | Facoltativi. |
+| Tag | Scrivete e premete **Invio**. La libreria li cerca anch'essi (ad es. «fumo», «esterno», «12 V»). |
+| Modello | Solo per i nuovi tipi: macchina del fumo, dimmer, RGB, RGB + dimmer, testa mobile. |
+
+---
+
+## 3. Modi e canali
+
+Un **modo** è una disposizione dei canali (molti dispositivi ne hanno più d'uno, ad es. «3 canali» e «8 canali»). **+ Modo (copia)** ne aggiunge un altro come copia del modo selezionato; cambiate il nome in alto a destra.
+
+Per ogni **canale**:
+
+- **Attributo** – cosa fa il canale. L'elenco è ordinato in intensità, colore, posizione, fascio, effetti (fumo, haze, ventola) e controllo. In fondo, separato: **Nome proprio …** per tutto ciò che non è nell'elenco (ad es. «Bolle»).
+- **Etichetta** – testo libero, ad es. «Uscita fumo». Compare nel pannello di dettaglio DMX diretto.
+- **8 / 16 bit** – un canale a 16 bit usa due indirizzi DMX (grossolano + fine).
+- **Valore predefinito** (0–255) – il valore del dispositivo quando non è pilotato.
+- **Intervalli** – passi con nome, ad es. da 0 «Off», da 10 «Fumo». Il primo intervallo inizia sempre da 0; ogni altro termina subito prima dell'inizio del successivo. Per pan, tilt e zoom inserite anche l'intervallo angolare in gradi.
+
+Le frecce cambiano l'ordine; gli indirizzi DMX vengono calcolati di conseguenza (a sinistra di ogni riga).
+
+### Importazione CSV
+
+**Importa CSV…** legge un elenco di canali: una riga per canale, con una riga di intestazione. Colonne (in qualsiasi ordine, separate da `;`, `,` o tabulazione): `Attribute`, `Label`, `Bit`, `Default`, `Ranges`. Scrivete gli intervalli come `0 Off; 10 Fog` oppure `0-9 Off; 10-255 Fog` – se la cella contiene il separatore, mettetela tra virgolette:
+
+```
+Attribute;Label;Bit;Default;Ranges
+Fog1;Fog output;8;0;"0 Off; 10 Fog"
+Control1;Fan;8;0;"0-9 Off; 10-255 On"
+```
+
+---
+
+## 4. Immagine e 3D
+
+- **Immagine del profilo** – qualsiasi immagine; viene scritta nel file come PNG (al massimo 512 pixel) e compare nella libreria.
+- **Modello 3D** – facoltativamente un file `.glb`, `.3ds`, `.stl` o `.obj` (al massimo 25 MB e 250.000 triangoli; STL e OBJ vengono convertiti in GLB) per i dispositivi **fissi**; la dimensione in metri stabilisce quanto grande appare sul palco 3D. Le teste mobili (pan/tilt) ricevono base, forcella e testa come parti standard.
+
+---
+
+## 5. Passare il file ad altri
+
+Ogni scheda nella libreria ha **Altro → Esporta file (.gdtf)** e **Mostra nella cartella** (solo sul computer su cui gira il programma). Il file può essere copiato e aggiunto su un altro computer con **Importa file GDTF…** – oppure aperto in qualsiasi altro software GDTF. La descrizione dell'editor vi è salvata come file aggiuntivo; gli altri programmi la ignorano.
+
+---
+
+## 6. Da sapere
+
+- I tipi propri sono **non verificati**: controllate la disposizione dei canali sul dispositivo reale.
+- Se modificate un tipo usato dallo show, le modifiche valgono subito. Se cambia il **numero di canali di un modo in uso** (o un tale modo viene eliminato o rinominato), l'editor mostra una **nota** – non impedisce nulla; controllate poi gli indirizzi DMX.
+- **Annulla chiede prima conferma:** se avete modificato qualcosa, *Annulla*, la × e Esc aprono la finestra «Modifiche non salvate» (*Continua a modificare*, *Scarta le modifiche* o *Salva*). Senza modifiche l'editor si chiude subito.
+- **Eliminare chiede prima conferma:** un modo, un canale, un intervallo, un'immagine del profilo o un modello 3D viene rimosso solo dopo conferma.
+- Grand master e blackout agiscono solo sul **dimmer** (o sul colore se non c'è un canale dimmer) – un canale del fumo continua a funzionare indisturbato.
+- Fumo, haze e simili si comandano nel controllo dell'apparecchio, nella scheda **DMX diretto**. Passando sull'etichetta, facendo clic su di essa o con il clic destro su un fader si vedono i nomi delle funzioni e gli intervalli del canale.

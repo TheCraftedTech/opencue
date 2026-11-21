@@ -1,5 +1,7 @@
 #NAME Zoom Beat
-#DESCRIPTION Schlagartig auf, dann langsam zurück - wie ein Beat. speed = Schläge pro Sekunde.
+#DESCRIPTION en A hard zoom pulse: wide at the beat, then closing.
+#DESCRIPTION de Ein harter Zoom-Puls: weit auf dem Beat, dann zufahrend.
+#TAGS advanced, pulse
 #CATEGORY zoom
 #RATE 40
 #VAR speed Slider 1 0.05 8 0.05

@@ -1,0 +1,89 @@
+[
+ {
+  "id": "automation-001",
+  "page": "automation",
+  "path": [
+   "Planning, tijdstip en OSC"
+  ],
+  "title": "Planning, tijdstip en OSC",
+  "keywords": [],
+  "text": "Drie manieren om dingen te starten **zonder op Go te drukken**: een **planning** die op een tijdstip opdrachten uitvoert, cues die **op een tijd wachten** en **OSC**-berichten van andere programma's en apparaten. Alle drie staan in het menu **Bedieningen**."
+ },
+ {
+  "id": "automation-002",
+  "page": "automation",
+  "path": [
+   "Planning, tijdstip en OSC",
+   "1. Planning: opdrachten op een tijdstip"
+  ],
+  "title": "1. Planning: opdrachten op een tijdstip",
+  "keywords": [],
+  "text": "**Bedieningen → Planning...** toont opdrachten die OpenCue zelf uitvoert – voor gevelverlichting, \"deuren open 19:00\", een pauze, \"de cuelijst starten om 18:55\"."
+ },
+ {
+  "id": "automation-003",
+  "page": "automation",
+  "path": [
+   "Planning, tijdstip en OSC",
+   "1. Planning: opdrachten op een tijdstip"
+  ],
+  "title": "1. Planning: opdrachten op een tijdstip (2)",
+  "keywords": [],
+  "text": "- **Nieuw item** voegt een rij toe. Elke rij heeft: de schakelaar **aan / uit**, het **tijdstip** (`19:00` of `19:00:30`), de **herhaling** (**Elke dag** – de standaard, geen datum nodig; **Op weekdagen** – klik dan op de dagknoppen, ma–vr is voorgeselecteerd; **Eenmalig, op een datum** – het item wordt **één keer** op die dag uitgevoerd en schakelt zichzelf dan uit), een **naam** en de **opdracht** – elke opdracht van de opdrachtregel, bijvoorbeeld `Cuelist Main Go`, `Blackout Off` of `Master 60` (zie de handleiding *Opdrachtregel*).\n- **volgende: ...** toont wanneer het item de volgende keer wordt uitgevoerd. **Nu uitvoeren** voert de opdracht meteen uit, om te proberen. De prullenbakknop verwijdert het item – OpenCue vraagt eerst (een nieuwe, lege rij verdwijnt zonder te vragen). De opdracht kan meerdere opdrachten bevatten, gescheiden door `,` of `;` (`Blackout Off; Cuelist Main Go`).\n- De klok in de titel is de klok van de consolecomputer. Een item gaat **één keer** af op zijn tijdstip, ook over middernacht heen. Was de computer in slaapstand, dan tellen alleen tijdstippen van de **laatste minuut** nog – er wordt niets \"ingehaald\".\n- De planning **hoort bij de show**: ze wordt in het showbestand opgeslagen, maakt deel uit van de back-ups en wijzigen markeert de show als niet-opgeslagen. Elke uitvoering verschijnt in de opdrachtgeschiedenis en als kort bericht."
+ },
+ {
+  "id": "automation-004",
+  "page": "automation",
+  "path": [
+   "Planning, tijdstip en OSC",
+   "2. Een cue die op een tijd wacht"
+  ],
+  "title": "2. Een cue die op een tijd wacht",
+  "keywords": [],
+  "text": "Kies in het cuevenster de trigger **Tijdstip** (of typ `clock 19:30` / `clock 20:00 sat,sun` in de triggercel, of gebruik de opdracht `Cue 3 Trigger Clock 19:30 Mon-Fri`). De cue gedraagt zich dan als de andere triggers (audio, MIDI, timecode): is hij de **volgende cue van een lopende lijst**, dan gaat hij af zodra de **klok dat tijdstip bereikt** op een van de gekozen dagen. Is zijn tijd al verstreken wanneer hij de volgende cue wordt, dan wacht hij op de volgende keer – hij gaat niet meteen af.\n\nTypisch gebruik: *Cue 1 (Go, zaallicht) – Cue 2 (Tijdstip 19:30, begin van de show) – Cue 3 (Follow)*. De planning kan de lijst om 18:55 starten, de kloktijd-cue wacht dan op 19:30."
+ },
+ {
+  "id": "automation-005",
+  "page": "automation",
+  "path": [
+   "Planning, tijdstip en OSC",
+   "3. OSC"
+  ],
+  "title": "3. OSC",
+  "keywords": [],
+  "text": "**OSC (Open Sound Control)** is een netwerkprotocol dat veel apps en apparaten spreken – **TouchOSC** (faders en knoppen op tablet / telefoon), **QLab**, **Ableton**, showcontrollers. Daarmee bedient andere software OpenCue en OpenCue kan berichten versturen.\n\n**Bedieningen → OSC ...** (de schakelaar en de poort staan ook in **Instellingen → OSC**; beide wijzigen dezelfde instelling):"
+ },
+ {
+  "id": "automation-006",
+  "page": "automation",
+  "path": [
+   "Planning, tijdstip en OSC",
+   "3. OSC"
+  ],
+  "title": "3. OSC (2)",
+  "keywords": [],
+  "text": "1. Zet **OSC ontvangen** aan. De **UDP-poort** (standaard `9000`) en de adressen van deze computer worden getoond; voer ze in de andere app in (`192.168.1.20:9000`). Het staat **uit** tot u het aanzet; Windows kan één keer naar de firewall vragen (*Instellingen → Toegang op afstand → Windows Firewall* regelt dat).\n2. **Ingebouwde adressen** werken meteen: `/opencue/go`, `/opencue/back`, `/opencue/pause`, `/opencue/resume`, `/opencue/stop`, `/opencue/blackout` (1 = aan, 0 = uit, zonder waarde = omschakelen), `/opencue/master` en `/opencue/fader` (waarde 0 tot 1), `/opencue/cue/<nummer>` (naar die cue springen). Een knop die bij indrukken 1 en bij loslaten 0 verstuurt, wordt correct afgehandeld: alleen het indrukken telt.\n3. **Uw adressen**: **Nieuwe mapping** – het **adres** (`/my/button1`, `*` en `?` zijn toegestaan), de **opdracht** en wanneer die wordt uitgevoerd: **alleen bij indrukken** (waarde boven 0) of **bij elk bericht** (voor faders). In de opdracht is `{value}` de eerste waarde van het bericht **omgerekend naar een bereik** (standaard wordt 0..1 tot 0..100): `Master {value}` met een fader. **Leren** neemt het adres van het volgende binnenkomende bericht over – druk op de knop in de andere app. *In geschiedenis* toont de opdracht in de opdrachtgeschiedenis (een faderstroom zou die overspoelen). De prullenbakknop verwijdert de mapping – OpenCue vraagt eerst. Ook hier kan de opdracht worden geketend (`Blackout On, Cuelist Main Stop`).\n4. De **monitor** onderaan toont elk binnenkomend bericht en wat ermee is gebeurd (*ingebouwd*, *mapping*, *geen mapping*, *geblokkeerd*).\n5. **Ingebouwde adressen** (uitklappen): ze allemaal uitzetten, het **voorvoegsel** wijzigen (`/opencue/go` wordt bijvoorbeeld `/light/go` als een ander programma `/opencue` al gebruikt) en **afzonderlijke** adressen uitzetten.\n6. **Versturen naar** stelt het doel in voor de eigen berichten van OpenCue: **Testbericht versturen** of de opdracht `Osc /address 0.5` (zie *Opdrachtregel*).\n7. **Status terugmelden (terugkoppeling)**: OpenCue meldt zijn status **uit zichzelf** aan het doel (en, als *Ook naar elke afzender* aan staat, aan elk apparaat dat het in het afgelopen uur een bericht heeft gestuurd – op de poort van het doel). Dat is wat de displays en knoplampjes van TouchOSC nodig hebben. Er worden alleen **wijzigingen** verstuurd, plus alles in één keer bij het aanzetten, wanneer een nieuw apparaat verschijnt en met **Nu alles verzenden**. Gemeld worden (onder hetzelfde voorvoegsel als de ingebouwde adressen): `/opencue/cuelist` (naam van de actieve lijst), `/opencue/cue` (nummer van de actieve cue, `-1` = geen), `/opencue/cuename`, `/opencue/state` (`running`, `paused`, `stopped`, `done` of `idle`), `/opencue/fader` en `/opencue/master` (0 tot 1), `/opencue/blackout` (1 / 0) en `/opencue/cue/<nummer>` = `1` voor de actieve cue en `0` wanneer die eindigt (het lampje van een cueknop). Onder **Wat wordt gemeld** kunnen afzonderlijke berichten worden uitgezet. Het staat **uit** tot u het aanzet."
+ },
+ {
+  "id": "automation-007",
+  "page": "automation",
+  "path": [
+   "Planning, tijdstip en OSC",
+   "3. OSC"
+  ],
+  "title": "3. OSC (3)",
+  "keywords": [],
+  "text": "**Veiligheid:** OSC heeft **geen wachtwoord** – iedereen in het netwerk kan versturen. Daarom staat het standaard uit; **Toegestane afzenders** beperkt het tot adressen (`192.168.1.` = het hele subnet, of één adres); en een stortvloed wordt afgeremd (300 berichten per seconde). `/opencue/cmd \"<opdracht>\"` zou **elke** opdracht kunnen uitvoeren (ook *Delete*), daarom werkt het alleen als u **Elke opdracht toestaan** aanzet."
+ },
+ {
+  "id": "automation-008",
+  "page": "automation",
+  "path": [
+   "Planning, tijdstip en OSC",
+   "4. Plug-and-play DMX"
+  ],
+  "title": "4. Plug-and-play DMX",
+  "keywords": [],
+  "text": "(Ook in de handleiding *Aan de slag*, paragraaf 6.) **Art-Net: Instellingen → DMX-uitgang → Apparaten automatisch zoeken** zoekt apparaten in het netwerk en verstuurt naar elk ervan. **Netwerk scannen** toont ze in een lijst. **USB-DMX**: laat de COM-poort op **Automatisch** staan – sluit de adapter aan en hij verbindt, ook na loskoppelen en opnieuw aansluiten."
+ }
+]

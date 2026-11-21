@@ -35,8 +35,9 @@ GDTF Share (gdtf-share.com) ist die offizielle, kostenlose Sammlung von GDTF-Dat
 
 1. Öffne den Tab **Online (GDTF Share)**.
 2. **Melde dich an** mit deinem GDTF-Share-Konto. Zum Herunterladen ist ein kostenloses Konto nötig; im Dialog gibt es den Link *Kostenloses Konto anlegen*. Dein Passwort bleibt nur für diese Sitzung im Speicher – außer du setzt den Haken *Angemeldet bleiben*; dann wird es **verschlüsselt auf diesem Computer** gespeichert.
-3. Suche, sortiere (Name, Neueste zuerst, Beste Bewertung), filtere nach verifiziert / Bewertung und klicke auf **Installieren**.
-4. Die Karte zeigt danach *Installiert*. Erscheint später eine neuere Revision, wird ein Knopf **Aktualisieren** angeboten.
+3. Suche, sortiere (Name, Neueste zuerst, Beste Bewertung), filtere nach **Herstellerdateien** / Bewertung. Jede Karte zeigt, ob die Datei **vom Hersteller** oder **von einem Nutzer** hochgeladen wurde, wie viele Modi sie hat (mit Kanalzahl) und wie groß sie ist.
+4. Klicke auf **Details**, um den Scheinwerfer **vor dem Installieren anzusehen**: die Datei wird nur vorübergehend geladen (nicht installiert) und in derselben Detailansicht wie bei installierten Typen geöffnet – mit allen Kanälen, Rädern und dem 3D-Modell. Oben stehen **Installieren** und **Zurück zur Suche**. Oder klicke direkt auf **Installieren**.
+5. Die Karte zeigt danach *Installiert*. Erscheint später eine neuere Revision, wird ein Knopf **Aktualisieren** angeboten.
 
 Das ist die einzige Stelle, an der OpenCue für Scheinwerfer das Internet nutzt; alles andere funktioniert offline. OpenCue liefert keine GDTF-Dateien von GDTF Share mit, weil deren Bedingungen die Weitergabe nicht erlauben – du lädst sie selbst herunter.
 
@@ -72,12 +73,21 @@ Der Dialog warnt, wenn der letzte Scheinwerfer über Kanal **512** eines Univers
 
 Jeder Scheinwerfer bekommt eine stabile **FID** (Scheinwerfernummer), die die Befehlszeile benutzt (`Fixture 1 Thru 5`).
 
+### Viele Scheinwerfer auf einmal: Liste aus CSV oder Excel
+
+Im Dialog *Scheinwerfer hinzufügen* gibt es unten **Erweiterte Importfunktionen …** (auch im Menü **Bibliothek → Scheinwerfer-Liste importieren**). Damit legst du eine ganze Anlage aus einer Tabelle an:
+
+1. **Datei wählen …** – eine `.csv`- oder Excel-Datei (`.xlsx`). Die **erste Zeile** enthält die Spaltentitel. Nur der **Typ** ist nötig; *Name*, *Modus*, *Universum*, *Adresse*, *Nummer* (FID) und *Anzahl* sind optional. **Aktuelle Patch-Liste als CSV laden** gibt dir eine Vorlage.
+2. OpenCue **errät die Spalten** (Namen wie *Name*, *Typ*, *Gerät*, *Universum*, *Adresse*, *Anzahl* …); du kannst jede Zuordnung ändern. Eine Adresse darf auch `2.045` oder `2/45` heißen (Universum 2, Adresse 45). Fehlt die Adresse, läuft sie hinter dem vorigen Gerät desselben Universums weiter.
+3. Die **Vorschau** zeigt jede Zeile – rot mit dem Grund, wenn etwas nicht stimmt (Typ unbekannt oder mehrdeutig, Modus unbekannt, passt nicht ins Universum, Nummer schon vergeben). **Typ, wenn die Zelle leer ist** und **Universum, wenn es fehlt** füllen Lücken.
+4. **Importieren** legt die Scheinwerfer an. Bei Problemen erst **Zeilen mit Problemen auslassen** ankreuzen. Vorher wird nichts angelegt.
+
 ### Die Scheinwerfer-Liste und der Tab „Scheinwerfer“
 
 Zwei Stellen zeigen deine Scheinwerfer:
 
 - Das Panel **Scheinwerfer-Liste** ist die Patch-Tabelle: eine Zeile pro Scheinwerfer mit FID, Name, Typ, Universum, Adresse und Kanalzahl, dazu der Knopf **Scheinwerfer hinzufügen**.
-- Der Tab **Scheinwerfer** im Panel **Scheinwerfer-Steuerung** zeigt dieselben Scheinwerfer als Kachelraster (wie bei dot2) zum schnellen Auswählen.
+- Der Tab **Scheinwerfer** im Panel **Scheinwerfer-Steuerung** zeigt dieselben Scheinwerfer als Kachelraster (wie auf einem Lichtpult) zum schnellen Auswählen.
 
 | Aktion | So geht's |
 |---|---|
@@ -111,11 +121,11 @@ Gruppen dienen nur der Ordnung: Sortieren und mehrere Scheinwerfer mit einem Kli
 
 ## 5. Scheinwerfer steuern: das Panel Scheinwerfer-Steuerung
 
-Wähle Scheinwerfer aus und nutze dann das Panel **Scheinwerfer-Steuerung** (bei dot2 „Programmer“). Ein Panel kann alles zeigen (Seitenleiste mit allen Kategorien) oder nur eine Kategorie (*Panel-Eigenschaften → Ansicht*).
+Wähle Scheinwerfer aus und nutze dann das Panel **Scheinwerfer-Steuerung** (auf Pulten oft „Programmer“). Ein Panel kann alles zeigen (Seitenleiste mit allen Kategorien) oder nur eine Kategorie (*Panel-Eigenschaften → Ansicht*).
 
 | Kategorie | Bedienelemente |
 |---|---|
-| **Scheinwerfer** | Das Kachelraster zum Auswählen |
+| **Scheinwerfer** | Das Kachelraster zum Auswählen; Schalter **Liste / Layout** (siehe unten) |
 | **Helligkeit** | Fader und Schnelltasten |
 | **Position** | Schalter **Grob / Fein**. *Grob*: Pan-/Tilt-Fader, **Center / Home / Flip**, Zahlenfelder in Grad. *Fein*: die Fein-Kanäle (16 Bit) als Zahlenfelder; auf einem Zahlenfeld nach oben oder unten wischen ändert den Wert fein. Geräte ohne Fein-Kanäle arbeiten mit 8 Bit. |
 | **Farbe** | **Fader** (HSV, CMY oder RGB) oder **Color Picker** (Farbrad) |
@@ -129,9 +139,28 @@ Jeder Kanal, den die GDTF-Datei beschreibt, bekommt ein Bedienelement, sodass du
 
 ### Was die Markierung an den Bedienelementen sagt
 
-Die Bedienelemente zeigen immer, was gerade ausgegeben wird (dieselben Werte wie im DMX-Monitor) – auch während ein Cue oder Effekt läuft. Eine dünne farbige Linie an einem Scheinwerfer oder einem Kategorie-Tab erscheint **nur, nachdem du diese Kategorie von Hand bedient hast**: Das sind deine *Programmer-Werte*, die noch nicht gespeichert sind. Sie verschwinden nach *Cue speichern* oder *Clear*.
+Die Bedienelemente zeigen immer, was gerade ausgegeben wird (dieselben Werte wie im DMX-Monitor) – auch während ein Cue oder Effekt läuft. Eine dünne farbige Linie an einem Scheinwerfer oder einem Kategorie-Tab zeigt, was sich **gegenüber dem aktiven Cue geändert hat** – von Hand bedient oder durch ein *Clear*, das alles dunkel gemacht hat. Gespeichert wird beim *Cue speichern* immer die Änderung gegenüber dem Cue, der davor abgespielt würde (auch beim Einfügen mit `2.5`). Nach dem Speichern ist der neue Cue der aktive und die Linien verschwinden. Bei mehreren Cue-Listen gilt der aktive Cue der zuletzt benutzten Liste.
 
 ---
+
+### Scheinwerfer: Liste oder Layout
+
+Oben im Tab **Scheinwerfer** schaltest du zwischen zwei Ansichten um (wie bei *Farbe* zwischen Fader / Picker / Rad):
+
+- **Liste:** die Kacheln nach Gruppen und Nummern geordnet.
+- **Layout:** jeder Scheinwerfer ist eine **quadratische Kachel** auf einem Raster. So kannst du die Scheinwerfer so anordnen, wie sie auf der Bühne hängen, und sie schneller treffen. Die Kacheln zeigen dasselbe wie in der Liste (Nummer, Helligkeit, Farb- und Strahl-Vorschau).
+
+Im Layout gilt:
+
+- **Auswählen** wie in der Liste: Klick oder **Wischgeste** (Lasso) über die leere Fläche.
+- **Unbegrenzte Fläche:** sie reicht in **alle Richtungen** weiter (auch nach links und oben, die Positionen dürfen negativ sein). Verschieben der Ansicht: Mausrad / Scrollleisten / Wischen, **Mitteltaste ziehen**, oder beim Ziehen einer Kachel an den Rand gehen. **Strg + Mausrad** zoomt.
+- **Alle zeigen:** der Knopf oben rechts zoomt und zentriert so, dass **alle Scheinwerfer** in der Mitte stehen.
+- **Ansichten (Bereiche):** *Ansicht speichern…* (Rechtsklick) merkt die aktuelle Mitte und den Zoom unter einem Namen, zum Beispiel „Bühne links“. Oben erscheint ein Knopf; ein Klick springt dorthin, Rechtsklick auf den Knopf: überschreiben, umbenennen, löschen. So musst du bei vielen Scheinwerfern nicht alles auf einmal im Blick haben.
+- **Rechtsklick** (Touch: langes Drücken) auf die freie Fläche oder auf eine Kachel öffnet das Menü: *Baumodus*, *Alle zeigen*, *Ansicht speichern…*, *Raster* (ganze, halbe oder Viertel-Kachel), *Kacheln dürfen sich überlappen*, *Zoom zurücksetzen*, *Alle Scheinwerfer neu anordnen…*.
+- **Baumodus:** Ziehen verschiebt eine Kachel; sind mehrere gewählt, werden alle gemeinsam verschoben. Die Kacheln rasten im Raster ein; ohne *Überlappen* überdecken sie sich nie, mit *Überlappen* darf man sie ineinander legen (die zuletzt bewegte liegt oben) und mit dem feinen Raster (1/4) dicht staffeln. Eine leere Fläche wählt weiter per Wischgeste aus. **Fertig** oder **Esc** beendet den Baumodus.
+- **Gespeichert in der Show:** die Positionen, die Rasterfeinheit, *Überlappen* und die gespeicherten Ansichten. **Auf deinem Gerät** (nicht in der Show): der Zoom, die zuletzt gezeigte Mitte und die zuletzt benutzte Unteransicht.
+
+**Gemerkte Ansichten:** Überall, wo ein Panel zwischen Ansichten umschaltet, merkt sich dein Gerät die zuletzt benutzte und stellt sie beim nächsten Öffnen wieder her: in der Scheinwerfer-Steuerung (Liste / Layout, Fader / Picker / Rad, Strobe / Gobo / Prism, Grob / Fein), bei *Variablen und Effekte* (Variablen oder Effekte, Typ-Filter, Sortierung), im *Effekt-Studio* (Vorschau an / aus), in der *3D-Simulation* (Ansicht / Bauen / Scheinwerfer) und in der Effekt-Auswahl (Kategorie und Schlagworte wie *Basis*).
 
 ## 6. Variablen und Effekte (Presets)
 
@@ -143,6 +172,9 @@ Das Panel **Variablen / Effekte** enthält wiederverwendbare Werte: eine Farbe �
 
 - Ein Showfile speichert die Scheinwerfer **mit** Typ, Modus, Adresse und Gruppe, dazu Cues, Effekte, Variablen und Presets.
 - Die GDTF-Dateien liegen **nicht** in der Show – beim **Export einer Show** (Dateimanager → Export) werden aber die GDTF-Dateien und Effekt-Skripte, die die Show benutzt, in die ZIP gepackt. So öffnest du die Show auf einem anderen Computer, ohne etwas zu installieren. Beim Import wird eine lokale Datei gleichen Namens nie ersetzt.
+- **Drucken / PDF** (Datei-Menü): Dokumentation der Show für Techniker – **Patch-Liste**, **DMX-Kanalbelegung** (welcher Scheinwerfer welche Kanäle jedes Universums belegt, Überschneidungen rot), **Gruppen**, **Plan (Draufsicht)** der Scheinwerfer (aus der 3D-Bühne, sonst aus der Layout-Ansicht) und **Cue-Listen**. Der Dialog zeigt neben der Auswahl eine **Vorschau** des PDFs (sie folgt jeder Änderung der Auswahl und der Papiergröße; auf kleinen Bildschirmen entfällt die Vorschau). Lange Namen werden in den Tabellen und im Plan **umgebrochen** (ein sehr langer Name ohne Leerzeichen wird geteilt). Im Plan trägt jeder Scheinwerfer seine Nummer, eine Liste unter dem Plan sagt, welche Nummer welcher Scheinwerfer ist; Namen von Bühnenobjekten stehen in ihrer Fläche. *Als PDF speichern* lädt die Datei, *Zum Drucken öffnen* zeigt sie im PDF-Betrachter (dort mit Strg+P drucken).
+- **Show-Datei `.ocshow`:** *Datei → Show exportieren* schreibt eine `.ocshow`-Datei (ein ZIP mit der Show und ihren Dateien). Ein **Doppelklick** darauf öffnet sie in OpenCue (der Installer richtet das ein; bei der entpackten Version *Einstellungen → Allgemein → Dateien .ocshow mit OpenCue öffnen*). Läuft OpenCue schon, übernimmt es die Datei und fragt bei ungespeicherten Änderungen vorher. **Datei → Zuletzt benutzt** listet die letzten Shows.
+- **3D-Bühne als JSON:** im 3D-Panel (Modus *Bauen* oder *Scheinwerfer*) die Seitenleiste von **Werkzeuge** auf **JSON** umschalten (Umschalter unter dem Speichern-Knopf; der Knopf *Als JSON bearbeiten* ganz am Ende der Werkzeuge tut dasselbe). Die Werkzeuge (Körper hinzufügen, Liste, Eigenschaften) werden durch den Text der Bühne ersetzt (Raum, Objekte, Scheinwerfer-Positionen; Meter, Grad, Z nach oben; Scheinwerfer unter ihrer Nummer); Bühnenname, Rückgängig und **Speichern** bleiben gleich, **Werkzeuge** bringt die normale Ansicht zurück. **Die Breite der Seitenleiste lässt sich ändern:** den linken Rand ziehen (Doppelklick = Standardbreite); die Breite wird als Anteil des Panels gemerkt (höchstens drei Viertel) und bleibt so auch im Vollbild proportional. Änderungen werden geprüft und **live übernommen** (ein Syntaxfehler nennt die Zeile und ändert nichts); was du in der 3D-Ansicht verschiebst, erscheint im Text. *Speichern* speichert die Bühne, *JSON schließen* bringt die Seitenleiste zurück. Derselbe Text steht als Dialog unter *Bibliothek → 3D-Bühne als JSON bearbeiten* bereit (mit *Prüfen* und *Übernehmen*).
 - Verwendet eine Show einen Typ, dessen Datei fehlt, nimmt OpenCue einen eingebauten Ersatz, damit die Show trotzdem funktioniert; der Tab *In dieser Show* zeigt das als *Eingebauter Ersatz* oder *Datei fehlt*.
 
 ---

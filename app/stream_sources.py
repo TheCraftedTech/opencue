@@ -1,3 +1,5 @@
+# Copyright (C) 2026 Samuel Zenker
+# SPDX-License-Identifier: GPL-3.0-or-later
 """
 stream_sources.py
 Quellen fuer das Livestream-Panel (Kamera-Streams per URL) und die Weiterleitung (Proxy) durch den Server.
@@ -138,13 +140,13 @@ def clean_url(raw: str) -> Tuple[str, str, str]:
     """Pruefen und zerlegen: (url_ohne_zugangsdaten, benutzer_aus_url, passwort_aus_url). Wirft StreamError."""
     text = str(raw or "").strip()
     if not text or len(text) > 2000 or any(ord(c) < 32 for c in text):
-        raise StreamError("invalid_url", "Bitte eine Adresse angeben")
+        raise StreamError("invalid_url", "Please enter an address")
     parts = urllib.parse.urlsplit(text)
     scheme = parts.scheme.lower()
     if scheme in ("rtsp", "rtsps", "rtmp", "rtmps"):
-        raise StreamError("unsupported_scheme", "RTSP/RTMP kann der Browser nicht abspielen - ein Wandler (z. B. MediaMTX oder go2rtc) macht daraus WebRTC, HLS oder MJPEG")
+        raise StreamError("unsupported_scheme", "The browser cannot play RTSP/RTMP - a converter (e.g. MediaMTX or go2rtc) turns it into WebRTC, HLS or MJPEG")
     if scheme not in ("http", "https") or not parts.hostname:
-        raise StreamError("invalid_url", "Die Adresse muss mit http:// oder https:// beginnen")
+        raise StreamError("invalid_url", "The address must start with http:// or https://")
     user, password = urllib.parse.unquote(parts.username or ""), urllib.parse.unquote(parts.password or "")
     host = parts.hostname if ":" not in parts.hostname else f"[{parts.hostname}]"
     netloc = host + (f":{parts.port}" if parts.port else "")
@@ -155,11 +157,11 @@ def save(data: Dict[str, Any], own_ports: Tuple[int, ...] = ()) -> Dict[str, Any
     """Quelle anlegen oder aendern. password: None/fehlt = unveraendert, '' = entfernen, Text = setzen."""
     name = re.sub(r"\s+", " ", str(data.get("name", "")).strip())[:60]
     if not name:
-        raise StreamError("invalid_name", "Bitte einen Namen angeben")
+        raise StreamError("invalid_name", "Please enter a name")
     url, url_user, url_password = clean_url(data.get("url", ""))
     parts = urllib.parse.urlsplit(url)
     if (parts.hostname or "").lower() in ("localhost", "127.0.0.1", "::1") and (parts.port or (443 if parts.scheme == "https" else 80)) in own_ports:
-        raise StreamError("self", "Das ist die Adresse dieses Programms selbst")
+        raise StreamError("self", "This is the address of this program itself")
     kind = str(data.get("type", "auto"))
     if kind not in TYPES:
         raise StreamError("invalid_type", "Unbekannter Typ")
@@ -223,7 +225,7 @@ def open_upstream(row: Dict[str, Any], url: Optional[str] = None, method: str = 
     """Verbindung zur Kamera mit den gespeicherten Zugangsdaten. url (z. B. ein HLS-Segment) muss vom selben Server wie die Quelle sein."""
     target = url or row["url"]
     if not same_origin(row["url"], target):
-        raise StreamError("foreign_host", "Nur Adressen vom Server der Quelle sind erlaubt", 403)
+        raise StreamError("foreign_host", "Only addresses on the source's server are allowed", 403)
     handlers: List[Any] = [_SameHostRedirect(row["url"])]
     if row.get("user"):
         manager = urllib.request.HTTPPasswordMgrWithDefaultRealm()
@@ -237,10 +239,10 @@ def open_upstream(row: Dict[str, Any], url: Optional[str] = None, method: str = 
         if err.code in (401, 403):
             raise StreamError("auth", "Die Kamera lehnt die Zugangsdaten ab (Benutzername/Passwort pruefen)", 502)
         if err.code == 404:
-            raise StreamError("not_found", "Die Kamera kennt diese Adresse nicht (404)", 502)
+            raise StreamError("not_found", "The camera does not know this address (404)", 502)
         raise StreamError("upstream", f"Die Kamera antwortete mit Status {err.code}", 502)
     except (urllib.error.URLError, TimeoutError, OSError) as exc:
-        raise StreamError("network", f"Die Kamera ist nicht erreichbar ({getattr(exc, 'reason', exc)})", 502)
+        raise StreamError("network", f"The camera is not reachable ({getattr(exc, 'reason', exc)})", 502)
 
 
 def rewrite_playlist(text: str, base_url: str, proxy_prefix: str) -> str:

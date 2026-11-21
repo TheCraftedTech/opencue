@@ -1,5 +1,7 @@
 #NAME Focus Steps
-#DESCRIPTION Springt in Stufen durch den Fokusbereich. steps = Anzahl der Stufen.
+#DESCRIPTION en The focus steps through fixed values.
+#DESCRIPTION de Der Fokus schaltet durch feste Werte.
+#TAGS advanced, steps
 #CATEGORY focus
 #RATE 40
 #VAR speed Slider 1 0.05 8 0.05

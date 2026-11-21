@@ -1,3 +1,5 @@
+# Copyright (C) 2026 Samuel Zenker
+# SPDX-License-Identifier: GPL-3.0-or-later
 """
 about.py
 "Ueber OpenCue" (Hilfe-Menue): Version, Lizenz (GPL-3.0-or-later), Quellcode-Link und die Lizenzen der mitgelieferten Bibliotheken.

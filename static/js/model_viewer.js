@@ -1,3 +1,5 @@
+// Copyright (C) 2026 Samuel Zenker
+// SPDX-License-Identifier: GPL-3.0-or-later
 /* 3D-Betrachter fuer Scheinwerfer-Modelle - gemeinsame 3D-Engine: three.js (lokal in static/vendor/three, MIT, kein Internet noetig).
  * Zeigt den Geometrie-Baum einer GDTF (Netze aus den 3D-Dateien oder Grundformen, vom Server aufbereitet: app/gdtf_model.py), mit Boden-Raster,
  * Schatten, Strahl-Kegel und Pan/Tilt zum Bewegen. Koordinaten wie in GDTF: Z nach oben, Meter, der Scheinwerfer haengt (Strahl nach -Z).

@@ -1,0 +1,122 @@
+[
+ {
+  "id": "timeline-001",
+  "page": "timeline",
+  "path": [
+   "Éditeur de frise et LTC"
+  ],
+  "title": "Éditeur de frise et LTC",
+  "keywords": [],
+  "text": "Avec l'**éditeur de frise**, vous placez graphiquement des cues et des commandes sur un axe temporel – avec les formes d'onde de vos morceaux en dessous. Avec le **LTC**, OpenCue suit une source extérieure (un lecteur, un DJ ou un logiciel de show, une console) ou envoie lui-même une horloge à d'autres appareils. Tout repose sur le **timecode global**."
+ },
+ {
+  "id": "timeline-002",
+  "page": "timeline",
+  "path": [
+   "Éditeur de frise et LTC",
+   "1. L'idée en une minute"
+  ],
+  "title": "1. L'idée en une minute",
+  "keywords": [],
+  "text": "- OpenCue a **une seule** horloge, le **timecode** (panneau *Code temporel*, affichage en haut de la barre d'outils). Elle démarre, s'arrête, saute – sur tous les appareils en même temps.\n- Des choses se produisent à certains moments de cette horloge : un **cue** avec le déclencheur *Code temporel* démarre, une **commande** d'une piste de commandes est exécutée, un **lecteur multimédia** lance son morceau (*heure de début*). Cela n'arrive que lorsque l'horloge **traverse** ce moment **en avant** – les sauts et la lecture à l'envers ne déclenchent rien.\n- L'horloge peut être menée par **trois sources** : cet ordinateur (vous appuyez sur Démarrer), le **timecode MIDI** (*Paramètres → MIDI*) ou le **LTC** (*Paramètres → Code temporel*). Celle qui est là en premier mène.\n- L'**éditeur de frise** montre tout cela sur un axe temporel et vous permet de le placer et de le déplacer confortablement – au lieu de saisir chaque heure dans la boîte de dialogue du cue."
+ },
+ {
+  "id": "timeline-003",
+  "page": "timeline",
+  "path": [
+   "Éditeur de frise et LTC",
+   "2. Ouvrir l'éditeur de frise"
+  ],
+  "title": "2. Ouvrir l'éditeur de frise",
+  "keywords": [],
+  "text": "- Comme panneau dans la disposition : *Modifier → Ajouter un panneau → Médias → **Éditeur de frise*** (de préférence large).\n- Brièvement comme fenêtre : *Affichage → Ouvrir le panneau dans une fenêtre → **Éditeur de frise*** (tous les panneaux y figurent, par exemple aussi **Commande simple**)."
+ },
+ {
+  "id": "timeline-004",
+  "page": "timeline",
+  "path": [
+   "Éditeur de frise et LTC",
+   "3. À quoi ça ressemble"
+  ],
+  "title": "3. À quoi ça ressemble",
+  "keywords": [],
+  "text": "- **Règle** en haut : un clic ou un glissement saute à ce moment.\n- **Une piste par liste de cues** : chaque cue avec le déclencheur *Code temporel* est un **repère** avec numéro et nom. Le nom de la liste à gauche la sélectionne (pour le plateau et « Placer le cue ici »).\n- **Pistes de commandes** (rouge / rose) : des commandes de la ligne de commande à certains moments – voir la section 6.\n- **Pistes audio** en bas : **automatiques** pour chaque morceau qu'un lecteur multimédia joue avec le timecode, avec une **forme d'onde** et de fines lignes à chaque repère – vous voyez si quelque chose tombe exactement sur le temps (section 5).\n- **Plateau** tout en bas : les **cues sans heure** de la liste sélectionnée.\n- La **tête de lecture** jaune est le timecode global."
+ },
+ {
+  "id": "timeline-005",
+  "page": "timeline",
+  "path": [
+   "Éditeur de frise et LTC",
+   "4. Modifier les repères et naviguer"
+  ],
+  "title": "4. Modifier les repères et naviguer",
+  "keywords": [],
+  "text": "| Action | Comment |\n|---|---|\n| **Déplacer** un repère | le faire glisser latéralement à la souris ou au doigt ; il s'accroche à la **grille** (maintenez **Maj** = pas de grille) |\n| **Déplacer finement** un repère | cliquer sur le repère, puis `←` / `→` (un pas de grille ; `Maj` = dix fois plus) |\n| Placer sur la frise un cue **sans heure** | le faire glisser du **plateau** vers la piste – ou sélectionner la pastille et appuyer sur **Placer le cue ici** |\n| **Grille** | *désactivée*, 10 ms, image (25 i/s), 0,1 s, 1 s |\n| **Zoom** | touches `+` / `−`, Ctrl + molette, **deux doigts** (iPad) ; *Tout afficher* (`F`) |\n| **Suivre** | la vue défile avec la tête de lecture |\n\nLe **défilement** fonctionne de toutes les façons :\n\n| Touche / bouton | Effet |\n|---|---|\n| **Faire glisser** la règle ou la forme d'onde | saute en continu à cet endroit (le son suit) |\n| Boutons **±5 s** | cinq secondes en arrière / en avant (des clics rapides s'additionnent) |\n| Boutons **repère précédent / suivant** (`[` / `]`) | saute au cue ou à l'heure de commande suivant(e) |\n| `←` / `→` (focus dans le panneau) | 1 s ; avec `Maj` 10 s ; avec `Alt` une image (40 ms) |\n| `Début` / `Fin` | au début / à la fin des repères |\n| `Espace`, `L`, `K`, `J` | lecture / pause · avant · pause · lecture **à l'envers** |\n| Bouton **Inverser** | lit le timecode à l'envers (ne déclenche ni cues ni commandes) |"
+ },
+ {
+  "id": "timeline-006",
+  "page": "timeline",
+  "path": [
+   "Éditeur de frise et LTC",
+   "5. Audio : automatiquement depuis les lecteurs multimédias"
+  ],
+  "title": "5. Audio : automatiquement depuis les lecteurs multimédias",
+  "keywords": [],
+  "text": "Vous n'avez pas à choisir un morceau dans la frise. La frise regarde d'elle-même **ce qui est joué avec le timecode** :\n\n- Chaque **lecteur multimédia** en mode **Code temporel** avec un média choisi et son **heure de début** apparaît comme piste audio : avec nom, **forme d'onde** et un **repère de début** (symbole de note) à l'heure de début. Un lecteur sur **un autre appareil** (par exemple sur l'ordinateur principal pendant que vous travaillez sur l'iPad) et les **écrans de la simulation 3D** apparaissent aussi.\n- **Faire glisser le repère de début** (ou double-cliquer dessus et saisir l'heure) change l'**heure de début du lecteur multimédia** – le morceau commence alors à la nouvelle heure.\n- **Ajouter un son ...** crée un **son propre** à cette frise (il tourne en synchronisation avec le timecode) au cas où aucun lecteur multimédia n'est encore configuré. Le bouton haut-parleur coupe seulement ces sons propres. Sur l'iPad, le navigateur a besoin d'un toucher du panneau avant d'autoriser le son.\n- OpenCue calcule la **forme d'onde** une fois avec *ffmpeg* fourni (une valeur toutes les 10 ms) et la mémorise. Si ffmpeg manque, la piste l'indique.\n- Avec le **LTC**, c'est pareil : les lecteurs multimédias suivent le timecode quelle que soit la source qui le mène – les pistes audio montrent donc toujours ce qui tourne à quel moment."
+ },
+ {
+  "id": "timeline-007",
+  "page": "timeline",
+  "path": [
+   "Éditeur de frise et LTC",
+   "6. Pistes de commandes"
+  ],
+  "title": "6. Pistes de commandes",
+  "keywords": [],
+  "text": "Une **piste de commandes** exécute des **commandes de la ligne de commande** à des moments du timecode – indépendamment des cues, par exemple `Blackout Off` à 1:30, `Cuelist Show Go` à 2:00 ou `Effect Off` au refrain. Elle appartient au **show** (enregistrée et exportée avec lui).\n\n- **Nouvelle piste de commandes** : bouton **+**. Il peut y en avoir plusieurs (par exemple « Lumière », « Fumée », « Vidéo ») ; un double-clic sur le nom renomme, la **×** supprime (cliquer deux fois).\n- **Ajouter une commande** : le bouton **Commande ici** (ou `C`) place une commande au moment actuel sur la piste sélectionnée – ou **double-cliquez** sur la piste à cet endroit.\n- Une petite fenêtre demande l'**heure** et la **commande** ; `Entrée` valide. Chaque repère peut être **glissé**, déplacé avec les flèches, modifié de nouveau par un **double-clic** et supprimé avec `Suppr`.\n- Le **serveur** exécute la commande lorsque le timecode **traverse** son moment **en avant** – exactement comme les cues (aussi avec le LTC / le timecode MIDI). Elle apparaît dans l'historique des commandes. Un saut l'ignore.\n- En **mode opérateur**, les pistes de commandes ne peuvent pas être modifiées ; elles s'exécutent comme d'habitude."
+ },
+ {
+  "id": "timeline-008",
+  "page": "timeline",
+  "path": [
+   "Éditeur de frise et LTC",
+   "7. Placer les cues avec la musique (enregistrement)"
+  ],
+  "title": "7. Placer les cues avec la musique (enregistrement)",
+  "keywords": [],
+  "text": "Comme sur une console, mais en graphique :\n\n1. Créez vos cues (liste de cues) – leur heure peut encore être vide. Ils apparaissent dans le **plateau**.\n2. Configurez un **lecteur multimédia** avec votre morceau (mode Code temporel, heure de début 0) – la forme d'onde apparaît d'elle-même.\n3. Choisissez la liste de cues et le premier cue dans le plateau.\n4. Lancez la lecture (Espace) et appuyez sur **Placer le cue ici** (ou `Entrée`) à chaque entrée : le cue sélectionné reçoit l'**heure actuelle**, puis le cue **suivant** est sélectionné.\n5. Peaufinez ensuite tranquillement : faites glisser les repères sur la forme d'onde, laissez-les s'accrocher.\n\nAstuce : avec la *grille 1 s* ou *image*, les repères tombent sur des temps ronds, avec *désactivée* sur la milliseconde exacte."
+ },
+ {
+  "id": "timeline-009",
+  "page": "timeline",
+  "path": [
+   "Éditeur de frise et LTC",
+   "8. LTC : le timecode comme signal audio"
+  ],
+  "title": "8. LTC : le timecode comme signal audio",
+  "keywords": [],
+  "text": "Le **LTC** (Linear Timecode) est un signal audible – il sonne comme du bruit – qui transporte l'heure. Il se trouve sur un canal (généralement le gauche), la musique sur l'autre. *Paramètres → Code temporel* montre en haut **qui mène actuellement l'horloge** (cet ordinateur, le timecode MIDI ou le LTC) et comporte deux zones :\n\n**Entrée : lire le timecode (Suivre le LTC)**\n\n1. Activez **Suivre le LTC**, choisissez l'**entrée audio** (entrée ligne, interface USB ou le *son du système* d'un périphérique de sortie). Pour essayer, il y a le **signal de test** (25 images/s, aucun appareil nécessaire).\n2. Choisissez le **canal** (gauche / droite / mélange), **Enregistrer**. En dessous, vous voyez en direct **« Signal trouvé : 00:01:12:05 · 25 i/s »** et une barre de niveau.\n3. Dès qu'un signal valide arrive, le **timecode global suit**. Tous les cues, commandes et lecteurs multimédias suivent. Une **pause ou un arrêt de la source** arrête aussi le timecode ici, un **saut** de la source est suivi.\n4. **24, 25, 29,97 (drop frame) et 30 images par seconde** sont reconnus.\n5. Pour jouer vous-même, désactivez de nouveau **Suivre le LTC**.\n\n**Sortie : envoyer le timecode (Envoyer le LTC)**"
+ },
+ {
+  "id": "timeline-010",
+  "page": "timeline",
+  "path": [
+   "Éditeur de frise et LTC",
+   "8. LTC : le timecode comme signal audio"
+  ],
+  "title": "8. LTC : le timecode comme signal audio (2)",
+  "keywords": [],
+  "text": "OpenCue devient l'horloge d'autres appareils : lorsque vous démarrez le timecode (par exemple Lecture dans le panneau *Code temporel*), le **LTC sort d'une sortie audio** – un lecteur, une console ou un enregistreur peut suivre.\n\n1. Activez **Envoyer le LTC**, choisissez la **sortie audio** et le **canal** (*les deux*, *gauche seulement* ou *droite seulement* – utilisez un seul canal si l'autre porte de la musique).\n2. Réglez la **cadence d'images** (24 / 25 / 29,97 drop frame / 30) et le **niveau** (fort mais sans écrêtage ; beaucoup d'appareils attendent un niveau ligne), **Enregistrer**.\n3. Il n'est envoyé **que pendant que le timecode avance** ; à l'arrêt ou en marche arrière, la sortie est silencieuse. Si vous sautez, le signal repart aussitôt à la nouvelle heure.\n4. Si OpenCue suit lui-même une source LTC ou MIDI, l'horloge est également retransmise.\n\n**Si rien n'arrive :** vérifiez la barre de niveau (trop faible ?), le canal (gauche / droite), si l'entrée est utilisée par un autre programme."
+ },
+ {
+  "id": "timeline-011",
+  "page": "timeline",
+  "path": [
+   "Éditeur de frise et LTC",
+   "9. Remarques"
+  ],
+  "title": "9. Remarques",
+  "keywords": [],
+  "text": "- Une **source LTC ou MIDI mène** l'horloge : Démarrer / Arrêter dans le panneau Code temporel sont supplantés par la source tant qu'elle tourne.\n- Les heures appartiennent aux **cues**, aux **pistes de commandes** et aux **lecteurs multimédias** du show et sont enregistrées avec lui ; l'éditeur de frise n'est que l'outil pour cela.\n- *Paramètres → Entrées et sorties* montre dans le groupe **Code temporel**, d'un coup d'œil : qui mène l'horloge, lecture / envoi du LTC, timecode MIDI.\n- Plus de détails sur les sources : guide **MIDI** (timecode MIDI), guide **Accès distant** (iPad), panneau **Code temporel** (démarrer, pause, saut, vitesse), **lecteur multimédia** (heure de début)."
+ }
+]

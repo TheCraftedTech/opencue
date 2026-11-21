@@ -1,3 +1,5 @@
+// Copyright (C) 2026 Samuel Zenker
+// SPDX-License-Identifier: GPL-3.0-or-later
 /* Scheinwerfer-Bibliothek: Dialog zum Verwalten der installierten GDTF-Dateien und zum Suchen/Installieren aus GDTF Share.
  * Laeuft nach app.js (nutzt dessen globale Helfer Modal, translator, _showToast, _closeAllMenus). Alle Daten kommen von
  * /api/library/*; Texte aus fremden Quellen (Namen, Hersteller) werden nur als textContent gesetzt, nie als HTML. */
@@ -42,9 +44,7 @@
     path: "",
     f: { installed: { q: "", cat: "", mfr: "" }, show: { q: "", cat: "", mfr: "" }, online: { q: "", cat: "", mfr: "", sort: "name", verified: false, verifiedFirst: false, minRating: 0 } },   // Filter je Registerkarte
     updates: {},                       // installierte Datei -> neuere Revision bei GDTF Share (nur wenn die Liste geladen ist)
-    pendingUninstall: null,
-    pendingTimer: null,
-    online: { status: null, items: [], total: 0, manufacturers: [], listTotal: 0, loading: false, seq: 0, error: "", busy: new Set() },
+    online: { status: null, items: [], total: 0, manufacturers: [], listTotal: 0, loading: false, seq: 0, error: "", busy: new Set(), previewBusy: "" },
   };
 
   // ---------------------------------------------------------------------------------------------------- Aufrufe
@@ -200,8 +200,8 @@
     const words = tokens();
     return S.installed.filter((f) => {
       if (F().cat && f.category !== F().cat) return false;
-      if (F().mfr && f.manufacturer !== F().mfr) return false;
-      const hay = `${f.name} ${f.manufacturer} ${f.revision}`.toLowerCase();
+      if (F().mfr && f.manufacturer.toLowerCase() !== F().mfr.toLowerCase()) return false;
+      const hay = `${f.name} ${f.long_name || ""} ${f.short_name || ""} ${f.manufacturer} ${f.revision} ${(f.tags || []).join(" ")}`.toLowerCase();
       return words.every((w) => hay.includes(w));
     });
   }
@@ -210,14 +210,9 @@
     const words = tokens();
     return S.show.items.filter((f) => {
       if (F().cat && f.category !== F().cat) return false;
-      if (F().mfr && f.manufacturer !== F().mfr) return false;
+      if (F().mfr && f.manufacturer.toLowerCase() !== F().mfr.toLowerCase()) return false;
       return words.every((w) => `${f.name} ${f.manufacturer} ${f.revision}`.toLowerCase().includes(w));
     });
-  }
-
-  function clearPending() {
-    S.pendingUninstall = null;
-    if (S.pendingTimer) { clearTimeout(S.pendingTimer); S.pendingTimer = null; }
   }
 
   function installedCard(f) {
@@ -228,25 +223,29 @@
     if (f.revision) tags.push(tag(t("FXLIB_REV", { rev: f.revision.replace(/_/g, " ") })));
     if (f.in_use) tags.push(tag(t("FXLIB_IN_USE", { n: f.in_use }), "use"));
     if (f.error) tags.push(tag(t("FXLIB_BROKEN"), "bad"));
+    if (f.own) tags.push(tag(t("FXLIB_OWN"), "use"));
     const upd = S.updates[f.id];
     if (upd) tags.push(tag(t("FXLIB_UPDATE_AVAILABLE", { rev: String(upd.revision).replace(/_/g, " ") }), "use"));
     const actions = [button(t("FXLIB_DETAILS"), "", () => openDetails(f.id))];
+    if (f.own) actions.push(button(t("FXLIB_EDIT"), "", () => window.FixtureEditor && window.FixtureEditor.open(f.id)));
+    const more = button(t("FXLIB_MORE"), "", () => popover(more, [
+      { label: t("FXLIB_COPY_EDIT"), sub: t("FXLIB_COPY_EDIT_SUB"), onClick: () => window.FixtureEditor && window.FixtureEditor.copy(f.id) },
+      { label: t("FXLIB_EXPORT"), onClick: () => { const a = document.createElement("a"); a.href = `/api/library/installed/${encodeURIComponent(f.id)}/file`; a.download = ""; document.body.appendChild(a); a.click(); a.remove(); } },
+      { label: t("FXLIB_REVEAL"), onClick: async () => {
+        if (!(client.state && client.state.is_local) && window.OCFsBrowser) { window.OCFsBrowser.open({ path: "fixtures" }); return; }                     // Fernzugriff: der OpenCue-Explorer
+        const r = await api("POST", `/api/library/installed/${encodeURIComponent(f.id)}/reveal`); if (!r.ok) _showToast(t("FXLIB_REVEAL_FAIL"), "warn", 4000, true); } },
+    ]));
+    more.setAttribute("aria-haspopup", "menu");
+    actions.push(more);
     if (f.in_use && !upd) actions.push(button(t("FXLIB_USED_NOTE"), "", () => setTab("show")));      // springt zum Tab 'In dieser Show'
     if (upd) {
       const busy = S.online.busy.has(String(upd.rid));
       actions.push(button(busy ? t("FXLIB_INSTALLING") : t("FXLIB_UPDATE"), "modal__button--primary", () => installOnline({ rid: upd.rid, name: f.name, revision: upd.revision }, { replace: f.id }), busy));
     }
-    if (S.pendingUninstall === f.id) {
-      actions.push(button(t("FXLIB_UNINSTALL_CONFIRM"), "modal__button--danger", () => doUninstall(f.id)));
-      actions.push(button(t("CANCEL"), "", () => { clearPending(); renderInstalled(); }));
-    } else {
-      actions.push(button(t("FXLIB_UNINSTALL"), "", () => {
-        clearPending();
-        S.pendingUninstall = f.id;
-        S.pendingTimer = setTimeout(() => { clearPending(); renderInstalled(); }, 6000);
-        renderInstalled();
-      }, false, f.in_use ? t("FXLIB_UNINSTALL_IN_USE_TIP") : ""));
-    }
+    actions.push(button(t("FXLIB_UNINSTALL"), "", async () => {
+      const body = t("FXLIB_UNINSTALL_BODY", { name: f.name }) + (f.in_use ? " " + t("FXLIB_UNINSTALL_IN_USE_TIP") : "");
+      if (await _askDelete("library", { title: t("FXLIB_UNINSTALL_TITLE"), body, confirmKey: "FXLIB_UNINSTALL" })) doUninstall(f.id);
+    }, false, f.in_use ? t("FXLIB_UNINSTALL_IN_USE_TIP") : ""));
     const node = card({
       id: f.id, name: f.name, manufacturer: f.manufacturer, category: f.category, tags, actions,
       thumb: f.has_thumbnail ? `/api/library/installed/${encodeURIComponent(f.id)}/thumbnail?v=${f.installed_at}` : "",
@@ -650,10 +649,38 @@
     return tr;
   }
 
-  const scopeQuery = (first) => (DET.scope === "show" ? `${first ? "?" : "&"}scope=show` : "");
+  const scopeQuery = (first) => (DET.scope === "show" || DET.scope === "preview" ? `${first ? "?" : "&"}scope=${DET.scope}` : "");
 
-  async function openDetails(id, scope) {
-    DET.scope = scope === "show" ? "show" : "library";
+  // Vorschau eines Online-Eintrags: dieselbe Detailansicht wie bei installierten Typen, oben mit "Installieren" und "Zurueck zur Suche"
+  function renderPreviewBar() {
+    const bar = $("fxdet-previewbar");
+    if (!bar) return;
+    bar.hidden = !DET.preview;
+    if (!DET.preview) return;
+    const item = DET.preview.item || {};
+    const install = $("fxdet-preview-install");
+    install.disabled = !!item.installed;
+    install.textContent = item.installed ? t("FXLIB_INSTALLED_TAG") : (item.update_available && item.installed_version ? t("FXLIB_UPDATE") : t("FXLIB_INSTALL"));
+  }
+
+  async function openPreview(item) {
+    if (S.online.previewBusy) return;
+    S.online.previewBusy = String(item.rid);
+    renderOnline();
+    const res = await api("POST", "/api/library/online/preview", { rid: item.rid });
+    S.online.previewBusy = "";
+    renderOnline();
+    if (!res.ok) {
+      if (res.data.error === "auth") { S.online.status = { logged_in: false }; showOnlineView(); }
+      _showToast(errorText(res.data.error, res.data), "warn", 4500, true);
+      return;
+    }
+    await openDetails(res.data.id, "preview", { item });
+  }
+
+  async function openDetails(id, scope, preview) {
+    DET.scope = scope === "show" || scope === "preview" ? scope : "library";
+    DET.preview = scope === "preview" ? preview || null : null;
     const res = await api("GET", `/api/library/installed/${encodeURIComponent(id)}/details${scopeQuery(true)}`);
     if (!res.ok) { _showToast(t("FXDET_ERR"), "warn", 4000, true); return; }
     destroyViewer();
@@ -665,6 +692,7 @@
     DET.modelId = "";
     Modal._hooks["fixture-library-detail"] = destroyViewer;               // beim Schliessen die Grafikkarte freigeben
     Modal.open("fixture-library-detail");
+    renderPreviewBar();
     renderDetails();
     setDetTab("overview");
   }
@@ -690,13 +718,13 @@
     S.installed = res.data.items || [];
     S.updates = res.data.updates || {};
     S.path = res.data.path || "";
-    if (S.pendingUninstall && !S.installed.some((f) => f.id === S.pendingUninstall)) clearPending();
+    if (window.FixtureEditor) window.FixtureEditor.setTypes(S.installed);
+    if (window.FixtureEditor) window.FixtureEditor.manufacturers = [...new Set(S.installed.map((f) => f.manufacturer).filter(Boolean))].sort();
     if (S.tab === "installed") buildManufacturers(S.installed.map((f) => f.manufacturer));
     renderInstalled();
   }
 
   async function doUninstall(id) {
-    clearPending();
     const res = await api("DELETE", `/api/library/installed/${encodeURIComponent(id)}`);
     if (res.ok) {
       _showToast("FXLIB_UNINSTALLED", "ok", 2500);
@@ -709,8 +737,10 @@
   // ------------------------------------------------------------------------------------------------ Filterleiste
   function buildManufacturers(names) {
     const select = $("fxlib-mfr");
-    const unique = [...new Set(names.filter(Boolean))].sort((a, b) => a.localeCompare(b, undefined, { sensitivity: "base" }));
-    if (F().mfr && !unique.includes(F().mfr)) F().mfr = "";
+    const byLower = new Map();                                     // "Lite 4ME" und "lite 4me" sind derselbe Hersteller
+    names.filter(Boolean).forEach((n) => { if (!byLower.has(n.toLowerCase())) byLower.set(n.toLowerCase(), n); });
+    const unique = [...byLower.values()].sort((a, b) => a.localeCompare(b, undefined, { sensitivity: "base" }));
+    if (F().mfr && !byLower.has(F().mfr.toLowerCase())) F().mfr = "";
     select.textContent = "";
     const all = el("option", "", t("FXLIB_MFR_ALL"));
     all.value = "";
@@ -733,7 +763,7 @@
 
   let searchTimer = null;
   function filtersChanged(immediate) {
-    if (S.tab === "installed") { clearPending(); renderInstalled(); return; }
+    if (S.tab === "installed") { renderInstalled(); return; }
     if (S.tab === "show") { renderShow(); return; }
     if (searchTimer) clearTimeout(searchTimer);
     searchTimer = setTimeout(() => searchOnline(false), immediate ? 0 : 300);
@@ -812,6 +842,13 @@
     else if (installedVersion) tags.push(tag(t("FXLIB_INSTALLED_REV", { rev: String(installedVersion.revision).replace(/_/g, " ") }), "use"));
     else if (item.same_fixture_installed) tags.push(tag(t("FXLIB_OTHER_REV"), "use"));
     const busy = versions.some((v) => S.online.busy.has(String(v.rid))) || S.online.busy.has(String(item.rid));
+    if (item.modes && item.modes.length) {
+      const sizes = [...new Set(item.modes.map((m) => m.footprint).filter(Boolean))].sort((a, b) => a - b);
+      if (sizes.length) tags.push(tag(t("FXLIB_ONLINE_MODES", { n: item.modes.length, list: sizes.join(" / ") })));
+    }
+    if (item.filesize) tags.push(tag(item.filesize >= 1048576 ? (item.filesize / 1048576).toFixed(1) + " MB" : Math.max(1, Math.round(item.filesize / 1024)) + " KB"));
+    const previewing = S.online.previewBusy === String(item.rid);
+    const details = button(previewing ? t("FXLIB_PREVIEW_LOADING") : t("FXLIB_DETAILS"), "", () => openPreview(item), !!S.online.previewBusy);
     const group = el("div", "fxlib-split");
     if (item.installed) {
       const done = button(t("FXLIB_INSTALLED_TAG"), "", () => {}, true, "", "check");
@@ -828,7 +865,7 @@
       arrow.setAttribute("aria-label", t("FXLIB_VERSIONS"));
       group.appendChild(arrow);
     }
-    return card({ id: String(item.rid), name: item.name, manufacturer: item.manufacturer, category: item.category, tags, actions: [group], thumb: "" });
+    return card({ id: String(item.rid), name: item.name, manufacturer: item.manufacturer, category: item.category, tags, actions: [details, group], thumb: "" });
   }
 
   /** Aufklappliste mit allen Versionen (Revisionen) eines Geraets: neueste zuerst; eine davon waehlen und installieren. */
@@ -1045,7 +1082,6 @@
 
   function open() {
     if (typeof _closeAllMenus === "function") _closeAllMenus();
-    clearPending();
     buildCategories();
     Modal.open(MODAL);
     setTab("installed");
@@ -1068,6 +1104,14 @@
       filtersChanged(true);
     });
     $("fxdet-mode").addEventListener("change", (e) => { DET.mode = Number(e.target.value) || 0; renderModeChannels(); });
+    $("fxlib-new").addEventListener("click", () => window.FixtureEditor && window.FixtureEditor.open());
+    $("fxdet-preview-back").addEventListener("click", () => Modal.close("fixture-library-detail"));
+    $("fxdet-preview-install").addEventListener("click", () => {
+      const item = DET.preview && DET.preview.item;
+      if (!item || item.installed) return;
+      Modal.close("fixture-library-detail");
+      installOnline(item, item.update_available && item.installed_version ? { replace: item.installed_version.id } : undefined);
+    });
     $("fxlib-import").addEventListener("click", () => $("fxlib-import-input").click());
     $("fxlib-import-input").addEventListener("change", (e) => { const files = [...e.target.files]; e.target.value = ""; importFiles(files); });
     $("fxlib-login").addEventListener("submit", doLogin);

@@ -1,0 +1,255 @@
+[
+ {
+  "id": "fixtures-001",
+  "page": "fixtures",
+  "path": [
+   "Scheinwerfer und Patchen"
+  ],
+  "title": "Scheinwerfer und Patchen",
+  "keywords": [],
+  "text": "Ein **Scheinwerfer** (Fixture) ist ein Licht, das du steuerst: ein Dimmer, ein LED-Par, ein Moving Head. Damit OpenCue ihn steuern kann, muss es wissen, **was für ein Gerät es ist** (seine Kanäle) und **wo es zuhört** (seine DMX-Adresse). Beides festzulegen heißt **Patchen**. Diese Anleitung führt durch die Scheinwerfer-Bibliothek, das Patchen, Gruppen und den Programmer."
+ },
+ {
+  "id": "fixtures-002",
+  "page": "fixtures",
+  "path": [
+   "Scheinwerfer und Patchen",
+   "1. Die Idee in einer Minute"
+  ],
+  "title": "1. Die Idee in einer Minute",
+  "keywords": [],
+  "text": "- Ein **Scheinwerfer-Typ** beschreibt ein Gerätemodell: wie viele DMX-Kanäle es in welchem Modus belegt und was jeder Kanal tut (Dimmer, Pan, Tilt, Farbe, Gobo …). OpenCue nutzt dafür das Standardformat **GDTF** – eine kleine Datei pro Gerät, die der Hersteller veröffentlicht.\n- Ein **Scheinwerfer** in deiner Show ist ein echtes Gerät dieses Typs mit einer **Nummer** (FID), einem **Namen**, einem **Universum** und einem **Startkanal** (die DMX-Adresse, die du am Gerät einstellst).\n- Die Show speichert die Scheinwerfer (Typ, Modus, Adresse, Name, Gruppe). Die GDTF-Dateien selbst liegen in der **Scheinwerfer-Bibliothek** auf deinem Computer.\n- Drei **eingebaute** Typen gibt es immer, auch ohne GDTF-Datei: **Generic Dimmer** (1 Kanal), **Generic RGBW LED Par** (4 Kanäle) und **Generic Moving Head Spot 16ch** (16 Kanäle, mit Fein-Pan/Tilt). Ideal zum Ausprobieren."
+ },
+ {
+  "id": "fixtures-003",
+  "page": "fixtures",
+  "path": [
+   "Scheinwerfer und Patchen",
+   "2. Scheinwerfer-Typen beschaffen: die Bibliothek"
+  ],
+  "title": "2. Scheinwerfer-Typen beschaffen: die Bibliothek",
+  "keywords": [],
+  "text": "Öffne **Bibliothek → Scheinwerfer-Bibliothek…**. Der große Dialog hat diese Tabs:\n\n| Tab | Was er zeigt |\n|---|---|\n| **Installiert** | Jede GDTF-Datei auf diesem Computer als Karte: Vorschaubild, Name, Hersteller, Typ, Modi, Kanalzahl, Revision und *In Benutzung (N)*, wenn die Show sie verwendet. |\n| **In dieser Show** | Die Typen der geladenen Show mit Anzahl („4× in der Show“) und Revision. Fehlt die Datei eines Typs in der Bibliothek, zeigt der Tab *Eingebauter Ersatz* oder *Datei fehlt*. Nur Ansicht. |\n| **Online (GDTF Share)** | Suche in der offiziellen GDTF-Datenbank (siehe unten). |\n\nIm Tab *Installiert* kannst du nach Name oder Hersteller **suchen** und nach **Typ** (Moving Head, LED-Bar, PAR / Wash, Dimmer, Strobe / Blinder, Effekt / Nebel, Sonstige – aus den echten Kanälen abgeleitet) und nach **Hersteller** filtern. Jeder Tab behält seine eigenen Filter."
+ },
+ {
+  "id": "fixtures-004",
+  "page": "fixtures",
+  "path": [
+   "Scheinwerfer und Patchen",
+   "2. Scheinwerfer-Typen beschaffen: die Bibliothek",
+   "Eine vorhandene GDTF-Datei importieren"
+  ],
+  "title": "Eine vorhandene GDTF-Datei importieren",
+  "keywords": [],
+  "text": "Klicke auf **GDTF-Datei importieren…** oder **ziehe die Datei** einfach in den Dialog. Sie muss eine gültige GDTF-Datei sein (höchstens 30 MB). Die Dateien werden in den Ordner `fixtures` im Datenordner von OpenCue kopiert (*Einstellungen → Speicherort* zeigt, wo der liegt)."
+ },
+ {
+  "id": "fixtures-005",
+  "page": "fixtures",
+  "path": [
+   "Scheinwerfer und Patchen",
+   "2. Scheinwerfer-Typen beschaffen: die Bibliothek",
+   "Aus GDTF Share herunterladen"
+  ],
+  "title": "Aus GDTF Share herunterladen",
+  "keywords": [],
+  "text": "GDTF Share (gdtf-share.com) ist die offizielle, kostenlose Sammlung von GDTF-Dateien von Herstellern und Nutzern.\n\n1. Öffne den Tab **Online (GDTF Share)**.\n2. **Melde dich an** mit deinem GDTF-Share-Konto. Zum Herunterladen ist ein kostenloses Konto nötig; im Dialog gibt es den Link *Kostenloses Konto anlegen*. Dein Passwort bleibt nur für diese Sitzung im Speicher – außer du setzt den Haken *Angemeldet bleiben*; dann wird es **verschlüsselt auf diesem Computer** gespeichert.\n3. Suche, sortiere (Name, Neueste zuerst, Beste Bewertung), filtere nach **Herstellerdateien** / Bewertung. Jede Karte zeigt, ob die Datei **vom Hersteller** oder **von einem Nutzer** hochgeladen wurde, wie viele Modi sie hat (mit Kanalzahl) und wie groß sie ist.\n4. Klicke auf **Details**, um den Scheinwerfer **vor dem Installieren anzusehen**: die Datei wird nur vorübergehend geladen (nicht installiert) und in derselben Detailansicht wie bei installierten Typen geöffnet – mit allen Kanälen, Rädern und dem 3D-Modell. Oben stehen **Installieren** und **Zurück zur Suche**. Oder klicke direkt auf **Installieren**.\n5. Die Karte zeigt danach *Installiert*. Erscheint später eine neuere Revision, wird ein Knopf **Aktualisieren** angeboten."
+ },
+ {
+  "id": "fixtures-006",
+  "page": "fixtures",
+  "path": [
+   "Scheinwerfer und Patchen",
+   "2. Scheinwerfer-Typen beschaffen: die Bibliothek",
+   "Aus GDTF Share herunterladen"
+  ],
+  "title": "Aus GDTF Share herunterladen (2)",
+  "keywords": [],
+  "text": "Das ist die einzige Stelle, an der OpenCue für Scheinwerfer das Internet nutzt; alles andere funktioniert offline. OpenCue liefert keine GDTF-Dateien von GDTF Share mit, weil deren Bedingungen die Weitergabe nicht erlauben – du lädst sie selbst herunter."
+ },
+ {
+  "id": "fixtures-007",
+  "page": "fixtures",
+  "path": [
+   "Scheinwerfer und Patchen",
+   "2. Scheinwerfer-Typen beschaffen: die Bibliothek",
+   "Details eines Scheinwerfers"
+  ],
+  "title": "Details eines Scheinwerfers",
+  "keywords": [],
+  "text": "Klicke auf eine Karte, um die **Details** zu öffnen:\n\n- **Übersicht** – Stammdaten, Optik je Strahl (Strahlart, Lampe, Leistung, Lichtstrom, Farbtemperatur, Strahl- und Ausleuchtwinkel), Anschlüsse, Leuchtmittel.\n- **3D-Vorschau** – das Gerät als 3D-Modell. Ziehen dreht, Mausrad oder zwei Finger zoomen, Rechtsklick-Ziehen verschiebt, Doppelklick setzt zurück. Knöpfe *Schräg / Vorne / Seite / Oben*, Schalter für *Lichtstrahl* und *Raster* und **Pan-/Tilt-Regler**, um einen Moving Head zu bewegen. Enthält die GDTF-Datei kein 3D-Modell, zeichnet OpenCue die Grundformen (Zylinder, Bügel, Kopf …) in den angegebenen Maßen.\n- **DMX-Kanäle** – die Modusauswahl und eine Tabelle aller Kanäle mit Funktionen und Wertebereichen.\n- **Gobos & Farben** – jedes Rad mit seinen Slots: Gobo-Muster als Bilder, Farb-Slots als Farbfelder."
+ },
+ {
+  "id": "fixtures-008",
+  "page": "fixtures",
+  "path": [
+   "Scheinwerfer und Patchen",
+   "2. Scheinwerfer-Typen beschaffen: die Bibliothek",
+   "Entfernen und aktualisieren"
+  ],
+  "title": "Entfernen und aktualisieren",
+  "keywords": [],
+  "text": "- **Deinstallieren** (fragt ein zweites Mal) entfernt einen Typ aus der Bibliothek – wird aber **abgelehnt, solange die Show ihn noch verwendet**.\n- **Aktualisieren** installiert eine neuere Revision. Verwendet die Show die alte, bleibt sie installiert."
+ },
+ {
+  "id": "fixtures-009",
+  "page": "fixtures",
+  "path": [
+   "Scheinwerfer und Patchen",
+   "3. Scheinwerfer zur Show hinzufügen (Patchen)"
+  ],
+  "title": "3. Scheinwerfer zur Show hinzufügen (Patchen)",
+  "keywords": [],
+  "text": "Scheinwerfer legst du im Panel **Scheinwerfer-Liste** an.\n\n1. Klicke im Panel **Scheinwerfer-Liste** auf **Scheinwerfer hinzufügen**.\n2. **Scheinwerfer-Typ** – wähle mit *Scheinwerfer-Typ auswählen…* (Hersteller → Gerät → Modus, mit Suche) oder einen der eingebauten Generics.\n3. **Modus** – der DMX-Modus des Geräts (er bestimmt die Kanalzahl).\n4. **Name** (optional) – zum Beispiel „Kopf“; leer heißt Typname. Bei mehreren Scheinwerfern nummeriert OpenCue die Namen.\n5. **Anzahl** – wie viele gleiche Scheinwerfer angelegt werden. Sie werden **hintereinander** auf aufeinanderfolgende Adressen gelegt.\n6. **Universum** und **Startkanal** – die Adresse des ersten. Sie muss mit der am Gerät eingestellten Adresse übereinstimmen (Display oder DIP-Schalter).\n7. Klicke auf **Scheinwerfer hinzufügen**.\n\nDer Dialog warnt, wenn der letzte Scheinwerfer über Kanal **512** eines Universums hinausreichen würde („end address exceeds 512 … Reduce quantity or start address“). Ein Universum hat 512 Kanäle; für mehr nimmst du das nächste Universum.\n\nJeder Scheinwerfer bekommt eine stabile **FID** (Scheinwerfernummer), die die Befehlszeile benutzt (`Fixture 1 Thru 5`)."
+ },
+ {
+  "id": "fixtures-010",
+  "page": "fixtures",
+  "path": [
+   "Scheinwerfer und Patchen",
+   "3. Scheinwerfer zur Show hinzufügen (Patchen)",
+   "Viele Scheinwerfer auf einmal: Liste aus CSV oder Excel"
+  ],
+  "title": "Viele Scheinwerfer auf einmal: Liste aus CSV oder Excel",
+  "keywords": [],
+  "text": "Im Dialog *Scheinwerfer hinzufügen* gibt es unten **Erweiterte Importfunktionen …** (auch im Menü **Bibliothek → Scheinwerfer-Liste importieren**). Damit legst du eine ganze Anlage aus einer Tabelle an:\n\n1. **Datei wählen …** – eine `.csv`- oder Excel-Datei (`.xlsx`). Die **erste Zeile** enthält die Spaltentitel. Nur der **Typ** ist nötig; *Name*, *Modus*, *Universum*, *Adresse*, *Nummer* (FID) und *Anzahl* sind optional. **Aktuelle Patch-Liste als CSV laden** gibt dir eine Vorlage.\n2. OpenCue **errät die Spalten** (Namen wie *Name*, *Typ*, *Gerät*, *Universum*, *Adresse*, *Anzahl* …); du kannst jede Zuordnung ändern. Eine Adresse darf auch `2.045` oder `2/45` heißen (Universum 2, Adresse 45). Fehlt die Adresse, läuft sie hinter dem vorigen Gerät desselben Universums weiter.\n3. Die **Vorschau** zeigt jede Zeile – rot mit dem Grund, wenn etwas nicht stimmt (Typ unbekannt oder mehrdeutig, Modus unbekannt, passt nicht ins Universum, Nummer schon vergeben). **Typ, wenn die Zelle leer ist** und **Universum, wenn es fehlt** füllen Lücken.\n4. **Importieren** legt die Scheinwerfer an. Bei Problemen erst **Zeilen mit Problemen auslassen** ankreuzen. Vorher wird nichts angelegt."
+ },
+ {
+  "id": "fixtures-011",
+  "page": "fixtures",
+  "path": [
+   "Scheinwerfer und Patchen",
+   "3. Scheinwerfer zur Show hinzufügen (Patchen)",
+   "Die Scheinwerfer-Liste und der Tab „Scheinwerfer“"
+  ],
+  "title": "Die Scheinwerfer-Liste und der Tab „Scheinwerfer“",
+  "keywords": [],
+  "text": "Zwei Stellen zeigen deine Scheinwerfer:\n\n- Das Panel **Scheinwerfer-Liste** ist die Patch-Tabelle: eine Zeile pro Scheinwerfer mit FID, Name, Typ, Universum, Adresse und Kanalzahl, dazu der Knopf **Scheinwerfer hinzufügen**.\n- Der Tab **Scheinwerfer** im Panel **Scheinwerfer-Steuerung** zeigt dieselben Scheinwerfer als Kachelraster (wie auf einem Lichtpult) zum schnellen Auswählen.\n\n| Aktion | So geht's |\n|---|---|\n| Auswählen | Klick / Tippen auf eine Zeile oder Kachel |\n| Mehrere auswählen | Im Kachelraster ein **Lasso** über die Kacheln ziehen (Maus und Touch) |\n| Einen Scheinwerfer bearbeiten | Rechtsklick / langes Drücken → **Scheinwerfer bearbeiten…** |\n| Löschen | Auswählen, `Entf` drücken oder das Kontextmenü nutzen (fragt nach) |"
+ },
+ {
+  "id": "fixtures-012",
+  "page": "fixtures",
+  "path": [
+   "Scheinwerfer und Patchen",
+   "3. Scheinwerfer zur Show hinzufügen (Patchen)",
+   "Scheinwerfer bearbeiten"
+  ],
+  "title": "Scheinwerfer bearbeiten",
+  "keywords": [],
+  "text": "Ein Dialog ändert alles: **Name**, **Universum**, **Startkanal**, **Gruppe** und einen freien **Sortier-Index**.\n\n- Der Sortier-Index bestimmt, wo die Kachel erscheint. Leer heißt FID; eine Zahl (auch mit Dezimalstellen, zum Beispiel 2,5) ordnet sie entsprechend ein.\n- Ein Scheinwerfer gehört höchstens **einer Gruppe** an.\n- Sind **mehrere Scheinwerfer gewählt**, bietet das Menü außerdem *N Scheinwerfer in Gruppe verschieben…*.\n\nEine geänderte Adresse ändert, wohin OpenCue die Daten sendet – ändere sie also, wenn du ein Gerät auf eine andere Adresse stellst."
+ },
+ {
+  "id": "fixtures-013",
+  "page": "fixtures",
+  "path": [
+   "Scheinwerfer und Patchen",
+   "4. Gruppen"
+  ],
+  "title": "4. Gruppen",
+  "keywords": [],
+  "text": "Gruppen dienen nur der Ordnung: Sortieren und mehrere Scheinwerfer mit einem Klick oder Befehl auswählen. Sie werden mit der Show gespeichert.\n\n- **Anlegen:** im Tab **Scheinwerfer** der Scheinwerfer-Steuerung Rechtsklick / langes Drücken auf die leere Fläche → *Neue Gruppe hinzufügen…* und einen Namen eingeben (Namen sind eindeutig, Groß-/Kleinschreibung egal).\n- **Füllen:** das Dropdown *Gruppe* in *Scheinwerfer bearbeiten…* oder *N Scheinwerfer in Gruppe verschieben…* für eine Auswahl.\n- **Auswählen:** die Gruppe anklicken oder per Befehlszeile: `Group Front`, `Group 1 Thru 4`.\n- **Aus einer Auswahl:** `Store Group \"Front\"` speichert die aktuelle Auswahl als Gruppe (siehe *Befehlsreferenz*)."
+ },
+ {
+  "id": "fixtures-014",
+  "page": "fixtures",
+  "path": [
+   "Scheinwerfer und Patchen",
+   "5. Scheinwerfer steuern: das Panel Scheinwerfer-Steuerung"
+  ],
+  "title": "5. Scheinwerfer steuern: das Panel Scheinwerfer-Steuerung",
+  "keywords": [],
+  "text": "Wähle Scheinwerfer aus und nutze dann das Panel **Scheinwerfer-Steuerung** (auf Pulten oft „Programmer“). Ein Panel kann alles zeigen (Seitenleiste mit allen Kategorien) oder nur eine Kategorie (*Panel-Eigenschaften → Ansicht*).\n\n| Kategorie | Bedienelemente |\n|---|---|\n| **Scheinwerfer** | Das Kachelraster zum Auswählen; Schalter **Liste / Layout** (siehe unten) |\n| **Helligkeit** | Fader und Schnelltasten |\n| **Position** | Schalter **Grob / Fein**. *Grob*: Pan-/Tilt-Fader, **Center / Home / Flip**, Zahlenfelder in Grad. *Fein*: die Fein-Kanäle (16 Bit) als Zahlenfelder; auf einem Zahlenfeld nach oben oder unten wischen ändert den Wert fein. Geräte ohne Fein-Kanäle arbeiten mit 8 Bit. |\n| **Farbe** | **Fader** (HSV, CMY oder RGB) oder **Color Picker** (Farbrad) |\n| **Beam** | Unterseiten **Shutter/Strobe** (offen, zu, langsam, schnell, Strobe, Puls …), **Gobo** (mit Vorschaubildern des Rades), **Prisma** |\n| **Fokus** | Fokus und Zoom |\n| **DMX Direkt** | Jeder Kanal des Modus als eigener Fader (nach Kanalnummer, 0–255) |\n\nJeder Kanal, den die GDTF-Datei beschreibt, bekommt ein Bedienelement, sodass du auch ungewöhnliche Funktionen erreichst (Frost, Iris, Farbräder, Geschwindigkeiten)."
+ },
+ {
+  "id": "fixtures-015",
+  "page": "fixtures",
+  "path": [
+   "Scheinwerfer und Patchen",
+   "5. Scheinwerfer steuern: das Panel Scheinwerfer-Steuerung"
+  ],
+  "title": "5. Scheinwerfer steuern: das Panel Scheinwerfer-Steuerung (2)",
+  "keywords": [],
+  "text": "**Auf einen Punkt zielen (3D):** Sind die Scheinwerfer in der **3D-Simulation** platziert, bietet die Positionsseite *Punkt in 3D-Simulation setzen*: Tippe in der 3D-Ansicht auf ein Ziel, und die gewählten Moving Heads richten sich darauf aus. Auf der Fokusseite stellen *Auto-Fokus (3D)* und *Auto-Zoom (3D) …* Fokus und Zoom aus der Entfernung zu diesem Punkt ein."
+ },
+ {
+  "id": "fixtures-016",
+  "page": "fixtures",
+  "path": [
+   "Scheinwerfer und Patchen",
+   "5. Scheinwerfer steuern: das Panel Scheinwerfer-Steuerung",
+   "Was die Markierung an den Bedienelementen sagt"
+  ],
+  "title": "Was die Markierung an den Bedienelementen sagt",
+  "keywords": [],
+  "text": "Die Bedienelemente zeigen immer, was gerade ausgegeben wird (dieselben Werte wie im DMX-Monitor) – auch während ein Cue oder Effekt läuft. Eine dünne farbige Linie an einem Scheinwerfer oder einem Kategorie-Tab zeigt, was sich **gegenüber dem aktiven Cue geändert hat** – von Hand bedient oder durch ein *Clear*, das alles dunkel gemacht hat. Gespeichert wird beim *Cue speichern* immer die Änderung gegenüber dem Cue, der davor abgespielt würde (auch beim Einfügen mit `2.5`). Nach dem Speichern ist der neue Cue der aktive und die Linien verschwinden. Bei mehreren Cue-Listen gilt der aktive Cue der zuletzt benutzten Liste."
+ },
+ {
+  "id": "fixtures-017",
+  "page": "fixtures",
+  "path": [
+   "Scheinwerfer und Patchen",
+   "5. Scheinwerfer steuern: das Panel Scheinwerfer-Steuerung",
+   "Scheinwerfer: Liste oder Layout"
+  ],
+  "title": "Scheinwerfer: Liste oder Layout",
+  "keywords": [],
+  "text": "Oben im Tab **Scheinwerfer** schaltest du zwischen zwei Ansichten um (wie bei *Farbe* zwischen Fader / Picker / Rad):\n\n- **Liste:** die Kacheln nach Gruppen und Nummern geordnet.\n- **Layout:** jeder Scheinwerfer ist eine **quadratische Kachel** auf einem Raster. So kannst du die Scheinwerfer so anordnen, wie sie auf der Bühne hängen, und sie schneller treffen. Die Kacheln zeigen dasselbe wie in der Liste (Nummer, Helligkeit, Farb- und Strahl-Vorschau).\n\nIm Layout gilt:"
+ },
+ {
+  "id": "fixtures-018",
+  "page": "fixtures",
+  "path": [
+   "Scheinwerfer und Patchen",
+   "5. Scheinwerfer steuern: das Panel Scheinwerfer-Steuerung",
+   "Scheinwerfer: Liste oder Layout"
+  ],
+  "title": "Scheinwerfer: Liste oder Layout (2)",
+  "keywords": [],
+  "text": "- **Auswählen** wie in der Liste: Klick oder **Wischgeste** (Lasso) über die leere Fläche.\n- **Unbegrenzte Fläche:** sie reicht in **alle Richtungen** weiter (auch nach links und oben, die Positionen dürfen negativ sein). Verschieben der Ansicht: Mausrad / Scrollleisten / Wischen, **Mitteltaste ziehen**, oder beim Ziehen einer Kachel an den Rand gehen. **Strg + Mausrad** zoomt.\n- **Alle zeigen:** der Knopf oben rechts zoomt und zentriert so, dass **alle Scheinwerfer** in der Mitte stehen.\n- **Ansichten (Bereiche):** *Ansicht speichern…* (Rechtsklick) merkt die aktuelle Mitte und den Zoom unter einem Namen, zum Beispiel „Bühne links“. Oben erscheint ein Knopf; ein Klick springt dorthin, Rechtsklick auf den Knopf: überschreiben, umbenennen, löschen. So musst du bei vielen Scheinwerfern nicht alles auf einmal im Blick haben.\n- **Rechtsklick** (Touch: langes Drücken) auf die freie Fläche oder auf eine Kachel öffnet das Menü: *Baumodus*, *Alle zeigen*, *Ansicht speichern…*, *Raster* (ganze, halbe oder Viertel-Kachel), *Kacheln dürfen sich überlappen*, *Zoom zurücksetzen*, *Alle Scheinwerfer neu anordnen…*.\n- **Baumodus:** Ziehen verschiebt eine Kachel; sind mehrere gewählt, werden alle gemeinsam verschoben. Die Kacheln rasten im Raster ein; ohne *Überlappen* überdecken sie sich nie, mit *Überlappen* darf man sie ineinander legen (die zuletzt bewegte liegt oben) und mit dem feinen Raster (1/4) dicht staffeln. Eine leere Fläche wählt weiter per Wischgeste aus. **Fertig** oder **Esc** beendet den Baumodus.\n- **Gespeichert in der Show:** die Positionen, die Rasterfeinheit, *Überlappen* und die gespeicherten Ansichten. **Auf deinem Gerät** (nicht in der Show): der Zoom, die zuletzt gezeigte Mitte und die zuletzt benutzte Unteransicht."
+ },
+ {
+  "id": "fixtures-019",
+  "page": "fixtures",
+  "path": [
+   "Scheinwerfer und Patchen",
+   "5. Scheinwerfer steuern: das Panel Scheinwerfer-Steuerung",
+   "Scheinwerfer: Liste oder Layout"
+  ],
+  "title": "Scheinwerfer: Liste oder Layout (3)",
+  "keywords": [],
+  "text": "**Gemerkte Ansichten:** Überall, wo ein Panel zwischen Ansichten umschaltet, merkt sich dein Gerät die zuletzt benutzte und stellt sie beim nächsten Öffnen wieder her: in der Scheinwerfer-Steuerung (Liste / Layout, Fader / Picker / Rad, Strobe / Gobo / Prism, Grob / Fein), bei *Variablen und Effekte* (Variablen oder Effekte, Typ-Filter, Sortierung), im *Effekt-Studio* (Vorschau an / aus), in der *3D-Simulation* (Ansicht / Bauen / Scheinwerfer) und in der Effekt-Auswahl (Kategorie und Schlagworte wie *Basis*)."
+ },
+ {
+  "id": "fixtures-020",
+  "page": "fixtures",
+  "path": [
+   "Scheinwerfer und Patchen",
+   "6. Variablen und Effekte (Presets)"
+  ],
+  "title": "6. Variablen und Effekte (Presets)",
+  "keywords": [],
+  "text": "Das Panel **Variablen / Effekte** enthält wiederverwendbare Werte: eine Farbe „Warm White“, eine Position „Front“, einen Beam „Weit“. Eine Variable ist eine **lebende Referenz**: Wende sie auf Scheinwerfer an, und sie folgen ihr; ändert man die Variable später, ändern sich alle Scheinwerfer mit, die sie benutzen – auch Cues, die sie verwenden. Effekte sind kleine Programme, die Werte über die Zeit verändern; siehe die Anleitung *Effekt-Studio*."
+ },
+ {
+  "id": "fixtures-021",
+  "page": "fixtures",
+  "path": [
+   "Scheinwerfer und Patchen",
+   "7. Scheinwerfer und die Show-Datei"
+  ],
+  "title": "7. Scheinwerfer und die Show-Datei",
+  "keywords": [],
+  "text": "- Ein Showfile speichert die Scheinwerfer **mit** Typ, Modus, Adresse und Gruppe, dazu Cues, Effekte, Variablen und Presets.\n- Die GDTF-Dateien liegen **nicht** in der Show – beim **Export einer Show** (Dateimanager → Export) werden aber die GDTF-Dateien und Effekt-Skripte, die die Show benutzt, in die ZIP gepackt. So öffnest du die Show auf einem anderen Computer, ohne etwas zu installieren. Beim Import wird eine lokale Datei gleichen Namens nie ersetzt.\n- **Drucken / PDF** (Datei-Menü): Dokumentation der Show für Techniker – **Patch-Liste**, **DMX-Kanalbelegung** (welcher Scheinwerfer welche Kanäle jedes Universums belegt, Überschneidungen rot), **Gruppen**, **Plan (Draufsicht)** der Scheinwerfer (aus der 3D-Bühne, sonst aus der Layout-Ansicht) und **Cue-Listen**. Der Dialog zeigt neben der Auswahl eine **Vorschau** des PDFs (sie folgt jeder Änderung der Auswahl und der Papiergröße; auf kleinen Bildschirmen entfällt die Vorschau). Lange Namen werden in den Tabellen und im Plan **umgebrochen** (ein sehr langer Name ohne Leerzeichen wird geteilt). Im Plan trägt jeder Scheinwerfer seine Nummer, eine Liste unter dem Plan sagt, welche Nummer welcher Scheinwerfer ist; Namen von Bühnenobjekten stehen in ihrer Fläche. *Als PDF speichern* lädt die Datei, *Zum Drucken öffnen* zeigt sie im PDF-Betrachter (dort mit Strg+P drucken).\n- **Show-Datei `.ocshow`:** *Datei → Show exportieren* schreibt eine `.ocshow`-Datei (ein ZIP mit der Show und ihren Dateien). Ein **Doppelklick** darauf öffnet sie in OpenCue (der Installer richtet das ein; bei der entpackten Version *Einstellungen → Allgemein → Dateien .ocshow mit OpenCue öffnen*). Läuft OpenCue schon, übernimmt es die Datei und fragt bei ungespeicherten Änderungen vorher. **Datei → Zuletzt benutzt** listet die letzten Shows.\n- **3D-Bühne als JSON:** im 3D-Panel (Modus *Bauen* oder *Scheinwerfer*) die Seitenleiste von **Werkzeuge** auf **JSON** umschalten (Umschalter unter dem Speichern-Knopf; der Knopf *Als JSON bearbeiten* ganz am Ende der Werkzeuge tut dasselbe). Die Werkzeuge (Körper hinzufügen, Liste, Eigenschaften) werden durch den Text der Bühne ersetzt (Raum, Objekte, Scheinwerfer-Positionen; Meter, Grad, Z nach oben; Scheinwerfer unter ihrer Nummer); Bühnenname, Rückgängig und **Speichern** bleiben gleich, **Werkzeuge** bringt die normale Ansicht zurück. **Die Breite der Seitenleiste lässt sich ändern:** den linken Rand ziehen (Doppelklick = Standardbreite); die Breite wird als Anteil des Panels gemerkt (höchstens drei Viertel) und bleibt so auch im Vollbild proportional. Änderungen werden geprüft und **live übernommen** (ein Syntaxfehler nennt die Zeile und ändert nichts); was du in der 3D-Ansicht verschiebst, erscheint im Text. *Speichern* speichert die Bühne, *JSON schließen* bringt die Seitenleiste zurück. Derselbe Text steht als Dialog unter *Bibliothek → 3D-Bühne als JSON bearbeiten* bereit (mit *Prüfen* und *Übernehmen*).\n- Verwendet eine Show einen Typ, dessen Datei fehlt, nimmt OpenCue einen eingebauten Ersatz, damit die Show trotzdem funktioniert; der Tab *In dieser Show* zeigt das als *Eingebauter Ersatz* oder *Datei fehlt*."
+ },
+ {
+  "id": "fixtures-022",
+  "page": "fixtures",
+  "path": [
+   "Scheinwerfer und Patchen",
+   "8. Kurze Tipps"
+  ],
+  "title": "8. Kurze Tipps",
+  "keywords": [],
+  "text": "- **Fang mit einem Generic an:** Lege ein paar *Generic Dimmer* an und lerne damit Programmer, Cues und Befehlszeile, bevor du echte GDTF-Dateien suchst.\n- **Adressen abgleichen:** Der Startkanal in OpenCue muss der Adresse am Gerät entsprechen. Moving Heads brauchen meist einen Kanalblock (zum Beispiel 16 Kanäle), der nächste Scheinwerfer beginnt dann 16 Kanäle später – OpenCue rechnet das, wenn du eine Anzahl anlegst.\n- **Mehrere Modi:** Viele Geräte haben mehrere Modi (zum Beispiel 8 Bit und 16 Bit). Wähle den Modus, auf den das Gerät wirklich eingestellt ist.\n- **Gerät fehlt?** Suche in GDTF Share nach dem Hersteller; ist das Modell nicht dabei, nimm das ähnlichste oder *Generic* und baue deine eigenen Cues."
+ }
+]

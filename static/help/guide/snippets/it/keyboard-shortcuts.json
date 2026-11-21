@@ -1,0 +1,254 @@
+[
+ {
+  "id": "keyboard-shortcuts-001",
+  "page": "keyboard-shortcuts",
+  "path": [
+   "Scorciatoie da tastiera e gesti"
+  ],
+  "title": "Scorciatoie da tastiera e gesti",
+  "keywords": [],
+  "text": "Tutte le scorciatoie da tastiera e i gesti touch di OpenCue in un unico posto. Nel programma la stessa lista è disponibile in **Aiuto → Scorciatoie da tastiera** e **Controlli → Scorciatoie da tastiera ...** – e lì potete anche **modificare** le scorciatoie proprie del programma (sezione 11b).\n\nSu una tastiera Mac (o in un browser su un Mac) `Cmd` funziona come `Ctrl`."
+ },
+ {
+  "id": "keyboard-shortcuts-002",
+  "page": "keyboard-shortcuts",
+  "path": [
+   "Scorciatoie da tastiera e gesti",
+   "1. Panoramica"
+  ],
+  "title": "1. Panoramica",
+  "keywords": [],
+  "text": "La maggior parte delle scorciatoie è **globale**: funziona dovunque sia il focus, con una regola – **mentre digitate in un campo di testo restano attive solo poche scorciatoie**: `Ctrl+S`, `Ctrl+Shift+S`, `Ctrl+F`, `F1`, `F5`, `Ctrl+F5`, `F11` e `Ctrl+L`. Tutto il resto (`Ctrl+N`, `Ctrl+O`, `Ctrl+Q`, `Ctrl+E`, tasti freccia, `Ctrl+1–9`, scala, appunti e annulla) resta silenzioso, così la digitazione non viene mai disturbata."
+ },
+ {
+  "id": "keyboard-shortcuts-003",
+  "page": "keyboard-shortcuts",
+  "path": [
+   "Scorciatoie da tastiera e gesti",
+   "2. File dello show"
+  ],
+  "title": "2. File dello show",
+  "keywords": [],
+  "text": "| Scorciatoia | Azione |\n|---|---|\n| `Ctrl+N` | Nuovo file show (chiede prima se ci sono modifiche non salvate) |\n| `Ctrl+O` | Apri un file show (apre il gestore file su *Show*) |\n| `Ctrl+M` | Gestore file (tutti i file: show, layout, palchi, modelli, media, effetti ...) |\n| `Ctrl+L` | **Blocca schermo** (menu *Controlli → Blocca schermo*; richiede *Impostazioni → Sicurezza → Usa la modalità blocco*; su un dispositivo remoto: disconnessione; in modalità operatore: chiede la password per uscirne) |\n| `Ctrl+S` | Salva il file show **e** il layout di questa console (uno show senza nome apre *Salva con nome*) |\n| `Ctrl+Shift+S` | Salva il file show con un nuovo nome |\n| `Ctrl+Q` | Esci da OpenCue (chiede prima di salvare) |\n\n`Ctrl+S` funziona anche mentre digitate in un campo nome, ad esempio nella finestra *Salva con nome*."
+ },
+ {
+  "id": "keyboard-shortcuts-004",
+  "page": "keyboard-shortcuts",
+  "path": [
+   "Scorciatoie da tastiera e gesti",
+   "3. Visualizzazione e interfaccia"
+  ],
+  "title": "3. Visualizzazione e interfaccia",
+  "keywords": [],
+  "text": "| Scorciatoia | Azione |\n|---|---|\n| `?` | **Mostra / nascondi questa panoramica di tutte le scorciatoie da tastiera** (non mentre digitate in un campo o quando è aperta un'altra finestra) |\n| `F1` | Apri le **Guide** (tutti i manuali nel programma, anche offline). Al loro interno `Ctrl+F` cerca, `Invio` / `Maiusc+Invio` saltano alla corrispondenza successiva / precedente, `Esc` cancella la ricerca |\n| `F5` | **Ricarica il layout**: il layout attuale viene ricaricato come in un cambio di layout e **tutti i pannelli vengono ricostruiti** (utile se qualcosa – ad esempio la simulazione 3D – non è comparso correttamente dopo l'avvio). Con modifiche del layout non salvate non viene letto nulla dal file: i pannelli vengono solo ricostruiti e le vostre modifiche restano. Anche in *Visualizza → Ricarica il layout* |\n| `Ctrl+F5` | **Ricarica l'intera interfaccia** (come ricaricare una pagina web; il dispositivo riottiene poi il suo layout). Anche in *Visualizza → Ricarica l'interfaccia* |\n| `F11` | Schermo intero (finestra della console, o browser di questo dispositivo) |\n| `Ctrl +` / `Ctrl =` | Ingrandisci l'interfaccia (scala dell'interfaccia, passi del 5 %) |\n| `Ctrl -` | Riduci l'interfaccia |\n| `Ctrl+0` | Riporta la scala al 100 % |\n| `Ctrl+Shift+L` | Cambia lingua (una dopo l'altra: inglese, tedesco, francese, olandese, italiano, spagnolo) |\n| `Ctrl+F` | Apri / chiudi la **console di comandi**: riga di comando con tastierino e tasti di comando in un'unica finestra – anche senza questi pannelli nel layout; il cursore è subito nel campo di input |\n| `Esc` | Chiudi / annulla la finestra, la finestra di pannello o il menu in cima – una pressione chiude **una** finestra (le Impostazioni chiedono prima se ci sono modifiche) |"
+ },
+ {
+  "id": "keyboard-shortcuts-005",
+  "page": "keyboard-shortcuts",
+  "path": [
+   "Scorciatoie da tastiera e gesti",
+   "3. Visualizzazione e interfaccia"
+  ],
+  "title": "3. Visualizzazione e interfaccia (2)",
+  "keywords": [],
+  "text": "La scala dell'interfaccia (50–200 %) viene salvata **per dispositivo**: un tablet può essere grande mentre la console resta piccola."
+ },
+ {
+  "id": "keyboard-shortcuts-006",
+  "page": "keyboard-shortcuts",
+  "path": [
+   "Scorciatoie da tastiera e gesti",
+   "4. Layout"
+  ],
+  "title": "4. Layout",
+  "keywords": [],
+  "text": "| Scorciatoia | Azione |\n|---|---|\n| `Ctrl+1` … `Ctrl+9` | Carica il layout da 1 a 9 (prima i preferiti, poi A–Z) |\n| `←` / `→` | Layout precedente / successivo (non nei campi di testo, nelle finestre, nei menu o in modalità modifica) |\n| Scorrimento orizzontale | Layout precedente / successivo sui dispositivi touch (*Impostazioni → Generale → Cambia layout scorrendo*, per dispositivo) |\n\nCaricare un layout scarta le modifiche non salvate di quello attuale. L'ordine è lo stesso di **Visualizza → Layout**."
+ },
+ {
+  "id": "keyboard-shortcuts-007",
+  "page": "keyboard-shortcuts",
+  "path": [
+   "Scorciatoie da tastiera e gesti",
+   "5. Modalità modifica pannelli"
+  ],
+  "title": "5. Modalità modifica pannelli",
+  "keywords": [],
+  "text": "La modalità modifica (**Modifica → Modifica pannelli**) permette di spostare, ridimensionare e configurare i pannelli.\n\n| Scorciatoia | Azione |\n|---|---|\n| `Ctrl+E` | Attiva / disattiva la modalità modifica |\n| Clic su un pannello | Lo contrassegna (sottile cornice di accento) |\n| `Maiusc`/`Ctrl` + clic | Aggiunge un pannello alla selezione / lo rimuove |\n| Clic sull'area di lavoro vuota | Cancella la selezione |\n| `Ctrl+C` / `Ctrl+X` / `Ctrl+V` | Copia / taglia / incolla i pannelli selezionati (gli appunti sopravvivono a un cambio di layout) |\n| `Ctrl+Z` | Annulla l'ultima modifica di pannello |\n| `Ctrl+Y` o `Ctrl+Shift+Z` | Ripeti |\n| Clic destro → *Duplica* | Copia i pannelli selezionati (o cliccati) con un piccolo scostamento |\n\nIn **modalità modifica** `Ctrl+Z` / `Ctrl+Y` valgono per la disposizione dei pannelli. **Fuori** da essa annullano le modifiche al **contenuto dello show** (vedi *Annulla e ripeti* più sotto).\n\nUscire dalla modalità modifica con modifiche non salvate chiede: **Salva**, **Scarta le modifiche** (ricarica il layout salvato) o **Continua a modificare**."
+ },
+ {
+  "id": "keyboard-shortcuts-008",
+  "page": "keyboard-shortcuts",
+  "path": [
+   "Scorciatoie da tastiera e gesti",
+   "6. Lista apparecchi e programmer"
+  ],
+  "title": "6. Lista apparecchi e programmer",
+  "keywords": [],
+  "text": "| Azione | Come |\n|---|---|\n| Selezionare un apparecchio | Clic / tocco sul suo riquadro |\n| Selezionarne diversi | **Lazo**: trascinate una cornice sui riquadri (mouse e touch); il lazo resta all'interno del suo pannello |\n| Eliminare gli apparecchi selezionati | `Canc` o `Backspace` (chiede conferma) |\n| Modificare con precisione un valore di Pan/Tilt | **Scorrere** su/giù sul campo numerico (grossolano: 2 px per passo, fine: 4 px per passo fine); toccate per digitare |\n| Aprire il menu contestuale | Clic destro (mouse) o pressione lunga (touch) su un apparecchio o su uno spazio vuoto |"
+ },
+ {
+  "id": "keyboard-shortcuts-009",
+  "page": "keyboard-shortcuts",
+  "path": [
+   "Scorciatoie da tastiera e gesti",
+   "7. Riga di comando"
+  ],
+  "title": "7. Riga di comando",
+  "keywords": [],
+  "text": "| Tasto | Effetto |\n|---|---|\n| `Invio` | Esegue il comando |\n| `↑` / `↓` | Comando più vecchio / più recente dalla cronologia (giù torna alla vostra bozza) |\n| `Tab` | Prende il primo suggerimento; ogni `Tab` successivo passa al successivo |\n| `Shift+Tab` | Scorre i suggerimenti all'indietro |\n| `Esc` | Chiude l'elenco dei suggerimenti (nella console di comandi: chiude la console) |\n\nDettagli sui comandi: *Riferimento dei comandi*."
+ },
+ {
+  "id": "keyboard-shortcuts-010",
+  "page": "keyboard-shortcuts",
+  "path": [
+   "Scorciatoie da tastiera e gesti",
+   "8. Studio effetti"
+  ],
+  "title": "8. Studio effetti",
+  "keywords": [],
+  "text": "| Scorciatoia | Azione |\n|---|---|\n| `Ctrl+S` | Salva l'effetto (**non** lo show) quando il cursore è nello script |\n| `Tab` | Inserisce due spazi |\n| `Invio` | Nuova riga con il rientro della precedente (due spazi in più dopo `{`) |"
+ },
+ {
+  "id": "keyboard-shortcuts-011",
+  "page": "keyboard-shortcuts",
+  "path": [
+   "Scorciatoie da tastiera e gesti",
+   "9. Simulazione 3D – modalità costruzione"
+  ],
+  "title": "9. Simulazione 3D – modalità costruzione",
+  "keywords": [],
+  "text": "Queste scorciatoie agiscono nella simulazione 3D solo durante la costruzione (modalità *Costruzione* / *Apparecchi*), non nella modalità *Vista*.\n\n| Scorciatoia | Azione |\n|---|---|\n| `Ctrl+C` / `Ctrl+X` / `Ctrl+V` | Copia / taglia / incolla oggetti |\n| `Ctrl+D` | Duplica l'oggetto selezionato (premere di nuovo per ripetere lo scostamento) |\n| `Canc` / `Backspace` | Elimina l'oggetto selezionato (chiede conferma); in modalità apparecchio: rimuove l'apparecchio dal palco |\n| `Esc` | Cancella la selezione |\n| `Maiusc` + clic | Aggiunge / rimuove un oggetto alla selezione |\n| Tasti freccia | Sposta la selezione (con `Maiusc` cinque volte più lontano); finché qualcosa è selezionato le frecce non cambiano layout |\n| `Ctrl+Z` | Annulla |\n| `Ctrl+Y` o `Ctrl+Shift+Z` | Ripeti |\n\nGli apparecchi esistono una sola volta su un palco, perciò in modalità apparecchio copia, taglia e duplica sono disattivati.\n\nMentre puntate (*Imposta punto nella simulazione 3D* nel controllo dell'apparecchio), `Esc` termina il puntamento."
+ },
+ {
+  "id": "keyboard-shortcuts-012",
+  "page": "keyboard-shortcuts",
+  "path": [
+   "Scorciatoie da tastiera e gesti",
+   "10. Gesti touch"
+  ],
+  "title": "10. Gesti touch",
+  "keywords": [],
+  "text": "| Gesto | Equivale a |\n|---|---|\n| Pressione lunga | Clic destro (menu contestuale) |\n| Pressione lunga su un elemento con tooltip | Mostra il tooltip |\n| Doppio tocco | Doppio clic |\n| Scorrimento orizzontale (se attivato) | Layout precedente / successivo |\n| Scorrimento su un campo numerico Pan/Tilt | Cambia il valore (grossolano / fine) |\n\nLe maniglie dei pannelli e i pulsanti della barra degli strumenti hanno un'area touch di almeno 44 × 44 px. Lo scorrimento del layout viene riconosciuto dalla direzione del primo movimento (al massimo 25° dall'orizzontale, almeno il 40 % della larghezza) e non parte mai su elementi con una propria funzione di trascinamento (fader, riquadri del lazo, campi numerici a scorrimento, campi di input, la ruota dei colori, maniglie di colonne e pannelli). Lo scorrimento verticale resta scorrimento."
+ },
+ {
+  "id": "keyboard-shortcuts-013",
+  "page": "keyboard-shortcuts",
+  "path": [
+   "Scorciatoie da tastiera e gesti",
+   "11. Scorciatoie da tastiera personalizzate"
+  ],
+  "title": "11. Scorciatoie da tastiera personalizzate",
+  "keywords": [],
+  "text": "Un tasto o una combinazione di tasti a scelta può attivare un **comando della riga di comando** – ad esempio `Ctrl+H` per `Blackout` o la barra spaziatrice per `Cuelist Main Go`. Aprite l'elenco con **Controlli → Scorciatoie da tastiera personalizzate ...** o con il pulsante in fondo alla finestra *Scorciatoie da tastiera*.\n\n**Un tasto per il cue successivo:** sotto *Avvio rapido* in alto nella finestra fate clic su **Cue successivo (Go)** (o *Cue precedente*, *Pausa*, *Blackout*): compare una nuova riga con il comando `Go`, poi fate clic sul suo campo tasto e premete il tasto – ad esempio la barra spaziatrice o un tasto di una seconda tastiera / tastierino numerico (scegliete *Solo questa tastiera* nella finestra *Imposta tasto*). `Go` avvia il cue successivo della lista di cue attiva; `Cuelist Main Go` sempre quella lista.\n\nOgni riga ha, da sinistra a destra:"
+ },
+ {
+  "id": "keyboard-shortcuts-014",
+  "page": "keyboard-shortcuts",
+  "path": [
+   "Scorciatoie da tastiera e gesti",
+   "11. Scorciatoie da tastiera personalizzate"
+  ],
+  "title": "11. Scorciatoie da tastiera personalizzate (2)",
+  "keywords": [],
+  "text": "| Campo | Significato |\n|---|---|\n| **Attivo** | Attiva o disattiva la riga senza eliminarla. |\n| **Tasto** | Mostra il tasto o la combinazione. Facendo clic su di esso o sul **pulsante tastiera** accanto si apre la finestra **Imposta tasto**: avete **10 secondi** per premere il tasto o la combinazione (ad esempio `Ctrl` e `H` insieme) – viene registrato tutto dalla prima pressione fino al rilascio di tutti i tasti. `Esc` annulla, il pulsante accanto al campo registra di nuovo. Sotto scegliete a cosa si applica: **Tutte le tastiere** o **Solo questa tastiera**. Una riga riceve il suo tasto solo tramite questa finestra. |\n| **Comando** | Il comando come lo digitereste nella riga di comando. |\n| **Esegui** | Attivo: il comando viene eseguito subito. Disattivo: viene solo **scritto** nella riga di comando (lo confermate voi). |\n| **Nella cronologia** | Attivo: il comando compare nella cronologia della riga di comando. |\n| Cestino | Elimina la riga (dopo una conferma). |\n\n**Nuova combinazione di tasti** in fondo aggiunge tante righe vuote quante volete (senza registrazione). Le modifiche valgono subito e su ogni dispositivo con una tastiera collegata (anche un iPad)."
+ },
+ {
+  "id": "keyboard-shortcuts-015",
+  "page": "keyboard-shortcuts",
+  "path": [
+   "Scorciatoie da tastiera e gesti",
+   "11. Scorciatoie da tastiera personalizzate"
+  ],
+  "title": "11. Scorciatoie da tastiera personalizzate (3)",
+  "keywords": [],
+  "text": "**Backup e condivisione:** In fondo alla finestra **Esporta ...** salva la mappatura in un file (`opencue-keyboard-mapping.json`), **Importa ...** legge un tale file. Le righe vengono **aggiunte**; i tasti che il programma o un'altra riga usano già vengono saltati (il messaggio ne indica il numero).\n\n**Da sapere**"
+ },
+ {
+  "id": "keyboard-shortcuts-016",
+  "page": "keyboard-shortcuts",
+  "path": [
+   "Scorciatoie da tastiera e gesti",
+   "11. Scorciatoie da tastiera personalizzate"
+  ],
+  "title": "11. Scorciatoie da tastiera personalizzate (4)",
+  "keywords": [],
+  "text": "- Le combinazioni che il programma o il browser usano già (`Ctrl+S`, `Ctrl+1...9`, `Sinistra`/`Destra`, `F5` ...) vengono rifiutate durante la registrazione; ogni combinazione può essere usata una sola volta.\n- Mentre **digitate in un campo di input** valgono solo le combinazioni con `Ctrl`. Con una finestra aperta i tasti semplici non fanno nulla, e con la finestra *Scorciatoie da tastiera personalizzate* aperta non si attiva nulla.\n- Il comando viene eseguito alla **pressione** del tasto (non al rilascio). Un tasto tenuto premuto lo attiva **una sola volta**.\n- Una combinazione può avere **più tasti principali**, ad es. `Ctrl+H+J`: vale non appena sono premuti tutti (l'ordine non conta). Se esiste anche `Ctrl+H`, quella combinazione più corta aspetta un attimo per vedere se si aggiunge `J`.\n- Se una combinazione è già usata dal programma o dal browser (anche come parte di una più lunga, ad es. `Ctrl+S+J`), OpenCue non la accetta e mostra un messaggio in cima alla finestra.\n- I tasti vengono memorizzati indipendentemente dalla disposizione della tastiera (il tasto `Z` resta il tasto in quella posizione). Il tastierino numerico si chiama `Num1` ... `Num9`.\n\n**Tasto di una tastiera specifica (ad es. macro pad, solo Windows)**"
+ },
+ {
+  "id": "keyboard-shortcuts-017",
+  "page": "keyboard-shortcuts",
+  "path": [
+   "Scorciatoie da tastiera e gesti",
+   "11. Scorciatoie da tastiera personalizzate"
+  ],
+  "title": "11. Scorciatoie da tastiera personalizzate (5)",
+  "keywords": [],
+  "text": "Nella finestra **Imposta tasto** (pulsante tastiera di una riga) premete il tasto sulla tastiera desiderata. Sulla console con Windows OpenCue rileva **da quale** tastiera proviene (il nome compare sotto il campo) e voi scegliete **Tutte le tastiere** o **Solo questa tastiera**. Su un tablet o senza Windows registra il browser e vale sempre per «Tutte le tastiere». Un tasto vale o per tutte le tastiere o per quelle specifiche – non entrambi insieme. Una riga impostata su «solo questa tastiera» si attiva solo quando il tasto viene premuto esattamente su quella tastiera – anche quando OpenCue non è in primo piano. La riga mostra la tastiera sotto il tasto."
+ },
+ {
+  "id": "keyboard-shortcuts-018",
+  "page": "keyboard-shortcuts",
+  "path": [
+   "Scorciatoie da tastiera e gesti",
+   "11. Scorciatoie da tastiera personalizzate"
+  ],
+  "title": "11. Scorciatoie da tastiera personalizzate (6)",
+  "keywords": [],
+  "text": "- Questo funziona **sulla console stessa** solo su Windows, non da un tablet.\n- OpenCue **ascolta solo mentre** esiste almeno una riga attiva per una tastiera specifica (o durante la registrazione). Valuta solo le tastiere dell'elenco; tutto il resto viene scartato subito e mai memorizzato.\n- Windows segnala soltanto il tasto, **non lo blocca**: il tasto raggiunge anche il programma attivo (ad esempio come carattere in un campo di testo). Per un macro pad scegliete tasti che altrimenti non fanno nulla – come da `F13` a `F24` o il tastierino numerico.\n- Alcune tastiere si annunciano come più dispositivi (ad esempio tasti e tasti multimediali separati). OpenCue lo rileva da solo durante la registrazione.\n- Due tastiere diverse possono assegnare lo stesso tasto in modo diverso. Una doppia segnalazione della stessa pressione (entro 80 ms) attiva una volta sola."
+ },
+ {
+  "id": "keyboard-shortcuts-019",
+  "page": "keyboard-shortcuts",
+  "path": [
+   "Scorciatoie da tastiera e gesti",
+   "11b. Modificare le scorciatoie proprie del programma"
+  ],
+  "title": "11b. Modificare le scorciatoie proprie del programma",
+  "keywords": [],
+  "text": "Le scorciatoie che il programma ha già (`Ctrl+S`, `F11`, `Ctrl+E` ...) possono essere spostate su altri tasti o disattivate. Aprite **Controlli → Scorciatoie da tastiera ...** e fate clic in fondo su **Modifica scorciatoie**:\n\n1. Ogni riga modificabile mostra una cornice tratteggiata attorno al suo tasto. **Fate clic sul tasto**, premete la nuova combinazione e **rilasciatela** – viene impostata subito (il tasto mostra *Premi tasti ...* finché lo tenete premuto). `Esc` annulla.\n2. La **croce** accanto a una riga **disattiva** quella scorciatoia, la **freccia** ripristina il suo tasto standard. **Ripristina tutti i tasti standard** reimposta tutto. **Fatto** esce dalla modalità modifica.\n3. I tasti modificati vengono mostrati qui nel colore di accento, nei menu (ad esempio *File → Salva show*) e nella finestra *Scorciatoie da tastiera personalizzate*, che rifiuta i tasti già occupati.\n\nOpenCue rifiuta una combinazione già in uso (da un'altra scorciatoia, da un comando a tasto personalizzato, o dal browser / Windows – ad esempio `Ctrl+W`). Una scorciatoia del programma ha **un tasto principale più Ctrl, Alt o Maiusc**; una singola lettera o cifra viene rifiutata perché bloccherebbe la digitazione – i tasti funzione (`F1` ... `F24`) funzionano da soli. La modifica vale per **tutti i dispositivi** della console."
+ },
+ {
+  "id": "keyboard-shortcuts-020",
+  "page": "keyboard-shortcuts",
+  "path": [
+   "Scorciatoie da tastiera e gesti",
+   "11b. Modificare le scorciatoie proprie del programma"
+  ],
+  "title": "11b. Modificare le scorciatoie proprie del programma (2)",
+  "keywords": [],
+  "text": "Non modificabili (dipendono dalla situazione): `Esc`, `Ctrl+C / X / V` per i pannelli, `Ctrl+1 ... 9` per i layout, i tasti freccia e i tasti di modifica 3D."
+ },
+ {
+  "id": "keyboard-shortcuts-021",
+  "page": "keyboard-shortcuts",
+  "path": [
+   "Scorciatoie da tastiera e gesti",
+   "Annulla e ripeti (contenuto dello show)"
+  ],
+  "title": "Annulla e ripeti (contenuto dello show)",
+  "keywords": [],
+  "text": "Fuori dalla modalità modifica pannelli, `Ctrl+Z` e `Ctrl+Y` (o `Ctrl+Shift+Z`) – e *Modifica → Annulla / Ripeti* – annullano e ripetono tutto ciò che è **salvato nel file dello show**, e l'operazione che lo precede:\n\n- **cue e liste di cue:** salvare, aggiornare, cambiare ore / trigger / nomi (anche più insieme), copiare, eliminare, creare, rinominare, riordinare ed eliminare liste;\n- **variabili** e i loro gruppi, **gruppi di apparecchi**, il **patch** (aggiungere, eliminare, cambiare indirizzo, rinominare, disporre gli apparecchi), **effetti** (definizioni e gruppi), la **pianificazione** e le **tracce di comandi della timeline**;\n- la **selezione** degli apparecchi;\n- **valori del programmer** (colore, posizione, luminosità, fascio …) – un trascinamento di fader o un comando come `At 80` è **un** passo; torna indietro anche lo stato DMX degli apparecchi interessati;\n- **effetti in esecuzione:** applicare o deselezionare un effetto su degli apparecchi;\n- il **fader executor** di una lista di cue (un trascinamento = un passo).\n\nUn breve messaggio indica cosa è stato annullato. Modifiche rapide dello stesso tipo (ad esempio uno scorrimento su un'ora o un trascinamento di fader) contano come **un** passo; la cronologia conserva gli ultimi 100 passi. Avviare un nuovo show (*Nuovo*, *Apri*) la cancella."
+ },
+ {
+  "id": "keyboard-shortcuts-022",
+  "page": "keyboard-shortcuts",
+  "path": [
+   "Scorciatoie da tastiera e gesti",
+   "Annulla e ripeti (contenuto dello show)"
+  ],
+  "title": "Annulla e ripeti (contenuto dello show) (2)",
+  "keywords": [],
+  "text": "**Go e Back (interruttore):** se **Go / Back / Jump** (e un `Go` digitato come comando) vengono annullati anch'essi – allora `Ctrl+Z` torna al cue precedente. Predefinito: **disattivato**, così non riprendete mai un cue per sbaglio durante uno spettacolo. L'interruttore è un'icona (freccia di annullamento con un piccolo triangolo play) nella barra degli strumenti **e** in *Impostazioni → Altre opzioni → Interruttori rapidi* – lì funziona anche quando l'icona è nascosta nella barra degli strumenti.\n\n**Non incluso:** le impostazioni, il Go tramite MIDI / OSC / timecode e le modifiche fatte tramite l'interfaccia REST. In una finestra aperta e nei campi di testo le scorciatoie non fanno nulla. Potete riassegnare i tasti in *Scorciatoie da tastiera → Modifica scorciatoie*."
+ },
+ {
+  "id": "keyboard-shortcuts-023",
+  "page": "keyboard-shortcuts",
+  "path": [
+   "Scorciatoie da tastiera e gesti",
+   "12. Promemoria"
+  ],
+  "title": "12. Promemoria",
+  "keywords": [],
+  "text": "```\nCtrl+N  Nuovo show         Ctrl+O  Apri show          Ctrl+S  Salva         Ctrl+Shift+S  Salva con nome\nCtrl+E  Modifica pannelli  Ctrl+Z / Ctrl+Y  Annulla / Ripeti (pannelli in modalità modifica, altrimenti contenuto dello show)\nCtrl+C / X / V  Copia / taglia / incolla pannelli (modalità modifica)\nCtrl+1…9  Carica layout    ← / →  Layout precedente / successivo\nCtrl +  Ctrl -  Ctrl+0     Scala interfaccia più grande / più piccola / 100 %\nCtrl+Shift+L  Lingua       F11  Schermo intero  Ctrl+Q  Esci          Esc  Chiudi finestra\nCtrl+F  Console di comandi (riga di comando + tastierino + tasti)\n```"
+ }
+]

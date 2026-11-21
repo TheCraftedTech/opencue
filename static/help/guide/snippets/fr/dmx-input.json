@@ -1,0 +1,56 @@
+[
+ {
+  "id": "dmx-input-001",
+  "page": "dmx-input",
+  "path": [
+   "Entrée DMX (recevoir Art-Net et sACN)"
+  ],
+  "title": "Entrée DMX (recevoir Art-Net et sACN)",
+  "keywords": [],
+  "text": "OpenCue peut non seulement envoyer du DMX mais aussi le **recevoir par le réseau** – depuis une console d'éclairage, un programme (par exemple un visualiseur ou un contrôleur de show) ou un appareil. Les valeurs reçues peuvent être **transmises et mélangées** à la sortie ou servir de **déclencheurs**.\n\nOuvrez-la avec **Contrôles → Entrée DMX…** (elle peut aussi être modifiée depuis une tablette)."
+ },
+ {
+  "id": "dmx-input-002",
+  "page": "dmx-input",
+  "path": [
+   "Entrée DMX (recevoir Art-Net et sACN)",
+   "1. L'activer"
+  ],
+  "title": "1. L'activer",
+  "keywords": [],
+  "text": "- Activez **Recevoir le DMX** (désactivé par défaut – le DMX n'a pas de mot de passe, n'importe qui dans le réseau peut envoyer).\n- **Protocoles :** Art-Net (UDP 6454) et/ou sACN / E1.31 (UDP 5568, multicast). Univers Art-Net = *adresse de port* (exactement comme OpenCue l'envoie : univers 1 = adresse de port 1).\n- **Émetteurs autorisés :** vide = tout le monde ; sinon des adresses IP ou leurs débuts (p. ex. `192.168.1.`).\n- **Carte réseau :** seulement nécessaire si l'ordinateur en a plusieurs et que l'entrée doit écouter sur une carte précise.\n- **Source disparue après :** après ce délai sans paquet, OpenCue libère les valeurs de la source (sACN : immédiatement avec « flux terminé »).\n\n**Sources vues** montre en direct tout ce qui est envoyé : protocole, univers, émetteur, paquets par seconde et combien de canaux ne sont pas à zéro. **Voir** affiche les 512 canaux sous forme de grille ; **Transmettre** crée aussitôt une assignation."
+ },
+ {
+  "id": "dmx-input-003",
+  "page": "dmx-input",
+  "path": [
+   "Entrée DMX (recevoir Art-Net et sACN)",
+   "2. Transmettre / mélanger (source → sortie)"
+  ],
+  "title": "2. Transmettre / mélanger (source → sortie)",
+  "keywords": [],
+  "text": "Une **assignation** mélange un *univers d'entrée* dans un *univers de sortie* d'OpenCue :\n\n| Mode | Signification |\n|---|---|\n| **Le plus haut gagne** (HTP) | Par canal, la plus grande valeur entre OpenCue et l'entrée compte. Le mode par défaut, sûr pour mélanger. |\n| **Remplacer** | L'entrée compte tant que la source est là (zéros inclus). Éventuellement seulement pour une plage de canaux. |\n\n- Plusieurs sources pour le même univers : **le plus haut gagne**. Avec sACN, seules comptent les sources de plus haute **priorité**.\n- Si l'univers de sortie n'a **aucun projecteur**, il est tout de même émis – cela donne une **transmission pure** (p. ex. Art-Net → sACN ou → un adaptateur USB).\n- L'entrée se place **au-dessus de tout** (programmeur, cues, effets). Les valeurs dans OpenCue restent inchangées ; le mélange n'a lieu que dans la **sortie**.\n- Les paquets propres sont reconnus et ignorés – une transmission ne crée pas de boucle de rétroaction.\n- Elle tourne dans le **processus de sortie DMX** : la transmission continue sans changement même si le programme principal se bloque. Si ce processus échoue et que la sortie tourne dans le programme principal en secours, les déclencheurs et l'affichage continuent de fonctionner mais pas le mélange (la fenêtre l'indique)."
+ },
+ {
+  "id": "dmx-input-004",
+  "page": "dmx-input",
+  "path": [
+   "Entrée DMX (recevoir Art-Net et sACN)",
+   "3. Déclencheurs (canal → commande)"
+  ],
+  "title": "3. Déclencheurs (canal → commande)",
+  "keywords": [],
+  "text": "Un **déclencheur** exécute une commande de la ligne de commande quand un canal change :\n\n- **Bouton :** quand la valeur passe au-dessus du **seuil**, la première commande s'exécute (p. ex. `Go`) ; quand elle repasse en dessous, la seconde (facultative, p. ex. `Blackout Off`).\n- **Fader :** chaque nouvelle valeur s'exécute comme une commande ; `{value}` représente la valeur ramenée à la **plage** (0–100 par défaut), p. ex. `Master {value}`.\n- **Apprendre :** cliquez sur **Apprendre** et bougez un canal sur la console – protocole, univers et canal sont remplis.\n- La première valeur vue est seulement mémorisée, rien n'est déclenché (pas de saut à la connexion). Les commandes de fader s'exécutent au plus 20 fois par seconde ; la dernière valeur arrive toujours.\n\nExemples : canal 1 = `Go` (bouton), canal 2 = `Blackout` (bouton), canal 3 = `Master {value}` (fader), canal 10 = `Goto Cue 5`.\n\n**Derniers déclencheurs** montre ce qui a été déclenché."
+ },
+ {
+  "id": "dmx-input-005",
+  "page": "dmx-input",
+  "path": [
+   "Entrée DMX (recevoir Art-Net et sACN)",
+   "4. Bon à savoir"
+  ],
+  "title": "4. Bon à savoir",
+  "keywords": [],
+  "text": "- L'entrée appartient à la **configuration de l'application** (pas au show) et s'applique à cet ordinateur.\n- Pour qu'une console atteigne OpenCue, elle doit envoyer à l'adresse IP de l'ordinateur ou en diffusion (broadcast) ; le pare-feu Windows doit autoriser UDP 6454 / 5568 pour OpenCue – la fenêtre indique si la règle existe et la crée en un clic (Windows demande l'autorisation sur l'ordinateur principal).\n- **Se signaler comme appareil Art-Net :** OpenCue répond à la recherche (ArtPoll) des autres appareils et apparaît dans leur liste d'appareils Art-Net – une console peut le choisir comme cible sans saisir l'adresse IP.\n- Une vue d'ensemble de toutes les entrées et sorties se trouve dans **Paramètres → Vue d'ensemble**."
+ }
+]

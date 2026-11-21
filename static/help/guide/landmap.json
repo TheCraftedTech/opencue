@@ -1,0 +1,14 @@
+{
+  "_info": "Die Landkarte im System-Prompt des Wegweisers: nur Schluessel der Sprachdateien (static/locales) - die Beschriftungen kommen zur Laufzeit, so stimmen sie immer mit der Oberflaeche ueberein.",
+  "menus": [
+    {"menu": "FILE", "items": ["FILE_NEW", "FILE_OPEN", "FILE_SAVE", "FILE_SAVE_AS", "FM_MENU", "FM_MENU_IMPORT", "FM_MENU_EXPORT"]},
+    {"menu": "EDIT", "items": ["EDIT_PANELS", "EDIT_UNDO", "EDIT_REDO", "ADD_PANEL", "LAYOUT_MANAGE"]},
+    {"menu": "LIBRARY", "items": ["FXLIB_MENU", "FM_MENU_SHOWS", "FM_MENU_LAYOUTS", "FM_MENU_STAGES", "FM_MENU_EFFECTS"]},
+    {"menu": "VIEW", "items": ["FULLSCREEN", "GUI_SCALE_MENU", "LAYOUTS_TITLE"]},
+    {"menu": "LANGUAGE", "items": ["LANGUAGE_EN", "LANGUAGE_DE", "LANGUAGE_TOGGLE"]},
+    {"menu": "HELP", "items": ["HELP_SHORTCUTS", "HELP_CHECK_UPDATES", "HELP_ABOUT"]}
+  ],
+  "settings": ["SETTINGS_CATEGORY_GENERAL", "SETTINGS_CATEGORY_APPEARANCE", "SETTINGS_CATEGORY_DMX", "SEC_CATEGORY", "SETTINGS_CATEGORY_REMOTE", "API_CATEGORY", "AI_CATEGORY"],
+  "panels": ["PANEL_FIXTURES", "PANEL_PROGRAMMER", "PANEL_CUELIST", "PANEL_EXECUTOR", "PANEL_PRESETS", "PANEL_FX_STUDIO", "PANEL_COMMAND_LINE", "PANEL_COMMAND_NUMPAD", "PANEL_COMMAND_BUTTONS",
+             "PANEL_DMX_MONITOR", "PANEL_TIMECODE", "PANEL_AUDIO", "PANEL_MEDIA_PLAYER", "PANEL_STREAM", "PANEL_BUTTON", "PANEL_FADER", "PANEL_TOGGLE", "PANEL_ASSISTANT"]
+}

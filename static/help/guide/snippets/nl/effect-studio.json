@@ -1,0 +1,486 @@
+[
+ {
+  "id": "effect-studio-001",
+  "page": "effect-studio",
+  "path": [
+   "Effectenstudio – Handleiding"
+  ],
+  "title": "Effectenstudio – Handleiding",
+  "keywords": [],
+  "text": "Een **effect** is een klein programma dat licht in de tijd verandert: een dimmer die pulseert, een kleur die door de regenboog loopt, een moving head die een cirkel beschrijft. U schrijft effecten in de **Effectenstudio** (paneel *Effectenstudio*) in een taal die op C++ of Arduino lijkt: met variabelen, `if`, `for`, `while` en uw eigen functies. U hoeft geen programmeur te zijn – de sjablonen onder **Nieuw...** werken meteen en zijn bedoeld om gelezen en aangepast te worden.\n\nDeze handleiding is ook in de studio beschikbaar via de knop **Help**."
+ },
+ {
+  "id": "effect-studio-002",
+  "page": "effect-studio",
+  "path": [
+   "Effectenstudio – Handleiding",
+   "1. Het idee in één minuut"
+  ],
+  "title": "1. Het idee in één minuut",
+  "keywords": [],
+  "text": "- Een **script** is een tekstbestand (`.fx`). Het beschrijft wat er in **één doorgang** gebeurt. Die doorgang heet `loop()` en loopt **`#RATE` keer per seconde** (1 tot 40, standaard 40).\n- In elke doorgang berekent het script nieuwe **uitvoerwaarden**: `dimmer`, of `r`/`g`/`b`, of `pan`/`tilt`. Welke, bepaalt de **categorie** (`#CATEGORY`).\n- Tussen twee doorgangen **blijft de uitvoer waar hij is**. Bij 10 doorgangen per seconde verandert de waarde dus tien keer per seconde – met opzet, zo bouwt u effecten met stappen.\n- Het script loopt **voor elke projector afzonderlijk**. Elke projector kent zijn nummer (`index`) en het totaal (`count`); gebruik ze om golven en chases over meerdere projectoren te verdelen.\n- Variabelen die u buiten `loop()` maakt, **houden hun waarde tussen doorgangen**: tellers, toestanden, timers.\n\n```\n#NAME Sine\n#CATEGORY dimmer\n#RATE 40\n#VAR speed Slider 1 0.05 8 0.05\n\nloop() {\n  dimmer = 50 + 50 * sin(2 * PI * speed * elapsed);\n}\n```\n\nDat is een compleet effect: de dimmer zwaait tussen 0 en 100 % met `speed` golven per seconde."
+ },
+ {
+  "id": "effect-studio-003",
+  "page": "effect-studio",
+  "path": [
+   "Effectenstudio – Handleiding",
+   "2. Opdrachtenoverzicht (spiekbriefje)"
+  ],
+  "title": "2. Opdrachtenoverzicht (spiekbriefje)",
+  "keywords": [],
+  "text": "Alle opdrachten in één oogopslag. De hoofdstukken hierna leggen ze met voorbeelden uit."
+ },
+ {
+  "id": "effect-studio-004",
+  "page": "effect-studio",
+  "path": [
+   "Effectenstudio – Handleiding",
+   "2. Opdrachtenoverzicht (spiekbriefje)"
+  ],
+  "title": "2. Opdrachtenoverzicht (spiekbriefje) (2)",
+  "keywords": [],
+  "text": "| Gebied | Opdrachten |\n|---|---|\n| Kopregels | `#NAME`, `#DESCRIPTION`, `#CATEGORY dimmer` / `color` / `position`, `#RATE 1` tot `40`, `#VAR name Slider` / `NumberInput` / `ColorPicker` / `Internal ...` |\n| Structuur | `setup() { }` (één keer aan het begin), `loop() { }` (`#RATE` keer per seconde) |\n| Typen | `float` (`double`), `int` (`long`, `short`, `byte`), `bool` (`boolean`), `void`, `const` |\n| Toewijzen | `x = 1;`, `x += 1;` (ook `-=` `*=` `/=` `%=`), `x++;`, `x--;` |\n| Vertakken | `if (...) { } else if (...) { } else { }`, `condition ? a : b` |\n| Lussen | `for (int i = 0; i < n; i++) { }`, `while (...) { }`, `do { } while (...);`, `break;`, `continue;` |\n| Functies | `float name(float x) { return x * 2; }`, `void name() { }`, `return value;` |\n| Rekenen | `+ - * / %`, `== != < <= > >=`, `&& \\|\\| !` |\n| Commentaar | `// tot het einde van de regel`, `/* over meerdere regels */` |\n| Uitvoer | Dimmer: `dimmer` · Kleur: `r`, `g`, `b` of `hsv(h, s, v);` · Positie: `pan`, `tilt` · Zoom: `zoom` · Focus: `focus` · Gobo: `gobo`, `gobo_spin`, `gobo2`, `gobo2_spin` |\n| Tijd | `t` (gedeelde systeemtijd), `elapsed` (sinds de start van het effect), `dt`, `tick` (`loop_count`), `rate` |\n| Projectoren | `index`, `count`, `phase` (= `index / count`), `slots`, `slots2` (aantal gobo's op wiel 1 en wiel 2) |\n| Constanten | `PI`, `TWO_PI`, `HALF_PI`, `E`, `true`, `false` |\n| Wiskunde | `sin` `cos` `tan` `asin` `acos` `atan` `atan2` `sqrt` `pow` `exp` `log` `abs` `sign` `min` `max` `floor` `ceil` `round` `fract` `mod` |\n| Hulpjes | `constrain(x, lo, hi)` `map(x, inMin, inMax, outMin, outMax)` `lerp(a, b, k)` `smoothstep(e0, e1, x)` `radians(d)` `degrees(r)` |\n| Golfvormen | `saw(x)` `tri(x)` `square(x)` `square(x, duty)` – elk 0 tot 1 per periode |\n| Willekeurig, kleur, gobo | `random()` `random(max)` `random(min, max)` · `hsv(h, s, v)` · `slot(n)` `slot(n, wheel)` |"
+ },
+ {
+  "id": "effect-studio-005",
+  "page": "effect-studio",
+  "path": [
+   "Effectenstudio – Handleiding",
+   "3. De studio gebruiken"
+  ],
+  "title": "3. De studio gebruiken",
+  "keywords": [],
+  "text": "| Gebied | Wat het doet |\n|---|---|\n| **Openen...** | Venster met alle effecten, **favorieten eerst** (zoeken, categorie, lussen per seconde, herkomst; meegeleverde effecten dragen het label **Standaard**). De lijst scrolt. Klik op een rij om hem te openen, de **ster** maakt een effect tot favoriet (geldt voor alle apparaten), de prullenbak verwijdert het uit de gebruikersmap. Onderaan: **Standaardeffecten herstellen**. |\n| **Nieuw...** | Venster: eerst de **categorie** (dimmer, kleur, positie, zoom, focus, gobo) of **Leeg bestand**, dan een **sjabloon** (*Leeg* is voorgeselecteerd), dan de **lussen per seconde**. *Leeg bestand* maakt een volledig lege editor zonder kopregels. **Aanmaken** laadt het resultaat in de editor – er wordt niets opgeslagen tot u het zegt. |\n| **Opslaan** | Slaat op in het bestand van het effect. Een nieuw effect vraagt om een bestandsnaam. Een punt naast de naam toont niet-opgeslagen wijzigingen. Toetsenbord: **Ctrl+S** in de tekst (slaat het effect op, niet de show). |\n| **Opslaan als...** | Een nieuwe bestandsnaam. Bestaat die al, dan vraagt de studio of hij moet worden overschreven. |\n| **Verwijderen** | Verwijdert het geladen effect (alleen in de gebruikersmap; er wordt eerst gevraagd). Daarna is de editor leeg. Is de knop grijs, dan zegt een aanwijzing waarom (nog niet opgeslagen, of niet in de gebruikersmap). |\n| **Help** | Opent deze handleiding. Het spiekbriefje (hoofdstuk 2) toont alle opdrachten. |\n| **Voorbeeld** | Toont of verbergt de voorvertoning rechts. |\n| **Statusbalk** | Groen = in orde. Rood = fout met regelnummer. Rechts: regel en kolom van de cursor. |"
+ },
+ {
+  "id": "effect-studio-006",
+  "page": "effect-studio",
+  "path": [
+   "Effectenstudio – Handleiding",
+   "3. De studio gebruiken"
+  ],
+  "title": "3. De studio gebruiken (2)",
+  "keywords": [],
+  "text": "De editor **kleurt** sleutelwoorden, typen, getallen, commentaar, functies, systeemvariabelen, uitvoer en uw schuiven (`#VAR`). **Enter** behoudt de inspringing van de regel (twee spaties extra na `{`), **Tab** voegt twee spaties in."
+ },
+ {
+  "id": "effect-studio-007",
+  "page": "effect-studio",
+  "path": [
+   "Effectenstudio – Handleiding",
+   "3. De studio gebruiken",
+   "De voorvertoning"
+  ],
+  "title": "De voorvertoning",
+  "keywords": [],
+  "text": "De voorvertoning laat uw script **zonder projectoren** lopen terwijl u typt – precies met de lussen per seconde die u met `#RATE` koos – en tekent het resultaat:\n\n- **Dimmer:** één curve per projector, 0 tot 100 %.\n- **Kleur:** R/G/B als curven en eronder een **kleurstrook** per projector.\n- **Positie:** pan en tilt als curven en het **pad** in het pan/tilt-veld.\n\nStandaard: **1 projector, 2 seconden**. Bovenaan stelt u het aantal projectoren (1 tot 16) en de duur (1 tot 20 s) in; meerdere projectoren tonen hoe `index`, `count` en `phase` de golven verschuiven. Eronder staan **schuiven voor uw `#VAR`-parameters** – sleep er een en de curve volgt meteen. Bij een lage snelheid (tot 20 lussen per seconde) tekent de voorvertoning stappen, tot 10 bovendien de afzonderlijke punten.\n\nBevat het script een fout, dan blijft de voorvertoning in de **laatste goede toestand, vervaagd**, de foutregel is rood gemarkeerd en de statusbalk noemt de regel en het bericht."
+ },
+ {
+  "id": "effect-studio-008",
+  "page": "effect-studio",
+  "path": [
+   "Effectenstudio – Handleiding",
+   "4. Uw eerste effect"
+  ],
+  "title": "4. Uw eerste effect",
+  "keywords": [],
+  "text": "1. **Nieuw...** → categorie **Dimmer** → sjabloon **Sine** → **Aanmaken**.\n2. De voorvertoning toont twee golven in twee seconden (`speed` is 1).\n3. Zet `speed` op 2: twee keer zo snel. Stel in de voorvertoning 3 projectoren in en zet `spread` op 0,33: de golven zijn ten opzichte van elkaar verschoven.\n4. Wijzig `0.5 + 0.5 * sin(...)` in de tekst en kijk naar de curve.\n5. **Opslaan** (Ctrl+S), voer een bestandsnaam in. Het effect verschijnt nu in de effectenlijst van de programmer."
+ },
+ {
+  "id": "effect-studio-009",
+  "page": "effect-studio",
+  "path": [
+   "Effectenstudio – Handleiding",
+   "5. Structuur van een script"
+  ],
+  "title": "5. Structuur van een script",
+  "keywords": [],
+  "text": "Een script heeft drie delen:\n\n```\n#NAME My effect                            // 1. Header lines (start with #)\n#CATEGORY dimmer\n#RATE 25\n#VAR speed Slider 1 0.1 8 0.1\n\nfloat level = 0;                           // 2. Variables and functions (optional)\n\nsetup() {                                  //    setup(): once when the effect starts (optional)\n  level = 50;\n}\n\nloop() {                                   // 3. loop(): required, runs #RATE times per second\n  dimmer = level;\n}\n```"
+ },
+ {
+  "id": "effect-studio-010",
+  "page": "effect-studio",
+  "path": [
+   "Effectenstudio – Handleiding",
+   "5. Structuur van een script",
+   "Kopregels"
+  ],
+  "title": "Kopregels",
+  "keywords": [],
+  "text": "| Regel | Betekenis |\n|---|---|\n| `#NAME text` | Weergavenaam in het programma. Zonder wordt de bestandsnaam gebruikt. |\n| `#CATEGORY dimmer` / `color` / `position` | **Verplicht.** Wat het effect aanstuurt. |\n| `#RATE n` | Hoe vaak `loop()` per seconde loopt: een geheel getal van **1 tot 40**. Standaard 40 – de snelheid van de DMX-uitvoer. |\n| `#DESCRIPTION text` | Een korte beschrijving (ook `#DESCRIPTION en ...` en `#DESCRIPTION de ...` voor één tekst per taal; het programma toont die van de interfacetaal). |\n| `#INFO name en Label \\| Hint` | Geeft de schuif `name` een **label** en een **muisaanwijzing** in een taal (`en` of `de`), bijvoorbeeld `#INFO speed de Tempo \\| Wie schnell der Effekt läuft`. Zonder `#INFO` gebruikt het programma zijn ingebouwde woordenlijst van de gebruikelijke namen (`speed`, `size`, `low`, `high`, `strobe` ...) en ten slotte de variabelenaam zelf. |\n| `#TAGS a, b, c` | Trefwoorden om te zoeken en te filteren in het venster voor het effecttype (bijvoorbeeld `strobe, flash, toggle`; maximaal 8, kleine letters). Een script dat audiovariabelen leest, krijgt automatisch de tag `audio` – die schrijft u niet. De meegeleverde effecten dragen `basic` (voor beginners, 19 ervan) of `advanced` (alle andere) als eerste tag; het venster toont ze als \"Basis\" / \"Geavanceerd\" – gebruik ze ook voor uw eigen effecten. |\n| `#VAR ...` | Een **schuif** (zie paragraaf 9) of een interne variabele. |"
+ },
+ {
+  "id": "effect-studio-011",
+  "page": "effect-studio",
+  "path": [
+   "Effectenstudio – Handleiding",
+   "6. Tijd en snelheid"
+  ],
+  "title": "6. Tijd en snelheid",
+  "keywords": [],
+  "text": "**De belangrijkste regel:** `loop()` loopt precies `#RATE` keer per seconde – ongeacht hoe snel de computer is. U kunt dus **in exacte seconden denken**.\n\n| Naam | Betekenis |\n|---|---|\n| `elapsed` | **Seconden sinds het effect startte** op deze projector. Begint bij 0. Precies `tick / rate`. Zo programmeert u \"in seconde 3 moet dit gebeuren\". |\n| `t` | Gedeelde systeemtijd in seconden. Dezelfde voor **alle** effecten – effecten die met `t` rekenen blijven **synchroon** met elkaar, ook als ze op verschillende momenten zijn gestart. |\n| `tick` | Nummer van de doorgang, begint bij 0. |\n| `rate` | Doorgangen per seconde (de waarde van `#RATE`). |\n| `dt` | Tijd tussen twee doorgangen in seconden (`1 / rate`). |\n\nWelke snelheid kies ik?\n\n- **40** (standaard): de vloeiendste curven – voor golven, cirkels, overgangen.\n- **10 tot 25**: genoeg voor kleurwisselingen en effecten die toch in stappen gaan.\n- **1 tot 5**: stapeffecten (één stap per seconde, \"klik-klik\"-chases), goedkoop te berekenen.\n\n**De \"speed\"-afspraak:** de meegeleverde effecten en alle sjablonen hebben een schuif `speed` met standaard **1**: dat is **één periode per seconde**. `sin(2 * PI * speed * elapsed)` is één golf per seconde bij `speed = 1`."
+ },
+ {
+  "id": "effect-studio-012",
+  "page": "effect-studio",
+  "path": [
+   "Effectenstudio – Handleiding",
+   "6. Tijd en snelheid",
+   "In seconde X ..."
+  ],
+  "title": "In seconde X ...",
+  "keywords": [],
+  "text": "```\n#NAME Sequence\n#CATEGORY dimmer\n#RATE 20\n#VAR length Slider 8 2 30 1       // length of the sequence in seconds\n\nloop() {\n  float s = elapsed % length;     // time within the sequence; jumps back to 0 after \"length\" seconds\n  if (s < 2) {\n    dimmer = map(s, 0, 2, 0, 100);                 // seconds 0 to 2: fade in\n  } else if (s < 5) {\n    dimmer = 100;                                  // seconds 2 to 5: full\n  } else {\n    dimmer = 100 * (1 - (s - 5) / (length - 5));   // then fade out\n  }\n}\n```"
+ },
+ {
+  "id": "effect-studio-013",
+  "page": "effect-studio",
+  "path": [
+   "Effectenstudio – Handleiding",
+   "7. De taal"
+  ],
+  "title": "7. De taal",
+  "keywords": [],
+  "text": "Alles is een **getal**. De typen zijn `float` (decimaal, ook `double`), `int` (geheel getal, ook `long`, `short`, `byte`) en `bool` (0 of 1, ook `boolean`). `true` en `false` zijn 1 en 0."
+ },
+ {
+  "id": "effect-studio-014",
+  "page": "effect-studio",
+  "path": [
+   "Effectenstudio – Handleiding",
+   "7. De taal",
+   "Variabelen"
+  ],
+  "title": "Variabelen",
+  "keywords": [],
+  "text": "```\nfloat x = 1.5;          // decimal number (dot, not comma)\nint n = 3;              // whole number: assigning truncates (7.9 becomes 7)\nbool on = true;         // 0 or 1: any value other than 0 becomes 1\nconst float K = 0.25;   // constant, cannot be changed\nfloat a = 1, b2 = 2;    // several in one line\n```\n\n- Variabelen die **buiten** functies worden gemaakt, zijn **globaal** en **houden hun waarde** van doorgang tot doorgang. Hun beginwaarde geldt als het effect start (om ze later te resetten, schrijft u `setup()`).\n- Variabelen die **binnen** `{ }` worden gemaakt, zijn **lokaal**: ze duren tot de sluitende accolade en beginnen in elke doorgang opnieuw.\n- Toewijzen aan een **niet-gedeclareerde** variabele (`counter = counter + 1;`) maakt automatisch een globale `float` – zo werkten oudere scripts. Beter: declareer haar.\n- De namen `t`, `elapsed`, `dt`, `tick`, `rate`, `index`, `count`, `phase`, `dimmer`, `r`, `g`, `b`, `pan`, `tilt`, `PI` en alle sleutelwoorden en functienamen zijn bezet."
+ },
+ {
+  "id": "effect-studio-015",
+  "page": "effect-studio",
+  "path": [
+   "Effectenstudio – Handleiding",
+   "7. De taal",
+   "Rekenen en vergelijken"
+  ],
+  "title": "Rekenen en vergelijken",
+  "keywords": [],
+  "text": "| Symbool | Betekenis |\n|---|---|\n| `+ - * /` | Basisrekenen. Delen door 0 geeft 0. |\n| `%` | Rest (ook voor decimalen): `5.5 % 2` is 1,5. |\n| `== != < <= > >=` | Vergelijkingen; resultaat 1 (waar) of 0 (onwaar). |\n| `&& \\|\\| !` | En, of, niet. Voorwaarden zijn waar als ze niet 0 zijn. |\n| `condition ? a : b` | Keuze: `a` als de voorwaarde waar is, anders `b`. |\n| `= += -= *= /= %=` | Toewijzing; `x += 2;` is `x = x + 2;`. |\n| `x++;` `x--;` | Met 1 verhogen / verlagen. |"
+ },
+ {
+  "id": "effect-studio-016",
+  "page": "effect-studio",
+  "path": [
+   "Effectenstudio – Handleiding",
+   "7. De taal",
+   "Vertakken en herhalen"
+  ],
+  "title": "Vertakken en herhalen",
+  "keywords": [],
+  "text": "```\nif (x > 10) {                 // if ...\n  dimmer = 100;\n} else if (x > 5) {           // else if ...\n  dimmer = 50;\n} else {                      // else\n  dimmer = 0;\n}\n\nfor (int i = 0; i < 5; i++) { // count i from 0 to 4\n  total += i;\n}\n\nwhile (n > 0) { n--; }        // as long as n is greater than 0\n\ndo { n++; } while (n < 3);    // run at least once\n\nbreak;                        // leave the loop at once\ncontinue;                     // jump to the next loop pass\n```\n\nAccolades `{ }` zijn optioneel bij één enkele instructie (`if (a) b = 1;`), maar duidelijker met. Er is geen `switch` – gebruik `if` / `else if`."
+ },
+ {
+  "id": "effect-studio-017",
+  "page": "effect-studio",
+  "path": [
+   "Effectenstudio – Handleiding",
+   "7. De taal",
+   "Uw eigen functies"
+  ],
+  "title": "Uw eigen functies",
+  "keywords": [],
+  "text": "```\nfloat wave(float x) {                     // return type, name, parameters\n  return 0.5 + 0.5 * sin(2 * PI * x);     // return hands the value back\n}\n\nvoid setBright(float v) {                 // void: returns nothing\n  dimmer = v;\n}\n\nloop() {\n  setBright(100 * wave(speed * elapsed));\n}\n```\n\nFuncties mogen voor of na de plek staan waar ze worden aangeroepen en mogen zichzelf aanroepen (recursie, beperkt). Parameters zijn lokaal; globale variabelen en uitvoer (`dimmer` ...) zijn overal bereikbaar."
+ },
+ {
+  "id": "effect-studio-018",
+  "page": "effect-studio",
+  "path": [
+   "Effectenstudio – Handleiding",
+   "7. De taal",
+   "Commentaar"
+  ],
+  "title": "Commentaar",
+  "keywords": [],
+  "text": "```\n// rest of the line is a comment\n/* several\n   lines */\n```"
+ },
+ {
+  "id": "effect-studio-019",
+  "page": "effect-studio",
+  "path": [
+   "Effectenstudio – Handleiding",
+   "7. De taal",
+   "Grenzen"
+  ],
+  "title": "Grenzen",
+  "keywords": [],
+  "text": "- Een doorgang mag hoogstens **60.000 lusiteraties en functieaanroepen** doen; een eindeloze lus stopt met het bericht \"endless loop?\".\n- Een effect dat **een fout geeft of meer dan 50 ms per doorgang nodig heeft**, wordt uitgeschakeld (\"rust\") zodat het de andere niet ophoudt. Sla het script opnieuw op en het loopt weer.\n- Er zijn alleen getallen: geen tekst, lijsten (arrays) of pointers."
+ },
+ {
+  "id": "effect-studio-020",
+  "page": "effect-studio",
+  "path": [
+   "Effectenstudio – Handleiding",
+   "8. Uitvoer per categorie"
+  ],
+  "title": "8. Uitvoer per categorie",
+  "keywords": [],
+  "text": "Het script schrijft zijn resultaat in variabelen die bij de categorie passen:\n\n| `#CATEGORY` | Uitvoer | Bereik |\n|---|---|---|\n| `dimmer` | `dimmer` | 0 tot 100 (%) |\n| `color` | `r`, `g`, `b` | 0 tot 255 |\n| `position` | `pan`, `tilt` | 0 tot 100 (%), 50 is het midden. Heeft de projector fijne kanalen (16 bit), dan worden decimalen gebruikt: `pan = 33.3333;` is nauwkeuriger dan `pan = 33;` |\n| `zoom` | `zoom` | 0 tot 100 (%) – de uiteinden van het zoomkanaal (breed/smal, afhankelijk van de projector) |\n| `focus` | `focus` | 0 tot 100 (%) – de uiteinden van het focuskanaal (dichtbij/ver) |\n| `gobo` | `gobo` | 0 tot 100 (%) – de positie van het gobokanaal van wiel 1; kies gobo's het best met `slot(n)` (zie hieronder) |\n| `gobo` | `gobo_spin` | 0 tot 100 (%) – rotatie of schudden van wiel 1 (het bereik bepaalt richting en snelheid, afhankelijk van de projector) |\n| `gobo` | `gobo2` | 0 tot 100 (%) – goborad 2 (alleen projectoren met een tweede wiel), kies gobo's met `slot(n, 2)` |\n| `gobo` | `gobo2_spin` | 0 tot 100 (%) – rotatie van wiel 2 |"
+ },
+ {
+  "id": "effect-studio-021",
+  "page": "effect-studio",
+  "path": [
+   "Effectenstudio – Handleiding",
+   "8. Uitvoer per categorie"
+  ],
+  "title": "8. Uitvoer per categorie (2)",
+  "keywords": [],
+  "text": "Waarden buiten het bereik worden begrensd. **Een effect stuurt alleen de uitvoer aan die zijn script ergens toewijst** (`hsv()` telt als `r`, `g`, `b`; bij kleur altijd alle drie). Schrijft een script alleen `pan`, dan blijft `tilt` met rust: het kanaal volgt het effect niet en in de programmer is alleen de Pan-fader vergrendeld – u kunt Tilt met de hand blijven instellen. Wordt een uitvoer in één doorgang niet bereikt (bijv. de toewijzing zit in een `if`), dan staat hij voor die doorgang op 0 (`pan`/`tilt`: midden, 50). Ontbreekt het kanaal bij de projector, dan wordt de uitvoer stilzwijgend genegeerd. Uitvoer van een andere categorie wordt genegeerd. Met `hsv(h, s, v);` stelt u `r`, `g`, `b` in uit tint, verzadiging en waarde (elk 0 tot 1) in één stap.\n\nLet op: uitvoer geldt alleen voor **de huidige doorgang** – om een waarde te onthouden, maakt u een eigen variabele (`float level = 0;` ... `dimmer = level;`)."
+ },
+ {
+  "id": "effect-studio-022",
+  "page": "effect-studio",
+  "path": [
+   "Effectenstudio – Handleiding",
+   "9. Schuiven: #VAR"
+  ],
+  "title": "9. Schuiven: #VAR",
+  "keywords": [],
+  "text": "```\n#VAR <name> <type> <default> [min max step]\n```\n\n| Type | Standaard | Bediening |\n|---|---|---|\n| `Slider` | getal, plus `min max step` | schuif |\n| `NumberInput` | getal, plus `min max step` | getalveld |\n| `ColorPicker` | hexkleur, bijv. `#ff8800` | kleurkiezer; in het script als `name_r`, `name_g`, `name_b` (0 tot 255) |\n| `Internal` | getal | geen bediening – een globale variabele met een beginwaarde (zoals `float name = 0;`) |\n\n```\n#VAR speed Slider 1 0.05 8 0.05          // periods per second\n#VAR size Slider 100 0 100 1             // strength in %\n#VAR color ColorPicker #00aaff           // color_r, color_g, color_b\n```\n\nDe schuiven verschijnen in het venster **Effect aanmaken/bewerken** en in de voorvertoning van de studio. In het script zijn ze **alleen-lezen**."
+ },
+ {
+  "id": "effect-studio-023",
+  "page": "effect-studio",
+  "path": [
+   "Effectenstudio – Handleiding",
+   "10. Systeemvariabelen"
+  ],
+  "title": "10. Systeemvariabelen",
+  "keywords": [],
+  "text": "| Naam | Betekenis |\n|---|---|\n| `t` | Gedeelde systeemtijd in seconden (houdt effecten synchroon). |\n| `elapsed` | Seconden sinds dit effect op deze projector startte. |\n| `dt` | Seconden tussen twee doorgangen (`1 / rate`). |\n| `tick` | Nummer van de doorgang (0, 1, 2 ...). Ook `loop_count`. |\n| `rate` | Doorgangen per seconde. |\n| `index` | Nummer van deze projector in de selectievolgorde van de programmer (0, 1, 2 ...). |\n| `count` | Aantal projectoren waarop het effect loopt. |\n| `phase` | `index / count`: gelijkmatige verschuiving over de selectie (0 tot bijna 1). |\n| `slots` | Aantal vaste gobo's op wiel 1 (alleen in de categorie `gobo`, anders 0). De voorvertoning gebruikt 8 gobo's. |\n| `slots2` | Hetzelfde voor wiel 2 (0 als de projector maar één wiel heeft). |\n\nDe selectievolgorde is de volgorde waarin u de projectoren koos."
+ },
+ {
+  "id": "effect-studio-024",
+  "page": "effect-studio",
+  "path": [
+   "Effectenstudio – Handleiding",
+   "10. Systeemvariabelen",
+   "Audiovariabelen (a...)"
+  ],
+  "title": "Audiovariabelen (a...)",
+  "keywords": [],
+  "text": "Effecten kunnen op muziek reageren. Het **Audio**-paneel analyseert het geluid (zie de handleiding *Audio*); deze variabelen bevatten het resultaat. Alle beginnen met `a_`, zodat ze nooit botsen met uw eigen namen. Zonder draaiende audiobron zijn ze allemaal `0`. Een script dat er een leest, is een **audio-effect** (gemarkeerd in de lijst en in de studio; de voorvertoning laat dan een voorbeeldbeat van 120 BPM lopen)."
+ },
+ {
+  "id": "effect-studio-025",
+  "page": "effect-studio",
+  "path": [
+   "Effectenstudio – Handleiding",
+   "10. Systeemvariabelen",
+   "Audiovariabelen (a...)"
+  ],
+  "title": "Audiovariabelen (a...) (2)",
+  "keywords": [],
+  "text": "| Naam | Betekenis |\n|---|---|\n| `a_active` | `1` zolang er geluid binnenkomt, anders `0`. |\n| `a_level` | Totale luidheid 0 tot 1 (relatief aan de luidste delen van de laatste seconden). |\n| `a_bass`, `a_mid`, `a_high` | Bas (tot 150 Hz), midden (150 Hz tot 2,5 kHz) en hoog (boven 2,5 kHz), 0 tot 1. |\n| `a_b1` ... `a_b8` | De acht banden afzonderlijk (20-60, 60-150, 150-400, 400-1k, 1k-2,5k, 2,5k-5k, 5k-10k, 10k-20k Hz), 0 tot 1. |\n| `a_kick`, `a_snare`, `a_hat` | Slagen van de basdrum, snare (of klap) en hi-hat: springt bij elke slag naar 0,45 - 1 en dooft in ongeveer 0,15 s uit (hi-hat 0,07 s). |\n| `a_beat` | Hetzelfde soort puls bij elke beat van het gedetecteerde tempo. |\n| `a_beat_phase` | Positie binnen de beat, 0 tot 1, gelijkmatig stijgend van de ene beat naar de volgende: ideaal voor tempo-synchrone golven. |\n| `a_beat_count` | Nummer van de beat; telt bij elke beat met 1 op. |\n| `a_bpm` | Gedetecteerd (of ingesteld) tempo in beats per minuut; `0` zolang onbekend. |\n| `a_conf` | Hoe zeker de tempodetectie is, 0 tot 1. |\n\n```\n#CATEGORY dimmer\n#RATE 40\nloop() {\n  dimmer = lerp(5, 100, a_kick);                              // flash on every bass drum\n}\n```"
+ },
+ {
+  "id": "effect-studio-026",
+  "page": "effect-studio",
+  "path": [
+   "Effectenstudio – Handleiding",
+   "10. Systeemvariabelen",
+   "Audiovariabelen (a...)"
+  ],
+  "title": "Audiovariabelen (a...) (3)",
+  "keywords": [],
+  "text": "Tip: een doorgang ziet alleen de toestand op zijn eigen moment. Een puls (`a_kick`) lezen is altijd veilig omdat hij uitdooft; om op het *moment* van een slag te reageren, onthoudt u de laatste waarde in een globale variabele en vergelijkt u (zie het effect *Audio: Hi-Hat Sparkle*). Gebruik `#RATE 40` voor audio-effecten zodat ze pittig blijven."
+ },
+ {
+  "id": "effect-studio-027",
+  "page": "effect-studio",
+  "path": [
+   "Effectenstudio – Handleiding",
+   "11. Functies"
+  ],
+  "title": "11. Functies",
+  "keywords": [],
+  "text": "| Functie | Betekenis |\n|---|---|\n| `sin(x)`, `cos(x)`, `tan(x)` | Hoek in radialen (hele cirkel = `2 * PI`). |\n| `asin(x)`, `acos(x)`, `atan(x)`, `atan2(y, x)` | Inverse functies. |\n| `sqrt(x)`, `pow(x, y)`, `exp(x)`, `log(x)` | Wortel, macht, e-functie, natuurlijke logaritme. Ongeldige invoer geeft 0. |\n| `abs(x)`, `sign(x)` | Absolute waarde; teken (-1, 0, 1). |\n| `min(a, b)`, `max(a, b)` | Kleinere / grotere waarde. |\n| `floor(x)`, `ceil(x)`, `round(x)` | Naar beneden afronden, naar boven afronden, afronden. |\n| `fract(x)` | Breukdeel: `fract(2.25)` is 0,25. Handig voor \"positie binnen de periode\". |\n| `mod(a, b)` | Rest die nooit negatief is (anders dan `%` bij negatieve getallen). |\n| `constrain(x, low, high)` | Begrenst `x` tot het bereik. |\n| `map(x, inMin, inMax, outMin, outMax)` | Zet `x` van het ene bereik om naar het andere (zoals in Arduino). |\n| `lerp(a, b, k)` | Lineair van `a` naar `b`: `a + (b - a) * k`. |\n| `smoothstep(e0, e1, x)` | Zachte overgang van 0 naar 1 tussen `e0` en `e1`. |\n| `saw(x)`, `tri(x)`, `square(x)`, `square(x, duty)` | Golfvormen met 0 tot 1 per periode van `x`: zaagtand, driehoek, blokgolf (`duty` = aandeel \"aan\", standaard 0,5). |\n| `radians(d)`, `degrees(r)` | Graden ↔ radialen. |\n| `random()`, `random(max)`, `random(min, max)` | Willekeurig getal (0 tot 1, 0 tot `max`, `min` tot `max`). Elke projector heeft zijn eigen **reproduceerbare** reeks. |\n| `hsv(h, s, v)` | Stelt `r`, `g`, `b` in uit tint `h` (0 tot 1, loopt rond), verzadiging `s` en waarde `v` (0 tot 1). |\n| `slot(n)` | De waarde (in %) van de n-de gobo van wiel 1; `slot(0)` is de eerste (meestal open). Alleen in de categorie `gobo`; de lijst komt uit het projectorbestand, zonder gegevens geeft `slot()` 0. |\n| `slot(n, wheel)` | Zoals `slot(n)`, maar voor wiel `wheel` (1 of 2): `gobo2 = slot(3, 2);` |"
+ },
+ {
+  "id": "effect-studio-028",
+  "page": "effect-studio",
+  "path": [
+   "Effectenstudio – Handleiding",
+   "11. Functies"
+  ],
+  "title": "11. Functies (2)",
+  "keywords": [],
+  "text": "Constanten: `PI`, `TWO_PI`, `HALF_PI`, `E`, `true`, `false`."
+ },
+ {
+  "id": "effect-studio-029",
+  "page": "effect-studio",
+  "path": [
+   "Effectenstudio – Handleiding",
+   "12. Voorbeelden",
+   "Pulse (dimmer)"
+  ],
+  "title": "Pulse (dimmer)",
+  "keywords": [],
+  "text": "Hard aan en uit; `duty` is het aandeel van de periode waarin het licht aan is.\n\n```\n#NAME Pulse\n#CATEGORY dimmer\n#RATE 40\n#VAR speed Slider 1 0.05 8 0.05\n#VAR duty Slider 0.25 0.05 1 0.05\n#VAR spread Slider 0 0 1 0.05\n\nloop() {\n  float p = fract(speed * elapsed + index * spread);\n  dimmer = p < duty ? 100 : 0;\n}\n```"
+ },
+ {
+  "id": "effect-studio-030",
+  "page": "effect-studio",
+  "path": [
+   "Effectenstudio – Handleiding",
+   "12. Voorbeelden",
+   "Chase (dimmer)"
+  ],
+  "title": "Chase (dimmer)",
+  "keywords": [],
+  "text": "Eén licht loopt over alle geselecteerde projectoren.\n\n```\n#NAME Chase\n#CATEGORY dimmer\n#RATE 40\n#VAR speed Slider 1 0.1 8 0.1\n#VAR width Slider 1 0.5 8 0.5\n\nloop() {\n  float pos = fract(speed * elapsed) * count;   // current step (decimal)\n  float d = abs(index - pos);\n  if (d > count / 2) d = count - d;             // distance on the circle\n  dimmer = d < width ? 100 : 0;\n}\n```"
+ },
+ {
+  "id": "effect-studio-031",
+  "page": "effect-studio",
+  "path": [
+   "Effectenstudio – Handleiding",
+   "12. Voorbeelden",
+   "Willekeurige kleur (kleur)"
+  ],
+  "title": "Willekeurige kleur (kleur)",
+  "keywords": [],
+  "text": "Wisselt `speed` keer per seconde naar een willekeurige tint. De globale variabele `hue` onthoudt hem.\n\n```\n#NAME Random color\n#CATEGORY color\n#RATE 40\n#VAR speed Slider 1 0.1 8 0.1\n\nfloat hue = 0;\n\nloop() {\n  if (tick % max(1, round(rate / speed)) == 0) {\n    hue = random();\n  }\n  hsv(hue, 1, 1);\n}\n```"
+ },
+ {
+  "id": "effect-studio-032",
+  "page": "effect-studio",
+  "path": [
+   "Effectenstudio – Handleiding",
+   "12. Voorbeelden",
+   "Vier posities (positie, toestandsmachine)"
+  ],
+  "title": "Vier posities (positie, toestandsmachine)",
+  "keywords": [],
+  "text": "De kop springt elke `interval` seconden naar de volgende van vier hoeken. De toestand zit in `step`.\n\n```\n#NAME Four positions\n#CATEGORY position\n#RATE 10\n#VAR interval Slider 1 0.2 10 0.1\n\nint step = 0;\nfloat start = 0;\n\nloop() {\n  if (elapsed - start >= interval) {\n    step = (step + 1) % 4;\n    start = elapsed;\n  }\n  pan = (step == 0 || step == 3) ? 20 : 80;\n  tilt = (step < 2) ? 20 : 80;\n}\n```"
+ },
+ {
+  "id": "effect-studio-033",
+  "page": "effect-studio",
+  "path": [
+   "Effectenstudio – Handleiding",
+   "12. Voorbeelden",
+   "Harmonischen (dimmer, lus)"
+  ],
+  "title": "Harmonischen (dimmer, lus)",
+  "keywords": [],
+  "text": "Telt meerdere golven op met een `for`-lus (hoe hoger, hoe zachter).\n\n```\n#NAME Harmonics\n#CATEGORY dimmer\n#RATE 40\n#VAR speed Slider 1 0.1 4 0.1\n#VAR harmonics Slider 3 1 8 1\n\nloop() {\n  float sum = 0;\n  float norm = 0;\n  for (int k = 1; k <= harmonics; k++) {\n    sum += sin(2 * PI * k * speed * elapsed) / k;\n    norm += 1.0 / k;\n  }\n  dimmer = 50 + 50 * sum / norm;\n}\n```"
+ },
+ {
+  "id": "effect-studio-034",
+  "page": "effect-studio",
+  "path": [
+   "Effectenstudio – Handleiding",
+   "12. Voorbeelden",
+   "Zoom die ademt (zoom)"
+  ],
+  "title": "Zoom die ademt (zoom)",
+  "keywords": [],
+  "text": "De zoom zwaait tussen `low` en `high` (0 en 100 zijn de uiteinden van het zoomkanaal).\n\n```\n#NAME Zoom breathing\n#CATEGORY zoom\n#RATE 40\n#VAR speed Slider 1 0.05 8 0.05\n#VAR low Slider 20 0 100 1\n#VAR high Slider 80 0 100 1\n\nloop() {\n  float k = 0.5 + 0.5 * sin(2 * PI * speed * elapsed);\n  zoom = lerp(low, high, k);\n}\n```"
+ },
+ {
+  "id": "effect-studio-035",
+  "page": "effect-studio",
+  "path": [
+   "Effectenstudio – Handleiding",
+   "12. Voorbeelden",
+   "Gobowissel (gobo)"
+  ],
+  "title": "Gobowissel (gobo)",
+  "keywords": [],
+  "text": "Loopt de gobo's van de projector na elkaar af. `slots` is hun aantal, `slot(n)` de waarde van de n-de (0 = de eerste, meestal open). Elke projector heeft andere gobo's – het effect vraagt het dus aan de projector in plaats van percentages te raden.\n\n```\n#NAME Gobo change\n#CATEGORY gobo\n#RATE 20\n#VAR speed Slider 0.5 0.05 8 0.05\n#VAR first Slider 0 0 20 1\n\nloop() {\n  float n = max(1, slots - first);\n  gobo = slot(first + mod(floor(speed * elapsed), n));\n}\n```"
+ },
+ {
+  "id": "effect-studio-036",
+  "page": "effect-studio",
+  "path": [
+   "Effectenstudio – Handleiding",
+   "12. Voorbeelden",
+   "Gobo met rotatie en tweede wiel (gobo)"
+  ],
+  "title": "Gobo met rotatie en tweede wiel (gobo)",
+  "keywords": [],
+  "text": "De uitvoer `gobo`, `gobo_spin`, `gobo2` en `gobo2_spin` kan afzonderlijk worden gebruikt. Dit voorbeeld loopt wiel 1 af, laat wiel 2 met een verschuiving volgen en laat de gekozen gobo roteren:\n\n```\n#NAME Two wheels\n#CATEGORY gobo\n#RATE 20\n#VAR speed Slider 0.5 0.05 8 0.05\n\nloop() {\n  float n  = max(1, slots);\n  float n2 = max(1, slots2);\n  gobo  = slot(mod(floor(speed * elapsed), n));\n  gobo2 = slot(mod(floor(speed * elapsed) + 1, n2), 2);\n  gobo_spin = 70;                    // rotation of wheel 1 (set only if wanted)\n}\n```"
+ },
+ {
+  "id": "effect-studio-037",
+  "page": "effect-studio",
+  "path": [
+   "Effectenstudio – Handleiding",
+   "12. Voorbeelden",
+   "Tweekleurige loper (kleur)"
+  ],
+  "title": "Tweekleurige loper (kleur)",
+  "keywords": [],
+  "text": "Alle projectoren tonen kleur A, één of twee lopen in kleur B door de rij (selectievolgorde). `direction` bepaalt de richting – dit is de meegeleverde *Color Runner* in verkorte vorm:\n\n```\n#NAME Color runner\n#CATEGORY color\n#RATE 40\n#VAR speed Slider 0.5 0.05 4 0.05\n#VAR width Slider 1.5 0.5 8 0.5\n#VAR direction Slider 1 0 1 1\n#VAR color_a ColorPicker #ffcc00\n#VAR color_b ColorPicker #ff0000\n\nloop() {\n  float run = fract(speed * t);\n  if (direction < 0.5) run = 1 - run;\n  float d = abs(index - run * count);\n  if (d > count / 2) d = count - d;\n  float k = d < width ? 1 : 0;\n  r = lerp(color_a_r, color_b_r, k);\n  g = lerp(color_a_g, color_b_g, k);\n  b = lerp(color_a_b, color_b_b, k);\n}\n```"
+ },
+ {
+  "id": "effect-studio-038",
+  "page": "effect-studio",
+  "path": [
+   "Effectenstudio – Handleiding",
+   "12. Voorbeelden",
+   "Uw eigen functie (dimmer)"
+  ],
+  "title": "Uw eigen functie (dimmer)",
+  "keywords": [],
+  "text": "```\n#NAME Triangle with function\n#CATEGORY dimmer\n#RATE 40\n#VAR speed Slider 1 0.1 8 0.1\n\nfloat triangle(float x) {\n  return 1 - abs(2 * fract(x) - 1);\n}\n\nloop() {\n  dimmer = 100 * triangle(speed * elapsed + phase);\n}\n```"
+ },
+ {
+  "id": "effect-studio-039",
+  "page": "effect-studio",
+  "path": [
+   "Effectenstudio – Handleiding",
+   "13. Fouten en controleren"
+  ],
+  "title": "13. Fouten en controleren",
+  "keywords": [],
+  "text": "De studio controleert terwijl u typt. Typische berichten (altijd met een regelnummer):\n\n| Bericht | Oorzaak |\n|---|---|\n| `Unbekannte Variable 'x'` | Naam nooit gedeclareerd of toegewezen (typfout?). |\n| `Unbekannte Funktion 'foo()'` | De functie bestaat niet. |\n| `sin() erwartet 1 Argument(e)` | Verkeerd aantal argumenten. |\n| `';' erwartet, gefunden '}'` | Er ontbreekt een puntkomma (het bericht wijst vaak naar de regel erna). |\n| `Ausdruck erwartet, gefunden ';'` | Er ontbreekt een waarde, bijv. `dimmer = 1 +;`. |\n| `'speed' ist ein Regler (#VAR) ...` | Schuiven zijn alleen-lezen; maak een eigen variabele. |\n| `'b' ist eine Ausgabe des Effekts ...` | `dimmer`, `r`, `g`, `b`, `pan`, `tilt` en de systeemnamen zijn bezet. |\n| `'break' ist nur in einer Schleife erlaubt` | `break` / `continue` buiten `for` / `while`. |\n| `#RATE erwartet eine ganze Zahl von 1 bis 40` | Ongeldige snelheid. |\n| `#CATEGORY fehlt` | De kop heeft geen categorie. |\n| `loop() erwartet` | Het script heeft geen functie `loop()`. |\n| `Zu viele Schritte in einem Durchlauf ... Endlosschleife?` | Een lus eindigt nooit (runtimefout, verschijnt in de voorvertoning). |\n\n(De berichten worden in het Duits getoond, ongeacht de interfacetaal.)\n\n**Opslaan** slaat ook scripts met fouten op, zodat u kunt blijven werken. Een foutief script wordt niet uitgevoerd; lopende effecten houden de **laatste goede versie**."
+ },
+ {
+  "id": "effect-studio-040",
+  "page": "effect-studio",
+  "path": [
+   "Effectenstudio – Handleiding",
+   "13. Fouten en controleren"
+  ],
+  "title": "13. Fouten en controleren (2)",
+  "keywords": [],
+  "text": "Wordt een script opgeslagen terwijl effecten lopen, dan nemen ze de nieuwe code bij de volgende doorgang over. Hun **geheugen** (globale variabelen, tellers, toestand) blijft behouden; nieuw toegevoegde variabelen beginnen met hun beginwaarde."
+ },
+ {
+  "id": "effect-studio-041",
+  "page": "effect-studio",
+  "path": [
+   "Effectenstudio – Handleiding",
+   "14. Hoe effecten in het programma werken"
+  ],
+  "title": "14. Hoe effecten in het programma werken",
+  "keywords": [],
+  "text": "- **Script en effect:** het script (`.fx`) is het bestand. Een **effect** (in de effectenlijst van de programmer) is een **definitie**: een naam, een script en waarden voor zijn schuiven. Meerdere effecten kunnen hetzelfde script met verschillende schuifwaarden gebruiken. Als u er een maakt, toont het venster de beschrijving van het script en zijn lussen per seconde.\n- **Toepassen:** in de programmer wijst u per **categorie** (dimmer, kleur, positie, zoom, focus, gobo) een effect toe aan de geselecteerde projectoren: de rij **Variabele:/Effect** in de bijbehorende programmerweergave (focus en zoom in de focusweergave, gobo in het gobotabblad van het bundelgebied; terwijl een effect loopt, is de bijbehorende fader vergrendeld). De selectievolgorde bepaalt `index` en daarmee de verdeling over de projectoren. Een effect stuurt alleen de kanalen van zijn categorie aan.\n- **In cues:** een cue slaat de effecttoewijzingen op (met de selectievolgorde) en start ze bij het afspelen; de tijden voor **effect-fade-in** en **-fade-out** van de cue laten de amplitude van / naar de vorige waarde overvloeien. Zet een cue een vaste waarde voor een categorie, dan eindigt het lopende effect daar en fadet de cue vanaf de laatste uitvoer van het effect.\n- **Sync:** effecten die `t` gebruiken (of `phase`/`index` samen met `t`) lopen gelijk met elkaar. Met `elapsed` begint elk effect bij zijn start van voren af aan – goed voor reeksen \"vanaf nu\".\n- **Toestand:** elk effect heeft zijn **eigen geheugen** per projector en categorie. Het begint opnieuw als het effect opnieuw wordt toegewezen.\n- **Bestanden:** scripts staan in de map `effects/` van de gegevensmap. De studio, het **bestandsbeheer** (soort *Effecten*: hernoemen, dupliceren, downloaden, uploaden) en het **exporteren** van de show (gebruikte scripts gaan in het pakket) werken met dezelfde bestanden. De meegeleverde effecten worden bij de eerste start gekopieerd; **Standaardeffecten herstellen** (in het venster Openen of het bestandsbeheer) maakt ontbrekende opnieuw aan en overschrijft **nooit** iets.\n- **De show slaat de definities op** (naam, scriptnaam, schuifwaarden), niet de scripttekst. Ontbreekt het script, dan verliezen de definities hun effect en werken ze weer als het terugkomt; een cue met een ontbrekend effect laat het kanaal ongewijzigd."
+ },
+ {
+  "id": "effect-studio-042",
+  "page": "effect-studio",
+  "path": [
+   "Effectenstudio – Handleiding",
+   "14. Hoe effecten in het programma werken",
+   "Beperkingen nu"
+  ],
+  "title": "Beperkingen nu",
+  "keywords": [],
+  "text": "- Er zijn zes categorieën (dimmer, kleur, positie, zoom, focus, gobo). Meer (prisma, strobe, ruwe DMX-waarden) zijn voorbereid maar nog niet ingebouwd.\n- Zoom en focus gebruiken het eigen kanaal van de projector en dat moet bestaan; gobo's hangen af van het projectorbestand. De voorvertoning toont alleen de waarden voor gobo's, niet het beeld.\n- Eén effect stuurt één categorie per projector aan; twee categorieën tegelijk vragen twee effecten.\n- De snelheid is hoogstens 40 per seconde omdat de DMX-uitvoer niet sneller verstuurt."
+ }
+]

@@ -1,0 +1,46 @@
+# Schedule, Time of Day and OSC
+
+Three ways to start things **without pressing Go**: a **schedule** that runs commands at a time of day, cues that **wait for a time**, and **OSC** messages from other programs and devices. All three are in the menu **Controls**.
+
+---
+
+## 1. Schedule: commands at a time of day
+
+**Controls → Schedule ...** lists commands that OpenCue runs by itself - for façade lighting, "doors open 19:00", a break, "start the cue list at 18:55".
+
+- **New entry** adds a row. Each row has: the **on / off** switch, the **time** (`19:00` or `19:00:30`), the **repeat** (**Every day** - the default, no date needed; **On weekdays** - then click the day buttons, Mon-Fri is preselected; **Once, on a date** - the entry runs **once** on that day and switches itself off), a **name** and the **command** - any command of the command line, for example `Cuelist Main Go`, `Blackout Off` or `Master 60` (see the guide *Command Line*).
+- **next: ...** shows when the entry runs next. **Run now** runs the command at once, to try it. The trash button deletes the entry - OpenCue asks first (a fresh, empty row disappears without asking). The command may contain several commands separated by `,` or `;` (`Blackout Off; Cuelist Main Go`).
+- The clock in the title is the clock of the console computer. An entry fires **once** at its time, also over midnight. If the computer was asleep, only times of the **last minute** still count - nothing "catches up".
+- The schedule **belongs to the show**: it is saved in the show file, is part of the backups, and changing it marks the show as unsaved. Every run appears in the command history and as a short message.
+
+---
+
+## 2. A cue that waits for a time
+
+In the cue dialog choose the trigger **Time of day** (or type `clock 19:30` / `clock 20:00 sat,sun` into the trigger cell, or use the command `Cue 3 Trigger Clock 19:30 Mon-Fri`). The cue then behaves like the other triggers (audio, MIDI, timecode): when it is the **next cue of a running list**, it fires as soon as the **clock reaches that time** on one of the chosen days. If its time has already passed when it becomes the next cue, it waits for the next occurrence - it does not fire at once.
+
+Typical use: *Cue 1 (Go, house lights) - Cue 2 (Time of day 19:30, show start) - Cue 3 (Follow)*. The schedule can start the list at 18:55, the clock cue then waits for 19:30.
+
+---
+
+## 3. OSC
+
+**OSC (Open Sound Control)** is a network protocol many apps and devices speak - **TouchOSC** (tablet / phone faders and buttons), **QLab**, **Ableton**, show controllers. With it other software controls OpenCue, and OpenCue can send messages.
+
+**Controls → OSC ...** (the switch and the port are also in **Settings → OSC**; both change the same setting):
+
+1. Switch **Receive OSC** on. The **UDP port** (default `9000`) and the addresses of this computer are shown; enter them in the other app (`192.168.1.20:9000`). It is **off** until you switch it on; Windows may ask about the firewall once (*Settings → Remote access → Windows Firewall* sets it up).
+2. **Built-in addresses** work at once: `/opencue/go`, `/opencue/back`, `/opencue/pause`, `/opencue/resume`, `/opencue/stop`, `/opencue/blackout` (1 = on, 0 = off, no value = toggle), `/opencue/master` and `/opencue/fader` (value 0 to 1), `/opencue/cue/<number>` (jump to that cue). A button that sends 1 on press and 0 on release is handled correctly: only the press counts.
+3. **Your addresses**: **New mapping** - the **address** (`/my/button1`, `*` and `?` are allowed), the **command**, and when it runs: **only on press** (value above 0) or **every message** (for faders). In the command, `{value}` is the first value of the message **converted to a range** (default 0..1 becomes 0..100): `Master {value}` with a fader. **Learn** takes the address of the next message that arrives - press the button in the other app. *In history* shows the command in the command history (a fader stream would flood it). The trash button deletes the mapping - OpenCue asks first. Here too the command may be chained (`Blackout On, Cuelist Main Stop`).
+4. The **monitor** at the bottom shows every incoming message and what became of it (*built-in*, *mapping*, *no mapping*, *blocked*).
+5. **Built-in addresses** (expand): switch them all off, change the **prefix** (`/opencue/go` becomes for example `/light/go` if another program already uses `/opencue`) and switch **single** addresses off.
+6. **Send to** sets the target for OpenCue's own messages: **Send test message** or the command `Osc /address 0.5` (see *Command Line*).
+7. **Report state back (feedback)**: OpenCue reports its state **by itself** to the target (and, if *Also to every sender* is on, to every device that has sent it a message in the last hour - on the port of the target). That is what the displays and button lights of TouchOSC need. Only **changes** are sent, plus everything at once when you switch it on, when a new device appears and with **Send everything now**. Reported (under the same prefix as the built-in addresses): `/opencue/cuelist` (name of the active list), `/opencue/cue` (number of the active cue, `-1` = none), `/opencue/cuename`, `/opencue/state` (`running`, `paused`, `stopped`, `done` or `idle`), `/opencue/fader` and `/opencue/master` (0 to 1), `/opencue/blackout` (1 / 0) and `/opencue/cue/<number>` = `1` for the active cue and `0` when it ends (the light of a cue button). Under **What is reported** single messages can be switched off. It is **off** until you switch it on.
+
+**Safety:** OSC has **no password** - anyone in the network can send. So it is off by default; **Allowed senders** limits it to addresses (`192.168.1.` = the whole subnet, or a single address); and a flood is slowed down (300 messages a second). `/opencue/cmd "<command>"` could run **any** command (also *Delete*), so it works only if you switch on **Allow any command**.
+
+---
+
+## 4. Plug and play DMX
+
+(Also in the guide *Getting Started*, section 6.) **Art-Net: Settings → DMX output → Find devices automatically** looks for devices in the network and sends to each of them. **Scan network** lists them. **USB DMX**: leave the COM port on **Automatic** - plug in the adapter and it connects, also after unplugging and re-plugging.

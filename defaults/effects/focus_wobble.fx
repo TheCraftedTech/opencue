@@ -1,5 +1,7 @@
 #NAME Focus Wobble
-#DESCRIPTION Kleines Wackeln um einen Fokuswert. center = Mitte, amount = Ausschlag in %.
+#DESCRIPTION en The focus wobbles slightly around a centre value.
+#DESCRIPTION de Der Fokus wackelt leicht um einen Mittelwert.
+#TAGS advanced, wave
 #CATEGORY focus
 #RATE 40
 #VAR speed Slider 1 0.05 8 0.05

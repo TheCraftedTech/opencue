@@ -1,5 +1,7 @@
 #NAME Zoom Pulse
-#DESCRIPTION Der Zoom schwingt weich zwischen low und high (0 = weit, 100 = eng, je nach Gerät).
+#DESCRIPTION en The zoom pulses softly between low and high.
+#DESCRIPTION de Der Zoom pulsiert weich zwischen low und high.
+#TAGS basic, pulse, wave
 #CATEGORY zoom
 #RATE 40
 #VAR speed Slider 1 0.05 8 0.05

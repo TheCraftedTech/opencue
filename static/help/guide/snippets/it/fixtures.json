@@ -1,0 +1,255 @@
+[
+ {
+  "id": "fixtures-001",
+  "page": "fixtures",
+  "path": [
+   "Apparecchi e patch"
+  ],
+  "title": "Apparecchi e patch",
+  "keywords": [],
+  "text": "Un **apparecchio** è una luce che controllate: un dimmer, un par LED, una testa mobile. Per controllarlo, OpenCue deve sapere **che tipo di dispositivo è** (i suoi canali) e **dove ascolta** (il suo indirizzo DMX). Comunicare entrambe le cose a OpenCue si chiama **patch**. Questa guida vi accompagna attraverso la libreria apparecchi, il patch, i gruppi e il programmer."
+ },
+ {
+  "id": "fixtures-002",
+  "page": "fixtures",
+  "path": [
+   "Apparecchi e patch",
+   "1. L'idea in un minuto"
+  ],
+  "title": "1. L'idea in un minuto",
+  "keywords": [],
+  "text": "- Un **tipo di apparecchio** descrive un modello di dispositivo: quanti canali DMX usa in quale modalità e cosa fa ogni canale (dimmer, pan, tilt, colore, gobo …). OpenCue usa per questo il formato standard **GDTF** – un piccolo file per dispositivo pubblicato dal produttore.\n- Un **apparecchio** nel vostro show è un dispositivo reale di un tale tipo, con un **numero** (FID), un **nome**, un **universo** e un **canale iniziale** (l'indirizzo DMX che impostate sul dispositivo).\n- Lo show memorizza gli apparecchi (tipo, modalità, indirizzo, nome, gruppo). I file GDTF stessi si trovano nella **libreria apparecchi** sul vostro computer.\n- Tre tipi di apparecchio **integrati** sono sempre disponibili, anche senza alcun file GDTF: **Generic Dimmer** (1 canale), **Generic RGBW LED Par** (4 canali) e **Generic Moving Head Spot 16ch** (16 canali, con pan/tilt fine). Perfetti per provare."
+ },
+ {
+  "id": "fixtures-003",
+  "page": "fixtures",
+  "path": [
+   "Apparecchi e patch",
+   "2. Ottenere tipi di apparecchio: la libreria"
+  ],
+  "title": "2. Ottenere tipi di apparecchio: la libreria",
+  "keywords": [],
+  "text": "Aprite **Libreria → Libreria apparecchi…**. La grande finestra ha queste schede:\n\n| Scheda | Cosa mostra |\n|---|---|\n| **Installati** | Ogni file GDTF su questo computer come scheda: immagine di anteprima, nome, produttore, tipo, modalità, numero di canali, revisione e *In uso (N)* quando lo show lo usa. |\n| **In questo show** | I tipi che lo show caricato usa, con il numero («4× nello show») e la revisione. Se il file di un tipo non è nella libreria, la scheda mostra *Sostituto integrato* o *File mancante*. Solo visualizzazione. |\n| **Online (GDTF Share)** | Cerca nel database ufficiale GDTF (vedi sotto). |\n\nNella scheda *Installati* potete **cercare** per nome o produttore e filtrare per **tipo** (testa mobile, barra LED, PAR / wash, dimmer, strobo / blinder, effetto / fumo, altro – ricavato dai canali reali) e per **produttore**. Ogni scheda mantiene i propri filtri."
+ },
+ {
+  "id": "fixtures-004",
+  "page": "fixtures",
+  "path": [
+   "Apparecchi e patch",
+   "2. Ottenere tipi di apparecchio: la libreria",
+   "Importare un file GDTF che avete già"
+  ],
+  "title": "Importare un file GDTF che avete già",
+  "keywords": [],
+  "text": "Fate clic su **Importa file GDTF…** oppure **trascinate semplicemente il file** nella finestra. Il file deve essere un file GDTF valido (al massimo 30 MB). I file vengono copiati nella cartella `fixtures` all'interno della cartella dati di OpenCue (Impostazioni → Archiviazione mostra dove si trova)."
+ },
+ {
+  "id": "fixtures-005",
+  "page": "fixtures",
+  "path": [
+   "Apparecchi e patch",
+   "2. Ottenere tipi di apparecchio: la libreria",
+   "Scaricare da GDTF Share"
+  ],
+  "title": "Scaricare da GDTF Share",
+  "keywords": [],
+  "text": "GDTF Share (gdtf-share.com) è la raccolta ufficiale e gratuita di file GDTF di produttori e utenti.\n\n1. Aprite la scheda **Online (GDTF Share)**.\n2. **Accedete** con il vostro account GDTF Share. Per scaricare serve un account gratuito; nella finestra c'è un link *Crea un account gratuito*. La vostra password viene tenuta in memoria solo per questa sessione – a meno che non spuntiate *Resta connesso*, che la memorizza **cifrata su questo computer**.\n3. Cercate, ordinate (nome, più recenti, più votati), filtrate per **file dei produttori** / valutazione. Ogni scheda mostra se il file è stato caricato **dal produttore** o **da un utente**, quante modalità ha (con il numero di canali) e quanto è grande.\n4. Fate clic su **Dettagli** per **guardare un apparecchio prima di installarlo**: il file viene caricato solo temporaneamente (non installato) e si apre nella stessa vista di dettaglio dei tipi installati – con tutti i canali, le ruote e il modello 3D. **Installa** e **Torna alla ricerca** sono in alto. Oppure fate subito clic su **Installa**.\n5. La scheda mostra poi *Installato*. Se in seguito compare una revisione più recente, viene offerto un pulsante **Aggiorna**."
+ },
+ {
+  "id": "fixtures-006",
+  "page": "fixtures",
+  "path": [
+   "Apparecchi e patch",
+   "2. Ottenere tipi di apparecchio: la libreria",
+   "Scaricare da GDTF Share"
+  ],
+  "title": "Scaricare da GDTF Share (2)",
+  "keywords": [],
+  "text": "Questo è l'unico posto in cui OpenCue usa internet per gli apparecchi; tutto il resto funziona offline. OpenCue non include file GDTF di GDTF Share, perché i loro termini non consentono la ridistribuzione – li scaricate voi stessi."
+ },
+ {
+  "id": "fixtures-007",
+  "page": "fixtures",
+  "path": [
+   "Apparecchi e patch",
+   "2. Ottenere tipi di apparecchio: la libreria",
+   "Dettagli di un apparecchio"
+  ],
+  "title": "Dettagli di un apparecchio",
+  "keywords": [],
+  "text": "Fate clic su una scheda per aprirne i **dettagli**:\n\n- **Panoramica** – dati di base, ottica per fascio (tipo di fascio, lampada, potenza, flusso luminoso, temperatura di colore, angolo del fascio e del campo), connettori, emettitori.\n- **Anteprima 3D** – l'apparecchio come modello 3D. Trascinate per ruotare, rotellina o due dita per zoomare, trascinamento con il tasto destro per spostare, doppio clic per reimpostare. Pulsanti *Obliqua / Fronte / Lato / Alto*, interruttori per il *fascio di luce* e una *griglia*, e **cursori Pan / Tilt** per muovere una testa mobile. Senza un file 3D nel GDTF, OpenCue disegna le forme di base (cilindro, forcella, testa …) con le dimensioni indicate.\n- **Canali DMX** – il selettore di modalità e una tabella di tutti i canali con funzioni e intervalli di valori.\n- **Gobo e colori** – ogni ruota con i suoi slot: motivi dei gobo come immagini, slot colore come campioni."
+ },
+ {
+  "id": "fixtures-008",
+  "page": "fixtures",
+  "path": [
+   "Apparecchi e patch",
+   "2. Ottenere tipi di apparecchio: la libreria",
+   "Rimozione e aggiornamento"
+  ],
+  "title": "Rimozione e aggiornamento",
+  "keywords": [],
+  "text": "- **Disinstalla** (chiede una seconda volta) rimuove un tipo dalla libreria – ma viene **rifiutato finché lo show lo usa ancora**.\n- **Aggiorna** installa una revisione più recente. Se lo show usa quella vecchia, la vecchia revisione resta installata."
+ },
+ {
+  "id": "fixtures-009",
+  "page": "fixtures",
+  "path": [
+   "Apparecchi e patch",
+   "3. Aggiungere apparecchi allo show (patch)"
+  ],
+  "title": "3. Aggiungere apparecchi allo show (patch)",
+  "keywords": [],
+  "text": "Gli apparecchi si creano nel pannello **Elenco apparecchi**.\n\n1. Nel pannello **Elenco apparecchi** fate clic su **Aggiungi apparecchi**.\n2. **Tipo di apparecchio** – sceglietene uno con *Seleziona tipo...* (produttore → dispositivo → modalità, più una ricerca) o uno dei generici integrati.\n3. **Modalità** – la modalità DMX del dispositivo (decide il numero di canali).\n4. **Nome** (facoltativo) – ad esempio «Testa»; vuoto significa il nome del tipo. Con più apparecchi OpenCue numera i nomi.\n5. **Quantità** – quanti apparecchi identici aggiungere. Vengono collocati **uno dopo l'altro** su indirizzi consecutivi.\n6. **Universo** e **Canale iniziale** – l'indirizzo del primo. Deve corrispondere all'indirizzo impostato sul dispositivo (display o DIP switch).\n7. Fate clic su **Aggiungi apparecchi**.\n\nLa finestra vi avvisa se l'ultimo apparecchio finirebbe oltre il canale **512** di un universo («l'indirizzo finale supera 512 … Riducete la quantità o l'indirizzo iniziale»). Un universo contiene 512 canali; per averne di più usate l'universo successivo.\n\nOgni apparecchio riceve un **FID** stabile (numero dell'apparecchio) usato dalla riga di comando (`Fixture 1 Thru 5`)."
+ },
+ {
+  "id": "fixtures-010",
+  "page": "fixtures",
+  "path": [
+   "Apparecchi e patch",
+   "3. Aggiungere apparecchi allo show (patch)",
+   "Molti apparecchi in una volta: un elenco da CSV o Excel"
+  ],
+  "title": "Molti apparecchi in una volta: un elenco da CSV o Excel",
+  "keywords": [],
+  "text": "La finestra *Aggiungi apparecchi* ha in fondo **Importazione avanzata ...** (anche nel menu **Libreria → Importa elenco apparecchi**). Con essa create un intero impianto da una tabella:\n\n1. **Scegli file ...** – un file `.csv` o Excel (`.xlsx`). La **prima riga** contiene i titoli delle colonne. Serve solo il **tipo**; *nome*, *modalità*, *universo*, *indirizzo*, *numero* (FID) e *quantità* sono facoltativi. **Scarica il patch attuale come CSV** vi dà un modello.\n2. OpenCue **indovina le colonne** (titoli come *Name*, *Type*, *Device*, *Universe*, *Address*, *Count* ...); potete modificare ogni assegnazione. Un indirizzo può anche essere `2.045` o `2/45` (universo 2, indirizzo 45). Se l'indirizzo manca, prosegue dopo il dispositivo precedente dello stesso universo.\n3. L'**anteprima** mostra ogni riga – in rosso con il motivo quando qualcosa non va (tipo sconosciuto o ambiguo, modalità sconosciuta, non entra nell'universo, numero già usato). **Tipo quando la cella è vuota** e **Universo quando manca** colmano le lacune.\n4. **Importa** crea gli apparecchi. In caso di problemi spuntate prima **Salta le righe con problemi**. Prima di allora non viene creato nulla."
+ },
+ {
+  "id": "fixtures-011",
+  "page": "fixtures",
+  "path": [
+   "Apparecchi e patch",
+   "3. Aggiungere apparecchi allo show (patch)",
+   "L'elenco apparecchi e la scheda Apparecchi"
+  ],
+  "title": "L'elenco apparecchi e la scheda Apparecchi",
+  "keywords": [],
+  "text": "Due posti mostrano i vostri apparecchi:\n\n- Il pannello **Elenco apparecchi** è la tabella del patch: una riga per apparecchio con FID, nome, tipo, universo, indirizzo e numero di canali, più il pulsante **Aggiungi apparecchi**.\n- La scheda **Apparecchi** del pannello **Controllo apparecchi** mostra gli stessi apparecchi come griglia di riquadri (come su una console luci) per selezionare rapidamente.\n\n| Azione | Come |\n|---|---|\n| Selezionare | Clic / tocco su una riga o un riquadro |\n| Selezionarne diversi | Nella griglia di riquadri trascinate un **lazo** sui riquadri (mouse e touch) |\n| Modificare un apparecchio | Clic destro / pressione lunga → **Modifica apparecchio…** |\n| Eliminare | Selezionate, premete `Canc` o usate il menu contestuale (chiede conferma) |"
+ },
+ {
+  "id": "fixtures-012",
+  "page": "fixtures",
+  "path": [
+   "Apparecchi e patch",
+   "3. Aggiungere apparecchi allo show (patch)",
+   "Modifica apparecchio"
+  ],
+  "title": "Modifica apparecchio",
+  "keywords": [],
+  "text": "Una sola finestra cambia tutto: **Nome**, **Universo**, **Canale iniziale**, **Gruppo** e un **Indice di ordinamento** libero.\n\n- L'indice di ordinamento decide dove compare il riquadro. Vuoto significa il FID; un numero (decimali ammessi, ad esempio 2,5) lo colloca di conseguenza.\n- Un apparecchio appartiene al massimo a **un gruppo**.\n- Con **più apparecchi selezionati** il menu offre anche *Sposta N apparecchi nel gruppo…*.\n\nCambiare l'indirizzo cambia il punto in cui OpenCue invia i dati – fatelo quindi quando spostate un dispositivo su un altro indirizzo."
+ },
+ {
+  "id": "fixtures-013",
+  "page": "fixtures",
+  "path": [
+   "Apparecchi e patch",
+   "4. Gruppi"
+  ],
+  "title": "4. Gruppi",
+  "keywords": [],
+  "text": "I gruppi sono puramente organizzativi: ordinare e selezionare più apparecchi con un clic o un comando. Vengono memorizzati con lo show.\n\n- **Creare:** nella scheda **Apparecchi** del pannello Controllo apparecchi, clic destro / pressione lunga sull'area vuota → *Aggiungi nuovo gruppo…* e inserite un nome (i nomi sono univoci, senza distinzione tra maiuscole e minuscole).\n- **Riempire:** il menu a discesa *Gruppo* in *Modifica apparecchio…*, oppure *Sposta N apparecchi nel gruppo…* per una selezione.\n- **Selezionare:** fate clic sul gruppo, oppure usate la riga di comando: `Group Front`, `Group 1 Thru 4`.\n- **Da una selezione:** `Store Group \"Front\"` memorizza la selezione attuale come gruppo (vedi *Riferimento dei comandi*)."
+ },
+ {
+  "id": "fixtures-014",
+  "page": "fixtures",
+  "path": [
+   "Apparecchi e patch",
+   "5. Controllare gli apparecchi: il pannello Controllo apparecchi"
+  ],
+  "title": "5. Controllare gli apparecchi: il pannello Controllo apparecchi",
+  "keywords": [],
+  "text": "Selezionate gli apparecchi, poi usate il pannello **Controllo apparecchi** (sulle console spesso chiamato «Programmer»). Un pannello può mostrare tutto (una barra laterale con tutte le categorie) o una sola categoria (*Proprietà pannello → Visualizzazione*).\n\n| Categoria | Controlli |\n|---|---|\n| **Apparecchi** | La griglia di riquadri per selezionare; commutare **Elenco / Layout** (vedi sotto) |\n| **Dimmer** | Fader e pulsanti rapidi |\n| **Posizione** | Commutare **Grossolano / Fine**. *Grossolano*: fader pan/tilt, **Centro / Home / Inverti**, campi numerici in gradi. *Fine*: i canali fini (16 bit) come campi numerici; scorrete un campo numerico verso l'alto o il basso per modificarlo con precisione. Gli apparecchi senza canali fini agiscono a 8 bit. |\n| **Colore** | **Fader** (HSV, CMY o RGB) o **Selettore colore** (ruota dei colori) |\n| **Fascio** | Sottopagine **Shutter/Strobe** (aperto, chiuso, lento, veloce, strobo, impulso …), **Gobo** (con miniature della ruota), **Prisma** |\n| **Focus** | Fuoco e zoom |\n| **DMX diretto** | Ogni canale della modalità come fader a sé (per numero di canale, 0–255) |\n\nOgni canale descritto dal file GDTF riceve un controllo, così potete raggiungere anche funzioni insolite (frost, iride, ruote colori, velocità)."
+ },
+ {
+  "id": "fixtures-015",
+  "page": "fixtures",
+  "path": [
+   "Apparecchi e patch",
+   "5. Controllare gli apparecchi: il pannello Controllo apparecchi"
+  ],
+  "title": "5. Controllare gli apparecchi: il pannello Controllo apparecchi (2)",
+  "keywords": [],
+  "text": "**Puntare a un punto (3D):** se gli apparecchi sono collocati nella **Simulazione 3D**, il riquadro posizione offre *Imposta punto nella simulazione 3D*: toccate un bersaglio nella vista 3D e le teste mobili selezionate lo puntano. Nel riquadro focus, *Focus automatico (3D)* e *Zoom automatico (3D) …* impostano fuoco e zoom dalla distanza da quel punto."
+ },
+ {
+  "id": "fixtures-016",
+  "page": "fixtures",
+  "path": [
+   "Apparecchi e patch",
+   "5. Controllare gli apparecchi: il pannello Controllo apparecchi",
+   "Cosa vi dice il colore dei controlli"
+  ],
+  "title": "Cosa vi dice il colore dei controlli",
+  "keywords": [],
+  "text": "I controlli mostrano sempre ciò che viene emesso in quel momento (gli stessi valori del monitor DMX) – anche mentre un cue o un effetto è in esecuzione. Una sottile linea colorata accanto a un apparecchio o a una scheda di categoria mostra cosa è **cambiato rispetto al cue attivo** – operato a mano o da un *Clear* che ha reso tutto buio. *Store Cue* memorizza sempre la differenza rispetto al cue che verrebbe riprodotto prima (anche inserendo con `2.5`). Dopo la memorizzazione, il nuovo cue è quello attivo e le linee scompaiono. Con più liste di cue conta il cue attivo della lista usata più di recente."
+ },
+ {
+  "id": "fixtures-017",
+  "page": "fixtures",
+  "path": [
+   "Apparecchi e patch",
+   "5. Controllare gli apparecchi: il pannello Controllo apparecchi",
+   "Apparecchi: elenco o layout"
+  ],
+  "title": "Apparecchi: elenco o layout",
+  "keywords": [],
+  "text": "In alto nella scheda **Apparecchi** si commuta tra due viste (come *Colore* tra Fader / Selettore / Ruota):\n\n- **Elenco:** i riquadri ordinati per gruppi e numeri.\n- **Layout:** ogni apparecchio è un **riquadro quadrato** su una griglia. Disponete gli apparecchi come sono appesi sul palco e raggiungeteli più in fretta. I riquadri mostrano lo stesso dell'elenco (numero, luminosità, anteprima di colore e fascio).\n\nNel layout:"
+ },
+ {
+  "id": "fixtures-018",
+  "page": "fixtures",
+  "path": [
+   "Apparecchi e patch",
+   "5. Controllare gli apparecchi: il pannello Controllo apparecchi",
+   "Apparecchi: elenco o layout"
+  ],
+  "title": "Apparecchi: elenco o layout (2)",
+  "keywords": [],
+  "text": "- **Selezionare** come nell'elenco: clic o uno **scorrimento** (lazo) sull'area vuota.\n- **Area illimitata:** continua in **ogni direzione** (anche a sinistra e in alto; le posizioni possono essere negative). Spostate la vista con la rotellina / le barre di scorrimento / lo scorrimento, **trascinate con il tasto centrale**, oppure andate al bordo mentre trascinate un riquadro. **Ctrl + rotellina** zooma.\n- **Mostra tutto:** il pulsante in alto a destra zooma e centra in modo che **tutti gli apparecchi** siano al centro.\n- **Viste (aree):** *Salva vista…* (clic destro) memorizza il centro e lo zoom attuali con un nome, ad esempio «Palco sinistra». In alto compare un pulsante; un clic vi salta, clic destro sul pulsante: sovrascrivi, rinomina, elimina. Con molti apparecchi non dovete tenere tutto in vista contemporaneamente.\n- **Clic destro** (touch: pressione lunga) sull'area libera o su un riquadro apre il menu: *Modalità costruzione*, *Mostra tutto*, *Salva vista…*, *Griglia* (riquadro intero, metà o quarto), *I riquadri possono sovrapporsi*, *Reimposta zoom*, *Riorganizza tutti gli apparecchi…*.\n- **Modalità costruzione:** trascinare sposta un riquadro; con più selezionati si spostano insieme. I riquadri si agganciano alla griglia; senza *Sovrapposizione* non si coprono mai, con *Sovrapposizione* potete incastrarli (l'ultimo spostato sta sopra) e sfalsarli di poco con la griglia fine (1/4). L'area vuota seleziona ancora con lo scorrimento. **Fatto** o **Esc** termina la modalità costruzione.\n- **Memorizzato nello show:** le posizioni, la risoluzione della griglia, la *Sovrapposizione* e le viste salvate. **Sul vostro dispositivo** (non nello show): lo zoom, l'ultimo centro mostrato e l'ultima sottovista usata."
+ },
+ {
+  "id": "fixtures-019",
+  "page": "fixtures",
+  "path": [
+   "Apparecchi e patch",
+   "5. Controllare gli apparecchi: il pannello Controllo apparecchi",
+   "Apparecchi: elenco o layout"
+  ],
+  "title": "Apparecchi: elenco o layout (3)",
+  "keywords": [],
+  "text": "**Viste ricordate:** ovunque un pannello commuti tra viste, il vostro dispositivo ricorda l'ultima e la ripristina la volta successiva: in Controllo apparecchi (Elenco / Layout, Fader / Selettore / Ruota, Strobe / Gobo / Prisma, Grossolano / Fine), in *Variabili / Effetti* (variabili o effetti, filtro di tipo, ordinamento), nello *Studio effetti* (anteprima attiva / disattiva), nella *Simulazione 3D* (Vista / Costruzione / Apparecchi) e nel selettore di effetti (categoria e tag come *Base*)."
+ },
+ {
+  "id": "fixtures-020",
+  "page": "fixtures",
+  "path": [
+   "Apparecchi e patch",
+   "6. Variabili ed effetti (preset)"
+  ],
+  "title": "6. Variabili ed effetti (preset)",
+  "keywords": [],
+  "text": "Il pannello **Variabili / Effetti** contiene valori riutilizzabili: un colore «Bianco caldo», una posizione «Fronte», un fascio «Largo». Una variabile è un **riferimento vivo**: applicatela agli apparecchi e la seguono; cambiate la variabile in seguito e tutti gli apparecchi che la usano cambiano con essa – compresi i cue che la usano. Gli effetti sono piccoli programmi che cambiano valori nel tempo; vedi la guida *Studio effetti*."
+ },
+ {
+  "id": "fixtures-021",
+  "page": "fixtures",
+  "path": [
+   "Apparecchi e patch",
+   "7. Apparecchi e file dello show"
+  ],
+  "title": "7. Apparecchi e file dello show",
+  "keywords": [],
+  "text": "- Un file show memorizza gli apparecchi **con** il loro tipo, modalità, indirizzo e gruppo, oltre a cue, effetti, variabili e preset.\n- I file GDTF **non** sono nello show – ma quando **esportate uno show** (gestore file → esporta), i file GDTF e gli script di effetti che lo show usa vengono impacchettati nello ZIP, così potete aprire lo show su un altro computer senza installare nulla. All'importazione un file locale con lo stesso nome non viene mai sostituito.\n- **Stampa / PDF** (menu File): documentazione dello show per i tecnici – **elenco del patch**, **mappa dei canali DMX** (quale apparecchio occupa quali canali di ogni universo, sovrapposizioni in rosso), **gruppi**, **pianta (vista dall'alto)** degli apparecchi (dal palco 3D, altrimenti dalla vista layout) e **liste di cue**. La finestra mostra un'**anteprima** del PDF accanto alle scelte (segue ogni modifica delle scelte e del formato carta; sugli schermi piccoli l'anteprima viene omessa). I nomi lunghi vengono **mandati a capo** nelle tabelle e nella pianta (un nome molto lungo senza spazi viene spezzato). Nella pianta ogni apparecchio porta il suo numero, e un elenco sotto la pianta dice quale numero è quale apparecchio; i nomi degli oggetti di palco stanno dentro la loro forma. *Salva come PDF* scarica il file, *Apri per stampare* lo mostra nel visualizzatore PDF (stampate lì con Ctrl+P).\n- **File show `.ocshow`:** *File → Esporta show* scrive un file `.ocshow` (uno ZIP con lo show e i suoi file). Un **doppio clic** lo apre in OpenCue (l'installatore lo configura; per la versione non installata usate *Impostazioni → Generale → Apri i file .ocshow con OpenCue*). Se OpenCue è già in esecuzione, prende il file e chiede prima delle modifiche non salvate. **File → Apri recenti** elenca gli ultimi show.\n- **Palco 3D come JSON:** nel pannello 3D (modalità *Costruzione* o *Apparecchi*) portate la barra laterale da **Strumenti** a **JSON** (interruttore sotto il pulsante Salva; il pulsante *Modifica come JSON* in fondo agli strumenti fa lo stesso). Gli strumenti (aggiungere corpi, elenco, proprietà) vengono sostituiti dal testo del palco (stanza, oggetti, posizioni degli apparecchi; metri, gradi, Z in alto; apparecchi per numero); nome del palco, annulla e **Salva** restano uguali, **Strumenti** riporta la vista normale. **La larghezza della barra laterale si può cambiare:** trascinate il suo bordo sinistro (doppio clic = larghezza standard); la larghezza viene ricordata come quota del pannello (al massimo tre quarti), così resta proporzionale a schermo intero. Le modifiche vengono controllate e **applicate in diretta** (un errore di sintassi indica la riga e non cambia nulla); ciò che spostate nella vista 3D compare nel testo. *Salva* salva il palco, *Chiudi JSON* riporta la barra laterale. Lo stesso testo è disponibile come finestra in *Libreria → Modifica palco 3D come JSON* (con *Controlla* e *Applica*).\n- Se uno show usa un tipo di apparecchio il cui file manca, OpenCue usa un sostituto integrato così lo show funziona comunque; la scheda *In questo show* lo mostra come *Sostituto integrato* o *File mancante*."
+ },
+ {
+  "id": "fixtures-022",
+  "page": "fixtures",
+  "path": [
+   "Apparecchi e patch",
+   "8. Suggerimenti rapidi"
+  ],
+  "title": "8. Suggerimenti rapidi",
+  "keywords": [],
+  "text": "- **Iniziate con un generico:** aggiungete alcuni apparecchi *Generic Dimmer* per imparare il programmer, i cue e la riga di comando prima di cercare veri file GDTF.\n- **Fate corrispondere gli indirizzi:** il canale iniziale in OpenCue deve essere uguale all'indirizzo sul dispositivo. Le teste mobili di solito richiedono un blocco di canali (ad esempio 16 canali), quindi l'apparecchio successivo parte 16 canali più avanti – OpenCue lo calcola per voi quando aggiungete una quantità.\n- **Più modalità:** molti dispositivi offrono più modalità (ad esempio 8 bit e 16 bit). Scegliete la modalità su cui il dispositivo è realmente impostato.\n- **Manca un dispositivo?** Cercate su GDTF Share per produttore; se il modello non c'è, partite dal più vicino o usate *Generic* e costruite i vostri cue."
+ }
+]

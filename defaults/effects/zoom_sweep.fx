@@ -1,5 +1,7 @@
 #NAME Zoom Sweep
-#DESCRIPTION Gleichmäßig auf und zu (Dreieck).
+#DESCRIPTION en The zoom sweeps back and forth between low and high.
+#DESCRIPTION de Der Zoom fährt zwischen low und high hin und her.
+#TAGS advanced, sweep
 #CATEGORY zoom
 #RATE 40
 #VAR speed Slider 1 0.05 8 0.05

@@ -1,0 +1,46 @@
+# Planification, heure de la journée et OSC
+
+Trois façons de lancer des choses **sans appuyer sur Go** : une **planification** qui exécute des commandes à une heure donnée, des cues qui **attendent une heure**, et des messages **OSC** d'autres programmes et appareils. Les trois se trouvent dans le menu **Contrôles**.
+
+---
+
+## 1. Planification : des commandes à une heure donnée
+
+**Contrôles → Planification...** liste des commandes qu'OpenCue exécute tout seul – pour l'éclairage d'une façade, « ouverture des portes à 19h00 », une pause, « lancer la liste de cues à 18h55 ».
+
+- **Nouvelle entrée** ajoute une ligne. Chaque ligne comporte : l'interrupteur **marche / arrêt**, l'**heure** (`19:00` ou `19:00:30`), la **répétition** (**Tous les jours** – la valeur par défaut, aucune date nécessaire ; **Les jours de la semaine** – cliquez alors sur les boutons des jours, lun–ven est présélectionné ; **Une fois, à une date** – l'entrée s'exécute **une fois** ce jour-là puis se désactive d'elle-même), un **nom** et la **commande** – n'importe quelle commande de la ligne de commande, par exemple `Cuelist Main Go`, `Blackout Off` ou `Master 60` (voir le guide *Ligne de commande*).
+- **suivant : ...** indique quand l'entrée s'exécutera la prochaine fois. **Exécuter maintenant** lance la commande aussitôt, pour essayer. Le bouton corbeille supprime l'entrée – OpenCue demande d'abord (une ligne neuve et vide disparaît sans demander). La commande peut contenir plusieurs commandes séparées par `,` ou `;` (`Blackout Off; Cuelist Main Go`).
+- L'horloge dans le titre est celle de l'ordinateur de la console. Une entrée se déclenche **une fois** à son heure, y compris au-delà de minuit. Si l'ordinateur était en veille, seules comptent les heures de la **dernière minute** – rien n'est « rattrapé ».
+- La planification **appartient au show** : elle est enregistrée dans le fichier du show, fait partie des sauvegardes, et la modifier marque le show comme non enregistré. Chaque exécution apparaît dans l'historique des commandes et sous forme d'un court message.
+
+---
+
+## 2. Un cue qui attend une heure
+
+Dans la boîte de dialogue du cue, choisissez le déclencheur **Heure de la journée** (ou tapez `clock 19:30` / `clock 20:00 sat,sun` dans la cellule du déclencheur, ou utilisez la commande `Cue 3 Trigger Clock 19:30 Mon-Fri`). Le cue se comporte alors comme les autres déclencheurs (audio, MIDI, timecode) : lorsqu'il est le **cue suivant d'une liste en cours**, il se déclenche dès que l'**horloge atteint cette heure** un des jours choisis. Si son heure est déjà passée au moment où il devient le cue suivant, il attend l'occurrence suivante – il ne se déclenche pas aussitôt.
+
+Utilisation typique : *Cue 1 (Go, lumière de salle) – Cue 2 (Heure de la journée 19:30, début du spectacle) – Cue 3 (Follow)*. La planification peut lancer la liste à 18h55, le cue d'horloge attend alors 19h30.
+
+---
+
+## 3. OSC
+
+**OSC (Open Sound Control)** est un protocole réseau que parlent de nombreuses applications et appareils – **TouchOSC** (faders et boutons sur tablette / téléphone), **QLab**, **Ableton**, des contrôleurs de show. Il permet à un autre logiciel de piloter OpenCue, et OpenCue peut envoyer des messages.
+
+**Contrôles → OSC ...** (l'interrupteur et le port se trouvent aussi dans **Paramètres → OSC** ; les deux modifient le même réglage) :
+
+1. Activez **Recevoir OSC**. Le **port UDP** (par défaut `9000`) et les adresses de cet ordinateur s'affichent ; saisissez-les dans l'autre application (`192.168.1.20:9000`). C'est **désactivé** tant que vous ne l'activez pas ; Windows peut poser une fois la question du pare-feu (*Paramètres → Accès distant → Pare-feu Windows* le configure).
+2. Les **adresses intégrées** fonctionnent aussitôt : `/opencue/go`, `/opencue/back`, `/opencue/pause`, `/opencue/resume`, `/opencue/stop`, `/opencue/blackout` (1 = activé, 0 = désactivé, sans valeur = bascule), `/opencue/master` et `/opencue/fader` (valeur de 0 à 1), `/opencue/cue/<numéro>` (aller à ce cue). Un bouton qui envoie 1 à l'appui et 0 au relâchement est traité correctement : seul l'appui compte.
+3. **Vos adresses** : **Nouveau mapping** – l'**adresse** (`/my/button1`, `*` et `?` sont autorisés), la **commande**, et quand elle s'exécute : **seulement à l'appui** (valeur supérieure à 0) ou **à chaque message** (pour les faders). Dans la commande, `{value}` est la première valeur du message **convertie dans une plage** (par défaut 0..1 devient 0..100) : `Master {value}` avec un fader. **Apprendre** prend l'adresse du prochain message qui arrive – appuyez sur le bouton dans l'autre application. *Dans l'historique* affiche la commande dans l'historique des commandes (un flux de fader l'inonderait). Le bouton corbeille supprime le mapping – OpenCue demande d'abord. Ici aussi la commande peut être enchaînée (`Blackout On, Cuelist Main Stop`).
+4. Le **moniteur** en bas montre chaque message entrant et ce qu'il est devenu (*intégré*, *mapping*, *aucun mapping*, *bloqué*).
+5. **Adresses intégrées** (à déplier) : les désactiver toutes, changer le **préfixe** (`/opencue/go` devient par exemple `/light/go` si un autre programme utilise déjà `/opencue`) et désactiver des adresses **individuelles**.
+6. **Envoyer à** définit la cible des messages propres d'OpenCue : **Envoyer un message de test** ou la commande `Osc /address 0.5` (voir *Ligne de commande*).
+7. **Renvoyer l'état (retour)** : OpenCue signale son état **de lui-même** à la cible (et, si *Aussi à chaque expéditeur* est activé, à chaque appareil qui lui a envoyé un message dans la dernière heure – sur le port de la cible). C'est ce dont les affichages et les voyants de boutons de TouchOSC ont besoin. Seuls les **changements** sont envoyés, plus tout d'un coup à l'activation, quand un nouvel appareil apparaît et avec **Tout envoyer maintenant**. Sont signalés (sous le même préfixe que les adresses intégrées) : `/opencue/cuelist` (nom de la liste active), `/opencue/cue` (numéro du cue actif, `-1` = aucun), `/opencue/cuename`, `/opencue/state` (`running`, `paused`, `stopped`, `done` ou `idle`), `/opencue/fader` et `/opencue/master` (0 à 1), `/opencue/blackout` (1 / 0) et `/opencue/cue/<numéro>` = `1` pour le cue actif et `0` quand il se termine (le voyant d'un bouton de cue). Sous **Ce qui est signalé**, des messages individuels peuvent être désactivés. C'est **désactivé** tant que vous ne l'activez pas.
+
+**Sécurité :** OSC n'a **pas de mot de passe** – n'importe qui dans le réseau peut envoyer. C'est pourquoi c'est désactivé par défaut ; **Expéditeurs autorisés** le limite à des adresses (`192.168.1.` = tout le sous-réseau, ou une adresse unique) ; et un déluge de messages est ralenti (300 messages par seconde). `/opencue/cmd "<commande>"` pourrait exécuter **n'importe quelle** commande (même *Delete*), c'est pourquoi cela ne fonctionne que si vous activez **Autoriser toute commande**.
+
+---
+
+## 4. DMX prêt à l'emploi
+
+(Aussi dans le guide *Premiers pas*, section 6.) **Art-Net : Paramètres → Sortie DMX → Trouver les appareils automatiquement** cherche les appareils dans le réseau et envoie à chacun d'eux. **Scanner le réseau** les liste. **DMX USB** : laissez le port COM sur **Automatique** – branchez l'adaptateur et il se connecte, y compris après un débranchement et un rebranchement.

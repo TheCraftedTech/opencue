@@ -1,3 +1,5 @@
+// Copyright (C) 2026 Samuel Zenker
+// SPDX-License-Identifier: GPL-3.0-or-later
 /* "Ueber OpenCue" (Hilfe-Menue): Version, Lizenz (GPL-3.0-or-later), Quellcode-Link, Drittanbieter-Komponenten mit Lizenztexten.
  * Daten kommen von /api/about* (app/about.py, app/version.py); Aufruf: window.OCAbout.open(). */
 (function () {

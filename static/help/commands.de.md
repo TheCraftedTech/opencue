@@ -1,10 +1,10 @@
 # Befehlszeile – Befehlsreferenz
 
-Die **Befehlszeile** steuert OpenCue per Tippen, im Stil professioneller Lichtstellpulte (dot2 / MA Lighting). Sie ergänzt die Bedienung mit Maus und Touch um kurze Befehle, die sich tippen, verketten und in Cues ablegen lassen. Sie steht als Panel **Befehlszeile** zur Verfügung (*Bearbeiten → Panel hinzufügen…*); die Panels **Befehls-Ziffernblock** und **Befehls-Tasten** schreiben für die Touch-Bedienung in dieselbe Eingabezeile.
+Die **Befehlszeile** steuert OpenCue per Tippen, im Stil professioneller Lichtstellpulte. Sie ergänzt die Bedienung mit Maus und Touch um kurze Befehle, die sich tippen, verketten und in Cues ablegen lassen. Sie steht als Panel **Befehlszeile** zur Verfügung (*Bearbeiten → Panel hinzufügen…*); die Panels **Befehls-Ziffernblock** und **Befehls-Tasten** schreiben für die Touch-Bedienung in dieselbe Eingabezeile.
 
 Jeder Befehl wird auf dem Server ausgeführt, und das Ergebnis geht an **alle** verbundenen Geräte: Scheinwerferliste, Cue-Liste und Programmer aktualisieren sich überall sofort, nicht nur dort, wo getippt wurde.
 
-> Die Befehlswörter sind – wie bei dot2 und MA Lighting üblich – **Englisch**. Groß- und Kleinschreibung spielt bei Befehlen, Attributen und Namen **keine** Rolle.
+> Die Befehlswörter sind – wie bei Lichtstellpulten üblich – **Englisch**. Groß- und Kleinschreibung spielt bei Befehlen, Attributen und Namen **keine** Rolle.
 
 ---
 
@@ -44,6 +44,8 @@ Go
 | `Fixture 1 Thru 10` | Wählt FID 1 bis 10. |
 | `Fixture 1 + 3` | Wählt FID 1 **und** 3 (beliebig oft mit `+` kombinierbar). |
 | `Fixture 1 Thru 5 + 10` | Wählt FID 1–5 und zusätzlich 10. |
+| `Fixture 1 Thru 10 - 5` | Wählt FID 1–10 **ohne** 5 (ein `-` mit Leerzeichen nimmt heraus; mehrfach möglich: `- 5 - 7 Thru 8`). |
+| `Next` / `Previous` | Wählt die **nächste / vorige Fixture** nach FID (am Ende von vorn; ohne Auswahl ist `Next` die erste, `Previous` die letzte). Zum Durchschalten einzelner Scheinwerfer. |
 | `Fixture "Kopf 2"` | Wählt die Fixture(s) mit diesem **Namen** (auch mit `+` kombinierbar). |
 | `Group 1` | Wählt die 1. Gruppe der Gruppenliste. |
 | `Group 1 Thru 4` | Wählt die Fixtures der Gruppen 1 bis 4. |
@@ -77,7 +79,8 @@ Wirkt auf die **aktuell ausgewählten** Fixtures (Dimmer-Kanal).
 |---|---|
 | `At 80` | Dimmer auf 80 % (`At 80%` geht auch). |
 | `At Full` | Dimmer auf 100 %. |
-| `At At` | Wie `At Full` (dot2-Kurzform – zweimal „At“). |
+| `At At` | **Alles an**: Dimmer 100 % **und Farbe Weiß** (Geräte ohne Farbe bekommen nur den Dimmer). **Ohne Auswahl gilt es für ALLE Scheinwerfer** (die Auswahl bleibt leer) – das Gegenteil von `Clear Clear`. Mit Auswahl leuchtet nur diese Auswahl. Auch möglich: `Fixture 5 At At`, `At At Color Red` (alles an, rot). |
+| `Zero` | Auswahl auf 0 % (wie `At 0`). |
 | `Full` | Kurzform ohne führendes „At“ – ebenfalls 100 %. |
 | `At 0` | Dimmer auf 0 % (aus). |
 | `At +10` / `At -10` | Erhöht / verringert den aktuellen Dimmerwert um 10 Prozentpunkte. |
@@ -126,6 +129,29 @@ Der globale Timecode (die interne Uhr) lässt sich auch per Befehl steuern – z
 
 Springen löst keine Timecode-Cues aus; nur der laufende Vorwärtslauf tut das.
 
+### Audio und Tempo: `Tap` / `BPM` / `Audio`
+
+Steuert das Panel *Audio* (siehe die Anleitung *Audio*) – auch im **CMD**-Feld eines Cues nutzbar.
+
+| Befehl | Bedeutung |
+|---|---|
+| `Tap` | Das Tempo antippen: ab dem zweiten Tipp gilt das getippte Tempo (manuell), und der Beat beginnt auf dem Tipp. |
+| `BPM` | Zeigt das Tempo und den Modus. |
+| `BPM 128` | Festes Tempo (30 … 300). |
+| `BPM Auto` | Zurück zur automatischen Erkennung. |
+| `BPM Half` / `BPM Double` | Tempo halbieren / verdoppeln (wenn die Erkennung das doppelte / halbe gefunden hat). |
+| `Audio Start` / `Audio Stop` | Die gewählte Quelle öffnen / schließen. |
+| `Audio Demo` | Den Demo-Beat starten. |
+| `Audio` (`Audio Status`) | Zeigt, ob Audio läuft, das Tempo und den Pegel. |
+
+### OSC senden: `Osc`
+
+`Osc /adresse [wert ...]` schickt eine OSC-Nachricht an das Ziel unter **Steuerung → OSC …** (*Senden an*): `Osc /opencue/go`, `Osc /light/1 0.5 hallo`. Werte sind Zahlen (ganze Zahlen gehen als Ganzzahl), `true` / `false` oder Text. Ohne Ziel sagt der Befehl das. Siehe die Anleitung *Zeitplan, Uhrzeit und OSC*.
+
+### MIDI senden: `Midi`
+
+Sendet MIDI an den gewählten Ausgang (siehe die Anleitung *MIDI*): `Midi Note 60 [Stärke] [Ch 2] [Len 0.5]` spielt eine Note und schaltet sie wieder aus, `Midi On 60` / `Midi Off 60` einzeln, `Midi CC 7 100` setzt einen Controller, `Midi PC 3` einen Programmwechsel, `Midi Panic` schaltet alle Noten aus.
+
 ---
 
 ## 4. Farbe und Position: Color / RGB / Pan / Tilt
@@ -137,7 +163,7 @@ Wirken ebenfalls auf die **aktuell ausgewählten** Fixtures.
 | `Color Red` | Setzt die Farbe auf Rot (benannte Farbe, Liste unten). |
 | `Color #FF8000` | Farbe als Hex-Wert (`#F80` als Kurzform geht auch). |
 | `Color 255 128 0` | Farbe als drei Werte 0–255 (Rot / Grün / Blau). |
-| `RGB 255 0 0` | Dasselbe (dot2-Schreibweise). |
+| `RGB 255 0 0` | Dasselbe (Pult-Schreibweise). |
 | `Pan 180` | Fährt Pan auf 180°. |
 | `Tilt -45` | Fährt Tilt auf -45°. |
 | `Pan 50%` | Pan in Prozent des Bereichs (0–100 %; 50 % = Mitte). |
@@ -254,7 +280,7 @@ Schlägt ein Teil fehl, werden die übrigen trotzdem ausgeführt; das Log zeigt 
 | Eingabe | Wirkung |
 |---|---|
 | `Clear` | Hebt nur die aktuelle Auswahl auf. Programmierte Werte bleiben. |
-| `Clear Clear` | **Vollständiger Reset:** setzt **alle** Fixtures komplett zurück – Dimmer, Farbe (schwarz), Pan/Tilt (0°), Zoom, Fokus, Gobo-Räder 1 und 2 samt Drehung, Prisma, Strobe **und jeden weiteren Kanal des Geräts** (Frost, Iris, Farbrad, Geschwindigkeit, Fein-Kanäle …) auf 0. Beendet alle Effekte, leert den Programmer und hebt die Auswahl auf. |
+| `Clear Clear` | **Vollständiger Reset:** setzt **alle** Fixtures komplett zurück – Dimmer, Farbe und Pan/Tilt (nach *Einstellungen → Standardwerte → Clear Clear*: Vorgabe Dimmer 0 %, Farbe Weiß, Pan/Tilt 0°; Geräte ohne Dimmer-Kanal bleiben schwarz), Zoom, Fokus, Gobo-Räder 1 und 2 samt Drehung, Prisma, Strobe **und jeden weiteren Kanal des Geräts** (Frost, Iris, Farbrad, Geschwindigkeit, Fein-Kanäle …) auf 0. Beendet alle Effekte, leert den Programmer und hebt die Auswahl auf. |
 | `Clear` zweimal **innerhalb von 1,0 Sekunde** | Wie `Clear Clear` – schnelles Doppel-Tippen löst denselben Reset aus. |
 | `Clear` … (mehr als 1,0 s Pause) … `Clear` | Zwei unabhängige „Auswahl aufheben“-Vorgänge – **kein** Reset. |
 
@@ -310,18 +336,43 @@ Alle Cue-Befehle wirken auf die **aktive Cue-Liste** – oder, mit vorangestellt
 
 | Befehl | Wirkung |
 |---|---|
-| `Store Cue 1` | Übernimmt die im Programmer gesetzten (roten, „berührten“) Werte als neuen Cue. |
-| `Store Cue 1.5` | Dezimalnummern erlauben nachträgliches Einschieben zwischen bestehenden Cues. |
+| `Store Cue 1` | Speichert einen neuen Cue mit **allen Änderungen gegenüber dem Cue davor** (siehe unten) – auch ein *Clear*, das alles dunkel gemacht hat. Ausdrücklich angefasste Werte kommen immer mit. |
+| `Store Cue 1.5` | Dezimalnummern erlauben nachträgliches Einschieben zwischen bestehenden Cues. „Davor“ ist dann Cue 1 (der Cue mit der nächstkleineren Nummer), egal welcher Cue gerade aktiv ist. |
+| `Store Cue 1.5 CueOnly` | Beim Einfügen in die Mitte behält der **Folge-Cue** sein bisheriges Aussehen: Werte, die der neue Cue ändert und der Folge-Cue nicht selbst setzt, werden dort mit dem alten Stand festgeschrieben. Ohne `CueOnly` erbt der Folge-Cue sie per Tracking. |
 | `Store Cue 4 "Intro"` | Mit Namen (sonst heißt der Cue „Cue 4“). |
-| `Store Cue 3 Merge` | Gibt es Cue 3 schon: nur die geänderten Kanäle kommen hinein, der Rest bleibt. Ohne `Merge`/`Overwrite` meldet `Store Cue 3` einen Fehler statt eine doppelte Nummer anzulegen. |
-| `Store Cue 3 Overwrite` | Gibt es Cue 3 schon: ihr Inhalt wird komplett durch den Programmer ersetzt (Name, Zeiten, Trigger bleiben). |
-| `Update` | Übernimmt die Programmer-Werte in den **aktiven** Cue (nur die geänderten Kanäle). Folge-Cues, die diese Werte nicht selbst setzen, übernehmen sie beim Abspielen (Tracking). |
-| `Update CueOnly` | Wie `Update`, der Folge-Cue behält aber seinen bisherigen Stand. |
+| `Store Cue 3 Merge` | Gibt es Cue 3 schon: nur das, was am Bild gegenüber **diesem Cue** anders ist, kommt hinein, der Rest bleibt. Ohne `Merge`/`Overwrite` meldet `Store Cue 3` einen Fehler statt eine doppelte Nummer anzulegen. |
+| `Store Cue 3 Overwrite` | Gibt es Cue 3 schon: ihr Inhalt wird komplett durch die Änderungen gegenüber dem Cue davor ersetzt (Name, Zeiten, Trigger bleiben). |
+| `Store Cue 6 Absolute` | Der Cue spielt später **genau den Zustand ab, den du beim Speichern gesehen hast** (alle Scheinwerfer, alle Kanäle). Auch mit leerem Programmer möglich: dann wird der aktuelle Zustand als Schnappschuss gespeichert. `Relative` (Standard) spielt nur deine Änderungen ab. |
+| `Update` | Übernimmt alles, was am Bild gegenüber dem **aktiven** Cue anders ist, in diesen Cue (nur die geänderten Kanäle). Ohne Zusatz gilt die Vorgabe aus *Einstellungen → Standardwerte → Neue Cues → Aktualisieren* („Jedes Mal fragen“ wirkt beim Befehl wie Tracking). |
+| `Update Tracking` | Folge-Cues, die diese Werte nicht selbst setzen, übernehmen sie beim Abspielen. |
+| `Update CueOnly` | Wie `Update Tracking`, der Folge-Cue behält aber seinen bisherigen Stand. |
 | `Delete Cue 3` | Löscht Cue 3. Mit Bereich: `Delete Cue 3 Thru 5`. |
 | `Move Cue 1 At 5` | Nummeriert Cue 1 auf 5 um (die Liste sortiert sich neu). Gibt es die Zielnummer schon, meldet der Befehl einen Fehler. |
 | `Label Cue 1 "Intro"` / `Set Cue 1 Name "Intro"` | Benennt Cue 1 um. |
 
-Nach erfolgreichem `Store Cue` wird der Programmer für die gespeicherten Fixtures geleert (die rote Markierung verschwindet). Neue Cues erhalten standardmäßig `Fade = 0,0 s` (hartes Umschalten).
+**So speichert ein Cue.** Ein Cue enthält nur, was er gegenüber dem Cue davor ändert (Tracking). Beim Speichern prüft OpenCue deshalb, welcher Cue **vor** dem neuen abgespielt würde – der mit der nächstkleineren Nummer, auch bei `1.5` mitten in der Liste –, liest dessen Stand und speichert genau die Unterschiede zum Bild, das du gerade siehst. Dazu gehört auch ein *Clear*: Es macht alles dunkel und ist damit eine große Änderung. Gibt es keinen Cue davor (der erste der Liste), enthält er nur die ausdrücklich angefassten Werte. Hat sich nichts geändert, meldet `Store Cue` das und legt keinen Cue an (außer mit `Absolute`).
+
+**Anzeige „geändert“.** Die rote Markierung in der Scheinwerferliste und die Punkte an den Reitern zeigen dasselbe: was jetzt vom **aktiven Cue** abweicht (zusätzlich zu dem, was du von Hand bedient hast). Bei mehreren Listen gilt der aktive Cue der **zuletzt benutzten** Liste (Go, Zurück, Springen, Auswahl, Speichern). Während einer Überblendung dieser Liste bleibt die Anzeige stehen, bei einem Executor-Fader unter 100 % ist sie leer (dort ist die Ausgabe absichtlich gemischt). Es ist nur eine Anzeige – gespeichert wird immer die Änderung gegenüber dem Cue davor.
+
+**Nach dem Speichern** ist der gespeicherte Cue der **aktive Cue** der Liste (das Bild entspricht ihm); das nächste `Go` startet also den Cue danach. Der Programmer wird für die gespeicherten Fixtures geleert (die rote Markierung verschwindet). Neue Cues erhalten standardmäßig `Fade = 0,0 s` (hartes Umschalten).
+
+**Relativ und absolut:** Jeder Cue speichert **immer beides** in der Showfile: die *Änderungen* (was du angefasst hast) und den *vollständigen Zustand* aller Scheinwerfer zum Zeitpunkt des Speicherns (Dimmer, Farbe, Position, Gobo, Zoom, Fokus und jeden übrigen Kanal; Variablen bleiben dabei Platzhalter). Die **Wiedergabe** entscheidet, was beim Go passiert:
+
+- **Relativ** (Tracking, Standard): nur die gespeicherten Änderungen werden gesetzt, alles andere bleibt, wie der Cue davor es hinterlassen hat.
+- **Absolut**: jeder Scheinwerfer wird genau auf den gespeicherten Zustand gestellt – so sieht Cue 6 auch dann exakt so aus wie beim Speichern, wenn du vorher durch Cue 1–5 gegangen bist. Außerdem enden Effekte, die der Cue nicht hat, auf allen Scheinwerfern.
+
+Die Vorgabe für neue Cues stellst du unter *Einstellungen → Standardwerte → Neue Cues* ein (dort auch Auslöser, Verzögerung, Überblendzeit, Effekt-Ein-/Ausblendzeit, MIB und das Verhalten von *Aktualisieren*). `Store Cue 6` ohne Zusatz nimmt immer diese Vorgaben; was du ausdrücklich angibst (`Absolute`, `Relative`), gewinnt. Im Speichern-Dialog kannst du sie für den einzelnen Cue ändern, später im Bearbeiten-Dialog, per Doppelklick in der Spalte **Wiedergabe** oder per Befehl `Cue 6 Mode Absolute` / `Cue 6 Mode Relative`. Weil der Zustand immer gespeichert ist, lässt sich jeder Cue jederzeit umstellen. Unter *Standardwerte → Programmstart* legst du außerdem fest, wie OpenCue beim Start steht (Grand Master aus der Show oder fester Wert, Blackout an/aus), und den Stand des Executor-Faders für neue Listen. Ältere Cues ohne gespeicherten Zustand verhalten sich absolut wie das Tracking der Liste bis zu diesem Cue.
+
+**Effekte** sind immer ein Gesamtzustand: Ein Cue merkt sich alle Effekte, die beim Speichern liefen. `Update` übernimmt auch das – ein Effekt, den du beendet hast, fällt aus dem Cue.
+
+### Cues in der Liste bearbeiten (Maus und Touch)
+
+- **Einzelne Zelle:** Doppelklick auf eine Zelle (Name, Auslöser, Zeiten, MIB, CMD …) bearbeitet sie direkt in der Liste. Der Bearbeiten-Dialog (Rechtsklick → *Bearbeiten*) bleibt für alles auf einmal.
+- **Mehrere Cues gleichzeitig:** Ziehe mit der Maus ein **Rechteck** (am Touch-Gerät: kurz halten, dann ziehen) über die Zellen. Markiert werden **nur die Zellen im Rechteck**, nicht die ganze Zeile. Ein **Doppelklick** auf eine markierte Zelle ändert dann **alle markierten Zellen dieser Spalte** auf einmal – zum Beispiel die Überblendzeit mehrerer Cues auf 1 setzen. Dasselbe gilt für ganze Zeilen, die du mit `Strg`-Klick oder `Umschalt`-Klick markiert hast. Ein einfacher Klick markiert wieder eine ganze Zeile. Die Cue-Nummer wird immer einzeln geändert (Nummern sind eindeutig).
+- **Auslöser mit Symbol:** Go, Follow, Timecode, Audio, MIDI und Uhrzeit haben je ein Symbol – in der Liste und als Tastenreihe im Bearbeiten-Dialog (mit einem kurzen Hinweis, wann der Cue startet).
+- **Verschieben:** Ändere die Cue-Nummer – der Cue rutscht an die neue Stelle.
+- **Kopieren:** Cues markieren → **Kopieren** (oder Rechtsklick → *Kopieren …*). Du wählst die Liste und die Nummer der ersten Kopie; die weiteren behalten den Abstand der Originale. Bereits vergebene Nummern werden nie überschrieben – dann wird nichts kopiert, und OpenCue nennt die belegten Nummern.
+- **Rückgängig:** `Strg+Z` / `Strg+Y` machen Änderungen an Cues rückgängig und stellen sie wieder her (siehe *Tastenkürzel*).
 
 ### Cue-Eigenschaften: `Cue <Nummer> <Eigenschaft> <Wert>`
 
@@ -338,7 +389,13 @@ Alles, was im Bearbeiten-Dialog (und in den Spalten der Cue-Liste) steht, lässt
 | `Cue 1 FX In 2` / `FX Out 1` | Effekte ein-/ausblenden in Sekunden (`Effect In` / `Effect Out` gehen auch). |
 | `Cue 1 Trigger Go` / `Follow` | Auslöser des Cues. |
 | `Cue 1 Trigger Timecode 00:01:30` | Auslöser per globalem Timecode (Zeit wie bei `Timecode At`). |
+| `Cue 2 Trigger Audio Beat 4` | Auslöser per Musik: feuert bei jedem 4. Beat, sobald er der nächste Cue ist (das Audio-Panel muss laufen). Quellen: `Beat`, `Kick`, `Snare`, `Hat` (dann die Zahl = jeder n-te, Standard 1) und `Level`, `Bass`, `Mid`, `High`, `B1` … `B8` (dann die Zahl = Schwelle in %, Standard 70). |
+| `Cue 2 Trigger Audio Kick` | Feuert beim nächsten Bassdrum-Schlag. |
+| `Cue 3 Trigger Midi Note 60` | Auslöser per MIDI-Signal: feuert, wenn diese Taste gedrückt wird, sobald der Cue der nächste Cue einer laufenden Liste ist. `Note` nimmt eine Nummer (0–127) oder einen Notennamen (`Note C4`), `CC <Nummer> [Schwelle]` feuert, wenn ein Regler die Schwelle erreicht (Standard 64), `PC <Nummer>` bei einem Programmwechsel. Mit `Ch <1-16>` nur für einen Kanal (Standard: beliebig). Beispiele: `Cue 3 Trigger Midi Note C4 Ch 2`, `Cue 4 Trigger Midi CC 20 100`, `Cue 5 Trigger Midi PC 3`. MIDI muss eingeschaltet sein (Anleitung *MIDI*, Abschnitt 5c). |
+| `Cue 3 Trigger Clock 19:30 Mon-Fri` | Auslöser per **Uhr**: sobald der Cue der nächste einer laufenden Liste ist, wartet er auf diese Uhrzeit (und diese Tage: `Mon-Fri`, `Sat,Sun`, `weekdays`, `weekend`, `daily` – ohne Tage: jeden Tag; Sekunden gehen: `19:30:15`). Siehe die Anleitung *Zeitplan, Uhrzeit und OSC*. (`Trigger Time` bleibt der Timecode-Auslöser.) |
+| `Cue 2 Trigger Audio Bass 80` | Feuert, wenn der Bass 80 % erreicht. |
 | `Cue 1 MIB Auto` (`Off` / `On`) | Move In Black. |
+| `Cue 1 Mode Absolute` (`Relative`) | Wiedergabe: genau der gespeicherte Zustand oder nur die Änderungen (siehe oben). |
 | `Cue 1 Cmd "Fixture 1 At 0; Go"` | Befehl(e), die der Cue beim Auslösen ausführt (Kapitel 12). |
 | `Cue 1 Name "Intro"` | Name. |
 

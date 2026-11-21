@@ -1,3 +1,5 @@
+# Copyright (C) 2026 Samuel Zenker
+# SPDX-License-Identifier: GPL-3.0-or-later
 """
 gdtf_model.py
 3D-Modelle, Geometrie-Baum und Raeder (Gobos, Farben, Prismen) aus GDTF-Dateien - als Ergaenzung zu pygdtf.
@@ -58,16 +60,16 @@ def _read_zip(path: Path) -> Tuple[zipfile.ZipFile, Dict[str, str]]:
 def _read_description(archive: zipfile.ZipFile, names: Dict[str, str]) -> ElementTree.Element:
     real = names.get("description.xml")
     if real is None:
-        raise ModelError("In der Datei fehlt die description.xml")
+        raise ModelError("The file has no description.xml")
     if archive.getinfo(real).file_size > MAX_XML_BYTES:
-        raise ModelError("Die description.xml ist ungewoehnlich gross")
+        raise ModelError("description.xml is unusually large")
     xml = archive.read(real)
     if b"<!ENTITY" in xml or b"<!DOCTYPE" in xml:
         raise ModelError("Die description.xml enthaelt unzulaessige Deklarationen")
     try:
         return ElementTree.fromstring(xml)
     except ElementTree.ParseError as exc:
-        raise ModelError("Die description.xml ist kein gueltiges XML") from exc
+        raise ModelError("description.xml is not valid XML") from exc
 
 
 def _num(text: Any, default: float = 0.0) -> float:
@@ -291,7 +293,7 @@ def _y_up_to_z_up(values: array) -> None:
 def _load_file(data: bytes, extension: str) -> List[Dict[str, Any]]:
     """3D-Datei (3ds/glb) lesen -> Teile je Material (Z oben, Meter). Wirft ModelError."""
     if _assimp is None:
-        raise ModelError("assimp-py ist nicht installiert")
+        raise ModelError("assimp-py is not installed")
     flags = _assimp.Process_Triangulate | _assimp.Process_JoinIdenticalVertices | _assimp.Process_GenSmoothNormals | _assimp.Process_PreTransformVertices
     fd, name = tempfile.mkstemp(suffix=extension, prefix="opencue-model-")
     try:
@@ -300,7 +302,7 @@ def _load_file(data: bytes, extension: str) -> List[Dict[str, Any]]:
         try:
             scene = _assimp.import_file(name, flags)
         except Exception as exc:
-            raise ModelError(f"Die 3D-Datei konnte nicht gelesen werden ({type(exc).__name__})") from exc
+            raise ModelError(f"The 3D file could not be read ({type(exc).__name__})") from exc
     finally:
         try:
             os.unlink(name)
@@ -333,7 +335,7 @@ def _load_file(data: bytes, extension: str) -> List[Dict[str, Any]]:
             pass
         parts.append({"pos": pos, "nrm": nrm, "idx": idx, "color": color, "opacity": opacity})
     if not parts:
-        raise ModelError("Die 3D-Datei enthaelt keine Flaechen")
+        raise ModelError("The 3D file contains no faces")
     return parts
 
 
@@ -466,9 +468,9 @@ def asset(path: Path, relative: str) -> Tuple[bytes, str]:
         clean = relative.replace("\\", "/").strip("/")
         real = names.get(clean.lower())
         if real is None or not real.lower().startswith("wheels/") or not real.lower().endswith((".png", ".svg")) or ".." in clean:
-            raise ModelError("Unbekannte Datei")
+            raise ModelError("Unknown file")
         if archive.getinfo(real).file_size > MAX_ASSET_BYTES:
-            raise ModelError("Die Datei ist zu gross")
+            raise ModelError("The file is too large")
         return archive.read(real), "image/svg+xml" if real.lower().endswith(".svg") else "image/png"
     finally:
         archive.close()

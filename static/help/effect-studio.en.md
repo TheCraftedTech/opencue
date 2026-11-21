@@ -120,9 +120,11 @@ loop() {                                   // 3. loop(): required, runs #RATE ti
 | Line | Meaning |
 |---|---|
 | `#NAME text` | Display name in the program. Without it the file name is used. |
-| `#DESCRIPTION text` | Short description (shown in the effect picker and the Open dialog). |
 | `#CATEGORY dimmer` / `color` / `position` | **Required.** What the effect controls. |
 | `#RATE n` | How often `loop()` runs per second: a whole number from **1 to 40**. Default 40 – the DMX output rate. |
+| `#DESCRIPTION text` | A short description (also `#DESCRIPTION en ...` and `#DESCRIPTION de ...` for one text per language; the program shows the one of the interface language). |
+| `#INFO name en Label \| Hint` | Gives the slider `name` a **label** and a **mouseover hint** in a language (`en` or `de`), for example `#INFO speed de Tempo \| Wie schnell der Effekt läuft`. Without `#INFO` the program uses its built-in glossary of the usual names (`speed`, `size`, `low`, `high`, `strobe` ...) and finally the variable name itself. |
+| `#TAGS a, b, c` | Keywords for searching and filtering in the effect type dialog (for example `strobe, flash, toggle`; up to 8, lower case). A script that reads audio variables gets the tag `audio` automatically - you do not write it. The bundled effects carry `basic` (for beginners, 19 of them) or `advanced` (all others) as their first tag; the dialog shows them as "Basic" / "Advanced" - use them for your own effects as well. |
 | `#VAR ...` | A **slider** (see section 9) or an internal variable. |
 
 ---
@@ -320,6 +322,33 @@ The sliders appear in the **Create / edit effect** dialog and in the studio prev
 | `slots2` | The same for wheel 2 (0 if the fixture has only one wheel). |
 
 The selection order is the order in which you picked the fixtures.
+
+### Audio variables (`a_...`)
+
+Effects can react to music. The **Audio** panel analyses the sound (see the *Audio* guide); these variables hold the result. All start with `a_`, so they never clash with your own names. Without a running audio source they are all `0`. A script that reads one of them is an **audio effect** (marked in the list and in the studio; the preview then runs a sample beat with 120 BPM).
+
+| Name | Meaning |
+|---|---|
+| `a_active` | `1` while sound arrives, otherwise `0`. |
+| `a_level` | Overall loudness 0 to 1 (relative to the loudest parts of the last seconds). |
+| `a_bass`, `a_mid`, `a_high` | Bass (to 150 Hz), mids (150 Hz to 2.5 kHz) and highs (above 2.5 kHz), 0 to 1. |
+| `a_b1` ... `a_b8` | The eight bands one by one (20-60, 60-150, 150-400, 400-1k, 1k-2.5k, 2.5k-5k, 5k-10k, 10k-20k Hz), 0 to 1. |
+| `a_kick`, `a_snare`, `a_hat` | Hits of the bass drum, snare (or clap) and hi-hat: jumps to 0.45 - 1 at each hit and fades out within about 0.15 s (hi-hat 0.07 s). |
+| `a_beat` | The same kind of pulse on every beat of the detected tempo. |
+| `a_beat_phase` | Position within the beat, 0 to 1, rising evenly from one beat to the next: ideal for tempo-synchronous waves. |
+| `a_beat_count` | Number of the beat; counts up by 1 at every beat. |
+| `a_bpm` | Detected (or set) tempo in beats per minute; `0` while unknown. |
+| `a_conf` | How sure the tempo detection is, 0 to 1. |
+
+```
+#CATEGORY dimmer
+#RATE 40
+loop() {
+  dimmer = lerp(5, 100, a_kick);                              // flash on every bass drum
+}
+```
+
+Tip: a pass only sees the state at its own moment. Reading a pulse (`a_kick`) is always safe because it fades out; to react to the *moment* of a hit, remember the last value in a global variable and compare (see the *Audio: Hi-Hat Sparkle* effect). Use `#RATE 40` for audio effects so they stay snappy.
 
 ---
 

@@ -1,3 +1,5 @@
+// Copyright (C) 2026 Samuel Zenker
+// SPDX-License-Identifier: GPL-3.0-or-later
 /* Update-Hinweis: beim Programmstart (Hauptgeraet) und ueber Hilfe -> "Nach Updates suchen". Daten kommen von /api/update/* (app/about.py, app/updater.py).
  *   - Beim Start fragt die Seite das (im Hintergrund ermittelte) Ergebnis ab; gibt es eine neue Version, die nicht uebersprungen wurde, erscheint der Dialog:
  *     "Jetzt installieren" (laedt das Setup, merkt es vor und beendet OpenCue ueber den normalen Beenden-Dialog; das Setup startet danach und oeffnet OpenCue wieder),

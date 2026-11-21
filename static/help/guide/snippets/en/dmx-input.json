@@ -1,0 +1,111 @@
+[
+ {
+  "id": "dmx-input-001",
+  "page": "dmx-input",
+  "path": [
+   "DMX Input (receive Art-Net and sACN)"
+  ],
+  "title": "DMX Input (receive Art-Net and sACN)",
+  "keywords": [
+   "dmx input",
+   "receive art-net",
+   "receive sacn",
+   "forwarding",
+   "forward dmx",
+   "desk as source",
+   "channel as trigger",
+   "dmx merge htp",
+   "artpollreply",
+   "announce art-net device"
+  ],
+  "text": "OpenCue can not only send DMX but also **receive it over the network** – from a lighting desk, a program (for example a visualiser or a show controller) or a device. The received values can be **forwarded and mixed** into the output or used as **triggers**.\n\nOpen it with **Controls → DMX input…** (it can also be changed from a tablet)."
+ },
+ {
+  "id": "dmx-input-002",
+  "page": "dmx-input",
+  "path": [
+   "DMX Input (receive Art-Net and sACN)",
+   "1. Switching it on"
+  ],
+  "title": "1. Switching it on",
+  "keywords": [
+   "dmx input",
+   "receive art-net",
+   "receive sacn",
+   "forwarding",
+   "forward dmx",
+   "desk as source",
+   "channel as trigger",
+   "dmx merge htp",
+   "artpollreply",
+   "announce art-net device"
+  ],
+  "text": "- Switch **Receive DMX** on (off is the default – DMX has no password, anyone in the network can send).\n- **Protocols:** Art-Net (UDP 6454) and/or sACN / E1.31 (UDP 5568, multicast). Art-Net universe = *port address* (exactly as OpenCue sends it: universe 1 = port address 1).\n- **Allowed senders:** empty = anyone; otherwise IP addresses or their beginnings (e.g. `192.168.1.`).\n- **Network adapter:** only needed if the computer has several and the input should listen on a specific one.\n- **Source gone after:** that long without a packet, then OpenCue releases the source's values (sACN: immediately on \"stream terminated\").\n\n**Sources seen** shows live everything that is being sent: protocol, universe, sender, packets per second and how many channels are not zero. **View** shows the 512 channels as a grid; **Forward** creates a mapping right away."
+ },
+ {
+  "id": "dmx-input-003",
+  "page": "dmx-input",
+  "path": [
+   "DMX Input (receive Art-Net and sACN)",
+   "2. Forward / mix (source → output)"
+  ],
+  "title": "2. Forward / mix (source → output)",
+  "keywords": [
+   "dmx input",
+   "receive art-net",
+   "receive sacn",
+   "forwarding",
+   "forward dmx",
+   "desk as source",
+   "channel as trigger",
+   "dmx merge htp",
+   "artpollreply",
+   "announce art-net device"
+  ],
+  "text": "A **mapping** mixes an *input universe* into an *output universe* of OpenCue:\n\n| Mode | Meaning |\n|---|---|\n| **Highest wins** (HTP) | Per channel the larger value of OpenCue and the input counts. The default, safe for mixing in. |\n| **Replace** | The input counts while the source is there (zeros included). Optionally only for a channel range. |\n\n- Several sources for the same universe: **highest wins**. With sACN only the sources with the highest **priority** count.\n- If the output universe has **no fixtures** it is still output – that gives a **pure forwarding** (e.g. Art-Net → sACN or → a USB adapter).\n- The input lies **above everything** (programmer, cues, effects). The values inside OpenCue stay unchanged; mixing happens only in the **output**.\n- Own packets are recognised and ignored – a forwarding does not create a feedback loop.\n- It runs in the **DMX output process**: the forwarding carries on unchanged even if the main program hangs. If that process fails and the output runs inside the main program as a fallback, triggers and the display keep working but mixing does not (the dialog says so)."
+ },
+ {
+  "id": "dmx-input-004",
+  "page": "dmx-input",
+  "path": [
+   "DMX Input (receive Art-Net and sACN)",
+   "3. Triggers (channel → command)"
+  ],
+  "title": "3. Triggers (channel → command)",
+  "keywords": [
+   "dmx input",
+   "receive art-net",
+   "receive sacn",
+   "forwarding",
+   "forward dmx",
+   "desk as source",
+   "channel as trigger",
+   "dmx merge htp",
+   "artpollreply",
+   "announce art-net device"
+  ],
+  "text": "A **trigger** runs a command-line command when a channel changes:\n\n- **Button:** when the value rises above the **threshold** the first command runs (e.g. `Go`); when it falls below again, the second (optional, e.g. `Blackout Off`).\n- **Fader:** every new value runs as a command; `{value}` stands for the value scaled to the **range** (default 0–100), e.g. `Master {value}`.\n- **Learn:** click **Learn** and move a channel at the desk – protocol, universe and channel are filled in.\n- The first value seen is only remembered, nothing is triggered (no jump when connecting). Fader commands run at most 20 times a second; the last value always arrives.\n\nExamples: channel 1 = `Go` (button), channel 2 = `Blackout` (button), channel 3 = `Master {value}` (fader), channel 10 = `Goto Cue 5`.\n\n**Recent triggers** shows what was triggered."
+ },
+ {
+  "id": "dmx-input-005",
+  "page": "dmx-input",
+  "path": [
+   "DMX Input (receive Art-Net and sACN)",
+   "4. Good to know"
+  ],
+  "title": "4. Good to know",
+  "keywords": [
+   "dmx input",
+   "receive art-net",
+   "receive sacn",
+   "forwarding",
+   "forward dmx",
+   "desk as source",
+   "channel as trigger",
+   "dmx merge htp",
+   "artpollreply",
+   "announce art-net device"
+  ],
+  "text": "- The input belongs to the **app configuration** (not the show) and applies to this computer.\n- For a desk to reach OpenCue it must send to the computer's IP address or by broadcast; the Windows firewall must allow UDP 6454 / 5568 for OpenCue – the dialog shows whether the rule exists and creates it with one click (Windows asks for permission on the main computer).\n- **Announce as an Art-Net device:** OpenCue answers the search (ArtPoll) of other devices and shows up in their list of Art-Net devices – a desk can pick it as a target without typing the IP address.\n- An overview of all inputs and outputs is in **Settings → Overview**."
+ }
+]

@@ -1,0 +1,91 @@
+[
+ {
+  "id": "show-safety-001",
+  "page": "show-safety",
+  "path": [
+   "Back-ups, vergrendelingen en veilig afsluiten"
+  ],
+  "title": "Back-ups, vergrendelingen en veilig afsluiten",
+  "keywords": [],
+  "text": "Je hebt de show vóór het evenement geprogrammeerd en slaat nu **bewust niet op** terwijl hij draait – niets mag per ongeluk worden overschreven. OpenCue beschermt je op vier manieren: **back-ups op de achtergrond**, **herstellen** na een crash, een **vergrendeling** voor afgeronde shows en een **voorzichtige afsluitdialoog**. Deze handleiding legt alle vier uit, en hoe je een probleem meldt."
+ },
+ {
+  "id": "show-safety-002",
+  "page": "show-safety",
+  "path": [
+   "Back-ups, vergrendelingen en veilig afsluiten",
+   "1. Back-ups op de achtergrond"
+  ],
+  "title": "1. Back-ups op de achtergrond",
+  "keywords": [],
+  "text": "OpenCue schrijft regelmatig de **huidige staat van je show** – inclusief wijzigingen die je *niet* hebt opgeslagen – naar een verborgen map. Je ziet hem pas als je hem nodig hebt. Een back-up **vervangt nooit je showbestand**.\n\n- **Wanneer:** standaard elke **15 minuten**, maar **alleen als** de show niet-opgeslagen wijzigingen heeft en er sinds de laatste back-up iets is veranderd. Niets veranderd = niets geschreven.\n- **Ook:** wanneer je afsluit zonder op te slaan, wanneer opslaan mislukte (bijvoorbeeld omdat de show vergrendeld is), en vlak voordat je een andere show opent of start terwijl deze nog niet-opgeslagen wijzigingen heeft.\n- **Hoeveel:** de nieuwste **10** per show blijven bewaard, in totaal hoogstens 100; oudere worden automatisch verwijderd.\n- **Waar:** de map `backups` in de gegevensmap (`%LOCALAPPDATA%\\OpenCue\\backups`). Een back-up is een gewoon showbestand."
+ },
+ {
+  "id": "show-safety-003",
+  "page": "show-safety",
+  "path": [
+   "Back-ups, vergrendelingen en veilig afsluiten",
+   "1. Back-ups op de achtergrond",
+   "Instellingen"
+  ],
+  "title": "Instellingen",
+  "keywords": [],
+  "text": "**Instellingen → Algemeen → Showback-ups**:\n\n| Instelling | Betekenis |\n|---|---|\n| **De show op de achtergrond back-uppen** | Schakelt de hele functie aan of uit (standaard: aan). |\n| **Elke (minuten)** | Het interval, 1 tot 240 (standaard 15). |\n| **Bewaren per show** | Hoeveel back-ups van één show worden bewaard, 1 tot 50 (standaard 10). |\n| **Back-up herstellen...** / **Map openen** | Opent de herstel-dialoog (sectie 2) of de map in Verkenner. |\n\nDe instellingen gelden voor het hele programma en kunnen vanaf elk apparaat worden gewijzigd, ook vanaf een apparaat op afstand."
+ },
+ {
+  "id": "show-safety-004",
+  "page": "show-safety",
+  "path": [
+   "Back-ups, vergrendelingen en veilig afsluiten",
+   "2. Een back-up herstellen"
+  ],
+  "title": "2. Een back-up herstellen",
+  "keywords": [],
+  "text": "**Bestand → Back-up herstellen...** (of de knop in de instellingen) toont alle back-ups, nieuwste eerst: shownaam, tijd, reden (automatisch, bij afsluiten, handmatig, vóór een herstel, opslaan mislukt) en grootte.\n\n- **Herstellen** laadt de back-up als een **niet-opgeslagen show**. Het showbestand op schijf blijft precies zoals het is, ook als het vergrendeld is. Sla daarna op met **Opslaan** (of **Showbestand opslaan als...**) als je tevreden bent.\n- De staat die je daarvoor had, wordt eerst geback-upt – ook een herstel kan dus niets kwijtmaken.\n- **Nu back-uppen** maakt direct een back-up; **Verwijderen** verwijdert er een. Alles hier werkt ook vanaf een apparaat op afstand (*Map openen* toont daar de OpenCue-verkenner).\n- Shows, lay-outs, podia en instellingen worden **veilig** weggeschreven: eerst naar een naastgelegen bestand, dan verwisseld – een crash of stroomuitval midden in het opslaan kan het bestaande bestand niet vernietigen."
+ },
+ {
+  "id": "show-safety-005",
+  "page": "show-safety",
+  "path": [
+   "Back-ups, vergrendelingen en veilig afsluiten",
+   "2. Een back-up herstellen",
+   "Na een crash"
+  ],
+  "title": "Na een crash",
+  "keywords": [],
+  "text": "Is OpenCue niet goed afgesloten (crash, stroomuitval, taak beëindigd), dan **biedt het bij de volgende start de laatste back-up van die sessie aan**: *“OpenCue is niet goed afgesloten … Herstellen?”* – **Herstellen**, **Alle back-ups tonen** of **Niet nu** (de back-ups blijven beschikbaar onder *Bestand → Back-up herstellen...*)."
+ },
+ {
+  "id": "show-safety-006",
+  "page": "show-safety",
+  "path": [
+   "Back-ups, vergrendelingen en veilig afsluiten",
+   "3. Een show vergrendelen"
+  ],
+  "title": "3. Een show vergrendelen",
+  "keywords": [],
+  "text": "Een afgeronde show kan worden **vergrendeld** zodat niemand hem per ongeluk wijzigt. Klik in het **bestandsbeheer** (*Bestand → Bestandsbeheer...*, soort *Shows*) op het **slotsymbool** in de rij van de show; klik nogmaals om te ontgrendelen.\n\nEen vergrendelde show:\n\n- is in de lijst gemarkeerd als **Vergrendeld** en toont een klein **slot** naast de shownaam in de bovenbalk zolang hij geladen is,\n- **kan niet worden overschreven, hernoemd of verwijderd** – opslaan toont *“Niet opgeslagen: … is vergrendeld”*,\n- kan nog wel worden **geladen**, **gedupliceerd** (de kopie is niet vergrendeld) en onder **een andere naam** worden opgeslagen met *Showbestand opslaan als...*.\n\nDe vergrendeling beschermt tegen vergissingen, niet tegen kopiëren: het bestand zelf kan nog met elk ander programma worden gewijzigd."
+ },
+ {
+  "id": "show-safety-007",
+  "page": "show-safety",
+  "path": [
+   "Back-ups, vergrendelingen en veilig afsluiten",
+   "4. Veilig afsluiten"
+  ],
+  "title": "4. Veilig afsluiten",
+  "keywords": [],
+  "text": "**Bestand → Afsluiten** (of de sluitknop) vraagt: **Opslaan en afsluiten**, **Afsluiten zonder opslaan** of **Annuleren**.\n\nKan de show **niet worden opgeslagen** maar heeft hij wijzigingen – hij is vergrendeld, het bestand is schrijfbeveiligd, de map is niet beschrijfbaar of het laatste opslaan mislukte – dan verandert de dialoog:\n\n- Een **oranje vak** bovenaan zegt *“Deze show kan niet worden opgeslagen”* en noemt de redenen. Het zegt ook of er een back-upkopie van je wijzigingen wordt bewaard.\n- **Als kopie opslaan en afsluiten...** vervangt *Opslaan en afsluiten*: je kiest een nieuwe naam, de show wordt daar opgeslagen, daarna sluit OpenCue af.\n- **Afsluiten zonder opslaan** vraagt **twee klikken**: de eerste maakt de knop rood (*“Klik nogmaals: afsluiten en de wijzigingen kwijtraken”*), pas de tweede sluit af.\n\nOok dan wordt bij het afsluiten een back-up van je wijzigingen geschreven (als back-ups aan staan), zodat *Bestand → Back-up herstellen...* ze nog kan terugbrengen."
+ },
+ {
+  "id": "show-safety-008",
+  "page": "show-safety",
+  "path": [
+   "Back-ups, vergrendelingen en veilig afsluiten",
+   "5. Een probleem melden"
+  ],
+  "title": "5. Een probleem melden",
+  "keywords": [],
+  "text": "- **Help → Logmap openen** opent de map met `opencue.log`.\n- **Help → Probleem melden...** kopieert de **diagnose** (versie, systeem, de laatste logregels – zonder toegangstokens of wachtwoorden) naar het klembord en opent de meldpagina van het project in je browser. Beschrijf wat je deed, plak de diagnose.\n- Fouten in de gebruikersinterface worden als **OC-3601** in het log geschreven; een back-up die niet kon worden geschreven als **OC-3701** (zie de handleiding *Foutcodes*)."
+ }
+]

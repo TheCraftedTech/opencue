@@ -1,3 +1,5 @@
+// Copyright (C) 2026 Samuel Zenker
+// SPDX-License-Identifier: GPL-3.0-or-later
 /**
  * app.js
  * WebSocket handler, module manager & i18n system of OpenCue.
@@ -17,6 +19,18 @@ const LIVE_MAX_DELAY_MS = 1000;         // ... auf langsamen Geraeten seltener (
 const STALE_CONNECTION_MS = 35000;     // keine Nachricht (auch kein Ping/Pong) -> Socket tot
 const DEFAULT_LANGUAGE = "en";
 const LANGUAGE_STORAGE_KEY = "opencue.language";
+/** Sprachen der Oberflaeche - EINE Liste (wie app/languages.py): Kuerzel, Name in der Sprache selbst, Schluessel des Namens in den Sprachdateien (static/locales/<Kuerzel>.json).
+ *  Menue Sprache, Einstellungen, Willkommens-Dialog und Umschalter (Strg+Umschalt+L) bauen sich daraus. Neue Sprache: Datei anlegen, hier und in app/languages.py eintragen. */
+const LANGUAGES = [
+  { code: "en", name: "English", key: "LANGUAGE_EN" },
+  { code: "de", name: "Deutsch", key: "LANGUAGE_DE" },
+  { code: "fr", name: "Français", key: "LANGUAGE_FR" },
+  { code: "nl", name: "Nederlands", key: "LANGUAGE_NL" },
+  { code: "it", name: "Italiano", key: "LANGUAGE_IT" },
+  { code: "es", name: "Español", key: "LANGUAGE_ES" },
+];
+window.OC_LANGUAGES = LANGUAGES;
+const _isLanguage = (code) => LANGUAGES.some((l) => l.code === code);
 const APP_VERSION = "v0.1";
 
 // ---- Unsaved-Changes-Guard --------------------------------------------------
@@ -28,6 +42,9 @@ let _pendingNavAction = null;
 // Beenden-Dialog "mit Speichern" bei noch unbenannter Show: nach dem Speichern
 // unter neuem Namen (show_saved) wird das Beenden bestaetigt.
 let _pendingCloseAfterSave = false;
+let _closeSaveInFlight = false;               // "Schliessen mit Speichern" wurde geklickt, die Antwort des Servers steht noch aus
+let _closeBlocked = false;                    // die Show laesst sich nicht speichern (gesperrt, schreibgeschuetzt ...): Beenden ohne Speichern braucht zwei Klicks
+let _closeArmTimer = null;
 
 // ---- Layout Preset System --------------------------------------------------
 // Versionsnummer dieses Standes (aus der Adresse dieses Skripts, ?v=...): haengt an den nachgeladenen Sprachdateien, damit auch sie
@@ -79,12 +96,24 @@ window.__panelPlugins = (() => {
     register(plugin) {
       if (!plugin?.type) { console.warn("[OpenCue] Panel plugin missing type:", plugin); return; }
       _reg[plugin.type] = plugin;
+      _rebuildMissingPanels(plugin.type);              // kam der erste Zustand schneller als dieses Skript, stehen Platzhalter da: jetzt richtig aufbauen
     },
     get(panelType) { return _reg[panelType] || null; },
     has(panelType) { return panelType in _reg; },
   };
 })();
 
+
+/** Panels, die gebaut wurden, bevor ihr Typ registriert war (Platzhalter mit dem Typnamen), werden mit dem jetzt vorhandenen Plugin neu aufgebaut. Ohne Platzhalter tut es nichts. */
+function _rebuildMissingPanels(type) {
+  const stale = Array.from(document.querySelectorAll('.workspace-panel[data-plugin-missing="1"]')).filter((el) => el.dataset.panelType === type);
+  if (!stale.length) return;
+  stale.forEach((el) => { _selectedPanels.delete(el.dataset.panelId); el.remove(); });
+  try {
+    const panels = client.state && client.state.panels;
+    if (panels) renderPanels(panels);
+  } catch (error) { console.warn("[OpenCue] Panels konnten nicht nachgebaut werden:", error); }
+}
 
 // ---- i18n --------------------------------------------------------------
 
@@ -98,7 +127,8 @@ class Translator {
 
   _loadStoredLanguage() {
     try {
-      return localStorage.getItem(LANGUAGE_STORAGE_KEY) || DEFAULT_LANGUAGE;
+      const stored = localStorage.getItem(LANGUAGE_STORAGE_KEY);
+      return _isLanguage(stored) ? stored : DEFAULT_LANGUAGE;
     } catch (error) {
       return DEFAULT_LANGUAGE; // localStorage unavailable (e.g. private mode)
     }
@@ -122,6 +152,7 @@ class Translator {
   }
 
   async setLanguage(language) {
+    if (!_isLanguage(language)) language = DEFAULT_LANGUAGE;
     if (language === this.language) return;
     await this._loadLanguage(language);
     this.language = language;
@@ -214,13 +245,20 @@ function _panelGone(panelEl, eventName, handler) {
     panelEl._wasConnected = true;
     return false;
   }
-  if (!panelEl._wasConnected) return false;
+  if (!panelEl._wasConnected) {
+    // Nie verbunden gesehen (das Panel verschwand, bevor das erste Ereignis kam, z. B. schneller Layoutwechsel): erst nach ein paar Sekunden als weg werten,
+    // sonst bliebe der Listener fuer immer haengen.
+    if (!panelEl._detachedSince) { panelEl._detachedSince = Date.now(); return false; }
+    if (Date.now() - panelEl._detachedSince < 3000) return false;
+  }
   document.removeEventListener(eventName, handler);
   return true;
 }
 
 /** Lesbarer Name eines Geraetetyps aus seiner Kennung: die eingebauten Geraete ("__generic_dimmer") und GDTF-Dateien ("Hersteller@Name@Revision" -> "Hersteller Name"). */
 const _BUILTIN_TYPE_NAMES = { "__generic_dimmer": "Generic Dimmer", "__generic_rgbw_par": "Generic RGBW LED Par", "__generic_moving_head": "Generic Moving Head Spot 16ch" };
+/** Reihenfolge der Schlagworte an Effekten: Stufe (Basis / Erweitert), dann Audio, dann der Rest. */
+function _fxTagRank(tag) { return tag === "basic" ? 0 : tag === "advanced" ? 1 : tag === "audio" ? 2 : 3; }
 function _fixtureTypeLabel(id) {
   const key = String(id || "");
   if (_BUILTIN_TYPE_NAMES[key]) return _BUILTIN_TYPE_NAMES[key];
@@ -295,7 +333,7 @@ function makeToggleSwitch(id, checked) {
 // CSS-Variable auf :root gesetzt; --accent-ink wird aus der Helligkeit des wirksamen Akzents berechnet.
 const THEME_TOKENS = ["bg", "toolbar-bg", "menu-bg", "panel-bg", "panel-border", "panel-header-bg",
   "surface-1", "surface-2", "surface-3", "border", "border-strong", "text-1", "text-2", "text-3",
-  "accent", "ok", "warn", "error", "live"];
+  "accent", "ok", "warn", "error", "live", "modified"];
 const THEME_DEFAULT_RADIUS = 0;   // Standard: eckig (siehe state_manager.DEFAULT_RADIUS)
 const THEME_MAX_RADIUS = 16;
 const THEME_CACHE_KEY = "opencue.theme";
@@ -543,6 +581,8 @@ class OpenCueClient {
   _showConnectionBanner(show) {
     let overlay = document.getElementById("connection-overlay");
     if (!show) {
+      clearTimeout(this._changeTimer);
+      clearInterval(this._autoOfflineTimer);
       if (overlay) overlay.hidden = true;
       return;
     }
@@ -552,11 +592,45 @@ class OpenCueClient {
       overlay.className = "connection-overlay";
       overlay.setAttribute("role", "status");
       overlay.setAttribute("aria-live", "polite");
+      overlay.hidden = true;                           // erst unten sichtbar machen (die Zeitgeber starten nur beim Wechsel von unsichtbar zu sichtbar)
       overlay.innerHTML = '<div class="connection-overlay__box"><div class="connection-overlay__spinner"></div>' +
-                          '<div class="connection-overlay__text"></div></div>';
+                          '<div class="connection-overlay__text"></div></div>' +
+                          '<button type="button" class="connection-overlay__change" hidden></button>';
       document.body.appendChild(overlay);
+      // Fernzugriffs-Geraet mit Service Worker (sichere Seite): nach einer Weile "Anderen Server waehlen" - die Offline-Seite (aus dem Zwischenspeicher) fragt Adresse, Port und HTTPS ab
+      const change = overlay.querySelector(".connection-overlay__change");
+      // Klick UND Tippen (touchend): auf dem iPad zuverlaessig - der Zaehler im Knopf aendert sich laufend, und iOS verliert dabei manchmal das "click"; ein Doppelausloesen wird verhindert
+      let going = false;
+      const go = (event) => {
+        if (event) event.preventDefault();
+        if (going) return;
+        going = true;
+        window.location.href = "/remote/offline.html?change=1";
+      };
+      change.addEventListener("click", go);
+      change.addEventListener("touchend", go);
     }
     overlay.querySelector(".connection-overlay__text").textContent = i18n("CONNECTION_RESTORING");
+    const change = overlay.querySelector(".connection-overlay__change");
+    if (!overlay.hidden) return;                       // schon sichtbar (jeder fehlgeschlagene Verbindungsversuch ruft das auf): Zeitgeber und Knopf bleiben unangetastet
+    change.textContent = i18n("CONNECTION_CHANGE");
+    change.hidden = true;
+    clearTimeout(this._changeTimer);
+    clearInterval(this._autoOfflineTimer);
+    if (window.location.pathname.indexOf("/remote/") === 0 && "serviceWorker" in navigator && navigator.serviceWorker.controller) {
+      // Nach 3 s erscheint der Knopf "Anderen Server waehlen (7)" mit Countdown; bei 0 oeffnet sich die Offline-Seite von selbst (sie geht von allein zurueck, sobald der Server antwortet)
+      const label = i18n("CONNECTION_CHANGE").replace(/\s*…$/, "");
+      const started = Date.now();
+      this._changeTimer = setTimeout(() => { change.hidden = false; }, 3000);
+      this._autoOfflineTimer = setInterval(() => {
+        const left = Math.max(0, 10 - Math.floor((Date.now() - started) / 1000));
+        const text = label + " (" + left + "s)";
+        const node = change.firstChild;
+        if (node && node.nodeType === 3) { if (node.nodeValue !== text) node.nodeValue = text; }   // dieselbe Text-Marke aendern (nur bei Aenderung): wird sie waehrend des Tippens ersetzt, verliert iOS den Klick
+        else change.textContent = text;
+        if (left <= 0) { clearInterval(this._autoOfflineTimer); window.location.href = "/remote/offline.html"; }
+      }, 250);
+    }
     overlay.hidden = false;
   }
 
@@ -618,6 +692,24 @@ class OpenCueClient {
     }
     if (this._coalesceLive(message)) return;
     this._dispatch(message);
+    if (message.type === "state_snapshot" && window.OCLock) window.OCLock.sync();                       // Sichermodus: Schloss-Knopf / Sperrbildschirm
+    if ((message.type === "state_snapshot" || message.type === "remote_changed") && window.OCKiosk) window.OCKiosk.sync();      // Bedienmodus: Klasse, Sperren, Knoepfe
+    if (message.type === "state_snapshot" && !this._readyReported) {
+      this._reportReady();
+      setTimeout(() => { _refreshShowfileStatus(); if (window.OCBackups) window.OCBackups.onReady(); }, 2500);
+      setTimeout(() => { if (window.OCWelcome) window.OCWelcome.onReady(); }, 900);          // Willkommen (frische Installation) bzw. "Was ist neu?" nach einem Update          // Schloss-Symbol; Angebot "Sicherung wiederherstellen" nach einem Absturz
+    }
+  }
+
+  /** Meldet dem Programm (nur im lokalen Fenster), dass die Oberflaeche steht: Startbild schliessen, Fenster zeigen (main.py). */
+  _reportReady() {
+    this._readyReported = true;
+    if (document.documentElement.classList.contains("is-remote")) return;
+    // Das Fenster ist dabei noch verborgen: dort laufen keine Animations-Frames und Schriften werden nicht angefordert, nur Timer. Deshalb eine
+    // kurze Beruhigungszeit, in der die Panels ihre erste Messung abschliessen; der Rest entsteht in den Millisekunden nach dem Einblenden.
+    setTimeout(() => {
+      fetch("/api/ui-ready", { method: "POST", keepalive: true }).catch(() => {});
+    }, 600);
   }
 
   // ---- Live-Daten zusammenfassen -------------------------------------------------
@@ -691,6 +783,18 @@ class OpenCueClient {
   }
 
   _dispatch(message) {
+    if (message.type === "cuelist_progress") {
+      // Wiedergabezustand je Liste (laeuft / pausiert / gestoppt / fertig) - Signal "Cue-Liste laeuft" der Button/Fader/Toggle-Panels
+      const pb = message.payload || {};
+      (window.__cuePlayback || (window.__cuePlayback = {}))[pb.cuelist_id] = pb.state;
+      document.dispatchEvent(new CustomEvent("cue-state-changed"));
+    } else if (message.type === "cuelists_changed" || message.type === "state_snapshot") {
+      if (message.type === "state_snapshot" && message.payload && message.payload.cue_playback) {
+        const map = window.__cuePlayback || (window.__cuePlayback = {});
+        Object.values(message.payload.cue_playback).forEach((pb) => { if (pb && pb.cuelist_id) map[pb.cuelist_id] = pb.state; });
+      }
+      document.dispatchEvent(new CustomEvent("cue-state-changed"));
+    }
     switch (message.type) {
       case "ping":
         this.send("pong");
@@ -699,6 +803,11 @@ class OpenCueClient {
         break;   // Antwort auf unseren Heartbeat (Zeitstempel ist oben schon gesetzt)
       case "command_value_updated":
         if (window.__applyCommandUpdate) window.__applyCommandUpdate(message.payload);
+        break;
+      case "sim_cam":
+      case "sim_cam_state":
+      case "sim_cam_groups":
+        if (window.OCSimCam) window.OCSimCam.onMessage(message.type, message.payload || {});         // Kamera-Gruppen der 3D-Simulation (sim3d_boot.js)
         break;
       case "command_values_state":
         // Stand aller befehlsbasierten Fader - nach (Re-)Connect/request_full_state
@@ -711,10 +820,47 @@ class OpenCueClient {
         // wiederhergestellte Live-Zustand folgen unmittelbar.
         if (window.ProgrammerState) window.ProgrammerState.reset();
         window.__fixturesLive = {};
+        _refreshShowfileStatus();
         break;
       case "blackout_changed":
         window.__blackout = !!message.payload.enabled;
         if (window.__syncBlackout) window.__syncBlackout();
+        break;
+      case "hotkey_fire":
+      case "rawkeys_status":
+      case "rawkeys_live":
+      case "rawkeys_recorded":
+        document.dispatchEvent(new CustomEvent("oc-hotkey-event", { detail: message }));        // Tasten einzelner Tastaturen (static/js/hotkeys.js, app/rawkeys.py)
+        break;
+      case "schedule_changed":
+        window.__schedule = (message.payload && message.payload.schedule) || [];
+        if (message.payload && message.payload.is_dirty) _setDirty(true);
+        document.dispatchEvent(new CustomEvent("schedule-changed"));
+        break;
+      case "schedule_fired":
+        document.dispatchEvent(new CustomEvent("schedule-fired", { detail: message.payload || {} }));
+        break;
+      case "open_show_request":
+        document.dispatchEvent(new CustomEvent("open-show-request", { detail: message.payload || {} }));          // Show-Datei von aussen (Doppelklick auf .ocshow; static/js/recent_shows.js)
+        break;
+      case "shortcuts_changed":
+        window.__shortcuts = (message.payload && message.payload.overrides) || {};          // umbelegte eingebaute Tastenkuerzel (static/js/shortcuts.js)
+        document.dispatchEvent(new CustomEvent("shortcuts-changed"));
+        break;
+      case "hotkeys_changed":
+        window.__hotkeys = Array.isArray(message.payload.hotkeys) ? message.payload.hotkeys : [];          // eigene Tastaturbelegung (static/js/hotkeys.js)
+        document.dispatchEvent(new CustomEvent("hotkeys-changed"));
+        break;
+      case "midi_changed":
+        window.__midi = message.payload.midi || { enabled: true, output: "", ignore: [], clock: false, mtc: false, bindings: [] };          // MIDI-Belegung (static/js/midi.js)
+        document.dispatchEvent(new CustomEvent("midi-changed"));
+        break;
+      case "midi_status":
+      case "midi_monitor":
+      case "midi_learned":
+      case "midi_fire":
+      case "midi_blocked":
+        document.dispatchEvent(new CustomEvent("oc-midi-event", { detail: message }));              // Anschluesse, Monitor, Einlernen (nur an der Konsole; app/midi_engine.py)
         break;
       case "cmd_suggestions_changed":
         window.__cmdSuggestions = !!message.payload.enabled;
@@ -723,6 +869,7 @@ class OpenCueClient {
       case "grand_master_changed":
         window.__grandMaster = message.payload.value;
         if (window.__mirrorGrandMaster) window.__mirrorGrandMaster();
+        document.dispatchEvent(new CustomEvent("grand-master-changed"));
         this._dispatchToPanelPlugins(message);
         break;
       case "sim_stage_changed":
@@ -732,18 +879,29 @@ class OpenCueClient {
         break;
       case "state_snapshot":
         document.dispatchEvent(new Event("sim-stage-resync"));          // nach (Wieder-)Verbindung: aktive Buehne neu holen
+        if (window.OCSimCam) window.OCSimCam.onConnected();             // Kamera-Gruppe (neu) beim Server anmelden
         this.state = message.payload;
         _setDirty(!!message.payload.is_dirty);
         _onShowfilesChanged();
         this._applyFullState(message.payload);
+        if (window.ProgrammerState) window.ProgrammerState.setCueChanges((message.payload.cue_changes || {}).fixtures || {});
         _applyRemoteSnapshot(message.payload);
         this._showConnectionBanner(false);   // Resync fertig
         _restoreDeviceLayout(message.payload);
         if (message.payload.grand_master != null) window.__grandMaster = message.payload.grand_master;
+        document.dispatchEvent(new CustomEvent("grand-master-changed"));
         window.__blackout = !!message.payload.blackout;
         if (window.__syncBlackout) window.__syncBlackout();
         if (message.payload.cmd_suggestions != null) window.__cmdSuggestions = !!message.payload.cmd_suggestions;      // Schalter "Vorschlaege" der Befehlszeile
         if (window.__syncCmdSuggestions) window.__syncCmdSuggestions();
+        window.__hotkeys = Array.isArray(message.payload.hotkeys) ? message.payload.hotkeys : [];
+        window.__shortcuts = message.payload.shortcut_overrides || {};
+        document.dispatchEvent(new CustomEvent("shortcuts-changed"));
+        window.__schedule = message.payload.schedule || [];                                  // Zeitplan der Show (static/js/schedule.js)
+        document.dispatchEvent(new CustomEvent("schedule-changed"));
+        document.dispatchEvent(new CustomEvent("hotkeys-changed"));
+        window.__midi = message.payload.midi || { enabled: true, output: "", ignore: [], clock: false, mtc: false, bindings: [] };
+        document.dispatchEvent(new CustomEvent("midi-changed"));
         if (window.__syncCommandPanels) window.__syncCommandPanels();
         if (window.__mirrorGrandMaster) window.__mirrorGrandMaster();
         // Port-Liste sofort befüllen – unabhängig vom Enable-Status
@@ -802,6 +960,18 @@ class OpenCueClient {
         break;
       case "kicked":
         break;   // der Close-Code 4402 folgt unmittelbar
+      case "kiosk_changed":
+        if (this.state) this.state.kiosk = !!(message.payload && message.payload.active);
+        if (window.OCKiosk) window.OCKiosk.sync();
+        break;
+      case "keep_awake_changed":
+        if (this.state) this.state.keep_awake = !!(message.payload && message.payload.keep_awake);
+        if (this.state && this.state.is_local === false) WakeLockKeeper.set(this.state.keep_awake !== false);
+        break;
+      case "lock_changed":
+        if (this.state) this.state.lock = message.payload;
+        if (window.OCLock) window.OCLock.sync();
+        break;
       case "remote_changed":
         if (this.state) this.state.remote = message.payload;
         _updateRemoteIndicator(_remoteCount, !!message.payload.enabled);
@@ -838,6 +1008,10 @@ class OpenCueClient {
       case "enttec_universe_changed":
         if (this.state) this.state.enttec_universe = message.payload.universe;
         updateSettingsFieldsInAllPanels("enttec_universe", message.payload.universe);
+        break;
+      case "artnet_nodes_changed":
+        if (this.state) { this.state.artnet_nodes = message.payload.nodes || []; this.state.artnet_status = message.payload.status || null; }
+        if (document.getElementById("settings-artnet-nodes")) _renderArtnetNodes(message.payload.nodes || [], !!(this.state && this.state.artnet_ip === "auto"));
         break;
       case "enttec_status_changed": {
         const _prevConnected = !!(this.state && this.state.enttec_status && this.state.enttec_status.connected);
@@ -876,6 +1050,9 @@ class OpenCueClient {
       case "panel_defaults_changed":
         if (this.state) this.state.panel_defaults = message.payload.panel_defaults;
         break;
+      case "console_defaults_changed":                          // Einstellungen -> Standardwerte (neue Cues, Clear Clear)
+        if (this.state) this.state.console_defaults = message.payload;
+        break;
       case "settings_reset":
         if (this.state) Object.assign(this.state, message.payload);
         applySettingsResetToUI(message.payload);
@@ -890,18 +1067,11 @@ class OpenCueClient {
         if (window.__syncCommandPanels) window.__syncCommandPanels();
         if (window.__mirrorGrandMaster) window.__mirrorGrandMaster();
         break;
-//3D-AUS//       case "stage_changed":
-//3D-AUS//         // 3D-Buehne (app/stage3d.py): der Server sendet nach jeder Aenderung die ganze Buehne (klein) an alle Geraete
-//3D-AUS//         if (this.state) {
-//3D-AUS//           Object.assign(this.state, { room: message.payload.room, rig: message.payload.rig, room_library: message.payload.room_library, rig_library: message.payload.rig_library });
-//3D-AUS//         }
-//3D-AUS//         _setDirty(message.payload.is_dirty !== false);
-//3D-AUS//         document.dispatchEvent(new CustomEvent("stage-changed", { detail: message.payload }));
-//3D-AUS//         this._dispatchToPanelPlugins(message);
-//3D-AUS//         break;
-//3D-AUS//       case "stage_error":
-//3D-AUS//         _showToast(i18n("ST3D_ERR_" + String((message.payload && message.payload.error) || "invalid_op").toUpperCase()), "error", 4000);
-//3D-AUS//         break;
+      case "fixture_layout_changed":
+        if (this.state) this.state.fixture_layout = message.payload.fixture_layout;
+        _setDirty(message.payload.is_dirty !== false);
+        this._dispatchToPanelPlugins(message);
+        break;
       case "fixtures_changed":
         if (this.state) this.state.fixtures = message.payload.fixtures;
         _setDirty(message.payload.is_dirty !== false); // default dirty=true
@@ -943,6 +1113,10 @@ class OpenCueClient {
         if (window.ProgrammerState) window.ProgrammerState.syncFromEngine(message.payload.values || {});
         document.dispatchEvent(new CustomEvent("programmer-live-values", { detail: message.payload.values || {} }));
         this._dispatchToPanelPlugins(message);
+        break;
+      case "cue_changes":
+        // geaendert gegenueber dem aktiven Cue (Server rechnet; Anzeige, siehe ProgrammerState.setCueChanges)
+        if (window.ProgrammerState) window.ProgrammerState.setCueChanges((message.payload || {}).fixtures || {});
         break;
       case "fixtures_live": {
         // DMX-Puffer ist die Wahrheit: Scheinwerfersteuerung (Kacheln, Fader, Farbe, Position) folgt live
@@ -1011,14 +1185,38 @@ class OpenCueClient {
       case "cue_store_result":
         if (window.__cueUi) window.__cueUi.onResult(message.payload);
         break;
+      case "undo_playback_changed":
+        if (this.state) this.state.undo_playback = !!(message.payload && message.payload.undo_playback);
+        ocUndoSync();
+        break;
+      case "show_undo_state":
+        window.__showUndoInfo = message.payload || null;
+        ocUndoSync();
+        break;
+      case "show_undo_done":
+        ocUndoDone(message.payload || {});
+        break;
       case "showfile_status_changed":
         _refreshShowfileStatus(true);
         break;
       case "close_requested":
         _pendingCloseAfterSave = false;
-        Modal.open("close-confirm");
-        setTimeout(() => document.getElementById("close-save-button")?.focus(), 50);
+        _closeSaveInFlight = false;
+        _openCloseDialog();
         break;
+      case "show_save_failed": {
+        // Speichern gescheitert (gesperrt, schreibgeschuetzt, Platte voll ...): sichtbar melden; lief es aus dem Beenden-Dialog, kommt er mit der Warnung wieder.
+        const p = message.payload || {};
+        _pendingNavAction = null;
+        _showToast(i18n(p.reason === "locked" ? "SHOW_SAVE_LOCKED" : "SHOW_SAVE_FAILED").replace("{name}", p.name || "").replace("{error}", p.message || ""), "error", 7000);
+        _refreshShowfileStatus();
+        if (_closeSaveInFlight || _pendingCloseAfterSave) {
+          _closeSaveInFlight = false;
+          _pendingCloseAfterSave = false;
+          _openCloseDialog();
+        }
+        break;
+      }
       case "fx_changed":
         _setDirty(message.payload.is_dirty !== false);
         document.dispatchEvent(new CustomEvent("fx-data-updated", { detail: message.payload }));
@@ -1034,6 +1232,7 @@ class OpenCueClient {
         const savedAction = _pendingNavAction;
         _pendingNavAction = null;
         if (savedAction) savedAction();
+        _closeSaveInFlight = false;
         if (_pendingCloseAfterSave) {
           _pendingCloseAfterSave = false;
           client.send("close_decision", { choice: "save" });
@@ -1045,6 +1244,14 @@ class OpenCueClient {
           _showToast(i18n("CUELIST_DUPE_NAME").replace("{name}", message.payload.name || ""), "warn");
         } else if (message.payload?.code === "FX_DUPE") {
           _showToast(i18n("FXE_DUPE_NAME").replace("{name}", message.payload.name || ""), "warn");
+        } else if (message.payload?.code === "PATCH_TRUNCATED") {
+          const e = message.payload;
+          _showToast(i18n("PATCH_TRUNCATED_TOAST").replace("{n}", String(e.created)).replace("{wanted}", String(e.wanted)).replace("{u}", String(e.universe)).replace("{start}", String(e.start)), "warn", 6000);
+        } else if (message.payload?.code === "PATCH_SPILLED") {
+          const e = message.payload;
+          _showToast(i18n("PATCH_SPILLED_TOAST").replace("{count}", String(e.count)).replace("{from}", String(e.from)).replace("{to}", String(e.to)), "info", 5000);
+        } else if (message.payload?.code === "PATCH_OUT_OF_RANGE") {
+          _showToast(i18n("PATCH_OUT_OF_RANGE_TOAST").replace("{ch}", String(message.payload.channels)).replace("{start}", String(message.payload.start)), "warn", 6000);
         } else if (message.payload?.code === "PRESET_DUPE") {
           _showToast(
             i18n("PRESET_DUPE_NAME").replace("{name}", message.payload.name || ""),
@@ -1073,7 +1280,7 @@ class OpenCueClient {
     }
   }
 
-  // ---- Module registration (Phase 2+: Fixture View, Executors, ...) -----
+  // ---- Module registration (Fixture View, Executors, ...) -----
   registerModule(name, moduleInstance) {
     this.modules.set(name, moduleInstance);
     if (typeof moduleInstance.onMessage === "function" && this.state) {
@@ -1242,10 +1449,15 @@ function setupMenuBar() {
     editModeItem.addEventListener("click", () => toggleEditModeInteractive());
   }
 
-  // Edit -> Undo / Redo: dasselbe wie Strg+Z / Strg+Y (ohne Tastatur, z.B. am iPad).
-  // Wie die Kuerzel nur im Bearbeitungsmodus wirksam (Panel-Anordnung); ausserhalb passiert nichts.
-  document.querySelector('[data-action="undo"]')?.addEventListener("click", () => { if (isEditMode) client.send("undo"); });
-  document.querySelector('[data-action="redo"]')?.addEventListener("click", () => { if (isEditMode) client.send("redo"); });
+  document.getElementById("toolbar-undo-go")?.addEventListener("click", () => {
+    client.send("set_undo_playback", { enabled: !(client.state && client.state.undo_playback) });
+  });
+  ocUndoSync();
+
+  // Edit -> Undo / Redo: dasselbe wie Strg+Z / Strg+Y (ohne Tastatur, z.B. am iPad). Im Bearbeitungsmodus gilt es fuer die Panel-Anordnung,
+  // sonst fuer den Inhalt der Show (Cues, Variablen, Gruppen, Auswahl) - siehe ocUndoRun().
+  document.querySelector('[data-action="undo"]')?.addEventListener("click", () => ocUndoRun("undo"));
+  document.querySelector('[data-action="redo"]')?.addEventListener("click", () => ocUndoRun("redo"));
 
   // Language menu: switch translation set locally (instant) and persist it
   // server-side (app_config.json), which also syncs any other open client.
@@ -1305,21 +1517,47 @@ new MutationObserver((records) => {
 }).observe(document.documentElement, { childList: true, subtree: true });
 
 const Modal = {
+  AUTO_DELETE: { "cue-delete-confirm": ["cues", "cue-delete-confirm-button"], "preset-delete-confirm": ["library", "preset-delete-confirm-button"], "preset-group-delete-confirm": ["library", "preset-group-delete-confirm-button"] },
   _stack: [],
   _hooks: {},   // id -> Funktion, die einmalig beim Schliessen (X, Abbrechen, Escape) laeuft
+  // Formular-Dialoge: haben die Nutzerin / der Nutzer etwas getippt oder umgestellt, fragen Abbrechen, X und Escape vor dem Schliessen nach (Einstellung "Rueckfragen": Kategorie "other").
+  DIRTY_GUARD: new Set(["cue-edit", "preset-edit", "fx-edit", "stream-source", "sim-json", "cue-store", "cue-copy", "fx-import", "midi-template", "hotkey-device"]),
+  _dirty: {},
+  _asking: false,
+  async requestClose(id) {
+    if (this.DIRTY_GUARD.has(id) && this._dirty[id] && this.isOpen(id) && !this._asking) {
+      this._asking = true;
+      let ok = true;
+      try {
+        ok = await _askDelete("other", { title: i18n("DISCARD_TITLE"), body: i18n("DISCARD_BODY"), confirmKey: "DISCARD_CONFIRM", cancelKey: "LAYOUT_EXIT_CONTINUE" });
+      } finally { this._asking = false; }
+      if (!ok) return;
+    }
+    this.close(id);
+  },
+  _guards: {},  // id -> Funktion, die statt des Schliessens laeuft (z. B. "Aenderungen verwerfen?"); wer wirklich schliessen will, ruft Modal.close(id, true)
   open(id) {
+    const auto = Modal.AUTO_DELETE[id];                                        // Loesch-Dialoge mit eigenem Knopf: ohne Sicherheitsfrage fuehrt der Knopf die Aktion sofort aus
+    if (auto && !_confirmWanted(auto[0])) {
+      const button = document.getElementById(auto[1]);
+      if (button) { button.click(); return; }
+    }
     const backdrop = document.querySelector(`[data-modal-backdrop="${id}"]`);
     if (backdrop) {
       backdrop.classList.add("modal-backdrop--visible");
       if (!this._stack.includes(id)) this._stack.push(id);
+      this._dirty[id] = false;                                                  // frisch geoeffnet: noch nichts geaendert
       // Der zuletzt geoeffnete Dialog liegt immer ganz vorne (ueber jedem schon offenen, auch ueber dynamisch erzeugten Dialogen
       // und Menues) - sonst kann z.B. "Programm beenden" hinter einem grossen Dialog verschwinden.
-      backdrop.style.zIndex = String(MODAL_Z_BASE + this._stack.indexOf(id));
+      const aboveDynamic = document.querySelector(".fx-panel-modal-backdrop, .fx-library-backdrop") ? 100270 : 0;       // ein fester Dialog, der aus einem dynamischen heraus aufgeht (z. B. "Verwerfen?"), liegt davor
+      backdrop.style.zIndex = String(Math.max(MODAL_Z_BASE, aboveDynamic) + this._stack.indexOf(id));
       translator.apply();
       backdrop.querySelectorAll('input[type="range"]').forEach(window.ocRangeFill);
     }
   },
-  close(id) {
+  close(id, force) {
+    const guard = this._guards[id];
+    if (guard && !force && this.isOpen(id)) { guard(); return; }
     const backdrop = document.querySelector(`[data-modal-backdrop="${id}"]`);
     if (backdrop) { backdrop.classList.remove("modal-backdrop--visible"); backdrop.style.zIndex = ""; }
     const idx = this._stack.lastIndexOf(id);
@@ -1346,19 +1584,41 @@ document.addEventListener("click", (e) => {
   const btn = e.target.closest("[data-modal-cancel],[data-modal-close]");
   if (!btn) return;
   const id = btn.dataset.modalCancel || btn.dataset.modalClose;
-  if (id) Modal.close(id);
+  if (id) Modal.requestClose(id);
 });
+// Eingaben der Nutzerin / des Nutzers in einem Dialog merken (nur echte Eingaben: per Programm gesetzte Werte loesen kein Ereignis aus)
+["input", "change"].forEach((type) => document.addEventListener(type, (e) => {
+  if (!e.isTrusted) return;
+  const backdrop = e.target && e.target.closest && e.target.closest("[data-modal-backdrop]");
+  if (backdrop) Modal._dirty[backdrop.dataset.modalBackdrop] = true;
+}, true));
 
-// ---- Escape-Key: schliesst das oberste aktive Modal ----------------------
+// ---- Escape-Key: schliesst den obersten Dialog - EINE Stelle fuer alle Dialoge ----------------------
+// Ein Tastendruck schliesst genau EINEN Dialog (den obersten); darunterliegende bleiben. Dialoge mit eigenem Abbruch (Vorschau zuruecknehmen, bei Aenderungen nachfragen)
+// melden ihn mit Modal._escape[id] = function an; alle anderen werden einfach geschlossen. Ein Feld, das Escape selbst braucht (Bearbeiten abbrechen), ruft preventDefault.
+Modal._escape = {};
+function _escapeTopDialog(e) {
+  const top = Modal._stack[Modal._stack.length - 1];
+  if (top) {
+    e.preventDefault();
+    const own = Modal._escape[top];
+    if (own) own(); else Modal.requestClose(top);
+    return true;
+  }
+  const dynamicBackdrop = [...document.querySelectorAll(".fx-panel-modal-backdrop, .fx-library-backdrop")].filter((el) => el.isConnected).pop();   // dynamisch erzeugte Dialoge
+  if (dynamicBackdrop) { if (dynamicBackdrop._requestClose) dynamicBackdrop._requestClose(); else dynamicBackdrop.remove(); e.preventDefault(); return true; }
+  return false;
+}
+// Fangphase: Steht der Fokus AUSSERHALB der Dialoge (Befehlszeile, ein Panel ...) und ein Feld dort verschluckt Escape, soll der offene Dialog trotzdem schliessen.
+// (Waehrend eine Taste aufgenommen wird - Tastenbelegung - gehoert Escape der Aufnahme.)
 document.addEventListener("keydown", (e) => {
-  if (e.key !== "Escape") return;
-  // Zuerst HTML-gesteuerte Modals (via Modal-Stack)
-  if (Modal.closeTop()) { e.preventDefault(); return; }
-  // Dann dynamisch erzeugte Backdrops (Fixtures-Modals, Library)
-  const dynamicBackdrop = [...document.querySelectorAll(
-    ".fx-panel-modal-backdrop, .fx-library-backdrop"
-  )].filter(el => el.isConnected).pop();
-  if (dynamicBackdrop) { dynamicBackdrop.remove(); e.preventDefault(); }
+  if (e.key !== "Escape" || e.defaultPrevented || document.documentElement.dataset.keyCapture) return;
+  if (e.target && e.target.closest && e.target.closest(".modal-backdrop, .fx-panel-modal-backdrop, .fx-library-backdrop")) return;
+  if (_escapeTopDialog(e)) e.stopImmediatePropagation();
+}, true);
+document.addEventListener("keydown", (e) => {
+  if (e.key !== "Escape" || e.defaultPrevented) return;
+  _escapeTopDialog(e);
 });
 
 // ---- GUI Scale modal (View -> GUI Scale...) -------------------------------
@@ -1418,14 +1678,43 @@ function setupGuiScaleModal() {
   // Cancel / "x" close / Escape: discard the live preview and revert.
   cancelButton.addEventListener("click", cancelAndClose);
   closeButton.addEventListener("click", cancelAndClose);
-  document.addEventListener("keydown", (event) => {
-    if (event.key === "Escape" && Modal.isOpen("gui-scale")) cancelAndClose();
-  });
+  Modal._escape["gui-scale"] = cancelAndClose;                              // Escape nimmt die Vorschau zurueck
 }
 
 // ---- Edit Mode -------------------------------------------------------------
 
 let isEditMode = false;
+
+// ── Globales Rueckgaengig / Wiederholen ──────────────────────────────────────────────────────────────────────────────
+// Im Bearbeitungsmodus der Panels gilt Strg+Z fuer die Panel-Anordnung (wie bisher), sonst fuer den Inhalt der Show: Cues, Variablen, Gruppen und die
+// Auswahl der Scheinwerfer (Server: app/show_undo.py). Der Server meldet, ob es etwas zu tun gibt (show_undo_state) und was getan wurde (show_undo_done).
+function ocUndoRun(direction) {
+  if (typeof Modal !== "undefined" && Modal._stack && Modal._stack.length) return;           // in einem Dialog gilt es nicht
+  if (isEditMode) { client.send(direction); return; }
+  client.send(direction === "undo" ? "show_undo" : "show_redo");
+}
+
+function ocUndoSync() {
+  const btn = document.getElementById("toolbar-undo-go");
+  if (btn) {
+    const on = !!(client.state && client.state.undo_playback);
+    btn.classList.toggle("menubar__undogo--on", on);
+    btn.setAttribute("aria-pressed", on ? "true" : "false");
+    btn.title = i18n(on ? "UNDOGO_ON" : "UNDOGO_TIP");
+  }
+  document.dispatchEvent(new Event("oc-quick-sync"));                  // Schnellschalter in den Einstellungen nachfuehren
+  const info = window.__showUndoInfo || { can_undo: true, can_redo: true };
+  document.querySelectorAll('[data-action="undo"]').forEach((item) => item.classList.toggle("menu__item--disabled", !isEditMode && !info.can_undo));
+  document.querySelectorAll('[data-action="redo"]').forEach((item) => item.classList.toggle("menu__item--disabled", !isEditMode && !info.can_redo));
+}
+
+function ocUndoDone(p) {
+  const redo = p.direction === "redo";
+  if (!p.ok) { _showToast(i18n(redo ? "REDO_NOTHING" : "UNDO_NOTHING"), "info", 1800); return; }
+  const what = i18n("UNDO_LABEL_" + (p.label || "change"));
+  _showToast(i18n(redo ? "REDO_DONE" : "UNDO_DONE").replace("{what}", what), "info", 2200);
+}
+window.ocUndoRun = ocUndoRun;
 
 function setEditMode(value) {
   isEditMode = value;
@@ -1433,7 +1722,7 @@ function setEditMode(value) {
   // Kein stilles Speichern beim Verlassen: toggleEditModeInteractive() fragt bei ungespeicherten Aenderungen nach.
   const viewport = document.getElementById("viewport");
   if (viewport) viewport.classList.toggle("edit-mode", isEditMode);
-  document.querySelectorAll('[data-action="undo"], [data-action="redo"]').forEach((item) => item.classList.toggle("menu__item--disabled", !isEditMode));      // Undo/Redo gelten nur im Bearbeitungsmodus
+  ocUndoSync();                                       // Undo/Redo: im Bearbeitungsmodus Panel-Anordnung, sonst Show-Inhalt
 
   const editModeItem = document.querySelector('[data-action="toggle-edit-mode"]');
   if (editModeItem) {
@@ -1467,17 +1756,30 @@ function clamp(value, min, max) {
 
 // ---- Workspace panels (dynamic module system) ------------------------------
 
-const MIN_PANEL_WIDTH_PERCENT = 12;
-const MIN_PANEL_HEIGHT_PERCENT = 10;
+// Mindestgroesse im Panel-Editor (Prozent der Arbeitsflaeche). Bewusst klein: auf einem grossen Monitor (4K/8K) sollen alle Panels winzig werden koennen;
+// was dann nicht mehr hineinpasst, rollt im Panel (Mindestgroessen des INHALTS je Panel-Typ: modern.css, Abschnitt "Mindestgroesse des Inhalts").
+// Der Panel-Zoom zaehlt mit: bei 0,5 darf das Panel noch einmal halb so klein werden. Ohne Titelleiste geht es noch kleiner.
+const MIN_PANEL_WIDTH_PERCENT = 3;
+const MIN_PANEL_HEIGHT_PERCENT = 3.5;
 const MIN_COMPACT_WIDTH_PERCENT = 1;
 const MIN_COMPACT_HEIGHT_PERCENT = 1;
-const COMPACT_PANEL_TYPES = new Set(["button", "fader", "executor"]);
+const COMPACT_PANEL_TYPES = new Set(["button", "fader", "toggle", "executor"]);
+const PANEL_MIN_SIZE_BY_TYPE = {                           // Abweichungen vom Standard (w, h in Prozent)
+  command_line: { w: 4, h: 3.5 },                          // eine Zeile: Breite zaehlt, Hoehe nur die Titelleiste + Eingabe
+  media_player: { w: 3, h: 3 },
+  stream: { w: 3, h: 3 },
+};
 
 function getPanelMinSize(panelEl) {
   const type = panelEl ? panelEl.dataset.panelType : "";
-  return COMPACT_PANEL_TYPES.has(type)
+  const compact = COMPACT_PANEL_TYPES.has(type);
+  const base = compact
     ? { w: MIN_COMPACT_WIDTH_PERCENT, h: MIN_COMPACT_HEIGHT_PERCENT }
-    : { w: MIN_PANEL_WIDTH_PERCENT, h: MIN_PANEL_HEIGHT_PERCENT };
+    : (PANEL_MIN_SIZE_BY_TYPE[type] || { w: MIN_PANEL_WIDTH_PERCENT, h: MIN_PANEL_HEIGHT_PERCENT });
+  const zoom = clamp(parseFloat(panelEl && panelEl.dataset.panelScale) || 1, 0.5, 1);       // ueber 1 nicht groesser: das Panel soll klein bleiben koennen
+  const noHeader = panelEl && panelEl.dataset.showHeader === "false";
+  const floor = compact ? 0.5 : 1;
+  return { w: Math.max(floor, base.w * zoom), h: Math.max(floor, base.h * (noHeader ? 0.55 : 1) * zoom) };
 }
 
 const PANEL_TITLE_KEYS = {
@@ -1494,9 +1796,10 @@ const PANEL_TITLE_KEYS = {
   fx_studio: "PANEL_FX_STUDIO",
   button: "PANEL_BUTTON",
   fader: "PANEL_FADER",
+  toggle: "PANEL_TOGGLE",
   stream: "PANEL_STREAM",
+  simple: "PANEL_SIMPLE",
   sim3d: "PANEL_SIM3D",
-//3D-AUS//   stage3d: "PANEL_STAGE3D",
 };
 
 /** Reconciles the workspace with the server's panel list - no
@@ -1680,6 +1983,7 @@ function buildPanelElement(panel) {
   const content = document.createElement("div");
   content.className = "panel__content";
   content.appendChild(buildPanelContent(panel));
+  if (!window.__panelPlugins.has(panel.type)) el.dataset.pluginMissing = "1";       // Platzhalter: wird nachgebaut, sobald der Typ registriert ist (_rebuildMissingPanels)
   el.appendChild(content);
 
   ["nw", "ne", "sw", "se"].forEach((corner) => {
@@ -1778,7 +2082,6 @@ function buildPanelContent(panel) {
   const isDragSurface = (target) => {
     for (let node = target; node && node.nodeType === 1; node = node.parentElement) {
       if (node.matches("input, textarea, select")) return false;
-//3D-AUS//       if (node.classList.contains("st3d__canvas")) return false;      // 3D-Buehne: Kamera und Gizmos arbeiten selbst mit Pointer-Ereignissen (auch Zwei-Finger-Gesten)
       if (node.classList.contains("sim3d__canvas")) return false;      // 3D-Simulation: die Kamera arbeitet selbst mit Pointer-Ereignissen (Ein-/Zwei-Finger-Gesten)
       if (getComputedStyle(node).touchAction === "none") return true;
       if (typeof isEditMode !== "undefined" && isEditMode && node.matches("[data-panel-id]")) return true;
@@ -1918,7 +2221,7 @@ function setLayoutSwipeEnabled(on) {
 
 // Elemente, die eine Wischbewegung selbst brauchen (eigene Drag-Funktion) oder die Eingaben aufnehmen.
 const SWIPE_OWN_DRAG = "input, select, textarea, canvas, [contenteditable], .vfader, .executor__track, .cue-td--delay, .fxprog-sheet, .fxprog-tile, " +
-  ".fxprog-numfield-wrap, .cue-col-resizer, .resize-handle, .panel-fader__track, .menu, .modal-backdrop, .ctx-menu, " +
+  ".fxprog-numfield-wrap, .fxprog-joy__pad, .cue-col-resizer, .resize-handle, .panel-fader__track, .menu, .modal-backdrop, .ctx-menu, " +
   ".toast, .layout-update-banner";
 
 // Ist unter dem Finger etwas, das die Geste fuer sich braucht? (nur der Startpunkt; die Richtung entscheidet spaeter)
@@ -2097,12 +2400,34 @@ document.addEventListener("mousedown", (event) => {
 });
 
 // ---- Smart guides ------------------------------------------------------
-// While dragging, the moved panel's edges/centers are compared (in pixels,
-// converted from the stored percentages) against every other panel's
-// edges/centers. A match within SNAP_TOLERANCE_PX snaps the dragged panel
-// flush to it and draws a thin red line across that axis of the workspace.
+// Beim Ziehen/Skalieren werden die Kanten und Mitten des Panels (in Pixeln, aus den gespeicherten Prozenten) mit denen aller anderen Panels verglichen. Liegt eine Kante
+// innerhalb von SNAP_TOLERANCE_PX, rastet das Panel exakt (Bruchteile von Pixeln) dort ein und eine duenne rote Linie zeigt die Achse.
+//  - Kanten der anderen Panels, die weniger als GUIDE_MERGE_PX auseinanderliegen (oder gleich sind, z.B. zwei buendige Panels), sind EINE Linie: es gibt nie zwei fast gleiche Linien.
+//  - Zeigt werden alle Linien, auf denen das Panel wirklich liegt (GUIDE_HIT_PX), also auch links UND rechts gleichzeitig.
+//  - Ein/Aus: Menuepunkt Bearbeiten -> Hilfslinien (Haken), Alt beim Ziehen schaltet sie kurz aus.
 
 const SNAP_TOLERANCE_PX = 8;
+const DIMENSION_SNAP_TOLERANCE_PX = 10;
+const GUIDE_MERGE_PX = 3;
+const GUIDE_HIT_PX = 0.5;
+const SMART_GUIDES_KEY = "opencue.smartGuides";
+
+let smartGuidesEnabled = true;
+try { smartGuidesEnabled = localStorage.getItem(SMART_GUIDES_KEY) !== "0"; } catch (err) { /* ohne Speicher: an */ }
+
+function setSmartGuidesEnabled(on) {
+  smartGuidesEnabled = !!on;
+  try { localStorage.setItem(SMART_GUIDES_KEY, smartGuidesEnabled ? "1" : "0"); } catch (err) { /* egal */ }
+  const item = document.getElementById("menu-guides");
+  if (item) item.classList.toggle("menu__item--checked", smartGuidesEnabled);
+}
+
+(function wireSmartGuidesMenuItem() {                       // Bearbeiten -> Hilfslinien (Haken wie bei Ansicht -> Vollbild)
+  const item = document.getElementById("menu-guides");
+  if (!item) return;
+  item.classList.toggle("menu__item--checked", smartGuidesEnabled);
+  item.addEventListener("click", () => setSmartGuidesEnabled(!smartGuidesEnabled));
+})();
 
 function getPanelEdgesPx(leftPx, topPx, widthPx, heightPx) {
   return {
@@ -2127,47 +2452,76 @@ function getOtherPanelEdgesPx(excludePanelEl, workspaceRect) {
     });
 }
 
-/** Finds the closest-within-tolerance match on each axis across every
- * dragged-edge x other-edge combination (edge-to-edge AND edge-to-center,
- * matching how design tools like Figma/Sketch snap). */
-function findBestSnap(draggedEdges, otherPanelsEdges) {
-  const xKeys = ["left", "centerX", "right"];
-  const yKeys = ["top", "centerY", "bottom"];
-  let bestX = null;
-  let bestY = null;
-
-  otherPanelsEdges.forEach((other) => {
-    xKeys.forEach((draggedKey) => {
-      xKeys.forEach((otherKey) => {
-        const delta = other[otherKey] - draggedEdges[draggedKey];
-        if (Math.abs(delta) <= SNAP_TOLERANCE_PX && (!bestX || Math.abs(delta) < Math.abs(bestX.delta))) {
-          bestX = { delta, guidePos: other[otherKey] };
-        }
-      });
-    });
-    yKeys.forEach((draggedKey) => {
-      yKeys.forEach((otherKey) => {
-        const delta = other[otherKey] - draggedEdges[draggedKey];
-        if (Math.abs(delta) <= SNAP_TOLERANCE_PX && (!bestY || Math.abs(delta) < Math.abs(bestY.delta))) {
-          bestY = { delta, guidePos: other[otherKey] };
-        }
-      });
-    });
+/** Zielwerte einer Achse zu Linien zusammenfassen: Werte, die weniger als GUIDE_MERGE_PX auseinanderliegen, sind eine Linie. Als Linie gilt der Wert, den die meisten Kanten
+ *  genau haben (bei Gleichstand der kleinere) - unabhaengig von der Mausposition, damit die Linie beim Ziehen nicht zwischen zwei fast gleichen Werten springt. */
+function clusterGuideTargets(values) {
+  const sorted = values.filter((v) => Number.isFinite(v)).sort((a, b) => a - b);
+  const lines = [];
+  let group = [];
+  const flush = () => {
+    if (!group.length) return;
+    const counts = new Map();
+    group.forEach((v) => { const key = Math.round(v * 4) / 4; counts.set(key, (counts.get(key) || 0) + 1); });
+    let best = null;
+    counts.forEach((count, key) => { if (!best || count > best.count) best = { key, count }; });
+    lines.push(group.find((v) => Math.round(v * 4) / 4 === best.key));
+    group = [];
+  };
+  sorted.forEach((v) => {
+    if (group.length && v - group[0] > GUIDE_MERGE_PX) flush();
+    group.push(v);
   });
-
-  return { bestX, bestY };
+  flush();
+  return lines;
 }
 
-function createSmartGuideElements(workspace) {
-  const guideX = document.createElement("div");
-  guideX.className = "smart-guide smart-guide--vertical";
-  guideX.hidden = true;
-  const guideY = document.createElement("div");
-  guideY.className = "smart-guide smart-guide--horizontal";
-  guideY.hidden = true;
-  workspace.appendChild(guideX);
-  workspace.appendChild(guideY);
-  return { guideX, guideY };
+/** Die naechste Linie (je Achse) fuer alle gezogenen Kanten: Kante-an-Kante UND Kante-an-Mitte. Ergebnis je Achse: { delta, lines } (delta = noetige Verschiebung in px). */
+function findBestSnap(draggedEdges, otherPanelsEdges) {
+  const result = [];
+  [["left", "centerX", "right"], ["top", "centerY", "bottom"]].forEach((keys) => {
+    const targets = clusterGuideTargets(otherPanelsEdges.flatMap((other) => keys.map((key) => other[key])));
+    let delta = null;
+    keys.forEach((draggedKey) => targets.forEach((target) => {
+      const d = target - draggedEdges[draggedKey];
+      if (Math.abs(d) <= SNAP_TOLERANCE_PX && (delta === null || Math.abs(d) < Math.abs(delta))) delta = d;
+    }));
+    result.push({ delta, lines: delta === null ? [] : guideLinesFor(targets, keys.map((key) => draggedEdges[key] + delta)) });
+  });
+  return { x: result[0], y: result[1] };
+}
+
+/** Von den Linien nur die, auf denen eine der (verschobenen) Kanten wirklich liegt - jede Position nur einmal. */
+function guideLinesFor(lines, edgeValues) {
+  const out = [];
+  lines.forEach((line) => {
+    if (edgeValues.some((v) => Math.abs(v - line) <= GUIDE_HIT_PX) && !out.some((o) => Math.abs(o - line) < 1)) out.push(line);
+  });
+  return out;
+}
+
+/** Duenne rote Linien in der Arbeitsflaeche: je Achse beliebig viele (eine pro Position), nur fuer die Dauer des Ziehens. */
+function createSmartGuides(workspace) {
+  const pool = { x: [], y: [] };
+  const show = (axis, positions) => {
+    const list = pool[axis];
+    positions.forEach((pos, i) => {
+      let el = list[i];
+      if (!el) {
+        el = document.createElement("div");
+        el.className = "smart-guide smart-guide--" + (axis === "x" ? "vertical" : "horizontal");
+        workspace.appendChild(el);
+        list.push(el);
+      }
+      el.hidden = false;
+      el.style[axis === "x" ? "left" : "top"] = `${pos}px`;
+    });
+    for (let i = positions.length; i < list.length; i++) list[i].hidden = true;
+  };
+  return {
+    showX: (positions) => show("x", positions),
+    showY: (positions) => show("y", positions),
+    remove: () => { pool.x.concat(pool.y).forEach((el) => el.remove()); },
+  };
 }
 
 function startDrag(panelEl, startEvent) {
@@ -2182,37 +2536,32 @@ function startDrag(panelEl, startEvent) {
   const widthPx = (widthPercent / 100) * workspaceRect.width;
   const heightPx = (heightPercent / 100) * workspaceRect.height;
 
-  const { guideX, guideY } = createSmartGuideElements(workspace);
+  const guides = createSmartGuides(workspace);
 
   const onMove = (event) => {
     const deltaXPercent = ((event.clientX - startX) / workspaceRect.width) * 100;
     const deltaYPercent = ((event.clientY - startY) / workspaceRect.height) * 100;
     let leftPercent = clamp(startLeft + deltaXPercent, 0, 100 - widthPercent);
     let topPercent = clamp(startTop + deltaYPercent, 0, 100 - heightPercent);
+    let linesX = [];
+    let linesY = [];
 
-    let leftPx = (leftPercent / 100) * workspaceRect.width;
-    let topPx = (topPercent / 100) * workspaceRect.height;
-    const draggedEdges = getPanelEdgesPx(leftPx, topPx, widthPx, heightPx);
-    const others = getOtherPanelEdgesPx(panelEl, workspaceRect);
-    const { bestX, bestY } = findBestSnap(draggedEdges, others);
-
-    if (bestX) {
-      leftPx += bestX.delta;
-      leftPercent = clamp((leftPx / workspaceRect.width) * 100, 0, 100 - widthPercent);
-      guideX.style.left = `${bestX.guidePos}px`;
-      guideX.hidden = false;
-    } else {
-      guideX.hidden = true;
+    if (smartGuidesEnabled && !event.altKey) {
+      const draggedEdges = getPanelEdgesPx((leftPercent / 100) * workspaceRect.width, (topPercent / 100) * workspaceRect.height, widthPx, heightPx);
+      const snap = findBestSnap(draggedEdges, getOtherPanelEdgesPx(panelEl, workspaceRect));
+      if (snap.x.delta !== null) {
+        leftPercent = clamp(((draggedEdges.left + snap.x.delta) / workspaceRect.width) * 100, 0, 100 - widthPercent);
+        const edgesNow = getPanelEdgesPx((leftPercent / 100) * workspaceRect.width, 0, widthPx, 0);
+        linesX = guideLinesFor(snap.x.lines, [edgesNow.left, edgesNow.centerX, edgesNow.right]);
+      }
+      if (snap.y.delta !== null) {
+        topPercent = clamp(((draggedEdges.top + snap.y.delta) / workspaceRect.height) * 100, 0, 100 - heightPercent);
+        const edgesNow = getPanelEdgesPx(0, (topPercent / 100) * workspaceRect.height, 0, heightPx);
+        linesY = guideLinesFor(snap.y.lines, [edgesNow.top, edgesNow.centerY, edgesNow.bottom]);
+      }
     }
-
-    if (bestY) {
-      topPx += bestY.delta;
-      topPercent = clamp((topPx / workspaceRect.height) * 100, 0, 100 - heightPercent);
-      guideY.style.top = `${bestY.guidePos}px`;
-      guideY.hidden = false;
-    } else {
-      guideY.hidden = true;
-    }
+    guides.showX(linesX);
+    guides.showY(linesY);
 
     panelEl.style.left = `${leftPercent}%`;
     panelEl.style.top = `${topPercent}%`;
@@ -2221,8 +2570,7 @@ function startDrag(panelEl, startEvent) {
   const onUp = () => {
     document.removeEventListener("mousemove", onMove);
     document.removeEventListener("mouseup", onUp);
-    guideX.remove();
-    guideY.remove();
+    guides.remove();
     client.send("update_panel", {
       id: panelEl.dataset.panelId,
       x: parseFloat(panelEl.style.left),
@@ -2234,36 +2582,26 @@ function startDrag(panelEl, startEvent) {
   document.addEventListener("mouseup", onUp);
 }
 
-const DIMENSION_SNAP_TOLERANCE_PX = 10;
-
 /** Snap search for ONE moving edge during a resize. Considers both:
- *  - edge alignment: the moving edge lines up with another panel's
- *    left/center/right (or top/center/bottom) - same idea as drag.
- *  - dimension match: the resulting width/height ends up EQUAL to another
- *    panel's width/height, regardless of where that panel actually is.
- * Both candidate kinds are expressed in the same unit (how far the moving
- * edge needs to shift), so the closer one simply wins.
+ *  - edge alignment: the moving edge lines up with another panel's left/center/right (or top/center/bottom) - same idea as drag, with near-identical lines merged.
+ *  - dimension match: the resulting width/height ends up EQUAL to another panel's width/height, regardless of where that panel actually is.
+ * Both candidate kinds are expressed in the same unit (how far the moving edge needs to shift), so the closer one simply wins.
  *
  * @param movingEdgePx current position of the edge being dragged
  * @param fixedEdgePx position of the opposite (stationary) edge
- * @param growsPositive true if moving the edge in the positive direction
- *   (right/down) grows the panel (e/s handles); false if it's the
- *   negative direction that grows it (n/w handles)
+ * @param growsPositive true if moving the edge in the positive direction (right/down) grows the panel (e/s handles); false for n/w handles
  * @param otherPanelsEdges edge sets of every other panel (px)
- * @param otherSizesPx that axis's size (width or height, px) of every
- *   other panel
+ * @param otherSizesPx that axis's size (width or height, px) of every other panel
  * @param edgeKeys which 3 edge keys to compare against (x or y axis)
  */
 function findResizeSnap(movingEdgePx, fixedEdgePx, growsPositive, otherPanelsEdges, otherSizesPx, edgeKeys) {
   let best = null;
 
-  otherPanelsEdges.forEach((other) => {
-    edgeKeys.forEach((key) => {
-      const delta = other[key] - movingEdgePx;
-      if (Math.abs(delta) <= SNAP_TOLERANCE_PX && (!best || Math.abs(delta) < Math.abs(best.movingEdgeDelta))) {
-        best = { movingEdgeDelta: delta, guidePos: other[key] };
-      }
-    });
+  clusterGuideTargets(otherPanelsEdges.flatMap((other) => edgeKeys.map((key) => other[key]))).forEach((target) => {
+    const delta = target - movingEdgePx;
+    if (Math.abs(delta) <= SNAP_TOLERANCE_PX && (!best || Math.abs(delta) < Math.abs(best.movingEdgeDelta))) {
+      best = { movingEdgeDelta: delta, guidePos: target };
+    }
   });
 
   const currentSize = growsPositive ? movingEdgePx - fixedEdgePx : fixedEdgePx - movingEdgePx;
@@ -2290,7 +2628,7 @@ function startResize(panelEl, corner, startEvent) {
   const startHeight = parseFloat(panelEl.style.height);
   const minSize = getPanelMinSize(panelEl);
 
-  const { guideX, guideY } = createSmartGuideElements(workspace);
+  const guides = createSmartGuides(workspace);
 
   const onMove = (event) => {
     const deltaX = ((event.clientX - startX) / workspaceRect.width) * 100;
@@ -2321,56 +2659,32 @@ function startResize(panelEl, corner, startEvent) {
     let topPx = (topPercent / 100) * workspaceRect.height;
     let widthPx = (widthPercent / 100) * workspaceRect.width;
     let heightPx = (heightPercent / 100) * workspaceRect.height;
+    let linesX = [];
+    let linesY = [];
 
-    const others = getOtherPanelEdgesPx(panelEl, workspaceRect);
-    const otherWidthsPx = others.map((o) => o.right - o.left);
-    const otherHeightsPx = others.map((o) => o.bottom - o.top);
+    if (smartGuidesEnabled && !event.altKey) {
+      const others = getOtherPanelEdgesPx(panelEl, workspaceRect);
+      const otherWidthsPx = others.map((o) => o.right - o.left);
+      const otherHeightsPx = others.map((o) => o.bottom - o.top);
 
-    if (corner.includes("e")) {
-      const snap = findResizeSnap(leftPx + widthPx, leftPx, true, others, otherWidthsPx, ["left", "centerX", "right"]);
-      if (snap) {
-        widthPx += snap.movingEdgeDelta;
-        guideX.style.left = `${snap.guidePos}px`;
-        guideX.hidden = false;
-      } else {
-        guideX.hidden = true;
+      if (corner.includes("e")) {
+        const snap = findResizeSnap(leftPx + widthPx, leftPx, true, others, otherWidthsPx, ["left", "centerX", "right"]);
+        if (snap) { widthPx += snap.movingEdgeDelta; linesX = [snap.guidePos]; }
+      } else if (corner.includes("w")) {
+        const snap = findResizeSnap(leftPx, leftPx + widthPx, false, others, otherWidthsPx, ["left", "centerX", "right"]);
+        if (snap) { leftPx += snap.movingEdgeDelta; widthPx -= snap.movingEdgeDelta; linesX = [snap.guidePos]; }
       }
-    } else if (corner.includes("w")) {
-      const snap = findResizeSnap(leftPx, leftPx + widthPx, false, others, otherWidthsPx, ["left", "centerX", "right"]);
-      if (snap) {
-        leftPx += snap.movingEdgeDelta;
-        widthPx -= snap.movingEdgeDelta;
-        guideX.style.left = `${snap.guidePos}px`;
-        guideX.hidden = false;
-      } else {
-        guideX.hidden = true;
+
+      if (corner.includes("s")) {
+        const snap = findResizeSnap(topPx + heightPx, topPx, true, others, otherHeightsPx, ["top", "centerY", "bottom"]);
+        if (snap) { heightPx += snap.movingEdgeDelta; linesY = [snap.guidePos]; }
+      } else if (corner.includes("n")) {
+        const snap = findResizeSnap(topPx, topPx + heightPx, false, others, otherHeightsPx, ["top", "centerY", "bottom"]);
+        if (snap) { topPx += snap.movingEdgeDelta; heightPx -= snap.movingEdgeDelta; linesY = [snap.guidePos]; }
       }
-    } else {
-      guideX.hidden = true;
     }
-
-    if (corner.includes("s")) {
-      const snap = findResizeSnap(topPx + heightPx, topPx, true, others, otherHeightsPx, ["top", "centerY", "bottom"]);
-      if (snap) {
-        heightPx += snap.movingEdgeDelta;
-        guideY.style.top = `${snap.guidePos}px`;
-        guideY.hidden = false;
-      } else {
-        guideY.hidden = true;
-      }
-    } else if (corner.includes("n")) {
-      const snap = findResizeSnap(topPx, topPx + heightPx, false, others, otherHeightsPx, ["top", "centerY", "bottom"]);
-      if (snap) {
-        topPx += snap.movingEdgeDelta;
-        heightPx -= snap.movingEdgeDelta;
-        guideY.style.top = `${snap.guidePos}px`;
-        guideY.hidden = false;
-      } else {
-        guideY.hidden = true;
-      }
-    } else {
-      guideY.hidden = true;
-    }
+    guides.showX(linesX);
+    guides.showY(linesY);
 
     // Back to percent, with a final safety clamp against the workspace/min-size bounds.
     leftPercent = clamp((leftPx / workspaceRect.width) * 100, 0, 100 - minSize.w);
@@ -2387,8 +2701,7 @@ function startResize(panelEl, corner, startEvent) {
   const onUp = () => {
     document.removeEventListener("mousemove", onMove);
     document.removeEventListener("mouseup", onUp);
-    guideX.remove();
-    guideY.remove();
+    guides.remove();
     client.send("update_panel", {
       id: panelEl.dataset.panelId,
       x: parseFloat(panelEl.style.left),
@@ -2541,7 +2854,12 @@ function showContextMenu(panelId, x, y) {
     { label: i18n("MOVE_LAYER_UP"), onClick: send("move_panel_layer", { delta: 1 }) },
     { label: i18n("MOVE_LAYER_DOWN"), onClick: send("move_panel_layer", { delta: -1 }) },
     { separator: true },
-    { label: i18n("DELETE_PANEL"), danger: true, onClick: send("delete_panel") },
+    { label: i18n("DELETE_PANEL"), danger: true, onClick: async () => {
+      const panelEl = document.querySelector(`[data-panel-id="${panelId}"]`);
+      const title = panelEl && panelEl.querySelector(".panel__header-title");
+      const ok = await _askDelete("other", { title: i18n("PANEL_DELETE_TITLE"), body: i18n("PANEL_DELETE_BODY").replace("{name}", (title && title.textContent.trim()) || ""), confirmKey: "FX_DELETE_CONFIRM" });
+      if (ok) client.send("delete_panel", { id: panelId });
+    } },
   ]);
 }
 
@@ -2549,13 +2867,763 @@ function hideContextMenu() {
   ContextMenu.hide();
 }
 
+/** Rechtsklick (oder Long-Press) auf die LEERE Arbeitsflaeche im Editor-Modus: Panel / Button / Toggle / Fader anlegen, mittig an der Klickstelle. Auf einem Panel gilt sein eigenes Menue. */
+document.addEventListener("contextmenu", (event) => {
+  if (!isEditMode) return;
+  const target = event.target;
+  if (!target || !target.closest || !target.closest("#app-root")) return;
+  if (target.closest(".workspace-panel, .ctx-menu, .modal-backdrop, .menubar")) return;
+  event.preventDefault();
+  clearPanelSelection();
+  const rect = document.getElementById("app-root").getBoundingClientRect();
+  const at = {
+    x: clamp(((event.clientX - rect.left) / rect.width) * 100, 0, 100),
+    y: clamp(((event.clientY - rect.top) / rect.height) * 100, 0, 100),
+  };
+  const add = (type) => () => client.send("add_panel", { panel_type: type, ...at });
+  ContextMenu.show(event.clientX, event.clientY, [
+    { label: i18n("ADD_PANEL"), onClick: () => window.__openAddPanelModal && window.__openAddPanelModal(at) },
+    { label: i18n("ADD_WIDGET_BUTTON"), onClick: add("button") },
+    { label: i18n("ADD_WIDGET_TOGGLE"), onClick: add("toggle") },
+    { label: i18n("ADD_WIDGET_FADER"), onClick: add("fader") },
+  ]);
+});
+
 // =============================================================================
 // BUTTON PANEL PLUGIN// =============================================================================
+// GEMEINSAMES FUER BUTTON / FADER / TOGGLE: Aktionsart
+//   "run"   - der Befehl wird ausgefuehrt (wie getippt + Enter)
+//   "write" - der Befehl wird nur in die Befehlszeile geschrieben (CommandBuffer); der Nutzer bestaetigt selbst mit
+//             Please/Enter. Dabei ersetzt er den Inhalt der Zeile oder wird angehaengt (`write_append`).
+// =============================================================================
+
+(function () {
+  "use strict";
+
+  /** Fuehrt `command` gemaess der Aktionsart der Einstellungen `mc` aus. `logDefault`: Vorgabe fuer "im Verlauf anzeigen". */
+  window.__widgetAction = function (mc, command, logDefault) {
+    var cmd = String(command || "").trim();
+    if (!cmd) return false;
+    mc = mc || {};
+    if (mc.action_mode === "write") {
+      var current = CommandBuffer.value;
+      if (mc.write_append === true && current.trim()) CommandBuffer.set(current.replace(/\s+$/, "") + " " + cmd);
+      else CommandBuffer.set(cmd);
+      return true;
+    }
+    var log = mc.log_to_history === undefined ? logDefault !== false : mc.log_to_history !== false;
+    window.__panelAPI.sendToServer("run_command", { command: cmd, log_to_history: log });
+    return true;
+  };
+
+  /** Baut die Felder "Aktionsart" (Ausfuehren / In die Befehlszeile schreiben) und "Anhaengen statt ersetzen" fuer das
+   *  Einstellungs-Pane. `prefix` ist die Id-Vorsilbe (z. B. "panel-button"). */
+  window.__widgetActionFields = function (prefix, mc, api) {
+    var frag = document.createDocumentFragment();
+    var modeField = document.createElement("div"); modeField.className = "modal__field modal__field--aligned";
+    var modeLabel = document.createElement("label"); modeLabel.htmlFor = prefix + "-action-mode";
+    modeLabel.textContent = api.i18n("WIDGET_ACTION_MODE");
+    var select = document.createElement("select"); select.id = prefix + "-action-mode"; select.className = "modal__input";
+    [["run", "WIDGET_ACTION_RUN"], ["write", "WIDGET_ACTION_WRITE"]].forEach(function (pair) {
+      var option = document.createElement("option"); option.value = pair[0]; option.textContent = api.i18n(pair[1]);
+      select.appendChild(option);
+    });
+    select.value = mc.action_mode === "write" ? "write" : "run";
+    modeField.appendChild(modeLabel); modeField.appendChild(select); frag.appendChild(modeField);
+
+    var appendField = document.createElement("div"); appendField.className = "modal__field modal__field--checkbox";
+    appendField.id = prefix + "-write-append-row";
+    var appendToggle = makeToggleSwitch(prefix + "-write-append", mc.write_append === true);
+    var appendLabel = document.createElement("label"); appendLabel.htmlFor = prefix + "-write-append";
+    appendLabel.textContent = api.i18n("WIDGET_WRITE_APPEND");
+    appendField.appendChild(appendToggle.label); appendField.appendChild(appendLabel); frag.appendChild(appendField);
+
+    var hint = document.createElement("p"); hint.className = "settings-field-hint";
+    hint.textContent = api.i18n("WIDGET_ACTION_HINT");
+    frag.appendChild(hint);
+
+    var sync = function () {
+      var write = select.value === "write";
+      appendField.hidden = !write;
+    };
+    select.addEventListener("change", sync);
+    sync();
+    return frag;
+  };
+
+  /** Liest die Felder aus `__widgetActionFields`. */
+  window.__widgetActionRead = function (prefix) {
+    return {
+      action_mode: document.getElementById(prefix + "-action-mode")?.value === "write" ? "write" : "run",
+      write_append: document.getElementById(prefix + "-write-append")?.checked === true,
+    };
+  };
+
+  /** Lesbare Textfarbe (schwarz/weiss) auf einem Hintergrund `hex` (#rrggbb). */
+  window.__contrastColor = function (hex) {
+    var m = /^#([0-9a-f]{6})$/i.exec(hex || "");
+    if (!m) return "#ffffff";
+    var n = parseInt(m[1], 16);
+    var luma = 0.299 * ((n >> 16) & 255) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255);
+    return luma > 150 ? "#111111" : "#ffffff";
+  };
+})();
+
+// =============================================================================
+// GEMEINSAMES FUER BUTTON / FADER / TOGGLE: Signale, Quelle, Farbe folgt, Regeln
+//
+// Signal: ein Zustand des Programms, den ein Panel auslesen kann (Blackout, Grand Master, Cue-Nummer / laeuft, Timecode,
+// Auswahl-Anzahl, Attribute und Farbe der gewaehlten Scheinwerfer oder eines Scheinwerfers (FID), Wert eines anderen Panels).
+//   Quelle ("Folgt dem Zustand von"): das Panel zeigt dieses Signal - Fader bewegt sich mit, Toggle schaltet mit.
+//   Farbe folgt: Hintergrund, Text oder Farbe des Panels nimmt die Farbe der gewaehlten Scheinwerfer / eines Scheinwerfers an.
+//   Regeln: "wenn <Bedingungen (alle / eine)>, dann <Farben, Text> und/oder <Befehl einmal senden beim Eintritt / beim Verlassen>
+//   und/oder (Toggle) <Schalter ein/aus setzen>". Von oben nach unten ausgewertet, die spaetere Regel gewinnt je Eigenschaft.
+//   Bedingungen duerfen jedes Signal verwenden, auch mehrere gemischt (z. B. "dieser Fader zwischen 80 und 90 UND Blackout an").
+// Befehle der Regeln werden nur gesendet, wenn die Regel durch eine BEDIENUNG an diesem Geraet zutrifft (Ziehen, Klicken,
+// Druecken) - nie durch Zustaende von anderen Geraeten oder dem Programm (sonst wuerde jedes Geraet den Befehl senden).
+// "Schalter setzen" gilt dagegen auf jedem Geraet (derselbe Zustand, wird geteilt).
+// =============================================================================
+
+(function () {
+  "use strict";
+
+  window.__widgetRefreshers = window.__widgetRefreshers || {};
+  var TYPES = ["button", "fader", "toggle"];
+  var HEX = /^#[0-9a-fA-F]{6}$/;
+  var ATTRS = ["dimmer", "pan", "tilt", "zoom", "focus", "strobe", "prism", "gobo"];
+
+  // module_config eines Panels (geparst, zwischengespeichert)
+  var _cache = new WeakMap();
+  function cfg(panelEl) {
+    var raw = panelEl.dataset.moduleConfig || "{}";
+    var hit = _cache.get(panelEl);
+    if (hit && hit.raw === raw) return hit.obj;
+    var obj = {};
+    try { obj = JSON.parse(raw); } catch (e) { obj = {}; }
+    _cache.set(panelEl, { raw: raw, obj: obj });
+    if (usesAudio(obj)) setTimeout(function () { if (window.__widgetRefreshSourced) window.__widgetRefreshSourced(); }, 0);          // ein Panel mit Audio-Signal ist neu oder geaendert: Messwerte anfordern
+    return obj;
+  }
+  window.__widgetCfg = cfg;
+
+  // ---- Signale ------------------------------------------------------------------------------------------------------
+  function programmer() { return window.ProgrammerState || null; }
+  function valuesOf(id) { var p = programmer(); return p && p.getVal ? p.getVal(id) : null; }
+  function attrOf(id, attr) { var v = valuesOf(id); return v && v[attr] != null ? Number(v[attr]) : null; }
+  function hexOf(c) {
+    if (!c || c.r == null) return null;
+    var h = function (n) { n = Math.max(0, Math.min(255, Math.round(Number(n) || 0))); return (n < 16 ? "0" : "") + n.toString(16); };
+    return "#" + h(c.r) + h(c.g) + h(c.b);
+  }
+  function selection() { var p = programmer(); return p && p.selectedIds ? Array.from(p.selectedIds) : []; }
+  function fixtureId(fid) {
+    var fixtures = (typeof client !== "undefined" && client.state && client.state.fixtures) || {};
+    for (var id in fixtures) {
+      if (Object.prototype.hasOwnProperty.call(fixtures, id) && Number(fixtures[id].fid) === Number(fid)) return id;
+    }
+    return null;
+  }
+  function average(ids, read) {
+    var sum = 0, n = 0;
+    ids.forEach(function (id) { var v = read(id); if (v != null) { sum += v; n += 1; } });
+    return n ? sum / n : null;
+  }
+  function averageColor(ids) {
+    var r = 0, g = 0, b = 0, n = 0;
+    ids.forEach(function (id) {
+      var v = valuesOf(id), c = v && v.color;
+      if (c && c.r != null) { r += Number(c.r) || 0; g += Number(c.g) || 0; b += Number(c.b) || 0; n += 1; }
+    });
+    return n ? hexOf({ r: r / n, g: g / n, b: b / n }) : null;
+  }
+  function activeCueNumber() {
+    var st = typeof client !== "undefined" ? client.state : null;
+    if (!st || !st.active_cuelist_id || !st.cuelists) return null;
+    var list = st.cuelists[st.active_cuelist_id], cueId = st.active_cue_ids && st.active_cue_ids[st.active_cuelist_id];
+    if (!list || !cueId) return null;
+    var cues = Array.isArray(list.cues) ? list.cues : Object.values(list.cues || {});
+    for (var i = 0; i < cues.length; i += 1) if (cues[i].id === cueId) return Number(cues[i].number);
+    return null;
+  }
+  function cueRunning() {
+    var st = typeof client !== "undefined" ? client.state : null;
+    var state = st && st.active_cuelist_id && window.__cuePlayback ? window.__cuePlayback[st.active_cuelist_id] : null;
+    return state === "running";
+  }
+  function timecode() { return window.OCTimecode || null; }
+  // Audio-Analyse (static/js/audio_panel.js): Messwerte 0-1 als Prozent, Tempo in BPM; ohne laufende Quelle null
+  var AUDIO_SIGNALS = ["level", "bass", "mid", "high", "kick", "snare", "hat", "beat"];
+  function audioFrame() {
+    var feed = window.OCAudio, f = feed ? feed.frame() : null;
+    return f && f.running && f.v ? f.v : null;
+  }
+
+  /** Wert eines anderen Panels (Button/Fader/Toggle): Fader = Wert, Toggle = 1 (an) / 0 (aus), Button = 1 (gedrueckt) / 0. */
+  function panelValue(panelId) {
+    if (!panelId) return null;
+    var panelEl = document.querySelector('.workspace-panel[data-panel-id="' + panelId + '"]');
+    if (!panelEl) return null;
+    var type = panelEl.dataset.panelType;
+    if (type === "fader") { var track = panelEl.querySelector(".panel-fader__track"); return track && track._value != null ? Number(track._value) : null; }
+    if (type === "toggle") { var tw = panelEl.querySelector(".panel-tgl__wrap"); return tw ? (tw.dataset.on === "1" ? 1 : 0) : null; }
+    if (type === "button") { var bw = panelEl.querySelector(".panel-btn__wrap"); return bw ? (bw._pressed ? 1 : 0) : null; }
+    return null;
+  }
+
+  // Aeltere Namen der Quellen (vor den Signalen mit Auswahl-/Scheinwerfer-Attributen)
+  var ALIAS = { dimmer_selection: "sel.dimmer", dimmer_fixture: "fix.dimmer" };
+  function canon(id) { return ALIAS[id] || id; }
+
+  /** Beschreibung eines Signals: { kind: "bool" | "number" | "color", percent: bool (0-100), get(args) } oder null. */
+  function signalDef(id) {
+    id = canon(id);
+    switch (id) {
+      case "blackout": return { kind: "bool", get: function () { return !!window.__blackout; } };
+      case "master": return { kind: "number", percent: true, get: function () { var v = window.__grandMaster; return v == null ? null : Number(v); } };
+      case "sel.count": return { kind: "number", get: function () { return selection().length; } };
+      case "cue.number": return { kind: "number", get: function () { return activeCueNumber(); } };
+      case "cue.running": return { kind: "bool", get: function () { return cueRunning(); } };
+      case "tc.running": return { kind: "bool", get: function () { var tc = timecode(); return tc ? !!tc.state.running : null; } };
+      case "tc.seconds": return { kind: "number", get: function () { var tc = timecode(); return tc ? tc.position() / 1000 : null; } };
+      case "panel": return { kind: "number", percent: true, get: function (args) { return panelValue(args.panel); } };
+      case "audio.active": return { kind: "bool", get: function () { var v = audioFrame(); return v ? !!v.a_active : false; } };
+      case "audio.bpm": return { kind: "number", get: function () { var v = audioFrame(); return v && v.a_active ? Number(v.a_bpm) : null; } };
+    }
+    var am = /^audio\.([a-z]+)$/.exec(id || "");
+    if (am && AUDIO_SIGNALS.indexOf(am[1]) >= 0) {
+      return { kind: "number", percent: true, get: function () { var v = audioFrame(); return v && v["a_" + am[1]] != null ? Number(v["a_" + am[1]]) * 100 : null; } };
+    }
+    var m = /^(sel|fix)\.([a-z]+)$/.exec(id || "");
+    if (!m) return null;
+    var scope = m[1], attr = m[2];
+    if (attr === "color") {
+      return { kind: "color", get: function (args) {
+        if (scope === "sel") return averageColor(selection());
+        var fx = fixtureId(args.fid); var v = fx ? valuesOf(fx) : null; return v ? hexOf(v.color) : null;
+      } };
+    }
+    if (ATTRS.indexOf(attr) < 0) return null;
+    return { kind: "number", percent: true, get: function (args) {
+      if (scope === "sel") return average(selection(), function (fx) { return attrOf(fx, attr); });
+      var fx = fixtureId(args.fid); return fx ? attrOf(fx, attr) : null;
+    } };
+  }
+  window.__widgetSignal = function (id, args) { var def = signalDef(id); return def ? def.get(args || {}) : null; };
+  window.__widgetSignalKind = function (id) { var def = signalDef(id); return def ? def.kind : null; };
+
+  /** Aktueller Wert der Quelle ("Folgt dem Zustand von") von `mc`: true/false, Zahl, "#rrggbb" oder null. */
+  window.__widgetSource = function (mc) {
+    return mc && mc.source ? window.__widgetSignal(mc.source, { fid: mc.source_fid, panel: mc.source_panel }) : null;
+  };
+  function followColor(mc) {
+    return mc && (mc.color_follow === "sel.color" || mc.color_follow === "fix.color")
+      ? window.__widgetSignal(mc.color_follow, { fid: mc.color_follow_fid }) : null;
+  }
+
+  // ---- Regeln -----------------------------------------------------------------------------------------------------
+  function num(value) { var n = parseFloat(value); return isNaN(n) ? 0 : n; }
+
+  // Aelteres Format ("when": ...) in Bedingungen umsetzen
+  var LEGACY = {
+    val_between: ["own.value", "between"], val_gte: ["own.value", "gte"], val_lte: ["own.value", "lte"], val_eq: ["own.value", "eq"],
+    on: ["own.on", "on"], off: ["own.on", "off"], pressed: ["own.pressed", "on"],
+    src_on: ["own.source", "on"], src_off: ["own.source", "off"], src_gte: ["own.source", "gte"], src_lte: ["own.source", "lte"], src_between: ["own.source", "between"],
+  };
+  function normalize(rule) {
+    if (Array.isArray(rule.conditions)) return rule;
+    var m = LEGACY[rule.when] || ["own.value", "gte"];
+    return Object.assign({}, rule, { match: "all", conditions: [{ signal: m[0], op: m[1], a: rule.a, b: rule.b }] });
+  }
+
+  function ownValue(signal, own) {
+    switch (signal) {
+      case "own.value": return own.value == null ? null : own.value;
+      case "own.on": return own.on == null ? null : own.on;
+      case "own.pressed": return own.pressed == null ? null : own.pressed;
+      case "own.source": return own.source == null ? null : own.source;
+    }
+    return undefined;
+  }
+  function conditionValue(cond, own) {
+    var v = ownValue(cond.signal, own);
+    return v !== undefined ? v : window.__widgetSignal(cond.signal, { fid: cond.fid, panel: cond.panel });
+  }
+  function colorNear(a, b) {
+    if (!HEX.test(a || "") || !HEX.test(b || "")) return false;
+    var x = parseInt(a.slice(1), 16), y = parseInt(b.slice(1), 16);
+    var dr = ((x >> 16) & 255) - ((y >> 16) & 255), dg = ((x >> 8) & 255) - ((y >> 8) & 255), db = (x & 255) - (y & 255);
+    return Math.sqrt(dr * dr + dg * dg + db * db) < 48;
+  }
+  function test(cond, v) {
+    if (v == null) return false;
+    var op = cond.op;
+    if (typeof v === "string") {                                    // Farbe
+      if (op === "on") return v.toLowerCase() !== "#000000";
+      if (op === "off") return v.toLowerCase() === "#000000";
+      if (op === "is") return colorNear(v, cond.hex);
+      if (op === "isnot") return !colorNear(v, cond.hex);
+      return false;
+    }
+    var n = typeof v === "boolean" ? (v ? 1 : 0) : v, a = num(cond.a), b = num(cond.b);
+    switch (op) {
+      case "on": return n > 0;
+      case "off": return n <= 0;
+      case "gte": return n >= a;
+      case "lte": return n <= a;
+      case "between": return n >= Math.min(a, b) && n <= Math.max(a, b);
+      case "outside": return n < Math.min(a, b) || n > Math.max(a, b);
+      case "eq": return Math.abs(n - a) < 0.5;
+      case "ne": return Math.abs(n - a) >= 0.5;
+    }
+    return false;
+  }
+
+  function fmtNumber(v) { return v == null ? "" : String(Math.round(Number(v) * 10) / 10); }
+  function fmtSource(v) { return v == null ? "" : typeof v === "boolean" ? (v ? "1" : "0") : typeof v === "string" ? v : fmtNumber(v); }
+
+  /**
+   * Wertet Farbe-folgt und Regeln von `mc` aus. `own`: { value, on, pressed, source } dieses Panels, `local`: Bedienung an diesem
+   * Geraet, `hooks`: { setState(on) } (Toggle). Setzt am Element `wrap` die Farb-Variablen --w-bg, --w-text, --w-accent, --w-ring
+   * und gibt { bg, text, accent, label, fmt } zurueck (`fmt(text)` setzt {value} und {source} in Beschriftungen ein).
+   */
+  window.__widgetRules = function (panelEl, wrap, mc, own, local, hooks) {
+    var rules = (Array.isArray(mc.rules) ? mc.rules : []).map(normalize);
+    var style = {};
+    var follow = followColor(mc);
+    if (follow) style[mc.color_target === "text" || mc.color_target === "accent" ? mc.color_target : "bg"] = follow;
+    var now = [];
+    rules.forEach(function (rule, i) {
+      var conds = rule.conditions || [];
+      var results = conds.map(function (cond) { return test(cond, conditionValue(cond, own)); });
+      var hit = !conds.length ? true : rule.match === "any" ? results.some(Boolean) : results.every(Boolean);
+      now[i] = hit;
+      if (hit) ["bg", "text", "accent", "label"].forEach(function (key) { if (rule[key]) style[key] = rule[key]; });
+    });
+    var before = wrap._ruleActive, first = before === undefined;
+    wrap._ruleActive = now;                       // vor den Aktionen setzen: ein Aktion darf neu zeichnen, ohne dieselbe Flanke noch einmal zu sehen
+    var log = mc.log_to_history !== false;
+    rules.forEach(function (rule, i) {
+      var was = !first && before[i] === true;
+      var send = function (text) {
+        text = String(text || "").trim();
+        if (text) window.__panelAPI.sendToServer("run_command", { command: text, log_to_history: log });
+      };
+      if (now[i] && !was) {
+        if (local && !first) send(rule.command);
+        if (hooks && hooks.setState && (rule.set_state === "on" || rule.set_state === "off")) hooks.setState(rule.set_state === "on");
+      } else if (!now[i] && was) {
+        if (local) send(rule.command_leave);
+      }
+    });
+    style.fmt = function (text) {
+      return String(text == null ? "" : text).replace(/\{value\}/g, fmtNumber(own.value)).replace(/\{source\}/g, fmtSource(own.source));
+    };
+    if (style.label) style.label = style.fmt(style.label);
+    function setVar(name, value) { if (value) wrap.style.setProperty(name, value); else wrap.style.removeProperty(name); }
+    setVar("--w-bg", style.bg);
+    setVar("--w-text", style.text);
+    setVar("--w-accent", style.accent);
+    setVar("--w-ring", style.accent ? "3px" : "");
+    return style;
+  };
+
+  // Ein Panel haengt von etwas ausserhalb ab (Quelle, Farbe folgt, Bedingung mit Signal)? Dann muss es bei Aenderungen neu zeichnen.
+  function usesExternal(mc) {
+    if (mc.source || mc.color_follow) return true;
+    return (Array.isArray(mc.rules) ? mc.rules : []).some(function (rule) {
+      return normalize(rule).conditions.some(function (c) { return String(c.signal).indexOf("own.") !== 0; });
+    });
+  }
+  function usesAudio(mc) {
+    var is = function (signal) { return String(signal || "").indexOf("audio.") === 0; };
+    return is(mc.source) || (Array.isArray(mc.rules) ? mc.rules : []).some(function (rule) {
+      return Array.isArray(rule.conditions) && rule.conditions.some(function (c) { return is(c.signal); });
+    });
+  }
+  function usesTimecodeSeconds(mc) {
+    return mc.source === "tc.seconds" || (Array.isArray(mc.rules) ? mc.rules : []).some(function (rule) {
+      return normalize(rule).conditions.some(function (c) { return c.signal === "tc.seconds"; });
+    });
+  }
+
+  // Signale veraendern sich ausserhalb der Panels: alle abhaengigen Panels neu zeichnen (gebuendelt auf ein Bild)
+  var _scheduled = false, _tickTimer = 0, _tcHooked = false, _audioHook = null;
+  var _onlyAudio = true;
+  function refreshSourced(fromAudio) {
+    if (fromAudio !== true) _onlyAudio = false;                        // jeder andere Anlass zeichnet alle abhaengigen Panels neu
+    if (_scheduled) return;
+    _scheduled = true;
+    requestAnimationFrame(function () {
+      _scheduled = false;
+      var only = _onlyAudio;
+      _onlyAudio = true;
+      if (!_tcHooked && window.OCTimecode && window.OCTimecode.subscribe) { _tcHooked = true; window.OCTimecode.subscribe(refreshSourced); }
+      var needsTick = false, needsAudio = false;
+      document.querySelectorAll(TYPES.map(function (t) { return '.workspace-panel[data-panel-type="' + t + '"]'; }).join(",")).forEach(function (panelEl) {
+        var mc = cfg(panelEl);
+        var refresh = window.__widgetRefreshers[panelEl.dataset.panelType];
+        if (!refresh || !usesExternal(mc)) return;
+        if (usesTimecodeSeconds(mc)) needsTick = true;
+        if (usesAudio(mc)) needsAudio = true;
+        if (only && !usesAudio(mc)) return;                           // ein Audio-Bild: nur die Panels mit Audio-Signal neu zeichnen
+        refresh(panelEl, mc, false);
+      });
+      // Audio-Signale: solange ein Panel eines braucht, laufen die Messwerte (25 Hz) und jedes neue Bild zeichnet die abhaengigen Panels neu
+      var feed = window.OCAudio;
+      if (feed) {
+        feed.want("widgets", needsAudio);
+        if (needsAudio && !_audioHook) _audioHook = feed.subscribe(function () { refreshSourced(true); });
+        else if (!needsAudio && _audioHook) { _audioHook(); _audioHook = null; }
+      }
+      // Timecode-Sekunden laufen ohne Meldungen weiter: solange ein Panel sie braucht, 4 Mal pro Sekunde neu zeichnen
+      if (needsTick && !_tickTimer) _tickTimer = setInterval(refreshSourced, 250);
+      else if (!needsTick && _tickTimer) { clearInterval(_tickTimer); _tickTimer = 0; }
+    });
+  }
+  window.__widgetRefreshSourced = refreshSourced;
+  ["blackout-changed", "grand-master-changed", "programmer-state-updated", "cue-state-changed", "widget-state-changed"].forEach(function (name) {
+    document.addEventListener(name, refreshSourced);
+  });
+  /** Ein Panel hat seinen Zustand geaendert (Fader-Wert, Toggle an/aus, Button gedrueckt): andere Panels koennen darauf reagieren. */
+  window.__widgetChanged = function () { document.dispatchEvent(new CustomEvent("widget-state-changed")); };
+
+  // ---- Einstellungs-Pane -------------------------------------------------------------------------------------------------
+  function el(tag, className, text) {
+    var node = document.createElement(tag);
+    if (className) node.className = className;
+    if (text != null) node.textContent = text;
+    return node;
+  }
+  function option(value, text) { var o = el("option", "", text); o.value = value; return o; }
+
+  /** Andere Button/Fader/Toggle-Panels (fuer das Signal "anderes Panel"): [{ id, text }]. */
+  function otherPanels(selfId, api) {
+    var names = { button: api.i18n("PANEL_BUTTON"), fader: api.i18n("PANEL_FADER"), toggle: api.i18n("PANEL_TOGGLE") };
+    var out = [];
+    document.querySelectorAll(TYPES.map(function (t) { return '.workspace-panel[data-panel-type="' + t + '"]'; }).join(",")).forEach(function (panelEl) {
+      if (panelEl.dataset.panelId === selfId) return;
+      var mc = cfg(panelEl);
+      var label = mc.label || mc.label_on || panelEl.dataset.title || "";
+      out.push({ id: panelEl.dataset.panelId, text: names[panelEl.dataset.panelType] + (label ? ' "' + label + '"' : "") + " · " + panelEl.dataset.panelId.slice(0, 4) });
+    });
+    return out;
+  }
+
+  var OWN_SIGNALS = {
+    fader: [["own.value", "SIG_OWN_VALUE_FADER"]], toggle: [["own.on", "SIG_OWN_ON"]], button: [["own.pressed", "SIG_OWN_PRESSED"]],
+  };
+  function signalGroups(api, opts) {
+    // opts: { own: Typ | "" , percentOnly: bool }
+    var groups = [];
+    var attrText = function (attr) { return api.i18n("SIGATTR_" + attr.toUpperCase()); };
+    if (opts.own) {
+      groups.push({ label: api.i18n("SIGG_OWN"), items: (OWN_SIGNALS[opts.own] || []).map(function (p) { return [p[0], api.i18n(p[1])]; }).concat([["own.source", api.i18n("SIG_OWN_SOURCE")]]) });
+    }
+    var program = [["blackout", "SIG_BLACKOUT"], ["master", "SIG_MASTER"], ["cue.number", "SIG_CUE_NUMBER"], ["cue.running", "SIG_CUE_RUNNING"],
+      ["tc.running", "SIG_TC_RUNNING"], ["tc.seconds", "SIG_TC_SECONDS"], ["sel.count", "SIG_SEL_COUNT"]];
+    groups.push({ label: api.i18n("SIGG_PROGRAM"), items: program.filter(function (p) { var d = signalDef(p[0]); return !opts.percentOnly || d.percent; }).map(function (p) { return [p[0], api.i18n(p[1])]; }) });
+    var attrs = ATTRS.concat(opts.percentOnly ? [] : ["color"]);
+    groups.push({ label: api.i18n("SIGG_SEL"), items: attrs.map(function (a) { return ["sel." + a, api.i18n("SIGFMT_SEL").replace("{attr}", attrText(a))]; }) });
+    groups.push({ label: api.i18n("SIGG_FIX"), items: attrs.map(function (a) { return ["fix." + a, api.i18n("SIGFMT_FIX").replace("{attr}", attrText(a))]; }) });
+    var audio = [["audio.active", "SIG_AUDIO_ACTIVE"]].concat(AUDIO_SIGNALS.map(function (n) { return ["audio." + n, "SIG_AUDIO_" + n.toUpperCase()]; }), [["audio.bpm", "SIG_AUDIO_BPM"]]);
+    groups.push({ label: api.i18n("SIGG_AUDIO"), items: audio.filter(function (p) { var d = signalDef(p[0]); return !opts.percentOnly || d.percent; }).map(function (p) { return [p[0], api.i18n(p[1])]; }) });
+    groups.push({ label: api.i18n("SIGG_PANEL"), items: [["panel", api.i18n("SIG_PANEL")]] });
+    return groups;
+  }
+  function signalSelect(api, opts, value) {
+    var select = el("select", "modal__input");
+    signalGroups(api, opts).forEach(function (group) {
+      var og = document.createElement("optgroup"); og.label = group.label;
+      group.items.forEach(function (item) { og.appendChild(option(item[0], item[1])); });
+      select.appendChild(og);
+    });
+    var known = Array.prototype.some.call(select.options, function (o) { return o.value === value; });
+    if (known) select.value = value;
+    return select;
+  }
+  /** Zusatzfelder eines Signals: Scheinwerfer-Nummer (fix.*) und Panel-Auswahl (panel). Gibt { fid, panel, sync } zurueck. */
+  function signalArgs(api, selfId, signalSel, fid, panel) {
+    var fidInput = el("input", "modal__input wsig__fid"); fidInput.type = "number"; fidInput.min = "1"; fidInput.step = "1"; fidInput.value = fid || 1;
+    fidInput.title = api.i18n("WSRC_FID"); fidInput.placeholder = "FID";
+    var panelSel = el("select", "modal__input wsig__panel");
+    var panels = otherPanels(selfId, api);
+    panelSel.appendChild(option("", panels.length ? "–" : api.i18n("SIG_PANEL_NONE")));
+    panels.forEach(function (p) { panelSel.appendChild(option(p.id, p.text)); });
+    panelSel.value = panels.some(function (p) { return p.id === panel; }) ? panel : "";
+    var sync = function () {
+      fidInput.hidden = signalSel.value.indexOf("fix.") !== 0;
+      panelSel.hidden = signalSel.value !== "panel";
+    };
+    signalSel.addEventListener("change", sync);
+    sync();
+    return { fid: fidInput, panel: panelSel };
+  }
+
+  /** Felder "Folgt dem Zustand von" (Quelle). mode: "fader" (nur Prozent-Signale) oder "any". */
+  window.__widgetSourceFields = function (prefix, mc, api, mode, selfId) {
+    var frag = document.createDocumentFragment();
+    var row = el("div", "modal__field modal__field--aligned");
+    var label = el("label", "", api.i18n("WSRC_TITLE")); label.htmlFor = prefix + "-source";
+    var select = signalSelect(api, { own: "", percentOnly: mode === "fader" }, mc.source || "");
+    select.id = prefix + "-source";
+    select.insertBefore(option("", api.i18n("WSRC_NONE")), select.firstChild);
+    select.value = mc.source && signalDef(mc.source) && Array.prototype.some.call(select.options, function (o) { return o.value === canon(mc.source); }) ? canon(mc.source) : "";
+    var args = signalArgs(api, selfId, select, mc.source_fid, mc.source_panel);
+    args.fid.id = prefix + "-source-fid"; args.panel.id = prefix + "-source-panel";
+    row.appendChild(label); row.appendChild(select); row.appendChild(args.fid); row.appendChild(args.panel);
+    frag.appendChild(row);
+    frag.appendChild(el("p", "settings-field-hint", api.i18n(mode === "fader" ? "WSRC_HINT_FADER" : "WSRC_HINT")));
+    return frag;
+  };
+  window.__widgetSourceRead = function (prefix) {
+    var source = canon(document.getElementById(prefix + "-source")?.value || "");
+    return {
+      source: signalDef(source) ? source : "",
+      source_fid: Math.max(1, parseInt(document.getElementById(prefix + "-source-fid")?.value || "1", 10) || 1),
+      source_panel: document.getElementById(prefix + "-source-panel")?.value || "",
+    };
+  };
+
+  /** Felder "Farbe folgt": die Farbe der gewaehlten Scheinwerfer / eines Scheinwerfers als Hintergrund, Text oder Farbe des Panels. */
+  window.__widgetColorFollowFields = function (prefix, mc, api, type) {
+    var frag = document.createDocumentFragment();
+    var row = el("div", "modal__field modal__field--aligned");
+    var label = el("label", "", api.i18n("WCF_TITLE")); label.htmlFor = prefix + "-cf";
+    var select = el("select", "modal__input"); select.id = prefix + "-cf";
+    [["", "WCF_NONE"], ["sel.color", "WCF_SEL"], ["fix.color", "WCF_FIX"]].forEach(function (p) { select.appendChild(option(p[0], api.i18n(p[1]))); });
+    select.value = mc.color_follow === "sel.color" || mc.color_follow === "fix.color" ? mc.color_follow : "";
+    var fid = el("input", "modal__input wsig__fid"); fid.type = "number"; fid.min = "1"; fid.step = "1"; fid.id = prefix + "-cf-fid"; fid.value = mc.color_follow_fid || 1; fid.placeholder = "FID";
+    row.appendChild(label); row.appendChild(select); row.appendChild(fid); frag.appendChild(row);
+    var targetRow = el("div", "modal__field modal__field--aligned");
+    var targetLabel = el("label", "", api.i18n("WCF_TARGET")); targetLabel.htmlFor = prefix + "-cf-target";
+    var target = el("select", "modal__input"); target.id = prefix + "-cf-target";
+    [["bg", "WRULE_BG"], ["text", "WRULE_TEXT"], ["accent", type === "fader" ? "WRULE_ACCENT_FADER" : type === "toggle" ? "WRULE_ACCENT_TOGGLE" : "WRULE_ACCENT_BUTTON"]].forEach(function (p) {
+      target.appendChild(option(p[0], api.i18n(p[1])));
+    });
+    target.value = mc.color_target === "text" || mc.color_target === "accent" ? mc.color_target : "bg";
+    targetRow.appendChild(targetLabel); targetRow.appendChild(target); frag.appendChild(targetRow);
+    var sync = function () { fid.hidden = select.value !== "fix.color"; targetRow.hidden = !select.value; };
+    select.addEventListener("change", sync);
+    sync();
+    return frag;
+  };
+  window.__widgetColorFollowRead = function (prefix) {
+    var follow = document.getElementById(prefix + "-cf")?.value || "";
+    return {
+      color_follow: follow === "sel.color" || follow === "fix.color" ? follow : "",
+      color_follow_fid: Math.max(1, parseInt(document.getElementById(prefix + "-cf-fid")?.value || "1", 10) || 1),
+      color_target: ["text", "accent"].indexOf(document.getElementById(prefix + "-cf-target")?.value) >= 0 ? document.getElementById(prefix + "-cf-target").value : "bg",
+    };
+  };
+
+  // Operatoren je Signal-Art
+  var OPS = {
+    bool: [["on", "OP_ON"], ["off", "OP_OFF"]],
+    number: [["gte", "OP_GTE"], ["lte", "OP_LTE"], ["between", "OP_BETWEEN"], ["outside", "OP_OUTSIDE"], ["eq", "OP_EQ"], ["ne", "OP_NE"], ["on", "OP_ON"], ["off", "OP_OFF"]],
+    color: [["is", "OP_IS"], ["isnot", "OP_ISNOT"], ["on", "OP_COLOR_ON"], ["off", "OP_COLOR_OFF"]],
+  };
+  function kindOfSignal(id) {
+    if (id === "own.on" || id === "own.pressed") return "bool";
+    if (id === "own.value" || id === "own.source") return "number";
+    return window.__widgetSignalKind(id) || "number";
+  }
+  var HEX_COLORS = { is: 1, isnot: 1 };
+  var NEEDS_A = { gte: 1, lte: 1, between: 1, outside: 1, eq: 1, ne: 1 };
+  var NEEDS_B = { between: 1, outside: 1 };
+  var ACCENT_KEY = { button: "WRULE_ACCENT_BUTTON", fader: "WRULE_ACCENT_FADER", toggle: "WRULE_ACCENT_TOGGLE" };
+
+  function colorField(labelText, color, tip) {
+    var wrap = el("div", "wrule__color");
+    wrap.appendChild(el("span", "wrule__color-label", labelText));
+    var sw = el("input", "color-swatch-input wrule__sw"); sw.type = "color"; sw.value = HEX.test(color || "") ? color : "#888888";
+    var hex = el("input", "color-hex-input wrule__hex"); hex.type = "text"; hex.maxLength = 7; hex.placeholder = "—"; hex.value = HEX.test(color || "") ? color : "";
+    var clear = el("button", "wrule__clear", "×"); clear.type = "button"; clear.title = tip;
+    sw.addEventListener("input", function () { hex.value = sw.value; hex.dispatchEvent(new Event("input", { bubbles: true })); });
+    hex.addEventListener("input", function () { if (HEX.test(hex.value.trim())) sw.value = hex.value.trim(); });
+    clear.addEventListener("click", function () { hex.value = ""; hex.dispatchEvent(new Event("input", { bubbles: true })); });
+    wrap.appendChild(sw); wrap.appendChild(hex); wrap.appendChild(clear);
+    return wrap;
+  }
+
+  function conditionRow(cond, type, api, selfId, owner) {
+    var row = el("div", "wcond");
+    var signal = signalSelect(api, { own: type, percentOnly: false }, canon(cond.signal || ""));
+    signal.className = "modal__input wcond__signal";
+    var args = signalArgs(api, selfId, signal, cond.fid, cond.panel);
+    args.fid.className = "modal__input wcond__fid"; args.panel.className = "modal__input wcond__panel";
+    var op = el("select", "modal__input wcond__op");
+    var a = el("input", "modal__input wcond__a"); a.type = "number"; a.step = "any"; a.value = cond.a != null ? cond.a : 0;
+    var and = el("span", "wcond__and", api.i18n("WRULE_AND"));
+    var b = el("input", "modal__input wcond__b"); b.type = "number"; b.step = "any"; b.value = cond.b != null ? cond.b : 100;
+    var hexSw = el("input", "color-swatch-input wcond__sw"); hexSw.type = "color"; hexSw.value = HEX.test(cond.hex || "") ? cond.hex : "#ff0000";
+    var hex = el("input", "color-hex-input wcond__hex"); hex.type = "text"; hex.maxLength = 7; hex.value = HEX.test(cond.hex || "") ? cond.hex : "#ff0000";
+    hexSw.addEventListener("input", function () { hex.value = hexSw.value; hex.dispatchEvent(new Event("input", { bubbles: true })); });
+    hex.addEventListener("input", function () { if (HEX.test(hex.value.trim())) hexSw.value = hex.value.trim(); });
+    var remove = el("button", "wrule__tool wcond__del", "✕"); remove.type = "button"; remove.title = api.i18n("WRULE_DEL_COND");
+    remove.addEventListener("click", function () {
+      var list = row.parentNode;
+      if (list.children.length > 1) { list.removeChild(row); list.dispatchEvent(new Event("change", { bubbles: true })); }
+    });
+    var fillOps = function (selected) {
+      var kind = kindOfSignal(signal.value);
+      op.innerHTML = "";
+      OPS[kind].forEach(function (p) { op.appendChild(option(p[0], api.i18n(p[1]))); });
+      op.value = OPS[kind].some(function (p) { return p[0] === selected; }) ? selected : OPS[kind][0][0];
+    };
+    var sync = function () {
+      a.hidden = !NEEDS_A[op.value];
+      and.hidden = b.hidden = !NEEDS_B[op.value];
+      hexSw.hidden = hex.hidden = !HEX_COLORS[op.value];
+    };
+    signal.addEventListener("change", function () { fillOps(op.value); sync(); });
+    op.addEventListener("change", sync);
+    fillOps(cond.op);
+    sync();
+    [signal, args.fid, args.panel, op, a, and, b, hexSw, hex, remove].forEach(function (node) { row.appendChild(node); });
+    return row;
+  }
+
+  function ruleCard(rule, type, api, selfId) {
+    rule = normalize(rule);
+    var card = el("div", "wrule");
+    var top = el("div", "wrule__top");
+    top.appendChild(el("span", "wrule__when-label", api.i18n("WRULE_WHEN")));
+    var match = el("select", "modal__input wrule__match");
+    match.appendChild(option("all", api.i18n("WRULE_ALL"))); match.appendChild(option("any", api.i18n("WRULE_ANY")));
+    match.value = rule.match === "any" ? "any" : "all";
+    top.appendChild(match);
+    var tools = el("span", "wrule__tools");
+    [["▲", "WRULE_UP", "up"], ["▼", "WRULE_DOWN", "down"], ["✕", "WRULE_DELETE", "del"]].forEach(function (t) {
+      var button = el("button", "wrule__tool wrule__tool--" + t[2], t[0]); button.type = "button"; button.title = api.i18n(t[1]);
+      button.addEventListener("click", function () {
+        var list = card.parentNode;
+        if (t[2] === "del") list.removeChild(card);
+        else if (t[2] === "up" && card.previousElementSibling) list.insertBefore(card, card.previousElementSibling);
+        else if (t[2] === "down" && card.nextElementSibling) list.insertBefore(card.nextElementSibling, card);
+        list.dispatchEvent(new Event("change", { bubbles: true }));
+      });
+      tools.appendChild(button);
+    });
+    top.appendChild(tools);
+    card.appendChild(top);
+
+    var conds = el("div", "wrule__conds");
+    (rule.conditions.length ? rule.conditions : [{}]).forEach(function (cond) { conds.appendChild(conditionRow(cond, type, api, selfId)); });
+    card.appendChild(conds);
+    var addCond = el("button", "wrule__addcond", api.i18n("WRULE_ADD_COND")); addCond.type = "button";
+    addCond.addEventListener("click", function () {
+      conds.appendChild(conditionRow({ signal: type === "fader" ? "own.value" : type === "toggle" ? "own.on" : "own.pressed" }, type, api, selfId));
+      conds.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    card.appendChild(addCond);
+
+    card.appendChild(el("div", "wrule__then", api.i18n("WRULE_THEN")));
+    var colors = el("div", "wrule__colors");
+    colors.appendChild(colorField(api.i18n("WRULE_BG"), rule.bg, api.i18n("WRULE_CLEAR")));
+    colors.appendChild(colorField(api.i18n("WRULE_TEXT"), rule.text, api.i18n("WRULE_CLEAR")));
+    colors.appendChild(colorField(api.i18n(ACCENT_KEY[type] || "WRULE_ACCENT_BUTTON"), rule.accent, api.i18n("WRULE_CLEAR")));
+    card.appendChild(colors);
+
+    var extra = el("div", "wrule__extra");
+    function field(cls, labelKey, value, placeholder) {
+      var wrap = el("label", "wrule__field");
+      wrap.appendChild(el("span", "", api.i18n(labelKey)));
+      var input = el("input", "modal__input " + cls); input.type = "text"; input.value = value || ""; if (placeholder) input.placeholder = placeholder;
+      wrap.appendChild(input); extra.appendChild(wrap);
+    }
+    field("wrule__label", "WRULE_LABEL", rule.label, "{value}");
+    field("wrule__cmd", "WRULE_COMMAND", rule.command, "Fixture 1 At 0");
+    field("wrule__cmd-leave", "WRULE_COMMAND_LEAVE", rule.command_leave, "Fixture 1 At 100");
+    if (type === "toggle") {
+      var wrap = el("label", "wrule__field");
+      wrap.appendChild(el("span", "", api.i18n("WRULE_SET_STATE")));
+      var set = el("select", "modal__input wrule__setstate");
+      set.appendChild(option("", api.i18n("WRULE_SET_NONE"))); set.appendChild(option("on", api.i18n("WRULE_SET_ON"))); set.appendChild(option("off", api.i18n("WRULE_SET_OFF")));
+      set.value = rule.set_state === "on" || rule.set_state === "off" ? rule.set_state : "";
+      wrap.appendChild(set); extra.appendChild(wrap);
+    }
+    card.appendChild(extra);
+    return card;
+  }
+
+  /** Abschnitt "Regeln" mit der Liste und dem Knopf "+ Naechste Regel". `type`: "button" | "fader" | "toggle". */
+  window.__widgetRulesEditor = function (prefix, mc, api, type, selfId) {
+    var section = el("div", "wrules");
+    section.appendChild(el("div", "settings-section__title", api.i18n("WRULE_TITLE")));
+    section.appendChild(el("p", "settings-field-hint", api.i18n("WRULE_HINT")));
+    var list = el("div", "wrules__list"); list.id = prefix + "-rules"; list.dataset.selfId = selfId || "";
+    (Array.isArray(mc.rules) ? mc.rules : []).forEach(function (rule) { list.appendChild(ruleCard(rule || {}, type, api, selfId)); });
+    section.appendChild(list);
+    var add = el("button", "modal__button wrules__add", api.i18n("WRULE_ADD")); add.type = "button";
+    add.addEventListener("click", function () {
+      var first = type === "fader" ? { signal: "own.value", op: "between", a: 80, b: 100 } : type === "toggle" ? { signal: "own.on", op: "on" } : { signal: "own.pressed", op: "on" };
+      list.appendChild(ruleCard({ match: "all", conditions: [first] }, type, api, selfId));
+      list.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    section.appendChild(add);
+    return section;
+  };
+  window.__widgetRulesRead = function (prefix) {
+    var list = document.getElementById(prefix + "-rules");
+    var out = [];
+    if (!list) return out;
+    list.querySelectorAll(".wrule").forEach(function (card) {
+      var hex = function (selector) { var v = (card.querySelector(selector)?.value || "").trim(); return HEX.test(v) ? v : ""; };
+      var conditions = [];
+      card.querySelectorAll(".wcond").forEach(function (row) {
+        var signal = row.querySelector(".wcond__signal").value;
+        var op = row.querySelector(".wcond__op").value;
+        var cond = { signal: signal, op: op, a: parseFloat(row.querySelector(".wcond__a").value) || 0, b: parseFloat(row.querySelector(".wcond__b").value) || 0 };
+        if (HEX_COLORS[op]) cond.hex = HEX.test(row.querySelector(".wcond__hex").value.trim()) ? row.querySelector(".wcond__hex").value.trim() : "#ff0000";
+        if (signal.indexOf("fix.") === 0) cond.fid = Math.max(1, parseInt(row.querySelector(".wcond__fid").value || "1", 10) || 1);
+        if (signal === "panel") cond.panel = row.querySelector(".wcond__panel").value || "";
+        conditions.push(cond);
+      });
+      var rule = {
+        match: card.querySelector(".wrule__match").value === "any" ? "any" : "all",
+        conditions: conditions,
+        bg: hex(".wrule__color:nth-child(1) .wrule__hex"),
+        text: hex(".wrule__color:nth-child(2) .wrule__hex"),
+        accent: hex(".wrule__color:nth-child(3) .wrule__hex"),
+        label: card.querySelector(".wrule__label").value,
+        command: card.querySelector(".wrule__cmd").value.trim(),
+        command_leave: card.querySelector(".wrule__cmd-leave").value.trim(),
+      };
+      var set = card.querySelector(".wrule__setstate");
+      if (set) rule.set_state = set.value;
+      out.push(rule);
+    });
+    return out;
+  };
+
+  /** Vorschau im Einstellungsdialog: jede Eingabe in `paneEl` zeichnet das Panel mit der gerade eingestellten Konfiguration neu. */
+  window.__widgetPreviewWiring = function (paneEl, panelId, type) {
+    var panelEl = document.querySelector('[data-panel-id="' + panelId + '"]');
+    var plugin = window.__panelPlugins.get(type);
+    if (!panelEl || !plugin) return;
+    var preview = function () { plugin.onModuleConfigChanged(panelEl, plugin.readPropertiesPane()); };
+    paneEl.addEventListener("input", preview);
+    paneEl.addEventListener("change", preview);
+  };
+})();
+
+// =============================================================================
 // BUTTON PANEL PLUGIN
 // =============================================================================
 
 (function () {
   "use strict";
+
+  /** Zeichnet Regeln/Quelle des Buttons (Farben ueber CSS-Variablen, Beschriftung); local = Bedienung an diesem Geraet. */
+  function refreshButton(panelEl, mc, local) {
+    var wrap = panelEl.querySelector(".panel-btn__wrap");
+    var btn = wrap && wrap.querySelector(".panel-btn");
+    if (!btn) return;
+    var style = window.__widgetRules(panelEl, wrap, mc, { pressed: wrap._pressed === true, source: window.__widgetSource(mc) }, local);
+    btn.textContent = style.label || style.fmt(mc.label || "");
+  }
+  window.__widgetRefreshers.button = refreshButton;
+
   window.__panelPlugins.register({
     type: "button",
     buildContent: function (panel) {
@@ -2574,23 +3642,45 @@ function hideContextMenu() {
         var config = {};
         try { config = JSON.parse(panelEl.dataset.moduleConfig || "{}"); } catch (e) {}
         var cmd = (config.command || "").trim();
-        var logToHistory = config.log_to_history !== false;
         if (cmd) {
-          window.__panelAPI.sendToServer("run_command", { command: cmd, log_to_history: logToHistory });
-          var key = window.__commandKey(cmd);
-          window.__panelAPI.sendToServer("command_value_updated", { pattern: key, kind: "button" });
-          window.__pulseCommandButtons(key);
+          window.__widgetAction(config, cmd, true);
+          if (config.action_mode !== "write") {
+            var key = window.__commandKey(cmd);
+            window.__panelAPI.sendToServer("command_value_updated", { pattern: key, kind: "button" });
+            window.__pulseCommandButtons(key);
+          }
         }
       });
       wrap.appendChild(btn);
+      // Gedrueckt-Zustand fuer Regeln ("solange gedrueckt"); nicht im Bearbeitungsmodus
+      btn.addEventListener("pointerdown", function () {
+        if (typeof isEditMode !== "undefined" && isEditMode) return;
+        var panelEl = btn.closest(".workspace-panel");
+        if (!panelEl) return;
+        wrap._pressed = true;
+        refreshButton(panelEl, window.__widgetCfg(panelEl), true);
+        window.__widgetChanged();
+      });
+      ["pointerup", "pointerleave", "pointercancel"].forEach(function (name) {
+        btn.addEventListener(name, function () {
+          if (!wrap._pressed) return;
+          wrap._pressed = false;
+          var panelEl = btn.closest(".workspace-panel");
+          if (panelEl) refreshButton(panelEl, window.__widgetCfg(panelEl), false);
+          window.__widgetChanged();
+        });
+      });
       return wrap;
     },
     onModuleConfigChanged: function (panelEl, config) {
       var btn = panelEl.querySelector(".panel-btn");
       if (!btn) return;
       var mc = config || {};
-      btn.textContent = mc.label || "";
       btn.style.fontSize = mc.font_size ? mc.font_size + "rem" : "";
+      refreshButton(panelEl, mc, false);
+    },
+    afterPropertiesPaneInserted: function (paneEl, panelId) {
+      window.__widgetPreviewWiring(paneEl, panelId, "button");
     },
     buildPropertiesPane: function (moduleConfig, api) {
       var mc = moduleConfig || {};
@@ -2621,15 +3711,21 @@ function hideContextMenu() {
       var logLabel = document.createElement("label"); logLabel.htmlFor = "panel-button-log-to-history";
       logLabel.textContent = api.i18n("BUTTON_LOG_TO_HISTORY");
       logField.appendChild(logTgl.label); logField.appendChild(logLabel); frag.appendChild(logField);
+      frag.appendChild(window.__widgetActionFields("panel-button", mc, api));
+      if (window.__midiAssignField) frag.appendChild(window.__midiAssignField("button"));
+      frag.appendChild(window.__widgetSourceFields("panel-button", mc, api, "any", panelPropertiesTargetId));
+      frag.appendChild(window.__widgetColorFollowFields("panel-button", mc, api, "button"));
+      frag.appendChild(window.__widgetRulesEditor("panel-button", mc, api, "button", panelPropertiesTargetId));
       return frag;
     },
     readPropertiesPane: function () {
-      return {
+      return Object.assign({
         command: (document.getElementById("panel-button-command")?.value || "").trim(),
         label: document.getElementById("panel-button-label")?.value || "",
         font_size: parseFloat(document.getElementById("panel-button-fontsize")?.value || "1"),
         log_to_history: document.getElementById("panel-button-log-to-history")?.checked !== false,
-      };
+        rules: window.__widgetRulesRead("panel-button"),
+      }, window.__widgetActionRead("panel-button"), window.__widgetSourceRead("panel-button"), window.__widgetColorFollowRead("panel-button"));
     },
   });
 })();
@@ -2650,7 +3746,31 @@ function hideContextMenu() {
     fill.style.height = pct + "%";
     track.style.setProperty("--fv", pct + "%");
     thumb.textContent = Number.isInteger(value) ? String(value) : value.toFixed(1);
+    var changed = track._value !== value;
+    track._value = value;
+    // Regeln auswerten (die Anzeige hat sich geaendert); waehrend des Ziehens zaehlt das als Bedienung an diesem Geraet
+    var panelEl = track.closest && track.closest(".workspace-panel");
+    if (panelEl && window.__widgetRefreshers.fader) window.__widgetRefreshers.fader(panelEl, window.__widgetCfg(panelEl), track._dragging === true, true);
+    if (changed && panelEl) window.__widgetChanged();               // andere Panels koennen auf den Wert reagieren
   }
+
+  /** Fader: folgt der Quelle (falls gesetzt) und wertet die Regeln aus. rulesOnly: nur Regeln (Aufruf aus _applyFaderVal). */
+  window.__widgetRefreshers.fader = function (panelEl, mc, local, rulesOnly) {
+    var wrap = panelEl.querySelector(".panel-fader__wrap");
+    var track = panelEl.querySelector(".panel-fader__track");
+    var fill = panelEl.querySelector(".vfader__fill");
+    var thumb = panelEl.querySelector(".vfader__thumb");
+    if (!wrap || !track || !fill || !thumb) return;
+    var source = window.__widgetSource(mc);
+    if (!rulesOnly && typeof source === "number" && !track._dragging) {
+      var min = parseFloat(mc.fader_min != null ? mc.fader_min : 0), max = parseFloat(mc.fader_max != null ? mc.fader_max : 100);
+      _applyFaderVal(fill, track, thumb, Math.round((min + Math.max(0, Math.min(100, source)) / 100 * (max - min)) * 10) / 10, min, max);
+      return;                                                         // _applyFaderVal wertet die Regeln aus
+    }
+    var style = window.__widgetRules(panelEl, wrap, mc, { value: track._value == null ? null : track._value, source: source }, local);
+    var label = wrap.querySelector(".panel-fader__label");
+    if (label) label.textContent = style.label || style.fmt(mc.label || "");
+  };
 
   // ---- Befehls-Synchronisation -------------------------------------------------------
   // Fader und Buttons mit demselben Befehl ("Fixture 1 At {value}") bilden eine Gruppe:
@@ -2676,7 +3796,7 @@ function hideContextMenu() {
   window.__syncCommandPanels = function (key) {
     _faderPanels(key).forEach(function (item) {
       var value = window.__commandValues[item.key];
-      if (value == null) return;
+      if (value == null || item.mc.source) return;                    // ein Fader mit Quelle folgt der Quelle, nicht dem Befehls-Wert
       var track = item.panelEl.querySelector(".panel-fader__track");
       var fill = item.panelEl.querySelector(".vfader__fill");
       var thumb = item.panelEl.querySelector(".vfader__thumb");
@@ -2718,7 +3838,7 @@ function hideContextMenu() {
     document.querySelectorAll('.workspace-panel[data-panel-type="fader"]').forEach(function (panelEl) {
       var mc;
       try { mc = JSON.parse(panelEl.dataset.moduleConfig || "{}"); } catch (e) { return; }
-      if (!/^\s*(grand\s*)?master\b/i.test(mc.command || "")) return;
+      if (!/^\s*(grand\s*)?master\b/i.test(mc.command || "") || mc.source) return;
       var track = panelEl.querySelector(".panel-fader__track");
       var fill = panelEl.querySelector(".vfader__fill");
       var thumb = panelEl.querySelector(".vfader__thumb");
@@ -2743,12 +3863,17 @@ function hideContextMenu() {
       return min + fraction * (max - min);
     }
     var lastSent = null;
-    function sendCommand(value) {
+    function sendCommand(value, final) {
       var template = getMc().command || "";
       if (!template.trim()) return;
       var rounded = Math.round(value);
       var cmd = template.replace(/\{value\}/gi, String(rounded));
-      window.__panelAPI.sendToServer("run_command", { command: cmd, log_to_history: logToHistory });
+      if (getMc().action_mode === "write") {
+        // "In die Befehlszeile schreiben": nur der Endwert beim Loslassen, nicht jeder Zwischenwert
+        if (final) window.__widgetAction(getMc(), cmd, false);
+      } else {
+        window.__panelAPI.sendToServer("run_command", { command: cmd, log_to_history: logToHistory });
+      }
       // Alle anderen Fader mit demselben Befehl (auch auf anderen Geraeten) ziehen mit.
       var key = _commandKey(template);
       window.__commandValues[key] = rounded;
@@ -2771,7 +3896,7 @@ function hideContextMenu() {
       track._dragging = false;
       var finalValue = valueFromEvent(event);
       // Der Endwert darf nicht im Throttle verloren gehen.
-      if (lastSent === null || Math.round(finalValue) !== lastSent) sendCommand(finalValue);
+      if (getMc().action_mode === "write" || lastSent === null || Math.round(finalValue) !== lastSent) sendCommand(finalValue, true);
       var currentMc = getMc();
       currentMc.fader_value = finalValue;
       window.__panelAPI.sendToServer("update_panel", { id: panelEl.dataset.panelId, module_config: currentMc });
@@ -2816,10 +3941,14 @@ function hideContextMenu() {
       var track = panelEl.querySelector(".panel-fader__track");
       var thumb = panelEl.querySelector(".vfader__thumb");
       if (fill && track && thumb) {
-        _applyFaderVal(fill, track, thumb, parseFloat(mc.fader_value || 0),
+        _applyFaderVal(fill, track, thumb, mc.fader_value != null ? parseFloat(mc.fader_value) || 0 : (track._value || 0),
           parseFloat(mc.fader_min != null ? mc.fader_min : 0),
           parseFloat(mc.fader_max != null ? mc.fader_max : 100));
+        window.__widgetRefreshers.fader(panelEl, mc, false, false);       // Quelle und Regeln mit der (ggf. noch ungespeicherten) Konfiguration
       }
+    },
+    afterPropertiesPaneInserted: function (paneEl, panelId) {
+      window.__widgetPreviewWiring(paneEl, panelId, "fader");
     },
     buildPropertiesPane: function (moduleConfig, api) {
       var mc = moduleConfig || {};
@@ -2862,21 +3991,304 @@ function hideContextMenu() {
       var logLabel = document.createElement("label"); logLabel.htmlFor = "panel-fader-log-to-history";
       logLabel.textContent = api.i18n("FADER_LOG_TO_HISTORY");
       logField.appendChild(logTgl.label); logField.appendChild(logLabel); frag.appendChild(logField);
+      frag.appendChild(window.__widgetActionFields("panel-fader", mc, api));
+      if (window.__midiAssignField) frag.appendChild(window.__midiAssignField("fader"));
+      frag.appendChild(window.__widgetSourceFields("panel-fader", mc, api, "fader", panelPropertiesTargetId));
+      frag.appendChild(window.__widgetColorFollowFields("panel-fader", mc, api, "fader"));
+      frag.appendChild(window.__widgetRulesEditor("panel-fader", mc, api, "fader", panelPropertiesTargetId));
       return frag;
     },
     readPropertiesPane: function () {
-      return {
+      return Object.assign({
         label: document.getElementById("panel-fader-label")?.value || "",
         show_label: document.getElementById("panel-fader-show-label")?.checked !== false,
         command: (document.getElementById("panel-fader-command")?.value || "").trim(),
         fader_min: parseFloat(document.getElementById("panel-fader-min")?.value || "0"),
         fader_max: parseFloat(document.getElementById("panel-fader-max")?.value || "100"),
         log_to_history: document.getElementById("panel-fader-log-to-history")?.checked === true,
-      };
+        rules: window.__widgetRulesRead("panel-fader"),
+      }, window.__widgetActionRead("panel-fader"), window.__widgetSourceRead("panel-fader"), window.__widgetColorFollowRead("panel-fader"));
     },
   });
 })();
 
+// =============================================================================
+// TOGGLE PANEL PLUGIN
+// Ein Schalter mit zwei Zustaenden (an/aus) und je einem Befehl. Aussehen: Kippschalter waagerecht (Vorgabe) oder senkrecht,
+// oder Lampe (die ganze Flaeche leuchtet in der Farbe des Zustands). Der Zustand ist reiner Laufzeit-Zustand (nicht im
+// Layout): er steht in window.__commandValues unter dem Schluessel "toggle|<Befehl an>|<Befehl aus>" (bzw. "toggle#<Panel-Id>",
+// wenn keine Befehle gesetzt sind) und wird wie die Fader-Werte an alle Geraete verteilt. Toggles mit denselben Befehlen
+// bleiben dadurch gleich geschaltet. Ohne gemerkten Wert gilt `initial_state`; beim Start wird kein Befehl gesendet.
+//
+// Der Zustand kann auch von aussen kommen:
+//   - Quelle (`source`, siehe __widgetSource): der Schalter zeigt immer den Zustand der Quelle (z. B. Blackout), auch wenn er
+//     anderswo (Werkzeugleiste, Befehlszeile, anderes Geraet) geaendert wird. Ein Klick fuehrt den Befehl aus; die Anzeige
+//     folgt dann der Quelle.
+//   - Befehle abhoeren (`listen_on` / `listen_off`): wird irgendwo dieser Befehl ausgefuehrt (Nachricht "command_log",
+//     auch als Teil einer Verkettung), schaltet der Schalter ein bzw. aus.
+// Regeln (siehe oben): Bedingungen "ist an" / "ist aus" (sowie Quellen-Bedingungen) aendern Farben und Beschriftung.
+// =============================================================================
+
+(function () {
+  "use strict";
+
+  var LOOKS = ["switch_h", "switch_v", "lamp"];
+  var DEFAULT_LOOK = "switch_h";
+  var COLOR_ON = "#2fbf5b";
+  var COLOR_OFF = "#c0392b";
+  var cfgOf = window.__widgetCfg;
+
+  function keyOf(mc, panelId) {
+    var on = window.__commandKey(mc.command_on), off = window.__commandKey(mc.command_off);
+    return on || off ? "toggle|" + on + "|" + off : "toggle#" + panelId;
+  }
+
+  function stateOf(mc, panelId) {
+    var source = window.__widgetSource(mc);
+    if (source != null) return typeof source === "boolean" ? source : typeof source === "string" ? source.toLowerCase() !== "#000000" : source > 0;
+    var value = window.__commandValues[keyOf(mc, panelId)];
+    if (value == null) return mc.initial_state === "on";
+    return Number(value) >= 0.5;
+  }
+
+  function lookOf(mc) { return LOOKS.indexOf(mc.look) >= 0 ? mc.look : DEFAULT_LOOK; }
+
+  /** Zeichnet den Schalter `wrap`. opts: { panelEl (ohne: keine Regeln), forceOn (Vorschau), local (Bedienung an diesem Geraet) } */
+  function paint(wrap, mc, panelId, opts) {
+    opts = opts || {};
+    var on = typeof opts.forceOn === "boolean" ? opts.forceOn : stateOf(mc, panelId);
+    var hooks = opts.panelEl ? { setState: function (next) { var key = keyOf(mc, panelId); setState(key, next); paintAll(key); } } : null;
+    var style = opts.panelEl
+      ? window.__widgetRules(opts.panelEl, wrap, mc, { on: on, value: on ? 1 : 0, source: window.__widgetSource(mc) }, opts.local === true, hooks)
+      : { fmt: function (t) { return t; } };
+    var color = style.accent || (on ? mc.color_on : mc.color_off) || (on ? COLOR_ON : COLOR_OFF);
+    var changed = wrap.dataset.on !== (on ? "1" : "0");
+    wrap.dataset.look = lookOf(mc);
+    wrap.dataset.on = on ? "1" : "0";
+    wrap.style.setProperty("--tgl-color", color);
+    wrap.style.setProperty("--tgl-text", window.__contrastColor(color));
+    var button = wrap.querySelector(".panel-tgl");
+    button.setAttribute("aria-pressed", on ? "true" : "false");
+    var labelEl = wrap.querySelector(".panel-tgl__label");
+    var text = style.label || style.fmt((on ? mc.label_on : mc.label_off) || mc.label || "");
+    labelEl.textContent = text;
+    labelEl.hidden = mc.show_label === false || !text;
+    wrap.dataset.nolabel = labelEl.hidden ? "1" : "0";
+    labelEl.style.fontSize = mc.font_size ? mc.font_size + "rem" : "";
+    button.title = text;
+    if (changed && opts.panelEl) window.__widgetChanged();
+  }
+
+  function setState(key, on) {
+    window.__commandValues[key] = on ? 1 : 0;
+    window.__panelAPI.sendToServer("command_value_updated", { pattern: key, kind: "toggle", value: on ? 1 : 0 });
+  }
+
+  /** Alle Toggle-Panels neu zeichnen (nach einer Wertaenderung; `key` leer = alle). */
+  function paintAll(key) {
+    document.querySelectorAll('.workspace-panel[data-panel-type="toggle"]').forEach(function (panelEl) {
+      var wrap = panelEl.querySelector(".panel-tgl__wrap");
+      if (!wrap) return;
+      var mc = cfgOf(panelEl), id = panelEl.dataset.panelId;
+      if (key && keyOf(mc, id) !== key) return;
+      paint(wrap, mc, id, { panelEl: panelEl });
+    });
+  }
+
+  // Die gemeinsame Sync-Funktion (Fader) zeichnet auch die Toggles mit.
+  var _syncFaders = window.__syncCommandPanels;
+  window.__syncCommandPanels = function (key) {
+    if (_syncFaders) _syncFaders(key);
+    paintAll(key);
+    if (window.__widgetRefreshSourced) window.__widgetRefreshSourced();
+  };
+
+  window.__widgetRefreshers.toggle = function (panelEl, mc, local) {
+    var wrap = panelEl.querySelector(".panel-tgl__wrap");
+    if (wrap) paint(wrap, mc, panelEl.dataset.panelId, { panelEl: panelEl, local: local });
+  };
+
+  // Befehlsverkettung "A; B, C" in einzelne Befehle teilen (Anfuehrungszeichen bleiben zusammen), normalisiert
+  function splitCommands(text) {
+    var parts = [], current = "", quoted = false;
+    String(text || "").split("").forEach(function (ch) {
+      if (ch === '"') quoted = !quoted;
+      if (!quoted && (ch === ";" || ch === ",")) { parts.push(current); current = ""; } else current += ch;
+    });
+    parts.push(current);
+    return parts.map(function (p) { return window.__commandKey(p); }).filter(Boolean);
+  }
+
+  window.__panelPlugins.register({
+    type: "toggle",
+
+    buildContent: function (panel) {
+      var mc = panel.module_config || {};
+      var wrap = document.createElement("div");
+      wrap.className = "panel-tgl__wrap";
+      var button = document.createElement("button");
+      button.type = "button";
+      button.className = "panel-tgl";
+      var track = document.createElement("span"); track.className = "panel-tgl__track";
+      var knob = document.createElement("span"); knob.className = "panel-tgl__knob";
+      track.appendChild(knob);
+      var label = document.createElement("span"); label.className = "panel-tgl__label";
+      button.appendChild(track); button.appendChild(label);
+      wrap.appendChild(button);
+      wrap._savedInitial = mc.initial_state === "on" ? "on" : "off";
+      paint(wrap, mc, panel.id);
+      button.addEventListener("click", function () {
+        if (typeof isEditMode !== "undefined" && isEditMode) return;
+        var panelEl = wrap.closest(".workspace-panel");
+        if (!panelEl) return;
+        var config = cfgOf(panelEl), id = panelEl.dataset.panelId;
+        var next = !stateOf(config, id);
+        var key = keyOf(config, id);
+        setState(key, next);
+        paint(wrap, config, id, { panelEl: panelEl, local: true });      // Bedienung an diesem Geraet: Befehle der Regeln duerfen senden
+        paintAll(key);
+        window.__widgetAction(config, next ? config.command_on : config.command_off, true);
+      });
+      return wrap;
+    },
+
+    onModuleConfigChanged: function (panelEl, config) {
+      var wrap = panelEl.querySelector(".panel-tgl__wrap");
+      if (!wrap) return;
+      var mc = config || {};
+      var id = panelEl.dataset.panelId;
+      // Echte (gespeicherte) Aenderung des Anfangszustands: der gemerkte Laufzeit-Wert wird auf den neuen Anfangszustand gesetzt.
+      // Die Vorschau im Dialog (Konfiguration weicht vom gespeicherten Stand ab) zeigt den Anfangszustand nur an.
+      var saved = panelEl.dataset.moduleConfig === JSON.stringify(mc);
+      var initialOn = mc.initial_state === "on";
+      var initialNow = initialOn ? "on" : "off";
+      if (saved) {
+        if (wrap._savedInitial !== initialNow) setState(keyOf(mc, id), initialOn);
+        wrap._savedInitial = initialNow;
+        paintAll(keyOf(mc, id));
+        paint(wrap, mc, id, { panelEl: panelEl });
+      } else {
+        var preview = initialNow !== wrap._savedInitial && window.__widgetSource(mc) == null;
+        paint(wrap, mc, id, { panelEl: panelEl, forceOn: preview ? initialOn : undefined });
+      }
+    },
+
+    /** Abgehoerte Befehle (Nachricht "command_log" an alle Geraete): schaltet den Schalter ein bzw. aus. */
+    onMessage: function (panelEl, type, payload) {
+      if (type !== "command_log" || !payload || payload.success === false) return;
+      var mc = cfgOf(panelEl);
+      var onKey = window.__commandKey(mc.listen_on), offKey = window.__commandKey(mc.listen_off);
+      if (!onKey && !offKey) return;
+      var parts = splitCommands(payload.command);
+      var onAt = onKey ? parts.lastIndexOf(onKey) : -1, offAt = offKey ? parts.lastIndexOf(offKey) : -1;
+      if (onAt < 0 && offAt < 0) return;
+      var next = onAt > offAt;
+      var id = panelEl.dataset.panelId;
+      setState(keyOf(mc, id), next);
+      paintAll(keyOf(mc, id));
+    },
+
+    buildPropertiesPane: function (moduleConfig, api) {
+      var mc = moduleConfig || {};
+      var frag = document.createDocumentFragment();
+
+      function field(id, labelKey, control) {
+        var row = document.createElement("div"); row.className = "modal__field modal__field--aligned";
+        var label = document.createElement("label"); label.htmlFor = id; label.textContent = api.i18n(labelKey);
+        row.appendChild(label); row.appendChild(control); frag.appendChild(row);
+        return row;
+      }
+      function text(id, value, placeholder) {
+        var input = document.createElement("input"); input.type = "text"; input.id = id; input.className = "modal__input";
+        input.value = value || ""; if (placeholder) input.placeholder = placeholder;
+        return input;
+      }
+      function select(id, options, value) {
+        var el = document.createElement("select"); el.id = id; el.className = "modal__input";
+        options.forEach(function (pair) {
+          var option = document.createElement("option"); option.value = pair[0]; option.textContent = api.i18n(pair[1]);
+          el.appendChild(option);
+        });
+        el.value = value;
+        return el;
+      }
+      function colorRow(prefix, labelKey, value) {
+        var row = document.createElement("div"); row.className = "modal__field modal__field--aligned";
+        var label = document.createElement("label"); label.htmlFor = prefix + "-hex"; label.textContent = api.i18n(labelKey);
+        var swatch = document.createElement("input"); swatch.type = "color"; swatch.id = prefix + "-sw";
+        swatch.className = "color-swatch-input"; swatch.value = value;
+        var hex = document.createElement("input"); hex.type = "text"; hex.id = prefix + "-hex";
+        hex.className = "color-hex-input"; hex.maxLength = 7; hex.value = value;
+        row.appendChild(label); row.appendChild(swatch); row.appendChild(hex); frag.appendChild(row);
+      }
+      function toggleRow(id, labelKey, checked) {
+        var row = document.createElement("div"); row.className = "modal__field modal__field--checkbox";
+        var sw = makeToggleSwitch(id, checked);
+        var label = document.createElement("label"); label.htmlFor = id; label.textContent = api.i18n(labelKey);
+        row.appendChild(sw.label); row.appendChild(label); frag.appendChild(row);
+      }
+
+      field("panel-toggle-look", "TOGGLE_SETTINGS_LOOK", select("panel-toggle-look",
+        [["switch_h", "TOGGLE_LOOK_SWITCH_H"], ["switch_v", "TOGGLE_LOOK_SWITCH_V"], ["lamp", "TOGGLE_LOOK_LAMP"]], lookOf(mc)));
+      field("panel-toggle-label", "TOGGLE_SETTINGS_LABEL", text("panel-toggle-label", mc.label));
+      toggleRow("panel-toggle-show-label", "TOGGLE_SETTINGS_SHOW_LABEL", mc.show_label !== false);
+      field("panel-toggle-label-on", "TOGGLE_SETTINGS_LABEL_ON", text("panel-toggle-label-on", mc.label_on));
+      field("panel-toggle-label-off", "TOGGLE_SETTINGS_LABEL_OFF", text("panel-toggle-label-off", mc.label_off));
+      field("panel-toggle-command-on", "TOGGLE_SETTINGS_COMMAND_ON", text("panel-toggle-command-on", mc.command_on, "Fixture 1 At Full"));
+      field("panel-toggle-command-off", "TOGGLE_SETTINGS_COMMAND_OFF", text("panel-toggle-command-off", mc.command_off, "Fixture 1 At 0"));
+      colorRow("panel-toggle-color-on", "TOGGLE_SETTINGS_COLOR_ON", /^#[0-9a-fA-F]{6}$/.test(mc.color_on || "") ? mc.color_on : COLOR_ON);
+      colorRow("panel-toggle-color-off", "TOGGLE_SETTINGS_COLOR_OFF", /^#[0-9a-fA-F]{6}$/.test(mc.color_off || "") ? mc.color_off : COLOR_OFF);
+      field("panel-toggle-initial", "TOGGLE_SETTINGS_INITIAL", select("panel-toggle-initial",
+        [["off", "TOGGLE_INITIAL_OFF"], ["on", "TOGGLE_INITIAL_ON"]], mc.initial_state === "on" ? "on" : "off"));
+      frag.appendChild(window.__widgetSourceFields("panel-toggle", mc, api, "any", panelPropertiesTargetId));
+      frag.appendChild(window.__widgetColorFollowFields("panel-toggle", mc, api, "toggle"));
+      field("panel-toggle-listen-on", "TOGGLE_LISTEN_ON", text("panel-toggle-listen-on", mc.listen_on, "Blackout On"));
+      field("panel-toggle-listen-off", "TOGGLE_LISTEN_OFF", text("panel-toggle-listen-off", mc.listen_off, "Blackout Off"));
+      var hint = document.createElement("p"); hint.className = "settings-field-hint"; hint.textContent = api.i18n("TOGGLE_LISTEN_HINT");
+      frag.appendChild(hint);
+      var fontSize = document.createElement("input"); fontSize.type = "number"; fontSize.id = "panel-toggle-fontsize";
+      fontSize.className = "modal__input"; fontSize.value = mc.font_size || 1; fontSize.min = "0.4"; fontSize.max = "5"; fontSize.step = "0.1";
+      field("panel-toggle-fontsize", "BUTTON_SETTINGS_FONT_SIZE", fontSize);
+      frag.appendChild(window.__widgetActionFields("panel-toggle", mc, api));
+      if (window.__midiAssignField) frag.appendChild(window.__midiAssignField("toggle"));
+      toggleRow("panel-toggle-log-to-history", "BUTTON_LOG_TO_HISTORY", mc.log_to_history !== false);
+      frag.appendChild(window.__widgetRulesEditor("panel-toggle", mc, api, "toggle", panelPropertiesTargetId));
+      return frag;
+    },
+
+    afterPropertiesPaneInserted: function (paneEl, panelId, api) {
+      api.wireColorPair("panel-toggle-color-on-sw", "panel-toggle-color-on-hex", function () {});
+      api.wireColorPair("panel-toggle-color-off-sw", "panel-toggle-color-off-hex", function () {});
+      window.__widgetPreviewWiring(paneEl, panelId, "toggle");
+    },
+
+    readPropertiesPane: function () {
+      var value = function (id) { return document.getElementById(id)?.value || ""; };
+      var hex = function (id, fallback) {
+        var v = value(id).trim();
+        return /^#[0-9a-fA-F]{6}$/.test(v) ? v : fallback;
+      };
+      var cfg = {
+        look: LOOKS.indexOf(value("panel-toggle-look")) >= 0 ? value("panel-toggle-look") : DEFAULT_LOOK,
+        label: value("panel-toggle-label"),
+        show_label: document.getElementById("panel-toggle-show-label")?.checked !== false,
+        label_on: value("panel-toggle-label-on"),
+        label_off: value("panel-toggle-label-off"),
+        command_on: value("panel-toggle-command-on").trim(),
+        command_off: value("panel-toggle-command-off").trim(),
+        color_on: hex("panel-toggle-color-on-hex", COLOR_ON),
+        color_off: hex("panel-toggle-color-off-hex", COLOR_OFF),
+        initial_state: value("panel-toggle-initial") === "on" ? "on" : "off",
+        listen_on: value("panel-toggle-listen-on").trim(),
+        listen_off: value("panel-toggle-listen-off").trim(),
+        font_size: parseFloat(value("panel-toggle-fontsize") || "1") || 1,
+        log_to_history: document.getElementById("panel-toggle-log-to-history")?.checked !== false,
+        rules: window.__widgetRulesRead("panel-toggle"),
+      };
+      return Object.assign(cfg, window.__widgetActionRead("panel-toggle"), window.__widgetSourceRead("panel-toggle"), window.__widgetColorFollowRead("panel-toggle"));
+    },
+  });
+})();
 
 // ---- Panel Properties modal (right-click -> Panel Properties...) ----------
 // Restructured analogous to the central Settings modal: a sidebar of
@@ -2965,8 +4377,65 @@ function setupCategorySidebar(modalRootSelector) {
       root.querySelectorAll("[data-settings-pane]").forEach((pane) => {
         pane.classList.toggle("settings-modal__pane--active", pane.dataset.settingsPane === category);
       });
+      document.dispatchEvent(new CustomEvent("settings-category-shown", { detail: { category, root } }));
     });
   });
+}
+
+/** Suche in den Einstellungen: blendet Felder und Abschnitte aus, die nicht zum Suchtext passen; Bereiche ohne Treffer sind in der Seitenleiste abgedunkelt
+ * und der erste Bereich mit Treffern wird geoeffnet, wenn der aktuelle keinen hat. Die Bereiche API und Remote entstehen teils erst im Browser - gesucht wird in
+ * dem, was gerade im Dokument steht. */
+function setupSettingsSearch(modalRootSelector) {
+  const root = document.querySelector(modalRootSelector);
+  const input = root && root.querySelector("#settings-search");
+  if (!root || !input) return;
+  const empty = root.querySelector("#settings-search-empty");
+  const OFF = "settings-filter-off";
+  // Seiten, die erst beim Oeffnen gezeichnet werden (REST-API, KI, Sprache, Standardwerte ...), nennen ihre Texte vorab in data-search-keys - so findet die Suche sie auch, wenn man sie noch nie geoeffnet hat
+  const text = (node) => (node.textContent + " " + [...node.querySelectorAll("input[placeholder],select")].map((n) => n.placeholder || "").join(" ")
+    + " " + (node.dataset && node.dataset.searchKeys ? node.dataset.searchKeys.split(/\s+/).map((k) => i18n(k)).join(" ") : "")).toLowerCase();
+
+  function reset() {
+    root.querySelectorAll("." + OFF).forEach((n) => n.classList.remove(OFF));
+    root.querySelectorAll(".settings-modal__category--nomatch").forEach((n) => n.classList.remove("settings-modal__category--nomatch"));
+    if (empty) empty.hidden = true;
+  }
+
+  function apply() {
+    const query = input.value.trim().toLowerCase();
+    reset();
+    if (!query) return;
+    const words = query.split(/\s+/).filter(Boolean);
+    const has = (node) => { const hay = text(node); return words.every((w) => hay.includes(w)); };
+    const matching = [];
+    root.querySelectorAll("[data-settings-pane]").forEach((pane) => {
+      let hits = 0;
+      const units = pane.querySelectorAll(":scope > .settings-section, :scope > .settings-field, :scope > .settings-field-hint, :scope > div:not(.settings-section):not(.settings-pane-head)");
+      units.forEach((unit) => {
+        if (unit.classList.contains("settings-section")) {
+          const title = unit.querySelector(".settings-section__title");
+          const sectionHit = has(unit);
+          if (!sectionHit) { unit.classList.add(OFF); return; }
+          const titleHit = title && has(title);
+          const fields = unit.querySelectorAll(".settings-field");
+          if (!titleHit && fields.length > 1) fields.forEach((f) => { if (!has(f)) f.classList.add(OFF); });
+          hits += 1;
+        } else if (has(unit)) {
+          hits += 1;
+        } else {
+          unit.classList.add(OFF);
+        }
+      });
+      const category = root.querySelector('[data-settings-category="' + pane.dataset.settingsPane + '"]');
+      if (hits) { if (category && !category.hidden) matching.push(category); } else if (category) category.classList.add("settings-modal__category--nomatch");
+    });
+    const active = root.querySelector(".settings-modal__category--active");
+    if (matching.length && active && !matching.includes(active)) matching[0].click();
+    if (empty) empty.hidden = matching.length > 0;
+  }
+
+  input.addEventListener("input", apply);
+  document.addEventListener("settings-search-refresh", apply);
 }
 
 /** Resets a sidebar-category modal back to its first category/pane -
@@ -3220,9 +4689,7 @@ function setupPanelPropertiesModal() {
 
   cancelButton.addEventListener("click", cancelAndClose);
   closeButton.addEventListener("click", cancelAndClose);
-  document.addEventListener("keydown", (event) => {
-    if (event.key === "Escape" && Modal.isOpen("panel-properties")) cancelAndClose();
-  });
+  Modal._escape["panel-properties"] = cancelAndClose;
 }
 
 // ---- Add Panel modal (Edit -> Add Panel...) --------------------------------
@@ -3233,7 +4700,6 @@ const ADD_PANEL_CATEGORIES = [
   ["cues", "ADDP_CAT_CUES", "cuelist"],
   ["input", "ADDP_CAT_INPUT", "button"],
   ["media", "ADDP_CAT_MEDIA", "film"],
-//3D-AUS//   ["stage", "ADDP_CAT_STAGE", "stage"],
   ["other", "ADDP_CAT_OTHER", "panel"],
 ];
 const addPanelState = { category: "all", query: "" };
@@ -3281,6 +4747,9 @@ function updateAddPanelModalList(panelTypes) {
       const li = document.createElement("li");
       li.className = "addpanel__item";
       li.dataset.cat = id;
+      li.dataset.panelType = info.type;
+      li.dataset.nameKey = info.name || "";
+      li.dataset.descKey = info.description || "";
       const btn = document.createElement("button");
       btn.type = "button";
       btn.className = "add-panel__type-item addpanel__card";
@@ -3308,15 +4777,36 @@ function updateAddPanelModalList(panelTypes) {
   filterAddPanelList();
 }
 
-/** Shows the cards matching the chosen category and the search text (name + description, any language of the current UI). */
+/** Suchtext einer Karte: Name, Beschreibung und Stichwoerter in ALLEN Sprachen (Deutsch + Englisch), damit man z.B. "Buehne" und "Stage" findet, egal welche Sprache eingestellt ist.
+ *  Umlaute und ae/oe/ue gelten als gleich ("Buehne" = "Bühne"). Die Sprachdateien werden einmal zusaetzlich geholt; bis dahin zaehlt der sichtbare Text. */
+const _searchLocales = { dicts: null, loading: false };
+function _searchFold(text) {
+  return String(text || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/ß/g, "ss").replace(/([aou])e/g, "$1");
+}
+function _addPanelSearchText(li) {
+  if (!_searchLocales.dicts) {
+    if (!_searchLocales.loading) {
+      _searchLocales.loading = true;
+      Promise.all([...new Set(["de", "en", translator.language])].map((lang) => fetch(`/static/locales/${lang}.json${_assetQuery}`).then((r) => (r.ok ? r.json() : {})).catch(() => ({}))))
+        .then((dicts) => { _searchLocales.dicts = dicts; filterAddPanelList(); });
+    }
+    return _searchFold(li.textContent);
+  }
+  const keys = [li.dataset.nameKey, li.dataset.descKey, "PANEL_KEYWORDS_" + String(li.dataset.panelType || "").toUpperCase()];
+  const parts = [li.textContent];
+  _searchLocales.dicts.forEach((dict) => keys.forEach((key) => { if (key && dict[key]) parts.push(dict[key]); }));
+  return _searchFold(parts.join(" "));
+}
+
+/** Shows the cards matching the chosen category and the search text (name + description + keywords, German and English). */
 function filterAddPanelList() {
   const list = document.getElementById("add-panel-type-list");
   if (!list) return;
-  const query = addPanelState.query.trim().toLowerCase();
+  const query = _searchFold(addPanelState.query.trim());
   const shown = {};
   list.querySelectorAll(".addpanel__item").forEach((li) => {
     const inCategory = addPanelState.category === "all" || li.dataset.cat === addPanelState.category;
-    const hay = li.textContent.toLowerCase();
+    const hay = _addPanelSearchText(li);
     const match = inCategory && (!query || query.split(/\s+/).every((word) => hay.includes(word)));
     li.hidden = !match;
     if (match) shown[li.dataset.cat] = (shown[li.dataset.cat] || 0) + 1;
@@ -3339,10 +4829,11 @@ function setupAddPanelModal() {
   const cancelButton = document.querySelector('[data-modal-cancel="add-panel"]');
   if (!list) return;
 
-  // Delegated opener: [data-action="open-add-panel-modal"] in the Edit menu.
-  document.addEventListener("click", (event) => {
-    if (!event.target.closest('[data-action="open-add-panel-modal"]')) return;
+  // Opener: [data-action="open-add-panel-modal"] in the Edit menu, and the context menu on the empty workspace (with the click position: the new panel lands there).
+  let placeAt = null;
+  const openModal = (at) => {
     if (!isEditMode) return;
+    placeAt = at || null;
     addPanelState.category = "all";
     addPanelState.query = "";
     if (search) search.value = "";
@@ -3351,10 +4842,15 @@ function setupAddPanelModal() {
     list.scrollTop = 0;
     // Touch devices: no automatic focus (it would pop up the on-screen keyboard over the cards)
     if (search && window.matchMedia("(hover: hover)").matches) setTimeout(() => search.focus(), 50);
+  };
+  window.__openAddPanelModal = openModal;
+  document.addEventListener("click", (event) => {
+    if (event.target.closest('[data-action="open-add-panel-modal"]')) openModal(null);
   });
 
   const pick = (type) => {
-    client.send("add_panel", { panel_type: type });
+    client.send("add_panel", placeAt ? { panel_type: type, ...placeAt } : { panel_type: type });
+    placeAt = null;
     Modal.close("add-panel");
   };
 
@@ -3401,9 +4897,6 @@ function setupAddPanelModal() {
   const close = () => Modal.close("add-panel");
   if (closeButton) closeButton.addEventListener("click", close);
   if (cancelButton) cancelButton.addEventListener("click", close);
-  document.addEventListener("keydown", (event) => {
-    if (event.key === "Escape" && Modal.isOpen("add-panel")) close();
-  });
 }
 
 // ---- Central Settings modal (toolbar gear icon) ----------------------------
@@ -3445,17 +4938,19 @@ const ThemeUI = (() => {
       ["border", "THEME_TOKEN_BORDER"], ["border-strong", "THEME_TOKEN_BORDER_STRONG"]] },
     { title: "THEME_GROUP_ACCENT", tokens: [["accent", "THEME_TOKEN_ACCENT"]], presets: true },
     { title: "THEME_GROUP_STATUS", hint: "THEME_STATUS_HINT", tokens: [
-      ["ok", "THEME_TOKEN_OK"], ["warn", "THEME_TOKEN_WARN"], ["error", "THEME_TOKEN_ERROR"], ["live", "THEME_TOKEN_LIVE"]] },
+      ["ok", "THEME_TOKEN_OK"], ["warn", "THEME_TOKEN_WARN"], ["error", "THEME_TOKEN_ERROR"], ["live", "THEME_TOKEN_LIVE"],
+      ["modified", "THEME_TOKEN_MODIFIED"]] },
   ];
   const BUILTIN = [["dark", "THEME_BASE_DARK"], ["light", "THEME_BASE_LIGHT"]];
 
   let draft = normalizeTheme(null);
+  let saved = normalizeTheme(null);          // das zuletzt gespeicherte (bestaetigte) Theme: Grundlage fuer "geaendert" und den Zurueck-Pfeil
+  const tokenLabels = {};
+  GROUPS.forEach((group) => group.tokens.forEach(([token, key]) => { tokenLabels[token] = key; }));
   let profiles = {};
   let built = false;
   const rows = {};
   const refs = {};
-  let armedDelete = null;
-  let armedTimer = null;
 
   const el = (tag, className, text) => {
     const node = document.createElement(tag);
@@ -3482,12 +4977,37 @@ const ThemeUI = (() => {
   function changed() {
     applyTheme(draft);
     refresh();
+    if (window.OCSettings) window.OCSettings.touch();
   }
 
   function onColor(token, value) {
     draft.tokens[token] = value.toLowerCase();
     applyTheme(draft);
     refresh(token);
+    if (window.OCSettings) window.OCSettings.touch();
+  }
+
+  /** Was gegenueber dem gespeicherten Theme geaendert ist: Basis, jede Farbe, Rundung - je eine Zeile mit eigenem Zurueck-Pfeil. */
+  function changes() {
+    if (!built) return [];
+    const out = [];
+    if (draft.base !== saved.base) {
+      out.push({ key: "theme:base", label: tr("THEME_BASE_LABEL"), row: refs.baseSection, revert: () => { draft.base = saved.base; changed(); } });
+    }
+    const tokens = new Set([...Object.keys(draft.tokens), ...Object.keys(saved.tokens)]);
+    tokens.forEach((token) => {
+      if (draft.tokens[token] === saved.tokens[token] || !rows[token]) return;
+      out.push({ key: "theme:" + token, label: tr(tokenLabels[token] || token), row: rows[token].row,
+        revert: () => { if (token in saved.tokens) draft.tokens[token] = saved.tokens[token]; else delete draft.tokens[token]; changed(); } });
+    });
+    if (draft.radius !== saved.radius) out.push({ key: "theme:radius", label: tr("THEME_RADIUS"), row: refs.radiusRow, revert: () => { draft.radius = saved.radius; changed(); } });
+    return out;
+  }
+  /** Kategorie zuruecksetzen: das Standard-Theme wird Entwurf (gespeichert erst mit "Speichern"). */
+  function resetToDefault() {
+    const d = client.state && client.state.settings_defaults && client.state.settings_defaults.theme;
+    draft = clone(d || null);
+    changed();
   }
 
   function setBase(base) {
@@ -3541,7 +5061,7 @@ const ThemeUI = (() => {
       if (HEX_COLOR_PATTERN.test(value)) { swatch.value = value; onColor(token, value); }
     });
     reset.addEventListener("click", () => { delete draft.tokens[token]; changed(); });
-    rows[token] = { swatch, hex, reset };
+    rows[token] = { swatch, hex, reset, row };
     return row;
   }
 
@@ -3554,9 +5074,8 @@ const ThemeUI = (() => {
   }
 
   function applyProfile(theme) {
-    draft = clone(theme);
+    draft = clone(theme);              // Klick = als Entwurf uebernehmen (Vorschau); gespeichert wird mit "Speichern" wie alles andere
     changed();
-    client.send("set_theme", draft);   // Klick = sofort anwenden und speichern
   }
 
   function renderProfiles() {
@@ -3605,18 +5124,9 @@ const ThemeUI = (() => {
         });
         input.addEventListener("blur", commit);
       }));
-      const del = profileButton("THEME_PROFILE_DELETE", () => {
-        if (armedDelete !== profileName) {   // zweistufig: erst scharf schalten, dann loeschen
-          armedDelete = profileName;
-          del.textContent = tr("THEME_PROFILE_DELETE_CONFIRM");
-          del.classList.add("btn--danger");
-          clearTimeout(armedTimer);
-          armedTimer = setTimeout(() => { armedDelete = null; renderProfiles(); }, 3000);
-          return;
-        }
-        armedDelete = null;
-        clearTimeout(armedTimer);
-        client.send("delete_theme_profile", { name: profileName });
+      const del = profileButton("THEME_PROFILE_DELETE", async () => {
+        const sure = await _askDelete("files", { title: tr("THEME_PROFILE_DELETE_TITLE"), body: tr("THEME_PROFILE_DELETE_BODY").replace("{name}", profileName), confirmKey: "THEME_PROFILE_DELETE" });
+        if (sure) client.send("delete_theme_profile", { name: profileName });
       });
       actions.appendChild(del);
       item.append(name, actions);
@@ -3631,6 +5141,7 @@ const ThemeUI = (() => {
 
     // Basis
     const baseSection = el("div", "settings-section");
+    refs.baseSection = baseSection;
     baseSection.appendChild(label(el("div", "settings-section__title"), "THEME_BASE_LABEL"));
     const seg = el("div", "segmented");
     refs.segDark = el("button", "segmented__btn"); refs.segLight = el("button", "segmented__btn");
@@ -3677,6 +5188,7 @@ const ThemeUI = (() => {
     const shape = el("div", "settings-section");
     shape.appendChild(label(el("div", "settings-section__title"), "THEME_GROUP_SHAPE"));
     const radiusRow = el("div", "settings-field");
+    refs.radiusRow = radiusRow;
     radiusRow.appendChild(label(el("label"), "THEME_RADIUS"));
     const radiusBox = el("div", "modal__field");
     refs.radius = el("input");
@@ -3758,19 +5270,28 @@ const ThemeUI = (() => {
 
   return {
     /** Dialog oeffnet: Entwurf = aktuell gueltiges Theme. */
-    open(theme) { draft = clone(theme); build(); refresh(); },
+    open(theme) { draft = clone(theme); saved = clone(theme); build(); refresh(); },
     /** Das bestaetigte Theme hat sich (auch von anderer Seite) geaendert. */
-    sync(theme) { draft = clone(theme); refresh(); },
+    sync(theme) { draft = clone(theme); saved = clone(theme); refresh(); if (window.OCSettings) window.OCSettings.touch(); },
+    changes,
+    resetToDefault,
     setProfiles(next) { profiles = next || {}; renderProfiles(); },
     getDraft() { return clone(draft); },
+    /** Import (Einstellungen): ein Theme als Entwurf uebernehmen (Format wie beim Farb-Import); ungueltiges wird ignoriert. */
+    importDraft(source) {
+      if (!source || typeof source !== "object" || !("tokens" in source || "base" in source)) return;
+      draft = clone(source);
+      changed();
+    },
     /** Sprache gewechselt: dynamisch erzeugte Texte (Basis-Hinweis, Profil-Liste) neu setzen. */
     relabel() { refresh(); renderProfiles(); },
   };
 })();
 
 function setupSettingsModal() {
-  const closeButton = document.querySelector('[data-modal-close="settings"]');
-  const cancelButton = document.querySelector('[data-modal-cancel="settings"]');
+  // Abbrechen und Schliessen haben bewusst KEIN data-modal-cancel/-close: sie fragen bei Aenderungen erst nach (cancelAndClose unten)
+  const closeButton = document.getElementById("settings-close");
+  const cancelButton = document.getElementById("settings-cancel");
   const saveButton = document.getElementById("settings-save");
   const languageSelect = document.getElementById("settings-language");
   const guiScaleNumber = document.getElementById("settings-gui-scale-number");
@@ -3779,16 +5300,9 @@ function setupSettingsModal() {
   let snapshotBeforeOpen = null;
 
   setupCategorySidebar(".modal--settings");
+  setupSettingsSearch(".modal--settings");
 
-  // Geraeteeinstellung (nur localStorage dieses Geraets): wirkt sofort, ohne "Speichern & Anwenden"
-  document.getElementById("settings-layout-swipe")?.addEventListener("change", (event) => {
-    setLayoutSwipeEnabled(event.target.checked);
-  });
-  // Update-Pruefung beim Start (gilt fuer das Programm, nicht nur fuer dieses Geraet): wirkt sofort
-  document.getElementById("settings-update-check")?.addEventListener("change", (event) => {
-    if (client.state) client.state.update_check_enabled = event.target.checked;
-    fetch("/api/update/enabled", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ enabled: event.target.checked }) }).catch(() => {});
-  });
+  // Layout-Wischgeste (nur dieses Geraet) und Update-Pruefung beim Start: gelten wie alles andere erst mit "Speichern" (siehe unten)
 
   // ---- Open: snapshot current values, populate every field ----
   document.addEventListener("click", (event) => {
@@ -3808,14 +5322,24 @@ function setupSettingsModal() {
     if (swipeBox) swipeBox.checked = layoutSwipeEnabled();
     const updateBox = document.getElementById("settings-update-check");
     if (updateBox) updateBox.checked = state.update_check_enabled !== false;
+    if (window.OCBackups) window.OCBackups.fillSettings(state);
+    if (window.OCLock) window.OCLock.fillSettings();
+    if (window.OCToolbar) window.OCToolbar.fillSettings();
+    if (window.OCKeepAwake) window.OCKeepAwake.fillSettings();
+    if (window.OCSystem) window.OCSystem.fillSettings();
     document.getElementById("settings-artnet-enabled").checked = !!state.artnet_enabled;
-    document.getElementById("settings-artnet-target-ip").value = state.artnet_ip || "";
+    const artnetAuto = state.artnet_ip === "auto";
+    document.getElementById("settings-artnet-auto").checked = artnetAuto;
+    document.getElementById("settings-artnet-target-ip").value = artnetAuto ? "" : (state.artnet_ip || "");
+    document.getElementById("settings-artnet-target-ip").disabled = artnetAuto;
     document.getElementById("settings-artnet-bind-ip").value = state.artnet_bind_ip || "";
     _updateArtnetStatusUI(!!state.artnet_enabled);
+    _renderArtnetNodes(state.artnet_nodes || [], artnetAuto);
     document.getElementById("settings-sacn-enabled").checked = !!state.sacn_enabled;
     _updateSacnStatusUI(!!state.sacn_enabled);
     document.getElementById("settings-default-universe").value = state.default_universe || 1;
     _renderRemoteSettings(true);
+    _syncSettingsGroups();
 
     // Enttec USB DMX
     document.getElementById("settings-enttec-enabled").checked = !!state.enttec_enabled;
@@ -3850,12 +5374,13 @@ function setupSettingsModal() {
     }).catch(() => {});
 
     Modal.open("settings");
+    document.dispatchEvent(new CustomEvent("settings-opened"));            // Seiten, die ihren Stand zwischenspeichern (KI-Assistent), gleichen sich an
 
     // If the trigger carries a category hint, navigate to that tab
     const trigger = event.target.closest('[data-action="open-settings-modal"]');
     const category = trigger && trigger.dataset.settingsCategory;
     if (category) {
-      const root = document.querySelector(".settings-modal");
+      const root = document.querySelector(".modal--settings");
       if (root) {
         root.querySelectorAll("[data-settings-category]").forEach(btn => {
           btn.classList.toggle("settings-modal__category--active", btn.dataset.settingsCategory === category);
@@ -3863,6 +5388,7 @@ function setupSettingsModal() {
         root.querySelectorAll("[data-settings-pane]").forEach(pane => {
           pane.classList.toggle("settings-modal__pane--active", pane.dataset.settingsPane === category);
         });
+        document.dispatchEvent(new CustomEvent("settings-category-shown", { detail: { category, root } }));
       }
     }
   });
@@ -3892,7 +5418,15 @@ function setupSettingsModal() {
   const openDataFolderBtn = document.getElementById("settings-open-data-folder");
   if (openDataFolderBtn) {
     openDataFolderBtn.addEventListener("click", () => {
-      fetch("/api/data-path/open", { method: "POST" }).catch(() => {});
+      if (window.OCFsBrowser) window.OCFsBrowser.reveal({ realUrl: "/api/data-path/open" });        // am Hauptrechner der Windows-Explorer, an jedem anderen Geraet der OpenCue-Explorer
+    });
+  }
+  const pickDataPathBtn = document.getElementById("settings-pick-data-path");
+  if (pickDataPathBtn) {
+    pickDataPathBtn.addEventListener("click", async () => {
+      const input = document.getElementById("settings-custom-data-path");
+      const picked = window.OCFsBrowser ? await window.OCFsBrowser.pickFolder({ start: (input && input.value) || (document.getElementById("settings-data-path-display") || {}).value || "" }) : null;
+      if (picked && input) { input.value = picked; input.dispatchEvent(new Event("input", { bubbles: true })); }
     });
   }
 
@@ -3981,9 +5515,7 @@ function setupSettingsModal() {
   }
   if (dataPathCancelBtn) dataPathCancelBtn.addEventListener("click", _closeDataPathConfirm);
   if (dataPathCloseBtn)  dataPathCloseBtn.addEventListener("click",  _closeDataPathConfirm);
-  document.addEventListener("keydown", (event) => {
-    if (event.key === "Escape" && Modal.isOpen("data-path-confirm")) _closeDataPathConfirm();
-  });
+  Modal._escape["data-path-confirm"] = _closeDataPathConfirm;
 
   // ---- Globaler DMX-Neustart-Button (Re-initialize DMX Interfaces) ----
   const dmxReinitBtn = document.getElementById("settings-dmx-reinit-btn");
@@ -4021,11 +5553,13 @@ function setupSettingsModal() {
   });
 
   // ---- Cancel / close / Escape: revert live previews, discard everything ----
-  const cancelAndClose = () => {
+  const cancelAndClose = async () => {
+    if (window.OCSettings && !(await window.OCSettings.confirmDiscard())) return;          // mit Aenderungen: "Verwerfen?"
     if (snapshotBeforeOpen) {
       client._applyGuiScale(snapshotBeforeOpen.gui_scale);
       client._applyTheme(client.state.theme);   // zuletzt vom Server bestaetigtes Theme (inkl. angewendeter Profile)
     }
+    document.dispatchEvent(new CustomEvent("settings-cancelled"));          // Seiten mit eigenem Entwurf (KI-Assistent, Sprachsteuerung) verwerfen ihn
     Modal.close("settings");
   };
 
@@ -4041,9 +5575,10 @@ function setupSettingsModal() {
     client.setGuiScale(scale);
 
     _saveRemoteSettings();
+    if (window.OCLock) window.OCLock.saveSettings();                        // Sichermodus (nach dem Passwort: der Server schaltet ihn nur mit Passwort ein)
 
     client.send("set_artnet_enabled", { enabled: document.getElementById("settings-artnet-enabled").checked });
-    client.send("set_artnet_ip", { ip: document.getElementById("settings-artnet-target-ip").value.trim() });
+    client.send("set_artnet_ip", { ip: document.getElementById("settings-artnet-auto").checked ? "auto" : (document.getElementById("settings-artnet-target-ip").value.trim() || "2.255.255.255") });
     client.send("set_artnet_bind_ip", { ip: document.getElementById("settings-artnet-bind-ip").value.trim() });
     client.send("set_sacn_enabled", { enabled: document.getElementById("settings-sacn-enabled").checked });
 
@@ -4066,25 +5601,29 @@ function setupSettingsModal() {
     panelDefaults.corner_style = document.getElementById("settings-panel-defaults-corners").value;
     client.send("set_panel_defaults", panelDefaults);
 
-    Modal.close("settings");
+    const swipeBox = document.getElementById("settings-layout-swipe");
+    if (swipeBox && swipeBox.checked !== layoutSwipeEnabled()) setLayoutSwipeEnabled(swipeBox.checked);          // nur dieses Geraet (localStorage)
+    const updateBox = document.getElementById("settings-update-check");
+    if (updateBox && updateBox.checked !== (client.state && client.state.update_check_enabled !== false)) {       // gilt fuer das Programm, nicht nur fuer dieses Geraet
+      if (client.state) client.state.update_check_enabled = updateBox.checked;
+      fetch("/api/update/enabled", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ enabled: updateBox.checked }) }).catch(() => {});
+    }
+
+    if (window.OCKeepAwake) window.OCKeepAwake.saveSettings();                 // Bildschirm wach halten (Server + alle Tablets)
+    if (window.OCToolbar) window.OCToolbar.saveSettings();                  // Toolbar: was oben rechts erscheint (nur dieses Geraet)
+    if (window.OCBackups) window.OCBackups.saveSettings();                  // Sicherungen im Hintergrund (nur an der Konsole)
+    if (window.OCSystem) window.OCSystem.saveSettings();                    // Start mit Windows (nur an der Konsole)
+    document.dispatchEvent(new CustomEvent("settings-saved"));              // Seiten mit eigenem Entwurf (KI-Assistent, Sprachsteuerung) uebernehmen ihn jetzt
+    // Der Dialog bleibt offen: der eben gespeicherte Stand ist jetzt der neue Ausgangspunkt (Zaehler 0, "Schliessen" fragt nicht mehr nach)
+    snapshotBeforeOpen = { gui_scale: scale, theme: { ...ThemeUI.getDraft() } };
+    ThemeUI.open(ThemeUI.getDraft());
+    if (window.OCSettings) window.OCSettings.rebaseline();
+    _showToast(i18n("SETTINGS_SAVED"), "info", 1800);
   });
 
   cancelButton.addEventListener("click", cancelAndClose);
   closeButton.addEventListener("click", cancelAndClose);
-  document.addEventListener("keydown", (event) => {
-    // Guarded against reset-confirm or the GUI Scale sub-modal being open on
-    // top of this modal - Escape should only ever dismiss the topmost
-    // dialog, not cascade through and close the Settings modal underneath.
-    if (
-      event.key === "Escape" &&
-      Modal.isOpen("settings") &&
-      !Modal.isOpen("reset-confirm") &&
-      !Modal.isOpen("gui-scale") &&
-      !Modal.isOpen("data-path-confirm")
-    ) {
-      cancelAndClose();
-    }
-  });
+  Modal._escape.settings = cancelAndClose;                                  // Escape: bei Aenderungen erst nachfragen (nur wenn die Einstellungen ganz oben liegen)
 
   // ---- Reset Defaults: opens a small confirmation dialog STACKED on top
   // of this still-open modal (see .modal-backdrop--stacked in style.css) -
@@ -4098,7 +5637,7 @@ function setupSettingsModal() {
   const resetCloseButton = document.querySelector('[data-modal-close="reset-confirm"]');
 
   if (resetButton) {
-    resetButton.addEventListener("click", () => Modal.open("reset-confirm"));
+    resetButton.addEventListener("click", () => window.OCSettings.resetAll());
   }
   if (resetConfirmButton) {
     resetConfirmButton.addEventListener("click", () => {
@@ -4109,9 +5648,6 @@ function setupSettingsModal() {
   const closeResetConfirm = () => Modal.close("reset-confirm");
   if (resetCancelButton) resetCancelButton.addEventListener("click", closeResetConfirm);
   if (resetCloseButton) resetCloseButton.addEventListener("click", closeResetConfirm);
-  document.addEventListener("keydown", (event) => {
-    if (event.key === "Escape" && Modal.isOpen("reset-confirm")) closeResetConfirm();
-  });
 }
 
 // Speichern geht immer in den lokalen Datenordner.
@@ -4164,6 +5700,7 @@ function applySettingsResetToUI(payload) {
   updateSettingsFieldsInAllPanels("enttec_universe", payload.enttec_universe);
   if (payload.enttec_status) _updateEnttecStatusUI(payload.enttec_status);
   updateSettingsFieldsInAllPanels("language", payload.language);
+  if (window.OCSettings) window.OCSettings.rebaseline();            // die Felder zeigen jetzt den gespeicherten Stand
 }
 
 // ---- Settings panel (first real workspace module) --------------------------
@@ -4329,6 +5866,69 @@ function _updateArtnetStatusUI(enabled) {
   }
 }
 
+/** Art-Net-Geraete im Netzwerk (Suche oder Betrieb "Automatisch"): Liste unter dem Status; "Verwenden" setzt die Adresse als festes Ziel (wirkt mit "Speichern"). */
+function _renderArtnetNodes(nodes, auto) {
+  const box = document.getElementById("settings-artnet-nodes");
+  if (!box) return;
+  box.textContent = "";
+  if (!nodes.length) return;
+  const title = document.createElement("div");
+  title.className = "artnet-nodes__title";
+  title.textContent = i18n(auto ? "ARTNET_NODES_AUTO" : "ARTNET_NODES_FOUND").replace("{n}", String(nodes.length));
+  box.appendChild(title);
+  for (const node of nodes) {
+    const row = document.createElement("div");
+    row.className = "artnet-node";
+    const name = document.createElement("span");
+    name.className = "artnet-node__name";
+    name.textContent = node.name || node.short_name || node.ip;
+    const ip = document.createElement("code");
+    ip.textContent = node.ip;
+    const universes = document.createElement("span");
+    universes.className = "artnet-node__univ";
+    universes.textContent = (node.universes_out || []).length ? i18n("ARTNET_NODE_UNIVERSES").replace("{list}", node.universes_out.join(", ")) : "";
+    const use = document.createElement("button");
+    use.type = "button";
+    use.className = "modal__button";
+    use.textContent = i18n("ARTNET_NODE_USE");
+    use.title = i18n("ARTNET_NODE_USE_HINT");
+    use.addEventListener("click", () => {
+      const auto = document.getElementById("settings-artnet-auto");
+      const target = document.getElementById("settings-artnet-target-ip");
+      if (auto) { auto.checked = false; auto.dispatchEvent(new Event("change", { bubbles: true })); }
+      if (target) { target.disabled = false; target.value = node.ip; target.dispatchEvent(new Event("input", { bubbles: true })); target.dispatchEvent(new Event("change", { bubbles: true })); }
+    });
+    row.append(name, ip, universes, use);
+    box.appendChild(row);
+  }
+}
+
+async function _scanArtnetNodes() {
+  const button = document.getElementById("settings-artnet-scan");
+  const box = document.getElementById("settings-artnet-nodes");
+  if (button) { button.disabled = true; button.textContent = i18n("ARTNET_SCANNING"); }
+  try {
+    const res = await fetch("/api/artnet/nodes");
+    const data = await res.json();
+    if (client.state) client.state.artnet_nodes = data.nodes || [];
+    if (!data.ok) { if (box) box.textContent = i18n("ARTNET_SCAN_LOCAL_ONLY"); return; }
+    if (!data.nodes.length && box) { box.textContent = i18n("ARTNET_NONE_FOUND"); return; }
+    _renderArtnetNodes(data.nodes, document.getElementById("settings-artnet-auto")?.checked);
+  } catch (e) {
+    if (box) box.textContent = i18n("ARTNET_SCAN_FAILED");
+  } finally {
+    if (button) { button.disabled = false; button.textContent = i18n("SETTINGS_ARTNET_SCAN"); }
+  }
+}
+
+document.addEventListener("click", (e) => { if (e.target.closest("#settings-artnet-scan")) _scanArtnetNodes(); });
+document.addEventListener("change", (e) => {
+  if (e.target && e.target.id === "settings-artnet-auto") {
+    const target = document.getElementById("settings-artnet-target-ip");
+    if (target) target.disabled = e.target.checked;
+  }
+});
+
 /** Updates the sACN status badge in the open Settings modal. */
 function _updateSacnStatusUI(enabled) {
   const el = document.getElementById("settings-sacn-status");
@@ -4409,7 +6009,7 @@ function updateSettingsFieldsInAllPanels(fieldName, value) {
 }
 
 // ---- Remote-Einstellungen (nur an der Konsole selbst; Server sendet state.remote nur dorthin) ----
-let _remoteQrUrl = null;      // Adresse, deren QR-Code gerade gezeigt wird
+const _remoteQrSel = { http: null, https: null };      // Adresse je Zugang (http / https), deren QR-Code gerade gezeigt wird
 
 /** Text in die Zwischenablage (Clipboard-API, sonst der klassische Weg ueber ein verstecktes Textfeld). */
 async function _copyText(text) {
@@ -4428,44 +6028,26 @@ async function _copyText(text) {
   return ok;
 }
 
-function _renderRemoteSettings(fillInputs) {
-  const remote = client.state && client.state.remote;
-  const category = document.getElementById("settings-remote-category");
-  if (category) category.hidden = !remote;
-  if (!remote) return;
-  const enabled = document.getElementById("settings-remote-enabled");
-  const password = document.getElementById("settings-remote-password");
-  if (fillInputs) {
-    if (enabled) enabled.checked = !!remote.enabled;
-    if (password) password.value = remote.password || "";
-    const portInput = document.getElementById("settings-remote-port");
-    if (portInput) portInput.value = remote.configured_port || remote.port || "";
-  }
-  const staged = enabled ? enabled.checked : !!remote.enabled;
-  const pending = staged !== !!remote.enabled;                       // Schalter umgelegt, aber noch nicht gespeichert
-  const status = document.getElementById("settings-remote-status");
-  if (status) {
-    status.classList.toggle("settings-remote-status--on", !!remote.listening_on_network && !pending);
-    status.textContent = pending ? i18n("SETTINGS_REMOTE_PENDING")
-      : remote.listening_on_network ? i18n("SETTINGS_REMOTE_STATUS_ON")
-      : remote.enabled ? i18n("SETTINGS_REMOTE_STATUS_NONET")
-      : i18n("SETTINGS_REMOTE_STATUS_OFF").replace("{url}", remote.local_url || "");
-  }
-  const info = document.getElementById("settings-remote-info");
+/** Adressen EINES Zugangs (http oder https) mit Kopieren-Knopf links und QR-Code daneben. `live` = Adressen, unter denen die Konsole jetzt lauscht; sonst werden erkannte (noch nicht aktive) blass gezeigt. */
+function _renderRemoteUrls(kind, remote, live, candidates, errors) {
+  const suffix = kind === "https" ? "-https" : "";
+  const info = document.getElementById("settings-remote" + suffix + "-info");
+  const qr = document.getElementById("settings-remote" + suffix + "-qr");
+  // QR-Code: standardmaessig die Adresse mit IP (nicht der Name opencue.local - den tippt man lieber ab, der QR-Code soll ueberall funktionieren)
+  const isName = (url) => /^https?:\/\/[^/:]*[A-Za-z][^/:]*\.local(?::|\/|$)/.test(url);
+  if (!_remoteQrSel[kind] || !live.includes(_remoteQrSel[kind])) _remoteQrSel[kind] = live.find((url) => !isName(url)) || live[0] || null;
   if (info) {
     info.textContent = "";
-    const live = remote.urls || [];
-    const urls = live.length ? live : (remote.candidate_urls || []);
+    const urls = live.length ? live : candidates;
     if (!live.length && urls.length) {
       const hint = document.createElement("div");
       hint.className = "settings-remote-hint";
       hint.textContent = i18n("SETTINGS_REMOTE_CANDIDATES");
       info.appendChild(hint);
     }
-    if (!_remoteQrUrl || !live.includes(_remoteQrUrl)) _remoteQrUrl = live[0] || null;
     urls.forEach((url) => {
       const row = document.createElement("div");
-      row.className = "settings-remote-row" + (live.length ? "" : " settings-remote-row--idle") + (url === _remoteQrUrl ? " settings-remote-row--selected" : "");
+      row.className = "settings-remote-row" + (live.length ? "" : " settings-remote-row--idle") + (url === _remoteQrSel[kind] ? " settings-remote-row--selected" : "");
       const text = document.createElement("span");
       text.className = "settings-remote-url";
       text.textContent = url;
@@ -4478,25 +6060,24 @@ function _renderRemoteSettings(fillInputs) {
         _showToast(i18n(await _copyText(url) ? "SETTINGS_REMOTE_COPIED" : "SETTINGS_REMOTE_COPY_FAILED"), "info", 2500);
       });
       row.append(text, copy);
-      if (live.length) row.addEventListener("click", () => { _remoteQrUrl = url; _renderRemoteSettings(false); });
+      if (live.length) row.addEventListener("click", () => { _remoteQrSel[kind] = url; _renderRemoteSettings(false); });
       info.appendChild(row);
     });
-    if (!urls.length) {
+    if (!urls.length && (kind === "https" ? remote.https_enabled : remote.enabled)) {            // "keine Adresse" nur, wenn dieser Zugang eingeschaltet ist
       const none = document.createElement("div");
       none.className = "settings-remote-hint";
       none.textContent = i18n("SETTINGS_REMOTE_NO_ADDRESS");
       info.appendChild(none);
     }
-    Object.entries(remote.listen_errors || {}).forEach(([ip, message]) => {
+    errors.forEach(([ip, message]) => {
       const err = document.createElement("div");
       err.className = "settings-remote-error";
       err.textContent = i18n("SETTINGS_REMOTE_ERROR").replace("{ip}", ip).replace("{msg}", message);
       info.appendChild(err);
     });
   }
-  const qr = document.getElementById("settings-remote-qr");
   if (qr) {
-    const svg = _remoteQrUrl && remote.qr ? remote.qr[_remoteQrUrl] : "";
+    const svg = _remoteQrSel[kind] && remote.qr ? remote.qr[_remoteQrSel[kind]] : "";
     qr.hidden = !svg;
     qr.textContent = "";
     if (svg) {
@@ -4509,10 +6090,154 @@ function _renderRemoteSettings(fillInputs) {
       qr.append(code, caption);
     }
   }
+}
+
+/** Zertifikat der eigenen Stelle (app/https_cert.py): Adresse der Anleitungs-Seite (app/cert_page.py) mit QR-Code - dort stehen die Schritte; hier nur der Weg dorthin. */
+function _renderRemoteCert(remote) {
+  const box = document.getElementById("settings-remote-cert");
+  if (!box) return;
+  const cert = remote.cert || {};
+  box.hidden = !(cert.available && remote.https_enabled);
+  if (box.hidden) return;
+  const info = document.getElementById("settings-remote-cert-info");
+  const qr = document.getElementById("settings-remote-cert-qr");
+  info.textContent = "";
+  const label = document.createElement("div");
+  label.className = "settings-remote-hint";
+  label.textContent = i18n("CERT_PAGE");
+  const row = document.createElement("div");
+  row.className = "settings-remote-row";
+  const text = document.createElement("span");
+  text.className = "settings-remote-url";
+  text.textContent = cert.page_url;
+  const copy = document.createElement("button");
+  copy.type = "button";
+  copy.className = "modal__button settings-remote-copy";
+  copy.textContent = i18n("SETTINGS_REMOTE_COPY");
+  copy.addEventListener("click", async () => _showToast(i18n(await _copyText(cert.page_url) ? "SETTINGS_REMOTE_COPIED" : "SETTINGS_REMOTE_COPY_FAILED"), "info", 2500));
+  const open = document.createElement("button");
+  open.type = "button";
+  open.className = "modal__button settings-remote-copy";
+  open.textContent = i18n("CERT_OPEN");
+  open.addEventListener("click", () => window.open(cert.page_url, "_blank", "noopener"));
+  row.append(text, copy, open);
+  const fp = document.createElement("div");
+  fp.className = "settings-remote-hint";
+  fp.textContent = i18n("CERT_FP").replace("{fp}", (cert.fingerprint || "").slice(0, 23) + " ...");
+  info.append(label, row, fp);
+  if (!cert.via_http) {
+    const warn = document.createElement("div");
+    warn.className = "settings-remote-hint";
+    warn.textContent = i18n("CERT_NEEDS_HTTP");
+    info.appendChild(warn);
+  }
+  qr.hidden = !cert.qr;
+  qr.textContent = "";
+  if (cert.qr) {
+    const code = document.createElement("div");
+    code.className = "settings-remote-qr__code";
+    code.innerHTML = cert.qr;                                       // vom eigenen Server erzeugtes SVG (segno)
+    const caption = document.createElement("div");
+    caption.className = "settings-remote-hint";
+    caption.textContent = i18n("CERT_QR");
+    qr.append(code, caption);
+  }
+  // Kurzfassung zum Installieren (die Seite hat die ganzen Schritte) und zum Entfernen
+  const fill = (id, keys) => {
+    const list = document.getElementById(id);
+    if (!list) return;
+    list.textContent = "";
+    keys.forEach((key) => { const item = document.createElement("li"); item.textContent = i18n(key); list.appendChild(item); });
+  };
+  fill("settings-remote-cert-install", ["CP_S1_T", "CP_S2_T", "CP_S3_T", "CP_S4_T"]);
+  fill("settings-remote-cert-remove", ["CP_UN_IOS", "CP_UN_AND", "CP_UN_WIN", "CP_UN_MAC"]);
+}
+
+function _renderRemoteSettings(fillInputs) {
+  const remote = client.state && client.state.remote;
+  const category = document.getElementById("settings-remote-category");
+  if (category) category.hidden = !remote;
+  const securityCategory = document.getElementById("settings-security-category");        // Passwort + Sichermodus: auch am Fernzugriffs-Geraet (Server-Betrieb ohne Fenster)
+  if (securityCategory) securityCategory.hidden = false;
+  const passwordState = document.getElementById("settings-remote-password-state");
+  if (passwordState && remote) passwordState.textContent = i18n(remote.password_set ? "REMOTE_PW_STATE_SET" : "REMOTE_PW_STATE_NONE");
+  const passwordOpen = document.getElementById("settings-remote-password-open");
+  if (passwordOpen) passwordOpen.hidden = false;
+  // Fernzugriffs-Geraete (iPad ...) haben nach dem Login vollen Zugriff auf alle Einstellungen; sie gelten fuer den Server (Server-Betrieb ohne Fenster).
+  // Nur rein Physisches bleibt am Hauptrechner (Fenster, Explorer, Firewall-Rueckfrage, MIDI einlernen, Taste einer Tastatur, Mikrofon beim Diktieren).
+  for (const id of ["settings-api-category", "settings-ai-category", "settings-voice-category", "settings-net-section", "settings-dictation-category", "settings-io-category", "settings-midi-category", "settings-osc-category", "settings-defaults-category"]) {
+    const node = document.getElementById(id);
+    if (node) node.hidden = false;
+  }
+  if (!remote) return;
+  const enabled = document.getElementById("settings-remote-enabled");
+  const httpsEnabled = document.getElementById("settings-remote-https-enabled");
+  const mdnsEnabled = document.getElementById("settings-remote-mdns");
+  const password = document.getElementById("settings-remote-password");
+  const master = document.getElementById("settings-remote-master");
+  if (fillInputs) {
+    if (master) master.checked = !!(remote.enabled || remote.https_enabled);
+    if (mdnsEnabled) mdnsEnabled.checked = !!remote.mdns_enabled;
+    if (enabled) enabled.checked = !!remote.enabled;
+    if (password) password.value = remote.password || "";                         // leer = noch kein Passwort (es gibt kein Standardpasswort)
+    const portInput = document.getElementById("settings-remote-port");
+    if (portInput) portInput.value = remote.configured_port || remote.port || "";
+    if (httpsEnabled) httpsEnabled.checked = !!remote.https_enabled;
+    const httpsPort = document.getElementById("settings-remote-https-port");
+    if (httpsPort) httpsPort.value = remote.https_port || 8001;
+  }
+  const staged = (enabled ? enabled.checked : !!remote.enabled) !== !!remote.enabled || (httpsEnabled ? httpsEnabled.checked : !!remote.https_enabled) !== !!remote.https_enabled
+    || (mdnsEnabled ? mdnsEnabled.checked : !!remote.mdns_enabled) !== !!remote.mdns_enabled;
+  const pending = staged;                                            // Schalter umgelegt, aber noch nicht gespeichert
+  const status = document.getElementById("settings-remote-status");
+  if (status) {
+    status.classList.toggle("settings-remote-status--on", !!remote.listening_on_network && !pending);
+    status.textContent = pending ? i18n("SETTINGS_REMOTE_PENDING")
+      : remote.listening_on_network ? i18n("SETTINGS_REMOTE_STATUS_ON")
+      : remote.any_enabled ? i18n("SETTINGS_REMOTE_STATUS_NONET")
+      : i18n("SETTINGS_REMOTE_STATUS_OFF").replace("{url}", remote.local_url || "");
+  }
+  const mdnsStatus = document.getElementById("settings-remote-mdns-status");          // Netzwerk-Name: welcher Name gilt, oder warum keiner
+  if (mdnsStatus) {
+    const wantsName = mdnsEnabled ? mdnsEnabled.checked : !!remote.mdns_enabled;
+    let text = "";
+    if (wantsName && !pending) {
+      if (remote.mdns_name) {
+        text = i18n(remote.mdns_name === "opencue.local" ? "SETTINGS_REMOTE_MDNS_ON" : "SETTINGS_REMOTE_MDNS_ALIAS").replace("{name}", remote.mdns_name);
+      } else if (remote.mdns_error) {
+        text = i18n("SETTINGS_REMOTE_MDNS_ERROR").replace("{msg}", remote.mdns_error);
+      } else {
+        text = i18n(remote.listening_on_network ? "SETTINGS_REMOTE_MDNS_WAIT" : "SETTINGS_REMOTE_MDNS_NEEDS_ACCESS");
+      }
+    }
+    mdnsStatus.hidden = !text;
+    mdnsStatus.textContent = text;
+    mdnsStatus.classList.toggle("settings-remote-error", !!(wantsName && !pending && !remote.mdns_name && remote.mdns_error));
+  }
+  const errors = Object.entries(remote.listen_errors || {});
+  _renderRemoteUrls("http", remote, remote.urls || [], remote.candidate_urls || [], errors.filter(([ip]) => ip !== "https" && !ip.endsWith("(https)")));
+  _renderRemoteUrls("https", remote, remote.https_urls || [], remote.https_enabled ? [] : (remote.candidate_https_urls || []), errors.filter(([ip]) => ip === "https" || ip.endsWith("(https)")));
+  _renderRemoteCert(remote);
   const restart = document.getElementById("settings-remote-restart");
   const portField = document.getElementById("settings-remote-port");
   const portPending = portField && portField.value !== "" && Number(portField.value) !== remote.port;
-  if (restart) restart.hidden = !(remote.restart_required || portPending);        // nur ein geaenderter Port braucht einen Neustart
+  if (restart) restart.hidden = !(remote.restart_required || portPending);        // nur ein geaenderter http-Port braucht einen Neustart (der https-Port gilt sofort)
+  if (window.OCSettings && fillInputs) window.OCSettings.bindMasters();
+  _syncSettingsGroups();
+}
+
+/** Seitenleiste: eine Gruppe ohne sichtbare Kategorie (z. B. Sprache und Assistent auf einem iPad) verschwindet mit ihrer Ueberschrift. */
+function _syncSettingsGroups() {
+  const nav = document.querySelector(".modal--settings .settings-modal__sidebar");
+  if (!nav) return;
+  let group = null;
+  let visible = 0;
+  const finish = () => { if (group) group.hidden = visible === 0; };
+  [...nav.children].forEach((node) => {
+    if (node.classList.contains("settings-modal__group")) { finish(); group = node; visible = 0; }
+    else if (group && node.classList.contains("settings-modal__category") && !node.hidden) visible += 1;
+    else if (node.id === "settings-reset-defaults") { finish(); group = null; }
+  });
 }
 
 function _saveRemoteSettings() {
@@ -4520,11 +6245,14 @@ function _saveRemoteSettings() {
   if (!remote) return;
   const enabled = document.getElementById("settings-remote-enabled");
   const password = document.getElementById("settings-remote-password");
-  if (password && password.value !== remote.password) {
+  if (password && password.value !== (remote.password || "")) {
     if (password.value.length < 4) {
       _showToast(i18n("SETTINGS_REMOTE_PASSWORD_SHORT"), "error", 4000);
     } else {
       client.send("set_remote_password", { password: password.value });
+      if (!(client.state && client.state.is_local)) {                       // am Fernzugriffs-Geraet: das gemerkte Passwort mitziehen, sonst wuerde die Anmeldung nach dem Wechsel scheitern
+        try { if (localStorage.getItem("opencue.rememberedPassword") !== null) localStorage.setItem("opencue.rememberedPassword", password.value); } catch (err) { /* privates Fenster */ }
+      }
     }
   }
   if (enabled && enabled.checked !== !!remote.enabled) {
@@ -4539,13 +6267,122 @@ function _saveRemoteSettings() {
       _showToast(i18n("SETTINGS_REMOTE_PORT_INVALID"), "error", 4000);
     }
   }
+  const mdnsEnabled = document.getElementById("settings-remote-mdns");
+  if (mdnsEnabled && mdnsEnabled.checked !== !!remote.mdns_enabled) client.send("set_mdns", { enabled: mdnsEnabled.checked });             // gilt sofort
+  const httpsEnabled = document.getElementById("settings-remote-https-enabled");
+  const httpsPort = document.getElementById("settings-remote-https-port");
+  if (httpsEnabled && httpsPort && (httpsEnabled.checked !== !!remote.https_enabled || Number(httpsPort.value) !== remote.https_port)) {
+    const port = Number(httpsPort.value);
+    const httpPort = Number((portInput && portInput.value) || remote.configured_port);
+    if (Number.isInteger(port) && port >= 1024 && port <= 65535 && port !== httpPort) {
+      client.send("set_https", { enabled: httpsEnabled.checked, port });                  // gilt sofort
+    } else {
+      _showToast(i18n("SETTINGS_REMOTE_HTTPS_PORT_INVALID"), "error", 4000);
+    }
+  }
 }
 
 document.addEventListener("change", (event) => {
-  if (event.target && event.target.id === "settings-remote-enabled") _renderRemoteSettings(false);
+  if (event.target && (event.target.id === "settings-remote-enabled" || event.target.id === "settings-remote-https-enabled" || event.target.id === "settings-remote-mdns")) _renderRemoteSettings(false);
 });
 document.addEventListener("input", (event) => {
   if (event.target && event.target.id === "settings-remote-port") _renderRemoteSettings(false);
+});
+
+// ---- Fernzugriff: Hauptschalter + Unterschalter (HTTP / HTTPS) + eigenes Passwort vor dem ersten Einschalten --------------------------
+let _remoteGuard = false;
+
+function _remoteSetChecked(input, value) {
+  if (!input || input.checked === value) return;
+  input.checked = value;
+  input.dispatchEvent(new Event("change", { bubbles: true }));
+}
+
+/** Kleiner Dialog "Passwort festlegen": gibt das neue Passwort zurueck, bei Abbrechen null. */
+function _askRemotePassword() {
+  return new Promise((resolve) => {
+    const input = document.getElementById("remote-password-new");
+    const repeat = document.getElementById("remote-password-repeat");
+    const error = document.getElementById("remote-password-error");
+    const ok = document.getElementById("remote-password-ok");
+    const cancel = document.getElementById("remote-password-cancel");
+    if (!input || !repeat || !ok || !cancel) { resolve(null); return; }
+    input.value = "";
+    repeat.value = "";
+    error.hidden = true;
+    let done = false;
+    const finish = (value) => {
+      if (done) return;
+      done = true;
+      ok.removeEventListener("click", onOk);
+      cancel.removeEventListener("click", onCancel);
+      input.removeEventListener("keydown", onKey);
+      repeat.removeEventListener("keydown", onKey);
+      input.value = "";
+      repeat.value = "";
+      delete Modal._hooks["remote-password"];
+      Modal.close("remote-password");
+      resolve(value);
+    };
+    const onOk = () => {
+      const value = input.value;
+      if (value.length < 4) {
+        error.textContent = i18n("SETTINGS_REMOTE_PASSWORD_SHORT");
+        error.hidden = false;
+        return;
+      }
+      if (value !== repeat.value) {
+        error.textContent = i18n("REMOTE_PW_ERR_MISMATCH");
+        error.hidden = false;
+        return;
+      }
+      finish(value);
+    };
+    const onCancel = () => finish(null);
+    const onKey = (e) => { if (e.key === "Enter") { e.preventDefault(); onOk(); } else if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); onCancel(); } };
+    ok.addEventListener("click", onOk);
+    cancel.addEventListener("click", onCancel);
+    input.addEventListener("keydown", onKey);
+    repeat.addEventListener("keydown", onKey);
+    Modal._hooks["remote-password"] = onCancel;               // X / Escape wie Abbrechen
+    Modal.open("remote-password");
+    setTimeout(() => input.focus(), 60);
+  });
+}
+
+document.addEventListener("change", async (event) => {
+  const id = event.target && event.target.id;
+  if (_remoteGuard || !["settings-remote-master", "settings-remote-enabled", "settings-remote-https-enabled"].includes(id)) return;
+  const master = document.getElementById("settings-remote-master");
+  const http = document.getElementById("settings-remote-enabled");
+  const https = document.getElementById("settings-remote-https-enabled");
+  const password = document.getElementById("settings-remote-password");
+  if (!master || !http || !https) return;
+  _remoteGuard = true;
+  try {
+    const turnedOn = event.target.checked;
+    if (id === "settings-remote-master") {
+      if (turnedOn) { if (!http.checked && !https.checked) _remoteSetChecked(http, true); }
+      else { _remoteSetChecked(http, false); _remoteSetChecked(https, false); }
+    }
+    if (turnedOn && password && !password.value) {                                       // noch kein Passwort (es gibt keins vorgegeben): erst ein eigenes festlegen
+      const chosen = await _askRemotePassword();
+      if (chosen === null) {                                                             // abgebrochen: der Schalter geht zurueck
+        if (id === "settings-remote-master") { _remoteSetChecked(http, false); _remoteSetChecked(https, false); }
+        else _remoteSetChecked(event.target, false);
+        if (window.OCSettings) window.OCSettings.touch();                                // ... und die Zaehlung "Speichern (n Aenderungen)" stimmt wieder
+      } else {
+        password.value = chosen;
+        password.dispatchEvent(new Event("input", { bubbles: true }));
+        password.dispatchEvent(new Event("change", { bubbles: true }));
+      }
+    }
+    master.checked = http.checked || https.checked;
+    master.dispatchEvent(new Event("change", { bubbles: true }));                        // Abschnitt ein-/ausblenden, Zaehler, Status
+  } finally {
+    _remoteGuard = false;
+    _renderRemoteSettings(false);
+  }
 });
 document.addEventListener("click", (event) => {
   if (event.target && event.target.id === "settings-remote-refresh") client.send("remote_refresh", {});       // Adressen neu erkennen (WLAN gewechselt ...)
@@ -4655,7 +6492,8 @@ function _applyRemoteSnapshot(payload) {
   _remoteClientsAt = Date.now();
   _updateRemoteIndicator(payload.remote_client_count || 0, !!payload.remote_enabled);
   _renderRemoteClients();
-  if (payload.is_local === false) WakeLockKeeper.enable();   // nur Tablets/Remote-Geraete
+  ocUndoSync();
+  if (payload.is_local === false) WakeLockKeeper.set(payload.keep_awake !== false);   // nur Tablets/Remote-Geraete (Schalter: Einstellungen -> Weitere Optionen)
 }
 
 document.addEventListener("click", (event) => {
@@ -4700,6 +6538,7 @@ const WakeLockKeeper = (() => {
   let sentinel = null;
   let enabled = false;
   let warned = false;
+  let bound = false;
 
   async function acquire() {
     if (!enabled || sentinel || document.visibilityState !== "visible") return;
@@ -4722,13 +6561,27 @@ const WakeLockKeeper = (() => {
     if (enabled) return;
     enabled = true;
     acquire();
+    if (bound) return;
+    bound = true;
     // Der Browser gibt den Lock beim Tab-Wechsel/Sperren frei - bei Rueckkehr neu holen.
     document.addEventListener("visibilitychange", acquire);
     ["pointerdown", "touchend"].forEach((name) => document.addEventListener(name, acquire, { passive: true }));
   }
 
-  return { enable };
+  function disable() {
+    enabled = false;
+    warned = false;
+    const held = sentinel;
+    sentinel = null;
+    if (held) { try { held.release(); } catch (error) { /* schon frei */ } }
+  }
+
+  /** Einstellung "Bildschirm wach halten" uebernehmen (Snapshot / keep_awake_changed). */
+  function set(on) { if (on) enable(); else disable(); }
+
+  return { enable, disable, set, get active() { return !!sentinel; }, get enabled() { return enabled; } };
 })();
+window.OCWakeLock = WakeLockKeeper;
 
 function buildSectionTitle(labelKey) {
   const title = document.createElement("div");
@@ -4788,10 +6641,7 @@ function buildSettingsPanelContent() {
     buildSelectField(
       "SETTINGS_LANGUAGE",
       translator.language,
-      [
-        { value: "en", labelKey: "LANGUAGE_EN" },
-        { value: "de", labelKey: "LANGUAGE_DE" },
-      ],
+      LANGUAGES.map((l) => ({ value: l.code, labelKey: l.key })),
       (value) => {
         translator.setLanguage(value).then(() => {
           client.send("set_language", { language: value });
@@ -4910,11 +6760,46 @@ function setupFullscreenToggle() {
 
 // Beenden-Dialog (X, Datei > Beenden, Ctrl+Q): "mit Speichern" speichert wie
 // Strg+S, "ohne Speichern" beendet ohne Schreibvorgang, "Abbrechen" bleibt offen.
+function _disarmClose() {
+  clearTimeout(_closeArmTimer);
+  const button = document.getElementById("close-discard-button");
+  if (button) { button.classList.remove("touch-btn--armed"); button.textContent = i18n("CLOSE_WITHOUT_SAVING"); }
+}
+
+/** Beenden-Dialog oeffnen. Laesst sich die geladene Show mit ihren Aenderungen nicht speichern, steht oben eine orange Warnung mit den Gruenden, und "ohne Speichern beenden" braucht zwei Klicks. */
+async function _openCloseDialog() {
+  let status = null;
+  try { status = await (await fetch("/api/showfiles/status")).json(); } catch (e) { /* ohne Status: wie bisher */ }
+  _closeBlocked = !!(status && status.dirty && status.blockers && status.blockers.length);
+  _disarmClose();
+  const box = document.getElementById("close-warn");
+  if (box) box.hidden = !_closeBlocked;
+  if (_closeBlocked && box) {
+    const list = document.getElementById("close-warn-list");
+    list.textContent = "";
+    for (const code of status.blockers) {
+      const item = document.createElement("li");
+      item.textContent = i18n("CLOSE_WARN_" + code).replace("{error}", status.save_error || "");
+      list.appendChild(item);
+    }
+    document.getElementById("close-warn-note").textContent = i18n(status.backups_on ? "CLOSE_WARN_BACKUP" : "CLOSE_WARN_NO_BACKUP");
+  }
+  const save = document.getElementById("close-save-button");
+  if (save) { save.dataset.i18n = _closeBlocked ? "CLOSE_SAVE_COPY_AND_QUIT" : "CLOSE_SAVE_AND_QUIT"; save.textContent = i18n(save.dataset.i18n); }
+  Modal.open("close-confirm");
+  setTimeout(() => document.getElementById(_closeBlocked ? "close-cancel-button" : "close-save-button")?.focus(), 50);
+}
+
 function setupCloseConfirmModal() {
   document.getElementById("close-save-button")?.addEventListener("click", (e) => {
     e.preventDefault();
     Modal.close("close-confirm");
     const name = client.state?.showfile_name;
+    if (_closeBlocked) {                           // geht nicht an diese Stelle: als Kopie unter neuem Namen speichern, danach beenden
+      _pendingCloseAfterSave = true;
+      _openSaveAsModal();
+      return;
+    }
     if (!name || name === "Untitled") {
       _pendingCloseAfterSave = true;   // show_saved bestaetigt das Beenden
       _openSaveAsModal();
@@ -4922,12 +6807,22 @@ function setupCloseConfirmModal() {
     }
     // Nachrichten kommen auf derselben Verbindung in Reihenfolge an: der Server
     // beendet erst, nachdem das Speichern durchgelaufen ist.
+    _closeSaveInFlight = true;
     client.send("save_show", { panels_ui: collectAllPanelUiStates() });
     client.send("close_decision", { choice: "save" });
   });
 
   document.getElementById("close-discard-button")?.addEventListener("click", (e) => {
     e.preventDefault();
+    const button = e.currentTarget;
+    if (_closeBlocked && !button.classList.contains("touch-btn--armed")) {      // erster Klick: scharf stellen, erst der zweite beendet (Schutz vor Versehen)
+      button.classList.add("touch-btn--armed");
+      button.textContent = i18n("CLOSE_DISCARD_ARMED");
+      clearTimeout(_closeArmTimer);
+      _closeArmTimer = setTimeout(_disarmClose, 6000);
+      return;
+    }
+    _disarmClose();
     Modal.close("close-confirm");
     client.send("close_decision", { choice: "discard" });
   });
@@ -4972,6 +6867,8 @@ function setupFileMenu() {
       _saveShowDirect();
     } else if (action === "save-show-as") {
       _openSaveAsModal();
+    } else if (action === "restore-backup") {
+      if (window.OCBackups) window.OCBackups.open();
     }
   });
 
@@ -5062,8 +6959,7 @@ function _renderLayoutChip() {
   document.getElementById("toolbar-layout-dirty").hidden = !_layoutState.dirty;
   chip.classList.toggle("menubar__layout-chip--dirty", _layoutState.dirty);
   chip.classList.toggle("menubar__layout-chip--none", !named);
-  chip.title = (named ? _layoutState.name : i18n("LAYOUT_NONE")) + (_layoutState.dirty ? " - " + i18n("LAYOUT_DIRTY") : "")
-    + " (" + i18n("LAYOUT_CHIP_TITLE") + ")";
+  chip.title = i18n("LAYOUT_CHIP_LABEL") + ": " + (named ? _layoutState.name : i18n("LAYOUT_NONE")) + (_layoutState.dirty ? " - " + i18n("LAYOUT_DIRTY") : "");
 }
 
 function _applyLayoutStatus(status) {
@@ -5141,9 +7037,23 @@ function _askLayoutName({ title, confirmKey, value = "", note = "", labelKey = "
   });
 }
 
-function _askLayoutConfirm({ title, body, confirmKey }) {
+/** Loeschen mit Sicherheitsfrage - ausser, sie ist fuer diese Kategorie abgeschaltet (Einstellungen -> Standardwerte -> Loeschen). category: cues | fixtures | library | files | other. Gibt true zurueck, wenn geloescht werden darf. */
+function _confirmWanted(category) {
+  const defaults = (typeof client !== "undefined" && client.state && client.state.console_defaults) || {};
+  return defaults["confirm_delete_" + category] !== false;                    // Standard: fragen
+}
+async function _askDelete(category, options) {
+  if (!_confirmWanted(category)) return true;
+  return _askLayoutConfirm(options);
+}
+
+function _askLayoutConfirm({ title, body, detail = "", confirmKey, cancelKey = "CANCEL" }) {
+  const cancelBtn = document.querySelector('.modal__footer [data-modal-cancel="layout-confirm"]');
+  if (cancelBtn) { cancelBtn.dataset.i18n = cancelKey; cancelBtn.textContent = i18n(cancelKey); }            // z. B. "Weiter bearbeiten" statt "Abbrechen"
   document.getElementById("layout-confirm-title").textContent = title;
   document.getElementById("layout-confirm-body").textContent = body;
+  const detailEl = document.getElementById("layout-confirm-detail");                // kleine Zusatzzeile (z. B. die Namen der Scheinwerfer)
+  if (detailEl) { detailEl.textContent = detail; detailEl.hidden = !detail; }
   const ok = document.getElementById("layout-confirm-ok");
   ok.textContent = i18n(confirmKey);
   return _modalResult("layout-confirm", false, (finish, listen) => {
@@ -5267,6 +7177,44 @@ function _saveShowDirect() {
   client.send("save_show", { panels_ui: collectAllPanelUiStates() });
 }
 
+
+let _layoutReloading = false;
+
+/** F5: das aktuelle Layout neu laden - wie ein Wechsel auf dasselbe Layout - und ALLE Panels von Grund auf neu aufbauen (z. B. wenn die 3D-Simulation beim Start nicht richtig erschien).
+ *  Hat das Layout ungespeicherte Aenderungen, wird nichts von der Datei geholt (die Aenderungen bleiben): die Panels werden nur neu aufgebaut. */
+async function reloadLayout() {
+  if (_layoutReloading) return false;
+  _layoutReloading = true;
+  try {
+    const status = await _refreshLayoutStatus();
+    const keepEdits = !!(status && status.dirty);
+    if (!keepEdits && status && status.filename) {
+      await _loadLayoutByFilename(status.filename, status.name);              // frisch aus der Layout-Datei, wie beim Wechseln
+      await new Promise((resolve) => setTimeout(resolve, 200));                // die neue Anordnung kommt als panels_changed - kurz abwarten
+    }
+    const workspace = document.getElementById("app-root");
+    if (workspace) {
+      workspace.querySelectorAll(".workspace-panel").forEach((el) => { _selectedPanels.delete(el.dataset.panelId); el.remove(); });
+      renderPanels((client.state && client.state.panels) || []);               // jedes Panel wird neu gebaut (3D-Szene, Listen, Regler ...)
+    }
+    _showToast(i18n(keepEdits ? "RELOAD_LAYOUT_KEPT" : "RELOAD_LAYOUT_DONE"), "info", 2200);
+    return true;
+  } finally {
+    _layoutReloading = false;
+  }
+}
+
+document.addEventListener("click", (e) => {                                      // Menue Ansicht -> Layout neu laden / Oberflaeche neu laden
+  const item = e.target.closest && e.target.closest('[data-action="reload-layout"], [data-action="reload-ui"]');
+  if (!item) return;
+  _closeAllMenus();
+  if (item.dataset.action === "reload-ui") reloadUi(); else reloadLayout();
+});
+
+/** Strg+F5: die ganze Oberflaeche neu laden (wie das Neuladen einer Webseite). Ungespeicherte Layout-Aenderungen bleiben (das Geraet holt sein Layout danach zurueck). */
+function reloadUi() {
+  location.reload();
+}
 
 async function _loadLayoutByFilename(filename, name) {
   try {
@@ -5545,7 +7493,8 @@ function setupLayoutMenu() {
 
 function _toggleLanguage() {
   const current = client.state?.language || "en";
-  const next = current === "en" ? "de" : "en";
+  const index = LANGUAGES.findIndex((l) => l.code === current);
+  const next = LANGUAGES[(index + 1) % LANGUAGES.length].code;                    // der Reihe nach durch alle Sprachen
   translator.setLanguage(next).then(() => {
     client.send("set_language", { language: next });
   });
@@ -5558,15 +7507,52 @@ function _toggleLanguage() {
 
 function setupKeyboardShortcuts() {
   document.addEventListener("keydown", (e) => {
+    if (window.OCShortcuts && window.OCShortcuts.handle(e)) return;          // umbelegte eingebaute Kuerzel (static/js/shortcuts.js) gehen vor
     const ctrl = e.ctrlKey || e.metaKey;
     const tag = document.activeElement?.tagName;
     const isInput = tag === "INPUT" || tag === "TEXTAREA" ||
                     document.activeElement?.contentEditable === "true";
 
+    // F1 - Anleitungen (static/js/help_viewer.js); ist der Dialog schon offen, springt der Fokus ins Suchfeld
+    if (e.key === "F1" && window.OCHelp) {
+      e.preventDefault();
+      if (window.OCHelp.isOpen()) window.OCHelp.focusSearch(); else window.OCHelp.open();
+      return;
+    }
+
     // F11 — fullscreen toggle
     if (e.key === "F11") {
       e.preventDefault();
       toggleFullscreen();
+      return;
+    }
+
+    // ? - Uebersicht der Tastenkuerzel ein-/ausblenden (nicht beim Tippen; "?" ist je nach Tastatur Umschalt+Ss, Umschalt+/ ...: der Wert der Taste zaehlt)
+    if (e.key === "?" && !e.ctrlKey && !e.metaKey && !e.altKey && !isInput && window.OCShortcuts) {
+      e.preventDefault();
+      if (!e.repeat) window.OCShortcuts.toggleOverview();
+      return;
+    }
+
+    // F5 - Layout neu laden; Strg+F5 - ganze Oberflaeche neu laden (aenderbar unter Steuerung -> Tastenkuerzel; auch aus Eingabefeldern)
+    if (e.key === "F5" && !e.altKey && !e.shiftKey) {
+      e.preventDefault();
+      if (e.repeat) return;
+      if (e.ctrlKey || e.metaKey) reloadUi(); else reloadLayout();
+      return;
+    }
+
+    // Ctrl+L - Sichermodus: Konsole sperren (bzw. dieses Fernzugriffs-Geraet abmelden); aenderbar unter Steuerung -> Tastenkuerzel
+    if (ctrl && !e.shiftKey && !e.altKey && e.key.toLowerCase() === "l" && window.OCLock) {
+      e.preventDefault();
+      window.OCLock.lockNow(true);
+      return;
+    }
+
+    // Ctrl+M - Dateimanager (Standardkuerzel; aenderbar unter Steuerung -> Tastenkuerzel)
+    if (ctrl && !e.shiftKey && !e.altKey && e.key.toLowerCase() === "m" && !isInput && window.OCFileManager) {
+      e.preventDefault();
+      window.OCFileManager.open();
       return;
     }
 
@@ -5585,6 +7571,20 @@ function setupKeyboardShortcuts() {
       return;
     }
 
+    // Ctrl+F im Anleitungen-Dialog: Suchfeld (nicht die Befehls-Konsole)
+    if (ctrl && !e.shiftKey && !e.altKey && e.key.toLowerCase() === "f" && window.OCHelp && window.OCHelp.isOpen()) {
+      e.preventDefault();
+      window.OCHelp.focusSearch();
+      return;
+    }
+
+    // Ctrl+F - Befehls-Konsole (Befehlszeile + Ziffernblock + Befehlstasten) als Fenster oeffnen/schliessen (auch aus einem Eingabefeld heraus; ersetzt die Suche des Browsers)
+    if (ctrl && !e.shiftKey && !e.altKey && e.key.toLowerCase() === "f") {
+      e.preventDefault();
+      if (window.OCPanelWindow) window.OCPanelWindow.toggle(window.OCPanelWindow.CONSOLE);
+      return;
+    }
+
     // Suppress all remaining shortcuts while a text input has focus
     if (isInput) return;
 
@@ -5595,15 +7595,15 @@ function setupKeyboardShortcuts() {
       if (key === "v" && pasteCopiedPanels()) { e.preventDefault(); return; }
     }
 
-    // Ctrl+Z / Ctrl+Y / Ctrl+Shift+Z — Undo/Redo fuer Panel-Aenderungen (server-seitig). NUR im Bearbeitungsmodus: ausserhalb tut das Kuerzel nichts.
-    if (isEditMode && ctrl && !e.shiftKey && e.key.toLowerCase() === "z") {
+    // Ctrl+Z / Ctrl+Y / Ctrl+Shift+Z — Undo/Redo (server-seitig): im Bearbeitungsmodus fuer die Panel-Anordnung, sonst fuer den Inhalt der Show.
+    if (ctrl && !e.shiftKey && !e.altKey && e.key.toLowerCase() === "z") {
       e.preventDefault();
-      client.send("undo");
+      ocUndoRun("undo");
       return;
     }
-    if (isEditMode && ctrl && (e.key.toLowerCase() === "y" || (e.shiftKey && e.key.toLowerCase() === "z"))) {
+    if (ctrl && !e.altKey && (e.key.toLowerCase() === "y" || (e.shiftKey && e.key.toLowerCase() === "z"))) {
       e.preventDefault();
-      client.send("redo");
+      ocUndoRun("redo");
       return;
     }
 
@@ -5673,6 +7673,7 @@ function setupKeyboardShortcuts() {
     // Eingabefeldern (oben schon abgefangen), bei offenem Dialog/Menue oder im Bearbeitungsmodus.
     if (!ctrl && !e.shiftKey && !e.altKey && !e.metaKey && (e.key === "ArrowLeft" || e.key === "ArrowRight") &&
         !e.defaultPrevented && !Modal._stack.length && !document.querySelector(".menu--open") && !isEditMode &&
+        !(window.OCPanelWindow && window.OCPanelWindow.isOpen()) &&
         !(e.target.closest && e.target.closest("select, [role='slider'], [contenteditable], .fxprog-numfield"))) {
       e.preventDefault();
       _stepLayout(e.key === "ArrowRight" ? 1 : -1);
@@ -5695,9 +7696,13 @@ function setupHelpMenu() {
   document.querySelector('[data-menu="help"]')?.addEventListener("click", (e) => {
     const item = e.target.closest("[data-action]");
     if (!item) return;
-    if (item.dataset.action === "open-shortcuts-modal") {
+    if (item.dataset.action === "open-help-viewer") {
+      _closeAllMenus();
+      if (window.OCHelp) window.OCHelp.open();
+    } else if (item.dataset.action === "open-shortcuts-modal") {
       _closeAllMenus();
       Modal.open("keyboard-shortcuts");
+      if (window.OCShortcuts) window.OCShortcuts.refresh();
     } else if (item.dataset.action === "open-github") {
       _closeAllMenus();
       window.open("https://thecraftedtech.github.io/opencue/", "_blank");
@@ -5707,8 +7712,34 @@ function setupHelpMenu() {
     } else if (item.dataset.action === "open-about-modal") {
       _closeAllMenus();
       if (window.OCAbout) window.OCAbout.open();
+    } else if (item.dataset.action === "open-log-folder") {
+      _closeAllMenus();
+      if (window.OCFsBrowser) window.OCFsBrowser.reveal({ realUrl: "/api/diag/open-log-folder", area: "logs" });
+    } else if (item.dataset.action === "report-problem") {
+      _closeAllMenus();
+      _reportProblem();
     }
   });
+}
+
+/** "Problem melden": die Diagnose (Version, System, letzte Zeilen des Protokolls, ohne Zugangsschluessel) in die Zwischenablage, dann die Meldeseite im Browser. */
+async function _reportProblem() {
+  let data = null;
+  try { data = await (await fetch("/api/diag/report", { method: "POST" })).json(); } catch (e) { /* offline */ }
+  if (!data || !data.ok) { _showToast(i18n("FM_ERR_GENERIC"), "error"); return; }
+  let copied = false;
+  try { await navigator.clipboard.writeText(data.text); copied = true; } catch (e) { /* kein Zugriff: Ersatzweg unten */ }
+  if (!copied) {
+    const area = document.createElement("textarea");
+    area.value = data.text;
+    area.style.cssText = "position:fixed;left:-9999px;top:0";
+    document.body.appendChild(area);
+    area.select();
+    try { copied = document.execCommand("copy"); } catch (e) { copied = false; }
+    area.remove();
+  }
+  if (!data.opened && data.url) window.open(data.url, "_blank", "noopener");           // entferntes Geraet: im eigenen Browser
+  _showToast(i18n(copied ? "HELP_REPORT_COPIED" : "HELP_REPORT_MANUAL"), "info", 6000);
 }
 
 // ---- Layout Re-Render nach Layout-Wechsel ----------------------------------
@@ -5743,6 +7774,11 @@ async function _refreshShowfileStatus(apply = false) {
   if (apply && client && client.state) {
     client.state.showfile_name = status.name;
     _setDirty(!!status.dirty);
+  }
+  const lock = document.getElementById("toolbar-show-lock");                  // Schloss neben dem Show-Namen: die geladene Show ist gesperrt
+  if (lock) {
+    if (!lock.firstChild && typeof Icons !== "undefined") lock.appendChild(Icons.svg("lock"));
+    lock.hidden = !status.locked;
   }
   _notifyFileManager("shows");
 }
@@ -6401,6 +8437,29 @@ window.__panelAPI = {
     try { return (client.state || {}).fixtures || {}; } catch { return {}; }
   }
 
+  /** Adress-Ueberschneidungen: Scheinwerfer im selben Universum, deren Kanalbereiche sich ueberlappen -> Map Scheinwerfer-ID -> Liste der Namen der anderen.
+   *  Absichtlich ueberlappende Adressen sind erlaubt (zwei Geraete mit denselben Werten); die Liste und der Dialog zeigen es nur an. */
+  function _patchClashes(fixtures) {
+    const byUniverse = new Map();
+    for (const [id, fx] of Object.entries(fixtures || {})) {
+      if (!byUniverse.has(fx.universe)) byUniverse.set(fx.universe, []);
+      byUniverse.get(fx.universe).push([id, fx, fx.start_channel, fx.start_channel + Math.max(1, fx.channel_count) - 1]);
+    }
+    const out = new Map();
+    for (const list of byUniverse.values()) {
+      list.sort((a, b) => a[2] - b[2]);
+      for (let i = 0; i < list.length; i++) {
+        for (let j = i + 1; j < list.length && list[j][2] <= list[i][3]; j++) {
+          for (const [a, b] of [[i, j], [j, i]]) {
+            if (!out.has(list[a][0])) out.set(list[a][0], []);
+            out.get(list[a][0]).push(list[b][1].name || ("#" + (list[b][1].fid || "?")));
+          }
+        }
+      }
+    }
+    return out;
+  }
+
   function _nextFreeChannel(fixtures, universe) {
     let max = 0;
     for (const fx of Object.values(fixtures)) {
@@ -6430,36 +8489,18 @@ window.__panelAPI = {
     return maxIdx > 0 ? maxIdx + 1 : 1;
   }
 
-  function _confirmDeleteFixtures(panelEl, ids) {
+  async function _confirmDeleteFixtures(panelEl, ids) {
     const st = _getState(panelEl);
     const n = ids.length;
     if (!n) return;
-    const firstName = st.fixtures[ids[0]]?.name || ids[0];
-    const bodyText = n === 1
-      ? t("FX_DELETE_BODY_ONE", { name: firstName })
-      : t("FX_DELETE_BODY_MANY", { n });
-    const bodyEl = document.createElement("p");
-    bodyEl.style.cssText = "font-size:0.87rem;line-height:1.5;margin:0;";
-    bodyEl.textContent = bodyText;
-    if (n > 1) {
-      const nameList = ids.slice(0, 8).map(id => st.fixtures[id]?.name || id).join(", ");
-      const sub = document.createElement("span");
-      sub.style.cssText = "display:block;font-size:0.75rem;color:var(--secondary-text,var(--text-dim));margin-top:0.35rem;";
-      sub.textContent = nameList + (ids.length > 8 ? ` …+${ids.length - 8}` : "");
-      bodyEl.appendChild(sub);
-    }
-    const { backdrop } = _makeModal(
-      "fx-panel-modal-sm",
-      t("FX_DELETE_TITLE"),
-      bodyEl,
-      [
-        [t("CANCEL"), "", () => backdrop.remove()],
-        [t("FX_DELETE_CONFIRM"), "modal__button--danger", () => {
-          client.send("delete_fixtures", { ids });
-          backdrop.remove();
-        }],
-      ]
-    );
+    const name = (id) => st.fixtures[id]?.name || id;
+    const ok = await _askDelete("fixtures", {
+      title: t("FX_DELETE_TITLE"),
+      body: n === 1 ? t("FX_DELETE_BODY_ONE", { name: name(ids[0]) }) : t("FX_DELETE_BODY_MANY", { n }),
+      detail: n > 1 ? ids.slice(0, 8).map(name).join(", ") + (n > 8 ? ` …+${n - 8}` : "") : "",
+      confirmKey: "FX_DELETE_CONFIRM",
+    });
+    if (ok) client.send("delete_fixtures", { ids });
   }
 
   // ── DMX-Wertberechnung (reine, UI-unabhängige Konvertierungsfunktionen) ──
@@ -6504,21 +8545,122 @@ window.__panelAPI = {
       // Zeitpunkt der letzten manuellen Aenderung je Fixture: der Echo-Wert aus dem DMX-Puffer ueberschreibt die Bedienelemente
       // waehrend/kurz nach einer Bedienung nicht (sonst "zuckt" der Fader unter dem Finger).
       const _manualAt = {};
+      // fxId -> {Attribut: Wert VOR dem ersten Anfassen}: wird ein Attribut wieder auf genau diesen Wert gestellt, gilt es nicht mehr als geaendert
+      // (die Markierung verschwindet, und "Cue Speichern" nimmt es nicht mehr mit). Rohe DMX-Kanaele ("_raw<n>") haben keinen bekannten Ausgangswert.
+      const _baseline = {};
+      const _clone = (v) => (v && typeof v === "object" ? { ...v } : v);
+      const _NEUTRAL = { dimmer: 0, color: { r: 0, g: 0, b: 0 }, pan: 50, tilt: 50, strobe: 0, gobo: 0, gobo_spin: 0, gobo2: 0, gobo2_spin: 0, prism: 0, focus: 0, zoom: 0 };
+      const _neutral = (attr) => (attr in _NEUTRAL ? _clone(_NEUTRAL[attr]) : null);
+      /** Markiert die Attribute als angefasst und merkt sich, was vorher dort stand. Gibt die Schluessel "id|attr" zurueck, die in diesem Aufruf NEU dazukamen. */
       function _markTouched(ids, attrs, fromServer) {
         const now = Date.now();
+        const fresh = new Set();
         for (const id of ids) {
           if (!touchedAttrs[id]) touchedAttrs[id] = new Set();
-          for (const a of attrs) touchedAttrs[id].add(a);
+          for (const a of attrs) {
+            if (!touchedAttrs[id].has(a)) {
+              touchedAttrs[id].add(a);
+              fresh.add(id + "|" + a);
+              const before = activeValues[id] ? activeValues[id][a] : null;
+              (_baseline[id] = _baseline[id] || {})[a] = before == null ? _neutral(a) : _clone(before);          // unbekannter Stand = Neutralwert (wie nach Clear Clear)
+            }
+          }
           if (!fromServer) _manualAt[id] = now;       // Schutzfrist nur fuer lokale Bedienung, nicht fuer Server-Daten
         }
+        return fresh;
+      }
+      function _untouch(id, attr) {
+        if (touchedAttrs[id]) {
+          touchedAttrs[id].delete(attr);
+          if (touchedAttrs[id].size === 0) delete touchedAttrs[id];
+        }
+        if (_baseline[id]) {
+          delete _baseline[id][attr];
+          if (!Object.keys(_baseline[id]).length) delete _baseline[id];
+        }
+      }
+      /** Gleicher Wert wie ein DMX-Ausgang ihn schreibt (Byte, bei Pan/Tilt 16 Bit; Farbe: r, g, b)? Unbekannte Werte (null) gelten nie als gleich. */
+      // "Wieder wie vorher?" wird mit GANZEN Prozent verglichen wie auf dem Fader (69,8 und 70 sind beide 70 %), nicht auf jede Kommastelle - Mikrobewegungen zaehlen nicht
+      const _samePct = (a, b) => Math.round(a) === Math.round(b) || Math.abs(a - b) < 0.6;
+      const _sameByte = (a, b) => Math.round(a / 255 * 100) === Math.round(b / 255 * 100) || Math.abs(a - b) <= 1;
+      function _sameValue(attr, a, b, id) {
+        if (a == null || b == null) return false;
+        if (typeof attr === "string" && attr.startsWith("_raw")) return _rawSame(id, Number(attr.slice(4)), a, b);          // roher DMX-Kanal: gleiches Prozent oder derselbe Slot
+        if (_WHEEL_ATTR_CHANNEL[attr]) return _rawSame(id, _WHEEL_ATTR_CHANNEL[attr], DMX.pctToByte(a), DMX.pctToByte(b));  // Rad-Attribut (Gobo, Prisma, Strobe ...): derselbe Slot zaehlt als gleich
+        if (typeof a === "object" || typeof b === "object") return !!a && !!b && _sameByte(a.r, b.r) && _sameByte(a.g, b.g) && _sameByte(a.b, b.b);
+        if (attr === "pan" || attr === "tilt") return Math.abs(DMX.pctToV16(a) - DMX.pctToV16(b)) < 256;                  // derselbe Grob-Schritt
+        return _samePct(a, b);
+      }
+      /** Nach dem Setzen: ein Attribut, das schon vorher angefasst war und jetzt wieder auf seinem Ausgangswert steht, ist nicht mehr "geaendert". */
+      function _settle(ids, attrs, fresh) {
+        for (const id of ids) {
+          for (const a of attrs) {
+            if (fresh && fresh.has(id + "|" + a)) continue;           // gerade erst angefasst: bleibt markiert, auch bei gleichem Wert (z. B. um den Wert in einen Cue zu schreiben)
+            if (!isAttrTouched(id, a) || !_baseline[id] || !(a in _baseline[id])) continue;
+            if (_sameValue(a, activeValues[id] && activeValues[id][a], _baseline[id][a], id)) { _untouch(id, a); _settledAt[id + "|" + a] = Date.now(); }
+          }
+        }
+      }
+      // Wird ein Fader am Anschlag weitergezogen (0 %, Wert aendert sich nicht mehr), kommt dauernd derselbe Wert an. Ohne diese Regel waere das Attribut mal markiert (ein "frisches"
+      // Setzen bleibt markiert), mal nicht. Ein Setzen auf den Wert, der gerade eben (1,5 s) als "wieder wie vorher" erkannt wurde, markiert deshalb nicht neu.
+      const _settledAt = {};
+      function _markable(ids, attr, value) {
+        const now = Date.now();
+        return ids.filter((id) => {
+          if (isAttrTouched(id, attr) || now - (_settledAt[id + "|" + attr] || 0) > 1500) return true;
+          const cur = activeValues[id] && activeValues[id][attr];
+          if (cur == null || !_sameValue(attr, cur, value, id)) return true;
+          _settledAt[id + "|" + attr] = now;                      // der Zug geht weiter: Frist verlaengern
+          _manualAt[id] = now;
+          return false;
+        });
       }
       /** Hat irgendeine Fixture ein manuell veraendertes Attribut aus `attrs` (Liste oder Pruefer-Funktion)? */
       function hasTouched(attrs) {
         const match = typeof attrs === "function" ? attrs : (a) => attrs.includes(a);
-        return Object.values(touchedAttrs).some((set) => set && [...set].some(match));
+        return Object.values(touchedAttrs).some((set) => set && [...set].some(match)) || Object.values(_cueChanged).some((set) => [...set].some(match));
       }
-      function isFixtureTouched(id) { return !!touchedAttrs[id] && touchedAttrs[id].size > 0; }
+      function isFixtureTouched(id) { return (!!touchedAttrs[id] && touchedAttrs[id].size > 0) || !!_cueChanged[id]; }
+      /** Hat sich der Farbfader `key` (red/green/blue, cyan/magenta/yellow, hue/sat/bright) an den Scheinwerfern `ids` gegenueber dem Ausgangswert geaendert? (nur dieser Kanal, nicht die ganze Farbe) */
+      function colorFaderChanged(ids, key) {
+        for (const id of ids) {
+          if (!isAttrTouched(id, "color")) continue;
+          const base = (_baseline[id] && _baseline[id].color) || { r: 0, g: 0, b: 0 };
+          const cur = activeValues[id] && activeValues[id].color;
+          if (!cur) continue;
+          const chan = { red: "r", cyan: "r", green: "g", magenta: "g", blue: "b", yellow: "b" }[key];
+          if (chan) { if (!_sameByte(base[chan], cur[chan])) return true; continue; }
+          const a = _rgb2hsv(base.r, base.g, base.b);
+          const c = _rgb2hsv(cur.r, cur.g, cur.b);
+          if (key === "bright") { if (!_samePct(a.v, c.v)) return true; }
+          else if (key === "sat") { if (!(a.v < 2 && c.v < 2) && !_samePct(a.s, c.s)) return true; }
+          else if (key === "hue") { if (!((a.s < 2 || a.v < 2) && (c.s < 2 || c.v < 2)) && Math.min(Math.abs(a.h - c.h), 100 - Math.abs(a.h - c.h)) >= 1) return true; }
+        }
+        return false;
+      }
+      /** Alle angefassten Attribute als [Fixture-Id, Attribut] (fuer die Markierung der Reiter und Unterreiter). */
+      function touchedEntries() {
+        const out = [];
+        for (const [id, set] of Object.entries(touchedAttrs)) for (const a of set) out.push([id, a]);
+        for (const [id, set] of Object.entries(_cueChanged)) for (const a of set) if (!(touchedAttrs[id] && touchedAttrs[id].has(a))) out.push([id, a]);
+        return out;
+      }
       function isAttrTouched(id, attr) { return !!touchedAttrs[id] && touchedAttrs[id].has(attr); }
+      // "Geaendert" gegenueber dem aktiven Cue (die Wahrheit rechnet der Server, Nachricht cue_changes): fixture -> Set<Attribut>. Rohe Kanaele heissen dort "ch<n>", hier "_raw<n>".
+      // Das ergaenzt nur die ANZEIGE (Reiter, Punkte in der Scheinwerferliste); gespeichert wird immer die Aenderung gegenueber dem Cue davor (Server, store_cue).
+      let _cueChanged = {};
+      function setCueChanges(map) {
+        const next = {};
+        for (const [id, attrs] of Object.entries(map || {})) {
+          if (!Array.isArray(attrs) || !attrs.length) continue;
+          next[id] = new Set(attrs.map((a) => (/^ch\d+$/.test(a) ? "_raw" + a.slice(2) : a)));
+        }
+        const same = (a, b) => { const ka = Object.keys(a), kb = Object.keys(b); return ka.length === kb.length && ka.every((k) => b[k] && b[k].size === a[k].size && [...a[k]].every((x) => b[k].has(x))); };
+        if (same(_cueChanged, next)) return;
+        _cueChanged = next;
+        _fire();
+      }
+      const _isChangedVsCue = (id, attr) => !!_cueChanged[id] && _cueChanged[id].has(attr);
       // Waehrend eines Live-Takts (mehrere Nachrichten in einem Durchlauf) wird das Signal nur EINMAL am Ende gesendet:
       // jeder Empfaenger geht alle Kacheln/Fader durch, das wiederholt zu tun war auf dem iPad ein Hauptkostenfaktor.
       let _batchDepth = 0, _batchFire = false;
@@ -6537,7 +8679,9 @@ window.__panelAPI = {
       function reset() {
         for (const key of Object.keys(activeValues)) delete activeValues[key];
         for (const key of Object.keys(touchedAttrs)) delete touchedAttrs[key];
+        for (const key of Object.keys(_baseline)) delete _baseline[key];
         _presetRefs = {};
+        _cueChanged = {};
         _fire();
       }
       const _EMPTY_VAL = { dimmer: null, color: null, pan: null, tilt: null, strobe: null, gobo: null, gobo_spin: null, gobo2: null, gobo2_spin: null, prism: null, focus: null, zoom: null };
@@ -6584,14 +8728,15 @@ window.__panelAPI = {
       }
       function setDimmer(ids, value) {
         _breakPresetLink(ids);
-        _markTouched(ids, ["dimmer"]);
+        const fresh = _markTouched(_markable(ids, "dimmer", value), ["dimmer"]);
         for (const id of ids) { _ensure(id); activeValues[id].dimmer = value; }
+        _settle(ids, ["dimmer"], fresh);
         _fire();
         sendToServer(ids, { dimmer: DMX.pctToByte(value) });
       }
       function deltaDimmer(ids, delta) {
         _breakPresetLink(ids);
-        _markTouched(ids, ["dimmer"]);
+        const fresh = _markTouched(ids, ["dimmer"]);
         for (const id of ids) {
           _ensure(id);
           const c = activeValues[id].dimmer ?? 0;
@@ -6599,27 +8744,42 @@ window.__panelAPI = {
           activeValues[id].dimmer = nv;
           sendToServer([id], { dimmer: DMX.pctToByte(nv) });
         }
+        _settle(ids, ["dimmer"], fresh);
         _fire();
       }
       function setColor(ids, r, g, b) {
         _breakPresetLink(ids);
-        _markTouched(ids, ["color"]);
+        const fresh = _markTouched(_markable(ids, "color", { r, g, b }), ["color"]);
         for (const id of ids) { _ensure(id); activeValues[id].color = { r, g, b }; }
+        _settle(ids, ["color"], fresh);
         _fire();
         sendToServer(ids, { color: { r, g, b } });
       }
       function setPan(ids, value) {
         _breakPresetLink(ids);
-        _markTouched(ids, ["pan"]);
+        const fresh = _markTouched(_markable(ids, "pan", value), ["pan"]);
         for (const id of ids) { _ensure(id); activeValues[id].pan = value; }
+        _settle(ids, ["pan"], fresh);
         _fire();
         // pan16: voller 16-Bit-Wert - Fixtures mit Fein-Kanal nutzen ihn, alle anderen das Grob-Byte
         sendToServer(ids, { pan: DMX.pctToByte(value), pan16: DMX.pctToV16(value) });
       }
+      /** Pan und Tilt zugleich (Joystick): ein Durchlauf, EINE Nachricht an den Server (zwei getrennte Nachrichten gaben zwei Rueckmeldungen je Takt). */
+      function setPanTilt(ids, pan, tilt) {
+        _breakPresetLink(ids);
+        const freshPan = _markTouched(_markable(ids, "pan", pan), ["pan"]);
+        const freshTilt = _markTouched(_markable(ids, "tilt", tilt), ["tilt"]);
+        for (const id of ids) { _ensure(id); activeValues[id].pan = pan; activeValues[id].tilt = tilt; }
+        _settle(ids, ["pan"], freshPan);
+        _settle(ids, ["tilt"], freshTilt);
+        _fire();
+        sendToServer(ids, { pan: DMX.pctToByte(pan), pan16: DMX.pctToV16(pan), tilt: DMX.pctToByte(tilt), tilt16: DMX.pctToV16(tilt) });
+      }
       function setTilt(ids, value) {
         _breakPresetLink(ids);
-        _markTouched(ids, ["tilt"]);
+        const fresh = _markTouched(_markable(ids, "tilt", value), ["tilt"]);
         for (const id of ids) { _ensure(id); activeValues[id].tilt = value; }
+        _settle(ids, ["tilt"], fresh);
         _fire();
         sendToServer(ids, { tilt: DMX.pctToByte(value), tilt16: DMX.pctToV16(value) });
       }
@@ -6628,10 +8788,47 @@ window.__panelAPI = {
       // (z.B. "strobe" -> "Shutter1", "gobo" -> "Gobo1").
       function setBeamAttr(attr, ids, value) {
         _breakPresetLink(ids);
-        _markTouched(ids, [attr]);
+        const fresh = _markTouched(_markable(ids, attr, value), [attr]);
         for (const id of ids) { _ensure(id); activeValues[id][attr] = value; }
+        _settle(ids, [attr], fresh);
         _fire();
         sendToServer(ids, { [attr]: DMX.pctToByte(value) });
+      }
+      const _WHEEL_ATTR_CHANNEL = { strobe: "Shutter1", gobo: "Gobo1", gobo2: "Gobo2", prism: "Prism1" };       // abstraktes Rad-Attribut -> GDTF-Kanalname (wie dmx_resolve.BEAM_ATTRS)
+      /** Zwei Bytes eines rohen Kanals (offset = Zahl oder GDTF-Kanalname): gleich, oder im selben Slot/Bereich eines Rads (Gobo "offen" = 0-9, der Slot-Knopf setzt die Mitte: beides ist "offen"). */
+      function _rawSame(id, offset, a, b) {
+        if (_sameByte(Number(a), Number(b))) return true;                       // gleiches ganzes Prozent (ein 1-%-Schritt des Faders sind 2,55 Bytes)
+        const fx = id && client.state && client.state.fixtures && client.state.fixtures[id];
+        if (!fx || !_fixtureTypesCache) return false;
+        const ch = _channelsForFixture(fx, _fixtureTypesCache).find((c) => (typeof offset === "string" ? c.name === offset : c.offset === offset));
+        if (!ch) return false;
+        const ranges = [];                                          // [von, bis, Art]
+        (_wheelDataCache.get(fx.fixture_type) || []).forEach((w) => { if (w.attribute_name === ch.name) (w.slots || []).forEach((s) => ranges.push([s.dmx_from, s.dmx_to, ""])); });
+        const beamfx = _beamfxCache.get(fx.fixture_type);
+        if (beamfx && beamfx[ch.name]) (beamfx[ch.name].ranges || []).forEach((r) => ranges.push([r.from, r.to, ""]));
+        const shutter = _shutterDataCache.get(fx.fixture_type);
+        if (shutter && shutter[ch.name]) (shutter[ch.name] || []).forEach((r) => ranges.push([r.from, r.to, r.kind === "open" || r.kind === "closed" ? r.kind : ""]));
+        const at = (v) => ranges.find((r) => v >= r[0] && v <= r[1]);
+        const ra = at(Number(a));
+        const rb = at(Number(b));
+        return !!ra && !!rb && (ra === rb || (!!ra[2] && ra[2] === rb[2]));
+      }
+      /** Aktuelles DMX-Byte eines Kanals dieser Fixture (aus dem Universum-Zwischenspeicher), sonst null. */
+      function _rawByte(id, offset) {
+        const fx = client.state && client.state.fixtures && client.state.fixtures[id];
+        const cached = fx && window.__dmxUniverseValueCache && window.__dmxUniverseValueCache[fx.universe];
+        const v = cached ? cached[(fx.start_channel - 1) + offset] : undefined;
+        return Number.isFinite(v) ? v : null;
+      }
+      /** Radwerte sofort im Live-Stand nachtragen (die Kachel-Vorschau zeigt sie, ohne auf die Antwort des Servers zu warten). */
+      function _patchLiveRaw(id, offset, value) {
+        const fx = client.state && client.state.fixtures && client.state.fixtures[id];
+        if (!fx || !_fixtureTypesCache) return;
+        const ch = _channelsForFixture(fx, _fixtureTypesCache).find((c) => c.offset === offset);
+        if (!ch || !/^(Color[12]|Shutter1|Shutter1Strobe)$|^(Gobo|Prism)/.test(ch.name || "")) return;
+        const live = window.__fixturesLive || (window.__fixturesLive = {});
+        const entry = live[id] || (live[id] = {});
+        entry.wheels = { ...(entry.wheels || {}), [ch.name]: value };
       }
       function setRawChannel(ids, channelOffset, value) {
         _breakPresetLink(ids);
@@ -6639,7 +8836,14 @@ window.__panelAPI = {
         // zaehlen aber genauso als manuelle Aenderung fuer die Touched-
         // Markierung - pro Kanal-Offset, damit der DMX-Direct-Fader genau
         // den touched Kanal akzentuieren kann (siehe isAttrTouched).
-        _markTouched(ids, ["_raw" + channelOffset]);
+        // Ausgangswert = DMX-Stand VOR dem ersten Anfassen: steht der Kanal wieder dort, ist er nicht mehr "geaendert" (Reiter und Unterreiter werden wieder normal).
+        const key = "_raw" + channelOffset;
+        const marked = _markable(ids, key, value);
+        for (const id of marked) { if (!isAttrTouched(id, key)) { _ensure(id); activeValues[id][key] = _rawByte(id, channelOffset); } }
+        const fresh = _markTouched(marked, [key]);
+        for (const id of ids) { _ensure(id); activeValues[id][key] = value; _patchLiveRaw(id, channelOffset, value); }
+        _settle(ids, [key], fresh);
+        _fire();
         if (window.__panelAPI && typeof window.__panelAPI.sendToServer === "function") {
           window.__panelAPI.sendToServer("set_fixture_raw_channel", { ids, channel_offset: channelOffset, value });
         }
@@ -6677,8 +8881,7 @@ window.__panelAPI = {
           _ensure(id);
           Object.assign(activeValues[id], attrs);
           if (touchedAttrs[id]) {
-            for (const key of Object.keys(attrs)) touchedAttrs[id].delete(key);
-            if (touchedAttrs[id].size === 0) delete touchedAttrs[id];
+            for (const key of Object.keys(attrs)) _untouch(id, key);
           }
         }
         _fire();
@@ -6702,7 +8905,7 @@ window.__panelAPI = {
       // die in snapshot (= das Ergebnis von getCueSnapshot()) enthalten sind -
       // ihre Werte sind jetzt im Cue gesichert, die rote Markierung verschwindet.
       function clearTouched(snapshot) {
-        for (const id of Object.keys(snapshot)) delete touchedAttrs[id];
+        for (const id of Object.keys(snapshot)) { delete touchedAttrs[id]; delete _baseline[id]; }
         _fire();
       }
       // Raeumt touched-Status + Preset-Verknuepfung fuer eine einfache
@@ -6710,7 +8913,7 @@ window.__panelAPI = {
       // "programmer_cleared"-Broadcast (Command Line "Clear Clear" / nach
       // "Store Cue", siehe app/command_line.py).
       function clearTouchedByIds(ids) {
-        for (const id of ids) { delete touchedAttrs[id]; delete _presetRefs[id]; }
+        for (const id of ids) { delete touchedAttrs[id]; delete _baseline[id]; delete _presetRefs[id]; }
         _fire();
       }
       // Command-Line-getriebene Werteaenderung ("At 80" etc., siehe
@@ -6720,8 +8923,10 @@ window.__panelAPI = {
       function applyFromServer(values) {
         for (const [id, attrs] of Object.entries(values)) {
           _ensure(id);
+          const keys = Object.keys(attrs);
+          const fresh = _markTouched([id], keys, true);
           Object.assign(activeValues[id], attrs);
-          _markTouched([id], Object.keys(attrs), true);
+          _settle([id], keys, fresh);
         }
         _fire();
       }
@@ -6753,9 +8958,9 @@ window.__panelAPI = {
         return out;
       }
       return {
-        selectedIds, getVal, toggleSelect, rangeAdd, toggleMany, setDimmer, deltaDimmer, setColor, setPan, setTilt,
+        selectedIds, getVal, toggleSelect, rangeAdd, toggleMany, setDimmer, deltaDimmer, setColor, setPan, setTilt, setPanTilt,
         setBeamAttr, setRawChannel, applyPreset, batchSet, sendToServer, hasDimmer, hasColor,
-        isFixtureTouched, isAttrTouched, hasTouched, syncFromEngine, syncFromDmx, batch, clearTouched, clearTouchedByIds,
+        isFixtureTouched, isAttrTouched, isChangedVsCue: _isChangedVsCue, setCueChanges, hasTouched, touchedEntries, colorFaderChanged, rawSame: _rawSame, syncFromEngine, syncFromDmx, batch, clearTouched, clearTouchedByIds,
         applyFromServer, setSelectionFromServer, getCueSnapshot, reset,
         releasePreset, setPresetRefs, applyQuiet,
         getPresetRef: (id, type) => (_presetRefs[id] && _presetRefs[id][type]) || null,
@@ -6791,15 +8996,29 @@ window.__panelAPI = {
       tileEl.classList.toggle("fxprog-tile--active", active);
       shown.active = active;
     }
+    if (window.OCTileBeam && _tileShape(tileEl) === "round") {          // beweglicher Scheinwerfer / Gobo- oder Farbrad: runder Lichtkreis statt Farbflaeche
+      window.OCTileBeam.draw(tileEl, id, p, p.dimmer == null ? 100 : dimPct);          // Geraet ohne Dimmer-Kanal leuchtet immer voll
+      return;
+    }
     let background;
+    let ring = "";
     if (tileEl.dataset.hasColor === "false") {
       // Reine Dimmer-Fixture (keine Farb-Kanaele): ausschliesslich
       // Graustufen Schwarz(0%) -> Weiss(100%) je nach Dimmer-Wert.
       const g = Math.round(dimPct * 2.55);
       background = `rgb(${g},${g},${g})`;
     } else {
+      // Farbe x Helligkeit (0 % = schwarz); ein Geraet ohne Dimmer-Kanal (kein Wert) zeigt die Farbe voll
       const c = p.color;
-      background = c ? `rgb(${c.r},${c.g},${c.b})` : "";
+      const f = p.dimmer == null ? 1 : Math.max(0, Math.min(1, dimPct / 100));
+      background = c ? `rgb(${Math.round(c.r * f)},${Math.round(c.g * f)},${Math.round(c.b * f)})` : "";
+      // Farbe eingestellt, aber dunkel (Helligkeit 0 oder niedrig): ein Ring in dieser Farbe zeigt "hier ist eine Farbe hinterlegt" (schwarz waere irrefuehrend)
+      if (c && f < 0.99 && c.r + c.g + c.b > 24) ring = `inset 0 0 0 2px rgba(${c.r},${c.g},${c.b},${(0.9 * (1 - f)).toFixed(2)})`;
+    }
+    if (shown.ring !== ring) {
+      const colorRing = tileEl.querySelector(".fxprog-tile__color");
+      if (colorRing) colorRing.style.boxShadow = ring;
+      shown.ring = ring;
     }
     if (shown.background !== background) {
       const colorEl = tileEl.querySelector(".fxprog-tile__color");
@@ -6808,12 +9027,643 @@ window.__panelAPI = {
     }
   }
 
-  // ── Dot2 Grid renderer ────────────────────────────────────────────
-  function _renderDot2Grid(panelEl, fixtures) {
+  // Welcher Reiter / Unterreiter der Scheinwerfersteuerung gehoert zu einem angefassten Attribut? [Reiter, Unterreiter ...]
+  const _ABSTRACT_TARGETS = {
+    dimmer: ["dimmer"], color: ["color", "fader", "picker"], pan: ["position", "coarse"], tilt: ["position", "coarse"],
+    strobe: ["beam", "shutter"], gobo: ["beam", "gobo"], gobo_spin: ["beam", "gobo"], gobo2: ["beam", "gobo"], gobo2_spin: ["beam", "gobo"], prism: ["beam", "prism"],
+    focus: ["focus"], zoom: ["focus"],
+  };
+  const _RAW_TARGETS = [                                      // roher Kanal (GDTF-Kanalname) -> Reiter
+    [/^Dimmer/i, ["dimmer"]],
+    [/^(Pan|Tilt)Fine/i, ["position", "fine"]],
+    [/^(Pan|Tilt|PositionMSpeed)/i, ["position", "coarse"]],
+    [/^Color\d/i, ["color", "wheel"]],
+    [/^(Color|CTO|CTC|CTB|HSB)/i, ["color", "fader", "picker"]],
+    [/^(Shutter|Strobe)/i, ["beam", "shutter"]],
+    [/^Gobo/i, ["beam", "gobo"]],
+    [/^Prism/i, ["beam", "prism"]],
+    [/^(Focus|Zoom|Iris|Frost)/i, ["focus"]],
+  ];
+  /** Markierungen "geaendert" setzen: Reiter, Unterreiter, Fader. Wird bei jeder Programmer-Aenderung aufgerufen und ausserdem, wenn Fader neu gebaut werden (z. B. DMX Direkt beim Wechsel des Reiters / der Auswahl). */
+  function _updateDirtyMarks(panelEl) {
+    if (!panelEl._dirtyObserver && typeof MutationObserver === "function") {
+      let queued = false;
+      panelEl._dirtyObserver = new MutationObserver((mutations) => {
+        if (queued || !mutations.some((m) => m.type === "attributes" || [...m.addedNodes].some((n) => n.nodeType === 1))) return;          // nur neue Elemente (Fader gebaut), nicht jede Textaenderung eines Griffs
+        queued = true;
+        setTimeout(() => { queued = false; if (panelEl.isConnected) _updateDirtyMarks(panelEl); }, 30);
+      });
+      panelEl._dirtyObserver.observe(panelEl, { childList: true, subtree: true, attributes: true, attributeFilter: ["data-dmx-offset"] });
+    }
+    // Punkt = an den GEWAEHLTEN Scheinwerfern geaendert (gefuellt); Ring = nur an anderen Scheinwerfern geaendert (nichts gewaehlt: alle). Nur kleine Punkte, damit die Auswahl lesbar bleibt.
+    const touchedNow = _selectedTouched();
+    const touchedAll = window.ProgrammerState.touchedEntries();
+    const here = _dirtyTargets(panelEl, touchedNow);
+    const anywhere = _dirtyTargets(panelEl, touchedAll);
+    const hereCh = _dirtyChannels(panelEl, touchedNow);
+    const anywhereCh = _dirtyChannels(panelEl, touchedAll);
+    panelEl.querySelectorAll(".fxprog-tab[data-tab]").forEach((tab) => {
+      const id = tab.dataset.tab;
+      const mine = id === "dmx" ? hereCh.raw.size > 0 : here.tabs.has(id);
+      const other = id === "dmx" ? anywhereCh.raw.size > 0 : anywhere.tabs.has(id);
+      tab.classList.toggle("fxprog-tab--dirty", mine);
+      tab.classList.toggle("fxprog-tab--dirty-elsewhere", !mine && other);
+    });
+    _markDirtyFaders(panelEl, hereCh);
+    [["beam", ".fxprog-beam"], ["color", ".fxprog-color"], ["position", ".fxprog-pos"]].forEach(([tabId, selector]) => {
+      panelEl.querySelectorAll(selector + " .fxprog-subtab[data-subtab]").forEach((sub) => {
+        const key = tabId + ":" + sub.dataset.subtab;
+        const mine = here.subs.has(key);
+        sub.classList.toggle("fxprog-subtab--dirty", mine);
+        sub.classList.toggle("fxprog-subtab--dirty-elsewhere", !mine && anywhere.subs.has(key));
+      });
+    });
+  }
+
+  /** Angefasste Attribute der GEWAEHLTEN Scheinwerfer als [Fixture-Id, Attribut] (ohne Auswahl: nichts - die Markierung zeigt nur, was an den gewaehlten Geraeten geaendert ist). */
+  function _selectedTouched() {
+    const PS = window.ProgrammerState;
+    return PS.selectedIds.size ? PS.touchedEntries().filter(([id]) => PS.selectedIds.has(id)) : [];
+  }
+  const _ATTR_CHANNELS = {                                      // abstraktes Attribut -> GDTF-Kanalnamen, die es beschreibt
+    dimmer: /^Dimmer$/i, color: /^Color(Add|Sub)_/i, pan: /^Pan(Fine)?$/i, tilt: /^Tilt(Fine)?$/i, strobe: /^Shutter1(Strobe)?$/i,
+    gobo: /^Gobo1$/i, gobo_spin: /^Gobo1(PosRotate|Pos|SelectSpin)$/i, gobo2: /^Gobo2$/i, gobo2_spin: /^Gobo2(PosRotate|Pos|SelectSpin)$/i,
+    prism: /^Prism1$/i, focus: /^Focus1$/i, zoom: /^Zoom$/i,
+  };
+  /** Welche abstrakten Attribute und rohen Kanaele (Offsets) sind in `entries` angefasst? Abstrakte Werte (Helligkeit, Farbe, Pan ...) zaehlen auch fuer die DMX-Kanaele, die sie beschreiben. */
+  function _dirtyChannels(panelEl, entries) {
+    const abstract = new Set();
+    const raw = new Set();
+    const fixtures = _getState(panelEl).fixtures || {};
+    entries.forEach(([id, attr]) => {
+      if (attr.startsWith("_raw")) { raw.add(attr.slice(4)); return; }
+      abstract.add(attr);
+      const re = _ATTR_CHANNELS[attr];
+      const fx = re && fixtures[id];
+      if (fx) _channelsForFixture(fx, _fixtureTypesCache).forEach((c) => { if (re.test(c.name || "")) raw.add(String(c.offset)); });
+    });
+    return { abstract, raw };
+  }
+  /** Fader, die an den gewaehlten Scheinwerfern bewegt wurden: nur eine kleine Markierung an der Beschriftung (siehe .vfader--dirty). */
+  function _markDirtyFaders(panelEl, sets) {
+    panelEl.querySelectorAll(".vfader").forEach((vf) => {
+      let dirty = false;
+      if (vf.dataset.dmxOffset !== undefined) dirty = sets.raw.has(vf.dataset.dmxOffset);
+      else if (vf.dataset.color) {                              // Farbfader: nur der Fader der zuletzt benutzten Gruppe (RGB / CMY / HSV), und nur der, dessen Kanal sich geaendert hat
+        const group = vf.closest(".fxprog-cf-group");
+        const PS = window.ProgrammerState;
+        dirty = !!group && group.dataset.group === (window.__fxColorGroup || "rgb") && PS.colorFaderChanged([...PS.selectedIds], vf.dataset.color);
+      }
+      else if (vf.dataset.faderId) dirty = sets.abstract.has(vf.dataset.faderId);
+      vf.classList.toggle("vfader--dirty", dirty);
+    });
+  }
+  function _dirtyTargets(panelEl, entries) {
+    const fixtures = _getState(panelEl).fixtures || {};
+    const tabs = new Set();
+    const subs = new Set();
+    const add = (target) => { if (!target) return; tabs.add(target[0]); target.slice(1).forEach((s) => subs.add(target[0] + ":" + s)); };
+    for (const [id, attr] of entries) {
+      if (!attr.startsWith("_raw")) { add(_ABSTRACT_TARGETS[attr]); continue; }
+      const fx = fixtures[id];
+      if (!fx) continue;
+      const offset = Number(attr.slice(4));
+      const ch = _channelsForFixture(fx, _fixtureTypesCache).find((c) => c.offset === offset);
+      const hit = ch && _RAW_TARGETS.find(([re]) => re.test(ch.name || ""));
+      if (hit) add(hit[1]);
+    }
+    return { tabs, subs };
+  }
+
+  // Form der Kachel-Vorschau: Geraete mit Pan/Tilt, Gobo-, Prismen- oder Farbrad zeigen den runden Lichtkreis (tile_beam.js), alle anderen die Farbflaeche.
+  // Erst entscheiden, wenn die Geraetetypen geladen sind (bis dahin Farbflaeche); danach pro Kachel gemerkt.
+  let _tileShapeWait = false;
+  function _tileShape(tileEl) {
+    if (tileEl._shape) return tileEl._shape;
+    if (!_fixtureTypesCache) {
+      if (!_tileShapeWait) { _tileShapeWait = true; _loadFixtureTypes(() => { _tileShapeWait = false; _refreshTiles(); }); }
+      return "flat";
+    }
+    const fx = { fixture_type: tileEl.dataset.fxType, mode: tileEl.dataset.fxMode };
+    const channels = _channelsForFixture(fx, _fixtureTypesCache);
+    const round = tileEl.dataset.hasColor !== "false" && channels.some((c) => /^(pan|tilt)$|gobo|prism|^color[12]$|colorwheel/i.test(c.name || ""));
+    if (channels.length) tileEl._shape = round ? "round" : "flat";
+    return round ? "round" : "flat";
+  }
+  function _refreshTiles() {
+    document.querySelectorAll(".fxprog-tile[data-fx-id]").forEach((tile) => _updateTile(tile, tile.dataset.fxId));
+  }
+  document.addEventListener("tilebeam-data", _refreshTiles);                 // Raeder/Bilder eines Typs sind geladen
+  let _liveTileIds = null;
+  let _liveTileFrame = 0;
+  document.addEventListener("fixtures-live-values", (event) => {           // Radwerte (Gobo, Farbrad, Prisma ...) kommen erst NACH dem Programmer-Abgleich: runde Kacheln danach neu zeichnen
+    const ids = Object.keys((event && event.detail) || {});
+    if (!ids.length) return;
+    if (!_liveTileIds) _liveTileIds = new Set();
+    ids.forEach((id) => _liveTileIds.add(id));
+    if (_liveTileFrame) return;
+    _liveTileFrame = requestAnimationFrame(() => {
+      _liveTileFrame = 0;
+      const wanted = _liveTileIds;
+      _liveTileIds = null;
+      if (!wanted) return;
+      document.querySelectorAll(".fxprog-tile[data-fx-id]").forEach((tile) => { if (tile._shape === "round" && wanted.has(tile.dataset.fxId)) _updateTile(tile, tile.dataset.fxId); });
+    });
+  });
+
+  // ── Ansicht "Layout": die Scheinwerfer frei im 2D-Raster (quadratische Kacheln) ──────────────────────────────────────────────────
+  // Positionen (layout_x / layout_y, Einheit = eine Kachel, auch negativ: die Flaeche ist in ALLE Richtungen unbegrenzt) liegen beim Scheinwerfer und werden mit der Show gespeichert,
+  // ebenso die Einstellungen (state.fixture_layout: Rasterfeinheit 1 / 1/2 / 1/4, "Ueberlappen erlaubt", gespeicherte Ansichten = Bereiche). Zoom und die zuletzt gezeigte Mitte gehoeren
+  // dem Geraet (OCViewState). Im normalen Betrieb wird ausgewaehlt (Klick, Wischgeste wie in der Liste); im "Baumodus" (Rechtsklick) verschiebt Ziehen die Kachel (bei Auswahl alle
+  // gewaehlten), die leere Flaeche waehlt weiter per Wischgeste aus. Verschieben der Ansicht: Rollen / Scrollleisten, Mitteltaste ziehen, am Rand beim Ziehen einer Kachel.
+  const LV_CELL = 80;                    // Raster-Einheit in px bei Zoom 1
+  const LV_TILE = 72;                    // Kantenlaenge der Kachel
+  const LV_ZOOM_MIN = 0.2;
+  const LV_ZOOM_MAX = 2.5;
+  const LV_SNAPS = [1, 0.5, 0.25];
+  const _lvOpts = () => ((client.state || {}).fixture_layout) || {};
+  const _lvSnap = () => { const s = Number(_lvOpts().snap); return LV_SNAPS.includes(s) ? s : 1; };
+  const _lvOverlap = () => !!_lvOpts().overlap;
+  const _lvViews = () => (Array.isArray(_lvOpts().views) ? _lvOpts().views : []);
+  const _lvClampZoom = (z) => Math.max(LV_ZOOM_MIN, Math.min(LV_ZOOM_MAX, z));
+  const _lvPos = (fx, index) => ({ x: Number.isFinite(fx.layout_x) ? fx.layout_x : index % 10, y: Number.isFinite(fx.layout_y) ? fx.layout_y : Math.floor(index / 10) });
+  const _lvFree = (x, y, taken) => taken.every((o) => Math.abs(x - o.x) >= 1 || Math.abs(y - o.y) >= 1);
+  /** Naechster freier Platz um (x, y) in Schritten der Rasterfeinheit (Kacheln duerfen sich sonst nicht ueberdecken). */
+  function _lvFindFree(x, y, taken, snap) {
+    if (_lvFree(x, y, taken)) return { x, y };
+    for (let ring = 1; ring <= 400; ring++) {
+      const candidates = [];
+      for (let i = -ring; i <= ring; i++) for (let j = -ring; j <= ring; j++) {
+        if (Math.max(Math.abs(i), Math.abs(j)) !== ring) continue;
+        const cx = x + i * snap;
+        const cy = y + j * snap;
+        if (_lvFree(cx, cy, taken)) candidates.push({ x: cx, y: cy, d: i * i + j * j });
+      }
+      if (candidates.length) { candidates.sort((p, q) => p.d - q.d); return { x: candidates[0].x, y: candidates[0].y }; }
+    }
+    return { x, y };
+  }
+
+  function _lvInit(panelEl, view) {
+    if (panelEl._lv) return panelEl._lv;
+    const scope = panelEl.dataset.panelId;
+    const v = panelEl._lv = { view, scope, zoom: _lvClampZoom(Number(OCViewState.get(scope, "lv:zoom", 1)) || 1), edit: false, tiles: new Map(), drag: null, pan: null, fixtures: {}, ox: undefined, oy: undefined, placed: false, z: 10, saveTimer: 0 };
+    view.innerHTML = "";
+    const banner = document.createElement("div");
+    banner.className = "fxprog-lv-banner";
+    const left = document.createElement("div");
+    left.className = "fxprog-lv-left";
+    v.hint = document.createElement("div");
+    v.hint.className = "fxprog-lv-chip fxprog-lv-chip--edit";
+    v.hintText = document.createElement("span");
+    v.doneBtn = document.createElement("button");
+    v.doneBtn.type = "button";
+    v.doneBtn.className = "fxprog-lv-done";
+    v.doneBtn.addEventListener("click", () => _lvSetEdit(panelEl, false));
+    v.hint.append(v.hintText, v.doneBtn);
+    v.chips = document.createElement("div");
+    v.chips.className = "fxprog-lv-views";
+    left.append(v.hint, v.chips);
+    const right = document.createElement("div");
+    right.className = "fxprog-lv-right";
+    v.info = document.createElement("div");
+    v.info.className = "fxprog-lv-chip fxprog-lv-chip--info";
+    v.fitBtn = document.createElement("button");
+    v.fitBtn.type = "button";
+    v.fitBtn.className = "fxprog-lv-btn";
+    v.fitBtn.addEventListener("click", () => _lvFit(panelEl));
+    right.append(v.info, v.fitBtn);
+    banner.append(left, right);
+    view.appendChild(banner);
+    v.sizer = document.createElement("div");
+    v.sizer.className = "fxprog-lv-sizer";
+    v.plane = document.createElement("div");
+    v.plane.className = "fxprog-lv-plane";
+    v.sizer.appendChild(v.plane);
+    view.appendChild(v.sizer);
+
+    // Strg + Mausrad: Zoom um den Mauszeiger
+    view.addEventListener("wheel", (e) => {
+      if (!(e.ctrlKey || e.metaKey)) return;
+      e.preventDefault();
+      const rect = view.getBoundingClientRect();
+      const old = v.zoom;
+      const next = _lvClampZoom(old * Math.exp(-e.deltaY * 0.0015));
+      if (next === old) return;
+      const at = _lvCellAt(v, e.clientX, e.clientY);
+      v.zoom = next;
+      _lvLayout(panelEl);
+      view.scrollLeft = (at.x - v.ox) * LV_CELL * next - (e.clientX - rect.left);
+      view.scrollTop = (at.y - v.oy) * LV_CELL * next - (e.clientY - rect.top);
+      OCViewState.set(scope, "lv:zoom", Math.round(next * 1000) / 1000);
+    }, { passive: false });
+    if (typeof ResizeObserver === "function") new ResizeObserver(() => { _lvLayout(panelEl); _lvFirstShow(panelEl); }).observe(view);
+    view.addEventListener("scroll", () => {                                // zuletzt gezeigte Mitte merken (dieses Geraet)
+      if (!v.placed) return;
+      clearTimeout(v.saveTimer);
+      v.saveTimer = setTimeout(() => { const c = _lvCenterCell(v); OCViewState.set(scope, "lv:center", { x: Math.round(c.x * 100) / 100, y: Math.round(c.y * 100) / 100 }); }, 300);
+    }, { passive: true });
+
+    // Touch (iPad): ZWEI FINGER = zoomen (um die Mitte der Finger) und verschieben; ein Finger scrollt wie bisher, auf einer Kachel bzw. nach Halten zeichnet er das Lasso.
+    // Wie in der Timeline: mit zwei Fingern darf der Browser nicht selbst scrollen / zoomen (touchmove wird dann gesperrt), sonst arbeiten Browser und Geste gegeneinander.
+    const touches = new Map();
+    let pinch = null;
+    const centre = () => { const [a, b] = [...touches.values()]; return { d: Math.hypot(a.x - b.x, a.y - b.y) || 1, cx: (a.x + b.x) / 2, cy: (a.y + b.y) / 2 }; };
+    view.addEventListener("pointerdown", (e) => {
+      if (e.pointerType === "mouse") return;
+      touches.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (touches.size !== 2) return;
+      e.stopImmediatePropagation();                                         // der zweite Finger gehoert nur der Geste (auch nicht dem Baumodus-Ziehen)
+      _endLasso(false);                                                     // ein begonnenes Lasso verwerfen ...
+      if (v.drag) {                                                         // ... und eine halb gezogene Kachel zuruecksetzen
+        clearInterval(v.drag.timer);
+        v.drag = null;
+        v.tiles.forEach((rec) => rec.el.classList.remove("fxprog-tile--dragging"));
+        _lvLayout(panelEl);
+      }
+      const s = centre();
+      pinch = { d: s.d, zoom: v.zoom, at: _lvCellAt(v, s.cx, s.cy), frame: 0 };       // die Zelle unter der Fingermitte wird gemerkt und bleibt dort
+      v.pinching = true;
+    }, true);
+    const applyPinch = () => {
+      if (!pinch) return;
+      pinch.frame = 0;
+      if (touches.size < 2) return;
+      const s = centre();
+      const next = _lvClampZoom(pinch.zoom * (s.d / pinch.d));
+      const rect = view.getBoundingClientRect();
+      v.zoom = next;
+      _lvLayout(panelEl);
+      view.scrollLeft = (pinch.at.x - v.ox) * LV_CELL * next - (s.cx - rect.left);              // Zoom UND Verschieben mit den zwei Fingern
+      view.scrollTop = (pinch.at.y - v.oy) * LV_CELL * next - (s.cy - rect.top);
+    };
+    view.addEventListener("pointermove", (e) => {
+      if (!touches.has(e.pointerId)) return;
+      touches.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (pinch && touches.size >= 2 && !pinch.frame) pinch.frame = requestAnimationFrame(applyPinch);
+    }, true);
+    view.addEventListener("touchmove", (e) => { if (e.touches.length >= 2 || v.pinching) e.preventDefault(); }, { passive: false });
+    const liftFinger = (e) => {
+      if (!touches.delete(e.pointerId) || touches.size >= 2) return;
+      if (pinch) {
+        if (pinch.frame) cancelAnimationFrame(pinch.frame);
+        OCViewState.set(scope, "lv:zoom", Math.round(v.zoom * 1000) / 1000);
+        pinch = null;
+      }
+      setTimeout(() => { if (touches.size < 2) v.pinching = false; }, 150);
+    };
+    view.addEventListener("pointerup", liftFinger, true);
+    view.addEventListener("pointercancel", liftFinger, true);
+    view.addEventListener("click", (e) => { if (v.pinching) { e.stopPropagation(); e.preventDefault(); } }, true);      // das Loslassen nach der Geste waehlt keine Kachel
+
+    // Mitteltaste ziehen = Ansicht verschieben (die linke Taste gehoert der Auswahl bzw. dem Baumodus)
+    view.addEventListener("pointerdown", (e) => {
+      if (e.pointerType !== "mouse" || e.button !== 1) return;
+      e.preventDefault();
+      e.stopPropagation();
+      v.pan = { id: e.pointerId, x: e.clientX, y: e.clientY, l: view.scrollLeft, t: view.scrollTop };
+      try { view.setPointerCapture(e.pointerId); } catch (error) { /* weg */ }
+      view.classList.add("fxprog-layoutview--pan");
+    }, true);
+    view.addEventListener("pointermove", (e) => {
+      if (!v.pan || e.pointerId !== v.pan.id) return;
+      view.scrollLeft = v.pan.l - (e.clientX - v.pan.x);
+      view.scrollTop = v.pan.t - (e.clientY - v.pan.y);
+    });
+    const endPan = (e) => {
+      if (!v.pan || e.pointerId !== v.pan.id) return;
+      v.pan = null;
+      view.classList.remove("fxprog-layoutview--pan");
+      try { view.releasePointerCapture(e.pointerId); } catch (error) { /* frei */ }
+    };
+
+    // Baumodus: Ziehen verschiebt die Kachel (Aufnahme-Phase: die Wischgeste der Liste startet dann nicht); leere Flaeche = Auswahl wie immer
+    view.addEventListener("pointerdown", (e) => {
+      if (!v.edit || (e.pointerType === "mouse" && e.button !== 0)) return;
+      const tile = e.target.closest(".fxprog-tile--sq");
+      if (!tile) return;
+      e.stopPropagation();
+      const id = tile.dataset.fxId;
+      const PS = window.ProgrammerState;
+      const ids = (PS.selectedIds.has(id) ? [...PS.selectedIds] : [id]).filter((i) => v.tiles.has(i));
+      ids.forEach((i) => { v.tiles.get(i).el.style.zIndex = String(++v.z); });          // zuletzt bewegt = oben (bei erlaubter Ueberlappung)
+      v.drag = { pointerId: e.pointerId, startX: e.clientX, startY: e.clientY, sl: view.scrollLeft, st: view.scrollTop, last: { x: e.clientX, y: e.clientY },
+        id, ids, moved: false, orig: new Map(ids.map((i) => [i, { ...v.tiles.get(i).pos }])), pos: new Map(), timer: 0 };
+      try { tile.setPointerCapture(e.pointerId); } catch (error) { /* weg */ }
+    }, true);
+    const updateDrag = () => {
+      const d = v.drag;
+      if (!d) return;
+      const snap = _lvSnap();
+      const dx = (d.last.x - d.startX + view.scrollLeft - d.sl) / (v.zoom * LV_CELL);
+      const dy = (d.last.y - d.startY + view.scrollTop - d.st) / (v.zoom * LV_CELL);
+      d.ids.forEach((i) => {
+        const o = d.orig.get(i);
+        d.pos.set(i, { x: Math.max(v.ox, Math.round((o.x + dx) / snap) * snap), y: Math.max(v.oy, Math.round((o.y + dy) / snap) * snap) });
+        v.tiles.get(i).el.classList.add("fxprog-tile--dragging");
+      });
+      _lvLayout(panelEl, d.pos, true);
+    };
+    view.addEventListener("pointermove", (e) => {
+      const d = v.drag;
+      if (!d || e.pointerId !== d.pointerId) return;
+      d.last = { x: e.clientX, y: e.clientY };
+      if (!d.moved && Math.hypot(e.clientX - d.startX, e.clientY - d.startY) < 4) return;
+      d.moved = true;
+      updateDrag();
+      // am Rand der Flaeche: automatisch weiterrollen (die Flaeche ist unbegrenzt)
+      const rect = view.getBoundingClientRect();
+      const edge = 40;
+      const sx = e.clientX < rect.left + edge ? -14 : e.clientX > rect.right - edge ? 14 : 0;
+      const sy = e.clientY < rect.top + edge ? -14 : e.clientY > rect.bottom - edge ? 14 : 0;
+      if ((sx || sy) && !d.timer) {
+        d.timer = setInterval(() => { if (v.drag !== d) { clearInterval(d.timer); return; } view.scrollLeft += d.sx; view.scrollTop += d.sy; updateDrag(); }, 16);
+      } else if (!sx && !sy && d.timer) { clearInterval(d.timer); d.timer = 0; }
+      d.sx = sx;
+      d.sy = sy;
+    });
+    const finish = (e, commit) => {
+      endPan(e);
+      const d = v.drag;
+      if (!d || e.pointerId !== d.pointerId) return;
+      clearInterval(d.timer);
+      v.drag = null;
+      try { v.tiles.get(d.id).el.releasePointerCapture(e.pointerId); } catch (error) { /* schon frei */ }
+      v.tiles.forEach((rec) => rec.el.classList.remove("fxprog-tile--dragging"));
+      if (!commit || !d.moved) {
+        _lvLayout(panelEl);
+        if (commit) window.ProgrammerState.toggleSelect(d.id);                  // Tippen ohne Ziehen = auswaehlen
+        return;
+      }
+      const taken = [...v.tiles].filter(([i]) => !d.ids.includes(i)).map(([, rec]) => ({ ...rec.pos }));
+      const snap = _lvSnap();
+      const overlap = _lvOverlap();
+      const out = {};
+      [...d.ids].sort((p, q) => (d.pos.get(p).y - d.pos.get(q).y) || (d.pos.get(p).x - d.pos.get(q).x)).forEach((i) => {
+        const wanted = d.pos.get(i);
+        const p = overlap ? wanted : _lvFindFree(wanted.x, wanted.y, taken, snap);
+        taken.push(p);
+        out[i] = [p.x, p.y];
+        const fx = (client.state.fixtures || {})[i];
+        if (fx) { fx.layout_x = p.x; fx.layout_y = p.y; }                   // gleich zeigen, die Antwort des Servers bestaetigt
+        v.tiles.get(i).pos = p;
+      });
+      _lvLayout(panelEl);
+      client.send("set_fixture_layout", { positions: out });
+    };
+    view.addEventListener("pointerup", (e) => finish(e, true));
+    view.addEventListener("pointercancel", (e) => finish(e, false));
+    document.addEventListener("keydown", (e) => { if (e.key === "Escape" && v.edit && panelEl.isConnected && v.view.offsetParent) _lvSetEdit(panelEl, false); });
+    _lvSetEdit(panelEl, false);
+    return v;
+  }
+
+  function _lvSetEdit(panelEl, on) {
+    const v = panelEl._lv;
+    if (!v) return;
+    v.edit = !!on;
+    v.view.classList.toggle("fxprog-layoutview--edit", v.edit);
+    v.hintText.textContent = t("FXLV_BANNER");
+    v.doneBtn.textContent = t("FXLV_DONE");
+    v.fitBtn.textContent = t("FXLV_FIT");
+    v.hint.style.display = v.edit ? "" : "none";
+  }
+
+  const _lvBounds = (v, override) => {
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    v.tiles.forEach((rec, id) => {
+      const p = (override && override.get(id)) || rec.pos;
+      minX = Math.min(minX, p.x); minY = Math.min(minY, p.y); maxX = Math.max(maxX, p.x); maxY = Math.max(maxY, p.y);
+    });
+    return Number.isFinite(minX) ? { minX, minY, maxX, maxY } : { minX: 0, minY: 0, maxX: 0, maxY: 0 };
+  };
+  /** Zelle (in Kacheln, gebrochen) unter einem Bildschirmpunkt bzw. in der Mitte des Sichtbereichs. */
+  const _lvCellAt = (v, clientX, clientY) => {
+    const rect = v.view.getBoundingClientRect();
+    return { x: v.ox + (v.view.scrollLeft + clientX - rect.left) / (v.zoom * LV_CELL), y: v.oy + (v.view.scrollTop + clientY - rect.top) / (v.zoom * LV_CELL) };
+  };
+  const _lvCenterCell = (v) => ({ x: v.ox + (v.view.scrollLeft + v.view.clientWidth / 2) / (v.zoom * LV_CELL), y: v.oy + (v.view.scrollTop + v.view.clientHeight / 2) / (v.zoom * LV_CELL) });
+  function _lvCenterOn(panelEl, cx, cy) {
+    const v = panelEl._lv;
+    v.view.scrollLeft = (cx - v.ox) * LV_CELL * v.zoom - v.view.clientWidth / 2;
+    v.view.scrollTop = (cy - v.oy) * LV_CELL * v.zoom - v.view.clientHeight / 2;
+  }
+
+  /** Flaeche und Kacheln anordnen. Die Flaeche reicht ueber alle Kacheln hinaus, mindestens um einen Sichtbereich in jede Richtung (= in alle Richtungen unbegrenzt);
+   *  wandert ihr Ursprung (z. B. nach dem Verschieben oder Zoomen), wird die Rollposition ausgeglichen, damit der Inhalt stehen bleibt. keepOrigin: waehrend des Ziehens. */
+  function _lvLayout(panelEl, override, keepOrigin) {
+    const v = panelEl._lv;
+    if (!v) return;
+    const view = v.view;
+    const b = _lvBounds(v, override);
+    const vw = Math.max(4, view.clientWidth / (v.zoom * LV_CELL));
+    const vh = Math.max(4, view.clientHeight / (v.zoom * LV_CELL));
+    // Ursprung nur aendern, wenn der Rand zu knapp (weniger als ein Sichtbereich) oder sehr gross (mehr als drei) wird: sonst schwingt er, wenn Rollleisten erscheinen / verschwinden
+    const keepAxis = (cur, need, span) => cur !== undefined && cur <= need && cur >= need - 3 * span;
+    const needX = Math.floor(b.minX - vw);
+    const needY = Math.floor(b.minY - vh);
+    let ox = keepAxis(v.ox, needX, vw) ? v.ox : needX;
+    let oy = keepAxis(v.oy, needY, vh) ? v.oy : needY;
+    if (keepOrigin && v.ox !== undefined) { ox = v.ox; oy = v.oy; }
+    const cellsW = Math.max(1, Math.ceil(b.maxX + 1 + vw - ox));
+    const cellsH = Math.max(1, Math.ceil(b.maxY + 1 + vh - oy));
+    if (v.ox !== undefined && (v.ox !== ox || v.oy !== oy)) {
+      view.scrollLeft += (v.ox - ox) * LV_CELL * v.zoom;
+      view.scrollTop += (v.oy - oy) * LV_CELL * v.zoom;
+    }
+    v.ox = ox;
+    v.oy = oy;
+    v.plane.style.width = (cellsW * LV_CELL) + "px";
+    v.plane.style.height = (cellsH * LV_CELL) + "px";
+    v.plane.style.transform = "scale(" + v.zoom + ")";
+    v.sizer.style.width = (cellsW * LV_CELL * v.zoom) + "px";
+    v.sizer.style.height = (cellsH * LV_CELL * v.zoom) + "px";
+    view.style.setProperty("--lv-cell", LV_CELL + "px");
+    view.style.setProperty("--lv-snap-px", (_lvSnap() * LV_CELL) + "px");
+    v.tiles.forEach((rec, id) => {
+      const p = (override && override.get(id)) || rec.pos;
+      rec.el.style.left = ((p.x - ox) * LV_CELL + (LV_CELL - LV_TILE) / 2) + "px";
+      rec.el.style.top = ((p.y - oy) * LV_CELL + (LV_CELL - LV_TILE) / 2) + "px";
+    });
+    v.info.textContent = Math.round(v.zoom * 100) + " %  ·  " + t("FXLV_ZOOM_HINT");
+  }
+
+  /** Beim ersten Sichtbarwerden: zuletzt gezeigte Mitte (dieses Geraet) oder die Mitte aller Scheinwerfer. */
+  function _lvFirstShow(panelEl) {
+    const v = panelEl._lv;
+    if (!v || v.placed || !v.view.clientWidth || v.ox === undefined) return;
+    v.placed = true;
+    const stored = OCViewState.get(v.scope, "lv:center", null);
+    if (stored && Number.isFinite(stored.x) && Number.isFinite(stored.y)) { _lvCenterOn(panelEl, stored.x, stored.y); return; }
+    const b = _lvBounds(v);
+    _lvCenterOn(panelEl, (b.minX + b.maxX + 1) / 2, (b.minY + b.maxY + 1) / 2);
+  }
+
+  /** "Alle zeigen": so zoomen und rollen, dass alle Scheinwerfer in der Mitte des Sichtbereichs stehen. */
+  function _lvFit(panelEl) {
+    const v = panelEl._lv;
+    if (!v || !v.tiles.size) return;
+    const b = _lvBounds(v);
+    const w = (b.maxX - b.minX + 1) * LV_CELL;
+    const h = (b.maxY - b.minY + 1) * LV_CELL;
+    v.zoom = _lvClampZoom(Math.min(1.5, (v.view.clientWidth * 0.92) / w, (v.view.clientHeight * 0.92) / h));
+    OCViewState.set(v.scope, "lv:zoom", Math.round(v.zoom * 1000) / 1000);
+    _lvLayout(panelEl);
+    v.placed = true;
+    _lvCenterOn(panelEl, (b.minX + b.maxX + 1) / 2, (b.minY + b.maxY + 1) / 2);
+  }
+
+  function _lvApplyView(panelEl, saved) {
+    const v = panelEl._lv;
+    if (!v) return;
+    v.zoom = _lvClampZoom(Number(saved.zoom) || 1);
+    OCViewState.set(v.scope, "lv:zoom", Math.round(v.zoom * 1000) / 1000);
+    _lvLayout(panelEl);
+    v.placed = true;
+    _lvCenterOn(panelEl, saved.x, saved.y);
+  }
+
+  /** Ansicht (Bereich) speichern: Mitte + Zoom als Kurzwahl; mit `existing` wird diese Ansicht ueberschrieben bzw. umbenannt. */
+  async function _lvSaveView(panelEl, existing, renameOnly) {
+    const v = panelEl._lv;
+    if (!v) return;
+    let name = existing ? existing.name : "";
+    if (!existing || renameOnly) {
+      name = await _askLayoutName({ title: t("FXLV_VIEW_TITLE"), confirmKey: "FXLV_VIEW_OK", value: name, labelKey: "FXLV_VIEW_NAME" });
+      if (!name) return;
+    }
+    const c = _lvCenterCell(v);
+    const views = _lvViews().map((x) => ({ ...x }));
+    const entry = { name, x: Math.round(c.x * 100) / 100, y: Math.round(c.y * 100) / 100, zoom: Math.round(v.zoom * 1000) / 1000 };
+    const index = existing ? views.findIndex((x) => x.id === existing.id) : -1;
+    if (index >= 0) views[index] = renameOnly ? { ...views[index], name } : { ...views[index], ...entry };
+    else views.push({ id: "v" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), ...entry });
+    client.send("set_fixture_layout_views", { views });
+  }
+
+  /** Kurzwahl-Knoepfe der gespeicherten Ansichten (Rechtsklick: ueberschreiben / umbenennen / loeschen). */
+  function _lvChips(panelEl) {
+    const v = panelEl._lv;
+    if (!v) return;
+    v.chips.textContent = "";
+    _lvViews().forEach((saved) => {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "fxprog-lv-view";
+      b.textContent = saved.name;
+      b.title = t("FXLV_VIEW_TIP");
+      b.addEventListener("click", () => _lvApplyView(panelEl, saved));
+      b.addEventListener("contextmenu", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        ContextMenu.show(e.clientX, e.clientY, [
+          { label: t("FXLV_VIEW_OVERWRITE"), onClick: () => _lvSaveView(panelEl, saved, false) },
+          { label: t("FXLV_VIEW_RENAME"), onClick: () => _lvSaveView(panelEl, saved, true) },
+          { label: t("FXLV_VIEW_DELETE"), danger: true, onClick: async () => {
+            if (await _askDelete("other", { title: t("FXLV_VIEW_DELETE_TITLE"), body: t("FXLV_VIEW_DELETE_BODY", { name: saved.name }), confirmKey: "FX_DELETE_CONFIRM" })) {
+              client.send("set_fixture_layout_views", { views: _lvViews().filter((x) => x.id !== saved.id) });
+            }
+          } },
+        ]);
+      });
+      v.chips.appendChild(b);
+    });
+  }
+
+  function _lvRefresh(panelEl) {
+    if (!panelEl._lv) return;
+    _lvLayout(panelEl);
+    _lvFirstShow(panelEl);
+  }
+
+  function _renderLayoutView(panelEl, fixtures) {
+    const view = panelEl.querySelector(".fxprog-layoutview");
+    if (!view) return;
+    const v = _lvInit(panelEl, view);
+    v.fixtures = fixtures;
+    v.plane.innerHTML = "";
+    v.tiles = new Map();
+    const PS = window.ProgrammerState;
+    const entries = Object.entries(fixtures).sort((a, b) => ((a[1].fid || 1e9) - (b[1].fid || 1e9)));
+    entries.forEach(([id, fx], index) => {
+      const tile = _buildTileEl(id, fx);
+      tile.classList.add("fxprog-tile--sq");
+      v.tiles.set(id, { el: tile, pos: _lvPos(fx, index) });
+      tile.addEventListener("click", () => {
+        if (v.edit || _dragMoved) return;                                  // Baumodus: Tippen waehlt beim Loslassen aus (siehe oben)
+        if (Date.now() - (tile._pointerSelectAt || 0) < 800) return;
+        PS.toggleSelect(id);
+      });
+      tile.addEventListener("pointerup", (e) => {                          // Touch/Stift: Auswahl direkt beim Loslassen
+        if (v.edit || e.pointerType === "mouse" || _dragMoved || v.pinching) return;                  // nach / waehrend der Zwei-Finger-Geste waehlt das Loslassen nichts aus
+        if (window.__longPress && window.__longPress.suppress) return;
+        tile._pointerSelectAt = Date.now();
+        PS.toggleSelect(id);
+      });
+      v.plane.appendChild(tile);
+    });
+    _lvSetEdit(panelEl, v.edit);
+    _lvChips(panelEl);
+    _lvLayout(panelEl);
+    _lvFirstShow(panelEl);
+  }
+
+  /** Eintraege des Rechtsklick-Menues der Layout-Ansicht (auch auf einer Kachel). */
+  function _lvMenuItems(panelEl) {
+    const v = panelEl._lv;
+    if (!v) return [];
+    const snap = _lvSnap();
+    const mark = (on) => (on ? "✓ " : "    ");
+    return [
+      { label: v.edit ? t("FXLV_EDIT_END") : t("FXLV_EDIT_START"), onClick: () => _lvSetEdit(panelEl, !v.edit) },
+      { separator: true },
+      { label: t("FXLV_FIT"), onClick: () => _lvFit(panelEl) },
+      { label: t("FXLV_SAVE_VIEW"), onClick: () => _lvSaveView(panelEl, null, false) },
+      { separator: true },
+      { label: mark(snap === 1) + t("FXLV_GRID_1"), onClick: () => client.send("set_fixture_layout_options", { snap: 1 }) },
+      { label: mark(snap === 0.5) + t("FXLV_GRID_05"), onClick: () => client.send("set_fixture_layout_options", { snap: 0.5 }) },
+      { label: mark(snap === 0.25) + t("FXLV_GRID_025"), onClick: () => client.send("set_fixture_layout_options", { snap: 0.25 }) },
+      { label: mark(_lvOverlap()) + t("FXLV_OVERLAP"), onClick: () => client.send("set_fixture_layout_options", { overlap: !_lvOverlap() }) },
+      { separator: true },
+      { label: t("FXLV_ZOOM_RESET"), onClick: () => { v.zoom = 1; OCViewState.set(v.scope, "lv:zoom", 1); _lvLayout(panelEl); } },
+      { label: t("FXLV_RESET_POS"), danger: true, onClick: async () => {
+        if (await _askLayoutConfirm({ title: t("FXLV_RESET_TITLE"), body: t("FXLV_RESET_BODY"), confirmKey: "FXLV_RESET_OK" })) client.send("reset_fixture_layout", {});
+      } },
+    ];
+  }
+
+  /** Eine Scheinwerfer-Kachel (FID, Dimmer-Balken, Farb-/Strahl-Vorschau, Prozent) - fuer die Ansichten "Liste" und "Layout". */
+  function _buildTileEl(id, fx) {
+    const tile = document.createElement("div");
+    tile.className = "fxprog-tile" + (window.ProgrammerState.selectedIds.has(id) ? " fxprog-tile--selected" : "");
+    tile.dataset.fxId = id;
+    // Farb-Vorschau nur rendern, wenn die Fixture tatsaechlich Farb-Kanaele besitzt - reine Dimmer-Fixtures zeigen ausschliesslich
+    // Graustufen (siehe _updateTile). Faellt bei unbekanntem/noch nicht geladenem Profil auf "hat Farbe" zurueck (kein Flackern).
+    tile.dataset.hasColor = _fixtureHasFeature(fx, "color") ? "true" : "false";
+    tile.dataset.fxType = fx.fixture_type || "";                       // Strahl-Vorschau der Kachel (tile_beam.js) holt die Raeder dieses Typs
+    tile.dataset.fxMode = fx.mode || "";
+    const idEl = document.createElement("span");
+    idEl.className = "fxprog-tile__id";
+    idEl.textContent = fx.fid != null ? fx.fid : "";
+    const dimbar = document.createElement("div");
+    dimbar.className = "fxprog-tile__dimbar";
+    const colorEl = document.createElement("div");
+    colorEl.className = "fxprog-tile__color";
+    const pctEl = document.createElement("span");
+    pctEl.className = "fxprog-tile__pct";
+    pctEl.textContent = "0%";
+    tile.append(idEl, dimbar, colorEl, pctEl);
+    _updateTile(tile, id);
+    return tile;
+  }
+
+  // ── Tile grid renderer ────────────────────────────────────────────
+  function _renderTileGrid(panelEl, fixtures) {
     const st = _getState(panelEl);
     st.fixtures = fixtures;
 
-    const sheet = panelEl.querySelector(".fxprog-sheet");
+    _renderLayoutView(panelEl, fixtures);                              // zweite Ansicht (freies Raster) mit denselben Daten
+    const sheet = panelEl.querySelector(".fxprog-sheet[data-panel='list']");
     if (!sheet) return;
     sheet.innerHTML = "";
 
@@ -6896,35 +9746,7 @@ window.__panelAPI = {
       }
 
       for (const [id, fx] of fxList) {
-        const tile = document.createElement("div");
-        tile.className = "fxprog-tile" + (window.ProgrammerState.selectedIds.has(id) ? " fxprog-tile--selected" : "");
-        tile.dataset.fxId = id;
-        // Farb-Vorschau nur rendern, wenn die Fixture tatsaechlich Farb-
-        // Kanaele besitzt - reine Dimmer-Fixtures zeigen ausschliesslich
-        // Graustufen (siehe _updateTile). Faellt bei unbekanntem/noch nicht
-        // geladenem Profil auf "hat Farbe" zurueck (kein Flackern).
-        tile.dataset.hasColor = _fixtureHasFeature(fx, "color") ? "true" : "false";
-
-        const idEl = document.createElement("span");
-        idEl.className = "fxprog-tile__id";
-        idEl.textContent = fx.fid != null ? fx.fid : "";
-
-        const dimbar = document.createElement("div");
-        dimbar.className = "fxprog-tile__dimbar";
-
-        const colorEl = document.createElement("div");
-        colorEl.className = "fxprog-tile__color";
-
-        const pctEl = document.createElement("span");
-        pctEl.className = "fxprog-tile__pct";
-        pctEl.textContent = "0%";
-
-        tile.appendChild(idEl);
-        tile.appendChild(dimbar);
-        tile.appendChild(colorEl);
-        tile.appendChild(pctEl);
-
-        _updateTile(tile, id);
+        const tile = _buildTileEl(id, fx);
 
         const tileIdx = allTiles.length;
         const selectTile = (e) => {
@@ -6968,6 +9790,7 @@ window.__panelAPI = {
     panelEl._fxKeyHandler = (e) => {
       if (_panelGone(panelEl, "keydown", panelEl._fxKeyHandler)) return;
       if (e.key !== "Delete" && e.key !== "Backspace") return;
+      if (e.target && (/^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName) || e.target.isContentEditable)) return;     // in einem Feld bedeuten die Tasten Text loeschen
       if (!panelEl.contains(document.activeElement) && document.activeElement !== document.body) return;
       const ids = [...window.ProgrammerState.selectedIds];
       if (!ids.length) return;
@@ -7036,7 +9859,7 @@ window.__panelAPI = {
     };
   }
 
-  // ── Vertikaler Fader (dot2-Konsolen-Stil) ─────────────────────────
+  // ── Vertikaler Fader (Konsolen-Stil) ─────────────────────────
   function _makeVFader({ label, labelKey, value = 0, onChange, trackClass, formatVal } = {}) {
     const wrap  = document.createElement("div");
     wrap.className = "vfader";
@@ -7086,7 +9909,8 @@ window.__panelAPI = {
 
     // Drag-Start setzt den globalen Handler (_vfDragFn), damit nur ein
     // einziger document-mousemove-Listener fuer alle Fader benoetigt wird.
-    track.addEventListener("mousedown", (e) => { _vfDragFn = onMove; onMove(e.clientY); e.preventDefault(); });
+    track.addEventListener("mousedown", (e) => { if (e.button !== 0) return; _vfDragFn = onMove;           // Rechts- und Mittelklick setzen keinen Wert
+       onMove(e.clientY); e.preventDefault(); });
     track.addEventListener("touchstart", (e) => {
       if (e.touches.length !== 1) return;
       const t = e.touches[0];
@@ -7157,7 +9981,7 @@ window.__panelAPI = {
     btn.append(Icons.svg("target"), label);
     btn.addEventListener("click", () => { const A = window.OCSimAim; if (A) onClick(A, [...window.ProgrammerState.selectedIds]); });
     const refresh = () => {
-      if (_panelGone(panelEl, "sim-aim-changed", refresh)) return;
+      if (_panelGone(panelEl, "sim-aim-changed", refresh)) { document.removeEventListener("programmer-state-updated", refresh); return; }      // das Panel ist weg: BEIDE Listener abmelden
       const A = window.OCSimAim;
       const available = !!A && A.available();
       btn.hidden = !available;
@@ -7298,8 +10122,235 @@ window.__panelAPI = {
     return wrap;
   }
 
+  // ── Position fein: Wisch-Streifen (statt Zahlenfeld) ───────────────────────────────────────
+  // Ein hoher Streifen mit Teilstrichen, die dem Finger folgen (1:1: der Wert aendert sich um einen Fein-Schritt je POS_SWIPE.fine.px Pixel); Pfeile oben/unten
+  // zeigen die Richtung. Es steht keine Zahl darauf - die Geste ist dieselbe wie vorher (hoch = mehr, runter = weniger, relativ zum Wert beim Anfassen).
+  const FINE_TICK_PX = 16;
+  function _makeFineStrip(panelEl, axis) {
+    const wrap = document.createElement("div");
+    wrap.className = "fxprog-numfield-wrap fxprog-finestrip";          // die Klasse fxprog-numfield-wrap: gehoert zu den Elementen mit eigener Wischgeste (kein Layoutwechsel)
+    wrap.dataset.axis = axis;
+    wrap.dataset.kind = "fine";
+    wrap.setAttribute("role", "slider");
+    wrap.setAttribute("aria-label", t(axis === "pan" ? "FXPROG_POS_PAN_FINE" : "FXPROG_POS_TILT_FINE"));
+    const up = document.createElement("span");
+    up.className = "fxprog-finestrip__arrow fxprog-finestrip__arrow--up";
+    const down = document.createElement("span");
+    down.className = "fxprog-finestrip__arrow fxprog-finestrip__arrow--down";
+    const marker = document.createElement("span");
+    marker.className = "fxprog-finestrip__marker";
+    wrap.append(up, marker, down);
+    const { step, px } = POS_SWIPE.fine;
+    const range = () => _panTiltPhysicalRange(panelEl, axis);
+    const ticks = (v16) => wrap.style.setProperty("--tick-y", (-(((v16 || 0) * px / step) % FINE_TICK_PX)).toFixed(2) + "px");
+    const refresh = () => {
+      if (wrap.classList.contains("fxprog-numfield-wrap--swiping")) return;
+      const v = _axisV16(axis);
+      ticks(v);
+      const caption = wrap.parentElement && wrap.parentElement.querySelector(".fxprog-numfield-caption");
+      if (caption) {
+        const [from, to] = range();
+        caption.textContent = v == null ? "" : (from + (v / 65535) * (to - from)).toFixed(3) + "°";
+      }
+    };
+    wrap._refresh = refresh;
+    let drag = null;
+    const send = _throttle((v16) => _setAxisV16(axis, v16), 30);
+    const onMove = (e) => {
+      if (!drag || e.pointerId !== drag.id) return;
+      const dy = drag.y0 - e.clientY;
+      if (!drag.moved) {
+        if (Math.abs(dy) < POS_SWIPE.slop) return;
+        drag.moved = true;
+        wrap.classList.add("fxprog-numfield-wrap--swiping");
+      }
+      if (e.cancelable) e.preventDefault();
+      drag.last = Math.max(0, Math.min(65535, drag.v0 + Math.round(dy / px) * step));
+      ticks(drag.last);
+      send(drag.last);
+      const caption = wrap.parentElement && wrap.parentElement.querySelector(".fxprog-numfield-caption");
+      if (caption) { const [from, to] = range(); caption.textContent = (from + (drag.last / 65535) * (to - from)).toFixed(3) + "°"; }
+    };
+    const finish = (e) => {
+      if (!drag || e.pointerId !== drag.id) return;
+      const d = drag;
+      drag = null;
+      document.removeEventListener("pointermove", onMove, true);
+      document.removeEventListener("pointerup", finish, true);
+      document.removeEventListener("pointercancel", finish, true);
+      wrap.classList.remove("fxprog-numfield-wrap--swiping");
+      if (d.moved) _setAxisV16(axis, d.last);              // abschliessender Wert garantiert
+      refresh();
+    };
+    wrap.addEventListener("pointerdown", (e) => {
+      if (e.pointerType === "mouse" && e.button !== 0) return;
+      const v0 = _axisV16(axis);
+      if (v0 == null || wrap.closest(".fxprog-ctrl-gated--disabled")) return;
+      drag = { id: e.pointerId, y0: e.clientY, v0, moved: false, last: v0 };
+      document.addEventListener("pointermove", onMove, true);
+      document.addEventListener("pointerup", finish, true);
+      document.addEventListener("pointercancel", finish, true);
+      e.preventDefault();
+    });
+    return wrap;
+  }
+
+  // ── Position: digitaler Joystick (relativ) ────────────────────────────────────────────────
+  // Ein runder Knauf in einem runden Feld; zwei Achsen gleichzeitig (Maus und Touch). Der Knauf bestimmt die GESCHWINDIGKEIT, nicht die Stellung: solange er ausgelenkt ist, laeuft
+  // der Scheinwerfer weiter in diese Richtung; beim Loslassen springt der Knauf kurz animiert zurueck in die Mitte (der Scheinwerfer bleibt stehen). Die Kurve ist exponentiell:
+  // der innere Ring (bis JOY.inner des Weges) ist fuer genaues Nachstellen, nach aussen wird es schnell. Geaendert wird der volle 16-Bit-Wert (Grob UND Fein); jeder gewaehlte
+  // Scheinwerfer bewegt sich von SEINEM Startwert aus (relativ, die Abstaende bleiben), an den Grenzen des Bereichs stoppt er.
+  const JOY = { inner: 0.4, dead: 0.04, k: 5, vmax: 0.5, sendMs: 33 };           // vmax: Anteil des ganzen Bereichs je Sekunde ganz aussen
+  /** Geschwindigkeit (Anteil des Bereichs je Sekunde) fuer eine Auslenkung r = 0..1. */
+  function _joySpeed(r) {
+    if (r <= JOY.dead) return 0;
+    const x = Math.min(1, (r - JOY.dead) / (1 - JOY.dead));
+    return JOY.vmax * (Math.exp(JOY.k * x) - 1) / (Math.exp(JOY.k) - 1);
+  }
+  function _makeJoystick(panelEl) {
+    const root = document.createElement("div");
+    root.className = "fxprog-joy";
+    const pad = document.createElement("div");
+    pad.className = "fxprog-joy__pad";
+    pad.setAttribute("role", "application");
+    pad.setAttribute("aria-label", t("FXPROG_POS_JOYSTICK"));
+    const ringInner = document.createElement("div");
+    ringInner.className = "fxprog-joy__ring fxprog-joy__ring--inner";
+    ringInner.style.setProperty("--joy-inner", String(JOY.inner));
+    const ringMid = document.createElement("div");
+    ringMid.className = "fxprog-joy__ring fxprog-joy__ring--mid";
+    const tether = document.createElement("div");
+    tether.className = "fxprog-joy__tether";
+    const knob = document.createElement("div");
+    knob.className = "fxprog-joy__knob";
+    [["up", "▲"], ["down", "▼"], ["left", "◀"], ["right", "▶"]].forEach(([dir, glyph]) => {
+      const m = document.createElement("span");
+      m.className = "fxprog-joy__mark fxprog-joy__mark--" + dir;
+      m.textContent = glyph;
+      pad.appendChild(m);
+    });
+    pad.append(ringMid, ringInner, tether, knob);
+    const readout = document.createElement("div");
+    readout.className = "fxprog-joy__readout";
+    const hint = document.createElement("div");
+    hint.className = "fxprog-joy__hint";
+    hint.textContent = t("FXPROG_POS_JOY_HINT");
+    root.append(pad, readout, hint);
+
+    const PS = () => window.ProgrammerState;
+    const degrees = (axis, v16) => { const [from, to] = _panTiltPhysicalRange(panelEl, axis); return (from + (v16 / 65535) * (to - from)).toFixed(1) + "°"; };
+    const showReadout = () => {
+      const pan = _axisV16("pan"), tilt = _axisV16("tilt");
+      readout.textContent = pan == null ? "" : "Pan " + degrees("pan", pan) + "   Tilt " + degrees("tilt", tilt);
+    };
+    root._refresh = () => { if (!drag) showReadout(); };
+
+    let drag = null;
+    const place = (dx, dy) => {
+      knob.style.transform = "translate(" + dx.toFixed(1) + "px," + dy.toFixed(1) + "px)";
+      const len = Math.hypot(dx, dy);                                              // die Spur zeigt Richtung und Staerke der Auslenkung
+      tether.style.width = len.toFixed(1) + "px";
+      tether.style.transform = "rotate(" + Math.atan2(dy, dx).toFixed(4) + "rad)";
+      tether.style.opacity = len > 2 ? "1" : "0";
+    };
+    const clampDelta = (value, lo, hi) => Math.max(lo, Math.min(hi, value));
+
+    // Geschwindigkeit -> Wert: von jedem Scheinwerfer der eigene Startwert plus die gemeinsame Verschiebung (begrenzt, damit keiner ueber den Bereich hinaus "aufspart")
+    const apply = (force) => {
+      const d = drag;
+      if (!d) return;
+      const panDelta = clampDelta(d.acc.pan, -d.minStart.pan, 65535 - d.maxStart.pan);
+      const tiltDelta = clampDelta(d.acc.tilt, -d.minStart.tilt, 65535 - d.maxStart.tilt);
+      d.acc.pan = panDelta;
+      d.acc.tilt = tiltDelta;
+      const groups = new Map();
+      d.ids.forEach((id) => {
+        const s = d.start[id];
+        const pan = Math.round(clampDelta(s.pan + panDelta, 0, 65535)), tilt = Math.round(clampDelta(s.tilt + tiltDelta, 0, 65535));
+        const key = pan + "|" + tilt;
+        if (!groups.has(key)) groups.set(key, { ids: [], pan, tilt });
+        groups.get(key).ids.push(id);
+      });
+      groups.forEach((g) => {
+        const panChanged = force || d.sent.pan !== panDelta, tiltChanged = force || d.sent.tilt !== tiltDelta;
+        if (panChanged && tiltChanged) PS().setPanTilt(g.ids, DMX.v16ToPct(g.pan), DMX.v16ToPct(g.tilt));        // beide Achsen: eine Nachricht
+        else if (panChanged) PS().setPan(g.ids, DMX.v16ToPct(g.pan));
+        else if (tiltChanged) PS().setTilt(g.ids, DMX.v16ToPct(g.tilt));
+      });
+      d.sent = { pan: panDelta, tilt: tiltDelta };
+      const first = d.start[d.ids[0]];
+      readout.textContent = "Pan " + degrees("pan", clampDelta(first.pan + panDelta, 0, 65535)) + "   Tilt " + degrees("tilt", clampDelta(first.tilt + tiltDelta, 0, 65535));
+    };
+
+    const pointer = (e) => {
+      const d = drag;
+      const dx = e.clientX - d.cx, dy = e.clientY - d.cy;
+      const len = Math.hypot(dx, dy);
+      const shown = Math.min(len, d.travel);
+      d.dir = len > 0 ? { x: dx / len, y: -dy / len } : { x: 0, y: 0 };
+      d.r = Math.min(1, len / d.travel);
+      place(len > 0 ? (dx / len) * shown : 0, len > 0 ? (dy / len) * shown : 0);
+    };
+    const tick = (now) => {
+      const d = drag;
+      if (!d) return;
+      const dt = Math.min(0.05, (now - d.last) / 1000);
+      d.last = now;
+      const speed = _joySpeed(d.r) * 65535 * dt;
+      d.acc.pan += d.dir.x * speed;
+      d.acc.tilt += d.dir.y * speed;
+      if (now - d.sentAt >= JOY.sendMs) { d.sentAt = now; apply(false); }
+      d.raf = requestAnimationFrame(tick);
+    };
+    const finish = (e) => {
+      if (!drag || e.pointerId !== drag.id) return;
+      const d = drag;
+      cancelAnimationFrame(d.raf);
+      apply(false);
+      drag = null;
+      pad.removeEventListener("pointermove", onMove);
+      pad.classList.remove("fxprog-joy__pad--active");
+      knob.style.transition = "transform 140ms cubic-bezier(.2,.9,.3,1.2)";                // kurzer Rueckweg in die Mitte
+      tether.style.opacity = "0";
+      place(0, 0);
+      setTimeout(() => { knob.style.transition = ""; }, 180);
+      showReadout();
+    };
+    const onMove = (e) => { if (drag && e.pointerId === drag.id) { e.preventDefault(); pointer(e); } };
+    pad.addEventListener("pointerdown", (e) => {
+      if (e.pointerType === "mouse" && e.button !== 0) return;
+      if (root.closest(".fxprog-ctrl-gated--disabled")) return;
+      const ids = [...PS().selectedIds];
+      if (!ids.length) return;
+      e.preventDefault();
+      const rect = pad.getBoundingClientRect();
+      const knobSize = knob.getBoundingClientRect().width;
+      const start = {};
+      let minPan = 65535, minTilt = 65535, maxPan = 0, maxTilt = 0;
+      ids.forEach((id) => {
+        const v = PS().getVal(id);
+        const s = { pan: DMX.pctToV16(v.pan == null ? 50 : v.pan), tilt: DMX.pctToV16(v.tilt == null ? 50 : v.tilt) };
+        start[id] = s;
+        minPan = Math.min(minPan, s.pan); maxPan = Math.max(maxPan, s.pan); minTilt = Math.min(minTilt, s.tilt); maxTilt = Math.max(maxTilt, s.tilt);
+      });
+      const now = performance.now();
+      knob.style.transition = "";
+      drag = { id: e.pointerId, ids, start, minStart: { pan: minPan, tilt: minTilt }, maxStart: { pan: maxPan, tilt: maxTilt }, acc: { pan: 0, tilt: 0 }, sent: { pan: 0, tilt: 0 },
+        cx: rect.left + rect.width / 2, cy: rect.top + rect.height / 2, travel: Math.max(10, (rect.width - knobSize) / 2), dir: { x: 0, y: 0 }, r: 0, last: now, sentAt: 0, raf: 0 };
+      try { pad.setPointerCapture(e.pointerId); } catch (err) { /* Zeiger schon weg */ }
+      pad.classList.add("fxprog-joy__pad--active");
+      pad.addEventListener("pointermove", onMove);
+      pointer(e);
+      drag.raf = requestAnimationFrame(tick);
+    });
+    pad.addEventListener("pointerup", finish);
+    pad.addEventListener("pointercancel", finish);
+    pad.addEventListener("lostpointercapture", finish);
+    return root;
+  }
+
   function _syncPosFields(panelEl) {
-    panelEl.querySelectorAll(".fxprog-numfield-wrap").forEach((w) => w._refresh && w._refresh());
+    panelEl.querySelectorAll(".fxprog-numfield-wrap, .fxprog-joy").forEach((w) => w._refresh && w._refresh());
     const fine = panelEl.querySelector(".fxprog-posfine");
     if (!fine) return;
     const sup = _fineSupport(panelEl);
@@ -7325,6 +10376,8 @@ window.__panelAPI = {
     container.querySelectorAll("[data-panel]").forEach(p => {
       p.style.display = p.dataset.panel === id ? "" : "none";
     });
+    if (!(opts && opts.silent)) _rememberSubview(panelEl, stab);        // zuletzt benutzte Unteransicht merken (dieses Geraet)
+    if (id === "layout") _lvRefresh(panelEl);
     if (id === "fine") _syncPosFields(panelEl);
     // Gobo-Fader + Thumbnails laden sobald Gobo-Sub-Tab per Klick aktiviert wird
     if ((id === "gobo" || id === "prism" || id === "wheel") && !(opts && opts.silent)) {
@@ -7333,7 +10386,22 @@ window.__panelAPI = {
   }
 
   // Kategorie -> [Konfig-Schluessel, Standard, Pane-Id]. Jede Kategorie mit Unteransichten steht hier.
+  // Zuletzt benutzte Unteransicht je Panel und Kategorie (Farbe: Fader / Picker / Rad, Beam: Strobe / Gobo / Prism, Position: Grob / Fein, Scheinwerfer: Liste / Layout):
+  // nur im localStorage dieses Geraets; die Standardansicht aus den Panel-Eigenschaften gilt, bis man selbst gewaehlt hat.
+  const SUBVIEW_STORE = "opencue.progSubviews";
+  function _subviewStore() {
+    try { const v = JSON.parse(localStorage.getItem(SUBVIEW_STORE) || "{}"); return v && typeof v === "object" ? v : {}; } catch (error) { return {}; }
+  }
+  function _rememberSubview(panelEl, stab) {
+    const category = stab.closest(".fxprog-pane") && stab.closest(".fxprog-pane").dataset.pane;
+    const panelId = panelEl.dataset.panelId;
+    if (!category || !panelId || !_DEFAULT_SUBVIEWS[category]) return;
+    const store = _subviewStore();
+    (store[panelId] = store[panelId] || {})[category] = stab.dataset.subtab;
+    try { localStorage.setItem(SUBVIEW_STORE, JSON.stringify(store)); } catch (error) { /* privates Fenster */ }
+  }
   const _DEFAULT_SUBVIEWS = {
+    fixtures: { key: "default_view_fixtures", fallback: "list" },
     color:    { key: "default_view_color",    fallback: "fader" },
     position: { key: "default_view_position", fallback: "coarse" },
     beam:     { key: "default_view_beam",     fallback: "shutter" },
@@ -7345,7 +10413,8 @@ window.__panelAPI = {
     const mc = panelEl._progMc || {};
     const pane = panelEl.querySelector(`.fxprog-pane[data-pane="${category}"]`);
     if (!pane) return;
-    let want = mc[def.key] || def.fallback;
+    const recalled = (_subviewStore()[panelEl.dataset.panelId] || {})[category];
+    let want = recalled || mc[def.key] || def.fallback;
     let stab = pane.querySelector(`.fxprog-subtab[data-subtab="${want}"]`);
     if (!stab || stab.style.display === "none") {            // z.B. Picker ausgeblendet: auf den Standard zurueck
       stab = pane.querySelector(`.fxprog-subtab[data-subtab="${def.fallback}"]`);
@@ -7489,9 +10558,27 @@ window.__panelAPI = {
     const fixturesPane = document.createElement("div");
     fixturesPane.className = "fxprog-pane fxprog-pane--active";
     fixturesPane.dataset.pane = "fixtures";
+    // Umschalter wie bei Farbe: Liste (Gruppen, nach Nummer) oder Layout (freie quadratische Kacheln im Raster)
+    const viewTabs = document.createElement("div");
+    viewTabs.className = "fxprog-subtabs";
+    [["list", "FXPROG_VIEW_LIST"], ["layout", "FXPROG_VIEW_LAYOUT"]].forEach(([viewId, viewKey], i) => {
+      const s = document.createElement("div");
+      s.className = "fxprog-subtab" + (i === 0 ? " fxprog-subtab--active" : "");
+      s.dataset.subtab = viewId;
+      s.dataset.i18n = viewKey;
+      s.textContent = t(viewKey);
+      viewTabs.appendChild(s);
+    });
+    fixturesPane.appendChild(viewTabs);
     const sheet = document.createElement("div");
     sheet.className = "fxprog-sheet";
+    sheet.dataset.panel = "list";
     fixturesPane.appendChild(sheet);
+    const layoutView = document.createElement("div");
+    layoutView.className = "fxprog-sheet fxprog-layoutview";          // .fxprog-sheet: dieselbe Wischgeste (Lasso) wie die Liste
+    layoutView.dataset.panel = "layout";
+    layoutView.style.display = "none";
+    fixturesPane.appendChild(layoutView);
     main.appendChild(fixturesPane);
 
     // Dimmer-Pane (programmatisch: vertikaler Fader links + Quick-Button-Grid rechts)
@@ -7594,7 +10681,7 @@ window.__panelAPI = {
         const { h, s, v } = _rgb2hsv(r255, g255, b255);
         _cf.hue.setValue(h); _cf.sat.setValue(s); _cf.bright.setValue(v);
       }
-      // Sat.-Fader-Verlauf folgt dynamisch der aktuellen Hue (dot2-Look):
+      // Sat.-Fader-Verlauf folgt dynamisch der aktuellen Hue (Konsolen-Look):
       // grau (0%) -> volle Hue-Farbe (100%), statt statischem Grau-Verlauf.
       const satTrack = _cf.sat && _cf.sat.querySelector(".vfader__track");
       if (satTrack) satTrack.style.setProperty("--sat-hue", DMX.pctToDeg360(_cf.hue.getValue()));
@@ -7656,6 +10743,7 @@ window.__panelAPI = {
               g = DMX.pctToByte(_cf.green.getValue());
               b = DMX.pctToByte(_cf.blue.getValue());
             }
+            window.__fxColorGroup = groupKey;                          // welche Gruppe benutzt wird (fuer die Markierung nur dieses Faders)
             _syncFromRgb(r, g, b, groupKey);
             _applyColor(r, g, b);
           }
@@ -7685,7 +10773,7 @@ window.__panelAPI = {
     const posSubtabs = document.createElement("div");
     posSubtabs.className = "fxprog-subtabs fxprog-ctrl-gated fxprog-ctrl-gated--disabled";
     posSubtabs.dataset.feature = "position";
-    [["coarse", "FXPROG_POS_COARSE"], ["fine", "FXPROG_POS_FINE"]].forEach(([id, key], i) => {
+    [["coarse", "FXPROG_POS_COARSE"], ["fine", "FXPROG_POS_FINE"], ["joystick", "FXPROG_POS_JOYSTICK"]].forEach(([id, key], i) => {
       const s = document.createElement("div");
       s.className = "fxprog-subtab" + (i === 0 ? " fxprog-subtab--active" : "");
       s.dataset.subtab = id;
@@ -7788,7 +10876,7 @@ window.__panelAPI = {
       label.dataset.i18n = axis === "pan" ? "FXPROG_POS_PAN_FINE" : "FXPROG_POS_TILT_FINE";
       label.textContent = t(label.dataset.i18n);
       col.appendChild(label);
-      col.appendChild(_makeSwipeField(panelEl, axis, "fine"));
+      col.appendChild(_makeFineStrip(panelEl, axis));
       const caption = document.createElement("div");
       caption.className = "fxprog-numfield-caption";
       col.appendChild(caption);
@@ -7800,10 +10888,19 @@ window.__panelAPI = {
     fineHint.setAttribute("role", "status");
     posFine.appendChild(fineHint);
     posWrap.appendChild(posFine);
+
+    // Joystick-Ansicht: runder Knauf, relativ (Auslenkung = Geschwindigkeit), innen genau, aussen schnell
+    const posJoy = document.createElement("div");
+    posJoy.className = "fxprog-posjoy fxprog-ctrl-gated fxprog-ctrl-gated--disabled";
+    posJoy.dataset.feature = "position";
+    posJoy.dataset.panel = "joystick";
+    posJoy.style.display = "none";
+    posJoy.appendChild(_makeJoystick(panelEl));
+    posWrap.appendChild(posJoy);
     posPane.appendChild(posWrap);
     main.appendChild(posPane);
 
-    // Beam-Pane: Shutter/Strobe/Gobo/Prism mit Sub-Tabs (dot2-Stil)
+    // Beam-Pane: Shutter/Strobe/Gobo/Prism mit Sub-Tabs (Lichtpult-Stil)
     {
       const beamPane = document.createElement("div");
       beamPane.className = "fxprog-pane";
@@ -7987,12 +11084,8 @@ window.__panelAPI = {
       });
       // Markierung "ungespeicherte Aenderung" je Kategorie: NUR wenn dort manuell etwas bedient wurde (nicht, wenn eine Cue
       // Werte setzt - die stehen zwar im Programmer-Zustand, sind aber nicht "angefasst")
-      const TAB_ATTRS = { dimmer: ["dimmer"], position: ["pan", "tilt"], color: ["color"], beam: ["strobe", "gobo", "prism"], focus: ["focus", "zoom"] };
-      panelEl.querySelectorAll(".fxprog-tab[data-tab]").forEach((tab) => {
-        const id = tab.dataset.tab;
-        const dirty = id === "dmx" ? PS.hasTouched((a) => a.startsWith("_raw")) : (TAB_ATTRS[id] ? PS.hasTouched(TAB_ATTRS[id]) : false);
-        tab.classList.toggle("fxprog-tab--dirty", dirty);
-      });
+      // Reiter UND Unterreiter (Beam: Strobe / Gobo / Prism, Farbe: Fader / Picker / Rad, Position: Grob / Fein) bis zum Ziel; auch rohe Radkanaele zaehlen (nach Kanalname)
+      _updateDirtyMarks(panelEl);
 
       // Selektion tracken: nur bei Selektionswechsel vollstaendigen DOM-Rebuild
       // ausloesen. Reine Wertaenderungen (Fader-Drag) aktualisieren nur Fader-
@@ -8024,24 +11117,6 @@ window.__panelAPI = {
         const col = PS.getVal(firstId).color;
         if (col) _syncFromRgb(col.r, col.g, col.b);
       }
-
-      // Dezentes "touched"-Akzentlinie (rot, rechte Seite des jeweiligen
-      // Fader-Tracks, siehe .vfader--touched) fuer manuell veraenderte/per
-      // Preset zugewiesene Attribute - unabhaengig von selChanged, damit
-      // der Akzent auch nach einem vollstaendigen Sidebar-Rebuild stimmt.
-      const touchId = PS.selectedIds.size > 0 ? [...PS.selectedIds][0] : null;
-      ["dimmer", "pan", "tilt", "strobe", "gobo", "prism", "focus", "zoom"].forEach(key => {
-        const el = panelEl.querySelector(`.vfader[data-fader-id='${key}']`);
-        if (el) el.classList.toggle("vfader--touched", !!touchId && PS.isAttrTouched(touchId, key));
-      });
-      ["hue", "sat", "bright", "red", "green", "blue"].forEach(key => {
-        const el = panelEl.querySelector(`.vfader[data-fader-id='${key}']`);
-        if (el) el.classList.toggle("vfader--touched", !!touchId && PS.isAttrTouched(touchId, "color"));
-      });
-      panelEl.querySelectorAll(".vfader[data-dmx-offset]").forEach(el => {
-        const offset = el.dataset.dmxOffset;
-        el.classList.toggle("vfader--touched", !!touchId && PS.isAttrTouched(touchId, "_raw" + offset));
-      });
     };
     document.addEventListener("programmer-state-updated", _syncPanelUI);
     panelEl._progSyncUI = _syncPanelUI;
@@ -8060,7 +11135,7 @@ window.__panelAPI = {
     requestAnimationFrame(() => {
       const st = _getState(panelEl);
       if (st.fixtures && Object.keys(st.fixtures).length > 0) {
-        _renderDot2Grid(panelEl, st.fixtures);
+        _renderTileGrid(panelEl, st.fixtures);
         _updateSidebarForSelection(panelEl);
       }
       // Gleiches Rennen bei den Preset-Auswahlen der Reiter: der state_snapshot kommt, bevor die Seitenleiste steht, das
@@ -8097,6 +11172,7 @@ window.__panelAPI = {
         if (preview) preview.style.background = `rgb(${r},${g},${b})`;
         const sel = [...window.ProgrammerState.selectedIds];
         if (!sel.length) return;
+        window.__fxColorGroup = "rgb";
         window.ProgrammerState.setColor(sel, r, g, b);
       });
       if (typeof ResizeObserver !== "undefined") {
@@ -8249,6 +11325,9 @@ window.__panelAPI = {
       const enabled = hasSel && (!feature || !anyChannelsResolved || feats.has(feature));
       el.classList.toggle("fxprog-ctrl-gated--disabled", !enabled);
       el.querySelectorAll("button").forEach(btn => { btn.disabled = !enabled; });
+      if (feature === "dimmer" && el.parentElement) {                           // der gesperrte Block nimmt keine Maus an: der Hinweis haengt am Rahmen
+        el.parentElement.title = hasSel && !enabled ? t("FXPROG_NO_DIMMER_HINT") : "";
+      }
     });
     if (hasSel) {
       const firstId = [...PS.selectedIds][0];
@@ -8268,6 +11347,120 @@ window.__panelAPI = {
     _rebuildDmxDirectPane(panelEl);
     // Raeder (Gobo, Prisma, Farbrad): Fader-Spalten + Slot-Knoepfe der selektierten Geraete aktualisieren
     _refreshWheelViews(panelEl);
+  }
+
+  // ── DMX Direct: Kanal-Details (Hover ueber der Beschriftung, Rechtsklick, Long-Press auf der Beschriftung) ────
+  // Die Fader bleiben, wie sie sind; die Details kommen aus der GDTF-Datei (Funktionsnamen, benannte Bereiche) und liegen NIE ueber der Bedienung:
+  // beim Hover ist die Tafel fuer die Maus unsichtbar, beim Rechtsklick darf man sie lesen und weiter am Fader ziehen.
+  const _channelInfoCache = new Map();        // Typ-ID -> Promise({Modus: [Kanal-Beschreibungen]})
+  document.addEventListener("fixture-library-changed", () => _channelInfoCache.clear());
+  function _channelInfo(typeId) {
+    if (!_channelInfoCache.has(typeId)) {
+      _channelInfoCache.set(typeId, fetch("/api/fixture-types/" + encodeURIComponent(typeId) + "/channels")
+        .then((r) => (r.ok ? r.json() : {})).catch(() => ({})));
+    }
+    return _channelInfoCache.get(typeId);
+  }
+  let _dmxInfo = null;                         // die offene Tafel { el, close }
+  function _closeDmxInfo() { if (_dmxInfo) { const d = _dmxInfo; _dmxInfo = null; d.close(); } }
+
+  async function _openDmxInfo(vf, fx, offset, mode /* "hover" | "menu" */) {
+    const modes = await _channelInfo(fx.fixture_type);
+    const rows = modes[fx.mode] || modes[Object.keys(modes)[0]] || [];
+    const info = rows.find((r) => r.offset === offset) || rows.find((r) => r.bytes > 1 && r.offset + 1 === offset);   // das Fein-Byte zeigt den Grob-Kanal
+    if (!info) return;
+    if (mode === "hover" && !vf.matches(":hover")) return;                                                                // inzwischen weggegangen
+    _closeDmxInfo();
+    const byteOf = () => DMX.pctToByte(vf.getValue());
+    const el = document.createElement("div");
+    el.className = "dmx-info" + (mode === "hover" ? " dmx-info--hover" : "");
+    const head = document.createElement("div");
+    head.className = "dmx-info__head";
+    const title = document.createElement("strong");
+    title.textContent = t("DMXI_CHANNEL") + " " + (info.offset + 1) + " · " + info.attribute;
+    head.appendChild(title);
+    if (info.pretty && info.pretty !== info.attribute) { const p = document.createElement("span"); p.textContent = info.pretty; head.appendChild(p); }
+    if (mode === "menu") {
+      const x = document.createElement("button");
+      x.type = "button"; x.className = "dmx-info__close"; x.textContent = "×";
+      x.title = t("CLOSE"); x.setAttribute("aria-label", t("CLOSE"));
+      x.addEventListener("click", _closeDmxInfo);
+      head.appendChild(x);
+    }
+    el.appendChild(head);
+    if (info.bytes > 1) { const s = document.createElement("div"); s.className = "dmx-info__note"; s.textContent = t("DMXI_16BIT", { a: info.offset + 1, b: info.offset + info.bytes }); el.appendChild(s); }
+    const lines = [];                                                      // {from, to, text, group}
+    const hasNamed = info.functions.some((f) => f.sets.length);
+    info.functions.forEach((f) => {
+      if (f.sets.length) f.sets.forEach((s) => lines.push({ from: s.from, to: s.to, text: s.name, group: info.functions.length > 1 ? f.name : "" }));
+      else if (f.name && (info.functions.length > 1 || !hasNamed)) lines.push({ from: f.from, to: f.to, text: f.name, group: "" });
+    });
+    const list = document.createElement("div");
+    list.className = "dmx-info__list";
+    const rowEls = [];
+    let lastGroup = "";
+    lines.forEach((ln) => {
+      if (ln.group && ln.group !== lastGroup) { const g = document.createElement("div"); g.className = "dmx-info__group"; g.textContent = ln.group; list.appendChild(g); }
+      lastGroup = ln.group;
+      const r = document.createElement("div");
+      r.className = "dmx-info__row";
+      const range = document.createElement("span"); range.className = "dmx-info__range"; range.textContent = ln.from === ln.to ? String(ln.from) : ln.from + "–" + ln.to;
+      const text = document.createElement("span"); text.textContent = ln.text;
+      r.appendChild(range); r.appendChild(text); list.appendChild(r); rowEls.push([ln, r]);
+    });
+    if (!hasNamed) { const n = document.createElement("div"); n.className = "dmx-info__note"; n.textContent = t("DMXI_NO_RANGES"); list.appendChild(n); }
+    el.appendChild(list);
+    const foot = document.createElement("div");
+    foot.className = "dmx-info__foot";
+    el.appendChild(foot);
+    document.body.appendChild(el);
+    const paint = () => {                                                  // aktueller Wert + welche Stufe gerade aktiv ist
+      const v = byteOf();
+      foot.textContent = t("DMXI_CURRENT") + ": " + v + " (" + Math.round(v / 255 * 100) + " %)" + (info.default != null ? "   ·   " + t("DMXI_DEFAULT") + ": " + info.default : "");
+      rowEls.forEach(([ln, r]) => r.classList.toggle("dmx-info__row--on", v >= ln.from && v <= ln.to));
+    };
+    paint();
+    const timer = setInterval(() => { if (!vf.isConnected) _closeDmxInfo(); else paint(); }, 120);
+    const box = vf.getBoundingClientRect();
+    const w = el.offsetWidth, h = el.offsetHeight;
+    el.style.left = Math.max(4, Math.min(window.innerWidth - w - 4, box.right + 8 + w > window.innerWidth ? box.left - w - 8 : box.right + 8)) + "px";
+    el.style.top = Math.max(4, Math.min(window.innerHeight - h - 4, box.top)) + "px";
+    const onKey = (e) => { if (e.key === "Escape") _closeDmxInfo(); };
+    const onDown = (e) => { if (!el.contains(e.target) && !(e.target.closest && e.target.closest(".fxprog-dmxdirect__faders"))) _closeDmxInfo(); };     // die Fader bedienen schliesst die Tafel nicht
+    if (mode === "menu") {
+      document.addEventListener("keydown", onKey, true);
+      setTimeout(() => { if (_dmxInfo && _dmxInfo.el === el) document.addEventListener("pointerdown", onDown, true); }, 0);
+    }
+    _dmxInfo = { el, vf, close() { clearInterval(timer); el.remove(); document.removeEventListener("keydown", onKey, true); document.removeEventListener("pointerdown", onDown, true); } };
+  }
+
+  function _wireDmxInfo(vf, fx, offset) {
+    const label = vf.querySelector(".vfader__label");
+    let hoverTimer = null;
+    const clear = () => { clearTimeout(hoverTimer); hoverTimer = null; };
+    if (label) {
+      label.addEventListener("pointerenter", (e) => {
+        if (e.pointerType !== "mouse" || (e.buttons & 1)) return;
+        clear(); hoverTimer = setTimeout(() => _openDmxInfo(vf, fx, offset, "hover"), 600);
+      });
+      label.addEventListener("pointerleave", () => { clear(); if (_dmxInfo && _dmxInfo.el.classList.contains("dmx-info--hover")) _closeDmxInfo(); });
+    }
+    if (label) {
+      // Antippen / Anklicken der Beschriftung zeigt die Tafel, nochmal Antippen schliesst sie (am iPad der Weg ohne Rechtsklick; die Beschriftung bewegt keinen Fader)
+      label.addEventListener("click", (e) => {
+        if (window.__longPress && window.__longPress.suppress) return;
+        e.stopPropagation(); clear();
+        if (_dmxInfo && _dmxInfo.vf === vf && !_dmxInfo.el.classList.contains("dmx-info--hover")) { _closeDmxInfo(); return; }
+        _openDmxInfo(vf, fx, offset, "menu");
+      });
+    }
+    vf.addEventListener("contextmenu", (e) => {
+      if (window.__longPress && window.__longPress.suppress && e.target.closest(".vfader__track")) return;     // ein Finger, der den Fader nur festhaelt, oeffnet nichts
+      e.preventDefault();
+      e.stopPropagation();
+      clear();
+      _openDmxInfo(vf, fx, offset, "menu");
+    });
   }
 
   // ── DMX Direct: Fader-Reihe neu aufbauen (bei Selektionswechsel) ────
@@ -8338,6 +11531,7 @@ window.__panelAPI = {
         labelEl.appendChild(l2);
       }
       vf.dataset.dmxOffset = String(offset);
+      _wireDmxInfo(vf, fx, offset);
       fadersRow.appendChild(vf);
     });
   }
@@ -8750,6 +11944,7 @@ window.__panelAPI = {
 
     let lastClickedIdx = null;
     const PS = window.ProgrammerState;
+    const clashes = _patchClashes(Object.fromEntries(entries));
 
     entries.forEach(([id, fx], idx) => {
       const tr = document.createElement("tr");
@@ -8758,9 +11953,9 @@ window.__panelAPI = {
       tr.innerHTML = `
         <td class="fx-td fx-td--fid">${fx.fid || ""}${PS.isFixtureTouched(id) ? '<span class="fx-touched-dot" title="' + _esc(t("FX_TOUCHED_HINT")) + '"></span>' : ""}</td>
         <td class="fx-td">${fx.name ? _esc(fx.name) : `<em class="fx-unnamed">${_esc(t("FX_UNNAMED"))}</em>`}</td>
-        <td class="fx-td" title="${_esc(fx.fixture_type || "")}">${_esc(_fixtureTypeLabel(fx.fixture_type))}</td>
+        <td class="fx-td" title="${_esc(_fixtureTypeLabel(fx.fixture_type))}">${_esc(_fixtureTypeLabel(fx.fixture_type))}</td>
         <td class="fx-td">${fx.universe}</td>
-        <td class="fx-td">${fx.start_channel}</td>
+        <td class="fx-td${clashes.has(id) ? " fx-td--clash" : ""}"${clashes.has(id) ? ' title="' + _esc(t("FX_CLASH_TIP", { names: clashes.get(id).slice(0, 4).join(", ") })) + '"' : ""}>${clashes.has(id) ? Icons.markup("alert", "fx-clash-ico") : ""}${fx.start_channel}</td>
         <td class="fx-td">${fx.channel_count}</td>
       `;
 
@@ -8818,6 +12013,7 @@ window.__panelAPI = {
     panelEl._fxKeyHandler = (e) => {
       if (_panelGone(panelEl, "keydown", panelEl._fxKeyHandler)) return;
       if (e.key !== "Delete" && e.key !== "Backspace") return;
+      if (e.target && (/^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName) || e.target.isContentEditable)) return;     // in einem Feld bedeuten die Tasten Text loeschen
       if (!panelEl.contains(document.activeElement) && document.activeElement !== document.body) return;
       const ids = [...window.ProgrammerState.selectedIds];
       if (!ids.length) return;
@@ -8830,9 +12026,9 @@ window.__panelAPI = {
     return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
   }
 
-  function _showContextMenu(x, y, panelEl, fx, id) {
+  function _showContextMenu(x, y, panelEl, fx, id, extra) {
     const selCount = window.ProgrammerState.selectedIds.size;
-    const items = [{ label: t("FX_CTX_PROPERTIES"), onClick: () => _openFixtureDialog(panelEl, fx, id) }];   // immer genau EIN Scheinwerfer
+    const items = (extra || []).concat([{ label: t("FX_CTX_PROPERTIES"), onClick: () => _openFixtureDialog(panelEl, fx, id) }]);   // immer genau EIN Scheinwerfer
     // Mehrfachauswahl: nur die Gruppenzuordnung aller markierten Scheinwerfer auf einmal aendern
     if (selCount > 1) items.push({ label: t("FX_CTX_MOVE_TO_GROUP", { n: selCount }), onClick: () => _showGroupPicker(x, y, [...window.ProgrammerState.selectedIds]) });
     items.push({
@@ -8872,7 +12068,6 @@ window.__panelAPI = {
     const closeBtn = document.createElement("button");
     closeBtn.className = "modal__close";
     closeBtn.textContent = "×";
-    closeBtn.addEventListener("click", () => backdrop.remove());
     header.appendChild(titleSpan);
     header.appendChild(closeBtn);
 
@@ -8883,11 +12078,21 @@ window.__panelAPI = {
 
     const footer = document.createElement("div");
     footer.className = "modal__footer";
+    // Haben Nutzerin / Nutzer etwas getippt, fragen X, Escape und "Abbrechen" (der Knopf ohne Zusatzklasse) vor dem Schliessen nach
+    let dirty = false;
+    const noteInput = (e) => { if (e.isTrusted) dirty = true; };
+    body.addEventListener("input", noteInput, true);
+    body.addEventListener("change", noteInput, true);
+    const askDiscard = async () => !dirty || await _askDelete("other", { title: i18n("DISCARD_TITLE"), body: i18n("DISCARD_BODY"), confirmKey: "DISCARD_CONFIRM", cancelKey: "LAYOUT_EXIT_CONTINUE" });
+    let asking = false;
+    const requestClose = async () => { if (asking) return; asking = true; try { if (await askDiscard()) backdrop.remove(); } finally { asking = false; } };
+    backdrop._requestClose = requestClose;
+    closeBtn.addEventListener("click", requestClose);
     for (const [label, cls, handler] of footerButtons) {
       const btn = document.createElement("button");
       btn.className = `modal__button ${cls}`;
       btn.textContent = label;
-      btn.addEventListener("click", handler);
+      btn.addEventListener("click", cls === "" ? async (e) => { if (asking) return; asking = true; try { if (await askDiscard()) handler(e); } finally { asking = false; } } : handler);
       footer.appendChild(btn);
     }
 
@@ -8896,7 +12101,6 @@ window.__panelAPI = {
     modal.appendChild(footer);
     backdrop.appendChild(modal);
 
-    backdrop.addEventListener("click", (e) => { if (e.target === backdrop) backdrop.remove(); });
     document.body.appendChild(backdrop);
     return { backdrop, modal, body, footer };
   }
@@ -8976,7 +12180,7 @@ window.__panelAPI = {
       backdrop.remove();
     };
     const { backdrop } = _makeModal(
-      "fx-panel-modal-fixture",
+      "modal--m fx-panel-modal-fixture",
       t("FX_PROPS_TITLE", { name: fx.name || id }),
       body,
       [[t("CANCEL"), "", () => backdrop.remove()], [t("SAVE"), "modal__button--primary", save]]
@@ -9015,7 +12219,7 @@ window.__panelAPI = {
       backdrop.remove();
     };
     const { backdrop } = _makeModal(
-      "fx-panel-modal-sm",
+      "modal--s fx-panel-modal-sm",
       t(groupName === null ? "FXGRP_NEW_TITLE" : "FXGRP_RENAME_TITLE"),
       wrap,
       [[t("CANCEL"), "", () => backdrop.remove()], [t("SAVE"), "modal__button--primary", save]]
@@ -9031,6 +12235,7 @@ window.__panelAPI = {
     const picker = groupName === null;
     let current = picker ? groups[0] : groupName;
     if (current === undefined) return;
+    if (!picker && !_confirmWanted("fixtures")) { client.send("delete_fixture_group", { name: current }); return; }
     const wrap = document.createElement("div");
     wrap.className = "fx-form-fields";
     const body = document.createElement("p");
@@ -9053,7 +12258,7 @@ window.__panelAPI = {
     refresh();
     wrap.appendChild(body);
     const { backdrop } = _makeModal(
-      "fx-panel-modal-sm",
+      "modal--xs fx-panel-modal-sm",
       t("FXGRP_DELETE_TITLE"),
       wrap,
       [[t("CANCEL"), "", () => backdrop.remove()],
@@ -9094,6 +12299,13 @@ window.__panelAPI = {
       if (end > 512) {
         warn.textContent = t("FX_OVERFLOW_WARN", { end, univ });
         warn.hidden = false;
+        return;
+      }
+      // belegte Adressen: Scheinwerfer im selben Universum, deren Kanalbereich in den neuen Bereich hineinragt
+      const taken = Object.values(_fixturesFromGlobal()).filter((f) => f.universe === univ && f.start_channel <= end && f.start_channel + Math.max(1, f.channel_count) - 1 >= addr);
+      if (taken.length) {
+        warn.textContent = t("FX_ADD_CLASH_WARN", { n: String(taken.length), names: taken.slice(0, 3).map((f) => f.name || ("#" + f.fid)).join(", "), from: String(addr), to: String(end), univ: String(univ) });
+        warn.hidden = false;
       } else {
         warn.hidden = true;
       }
@@ -9120,7 +12332,7 @@ window.__panelAPI = {
 
     // Linke Spalte: Typ-Anzeige + "Select Other..."
     const typeRow = document.createElement("div");
-    typeRow.className = "fx-form-field";
+    typeRow.className = "fx-form-field fx-form-field--wide";
     const typeLabel = document.createElement("label");
     typeLabel.textContent = t("FX_ADD_TYPE");
     const typeDisplay = document.createElement("div");
@@ -9148,7 +12360,6 @@ window.__panelAPI = {
       <label>${t("FX_ADD_NAME")}</label>
       <input class="fx-form-input" id="__fx_add_name" type="text" placeholder="${_esc(t("FX_ADD_NAME_HINT"))}">
       <span class="fx-form-idx-hint" id="__fx_name_idx_hint"${initialNameIdx <= 1 ? " hidden" : ""}>${initialNameIdx > 1 ? _esc(t("FX_ADD_NEXT_IDX", { idx: initialNameIdx })) : ""}</span>
-      <span class="fx-form-hint">${_esc(t("FX_ADD_NAME_HINT"))}</span>
     `;
     leftCol.appendChild(nameRow);
 
@@ -9177,11 +12388,12 @@ window.__panelAPI = {
     bodyFrag.appendChild(rightCol);
 
     const { backdrop } = _makeModal(
-      "fx-panel-modal-lg",
+      "modal--m fx-panel-modal-lg",
       t("FX_ADD_TITLE"),
       bodyFrag,
       [
         [t("CANCEL"), "", () => backdrop.remove()],
+        [t("FXI_ADVANCED"), "", () => { backdrop.remove(); if (window.OCFixtureImport) window.OCFixtureImport.open(); }],
         [t("FX_ADD_CONFIRM"), "modal__button--primary", () => {
           if (!_addFxSel.id) return;
           const prefix = document.getElementById("__fx_add_name")?.value.trim() || _addFxSel.name;
@@ -9212,6 +12424,7 @@ window.__panelAPI = {
     });
     document.getElementById("__fx_add_qty")?.addEventListener("input", _updateOverflow);
     document.getElementById("__fx_add_addr")?.addEventListener("input", _updateOverflow);
+    document.getElementById("__fx_add_univ")?.addEventListener("input", _updateOverflow);
 
     // Universum-Wechsel → nächste freie Adresse + Overflow-Update
     document.getElementById("__fx_add_univ")?.addEventListener("change", () => {
@@ -9244,7 +12457,7 @@ window.__panelAPI = {
     _updateOverflow();
   }
 
-  // ── Fixture-Bibliothek (3-Spalten-Browser, dot2-Style) ────────────
+  // ── Fixture-Bibliothek (3-Spalten-Browser, Konsolen-Style) ────────────
   function _openFixtureLibraryModal(fixtureTypes, onSelect) {
     const backdrop = document.createElement("div");
     backdrop.className = "fx-library-backdrop";
@@ -9577,6 +12790,11 @@ window.__panelAPI = {
       const sheet = e.target.closest && e.target.closest(".fxprog-sheet");
       if (!sheet || document.getElementById("viewport")?.classList.contains("edit-mode")) return;
       e.preventDefault();
+      if (sheet.classList.contains("fxprog-layoutview")) {                  // freie Flaeche der Layout-Ansicht: Baumodus, Raster, Zoom, neu anordnen
+        const owner = sheet.closest("[data-panel-type]");
+        if (owner) ContextMenu.show(e.clientX, e.clientY, _lvMenuItems(owner));
+        return;
+      }
       const head = e.target.closest(".fxprog-group__label--group");
       if (head) {
         const groupName = head.dataset.group;
@@ -9608,7 +12826,7 @@ window.__panelAPI = {
       PS.selectedIds.add(fxId);
       document.dispatchEvent(new CustomEvent("programmer-state-updated"));
     }
-    _showContextMenu(e.clientX, e.clientY, panelEl, fx, fxId);
+    _showContextMenu(e.clientX, e.clientY, panelEl, fx, fxId, target.closest(".fxprog-layoutview") ? _lvMenuItems(panelEl).concat([{ separator: true }]) : []);
   });
 
   // ── Fixtures-Panel (Patch-Verwaltung: Tabelle mit Add/Edit/Delete) ─
@@ -9633,6 +12851,15 @@ window.__panelAPI = {
       deleteBtn.className = "fx-btn";
       deleteBtn.dataset.i18n = "FX_TOOLBAR_DELETE";
       deleteBtn.textContent = t("FX_TOOLBAR_DELETE");
+      const syncDeleteBtn = () => { deleteBtn.disabled = !window.ProgrammerState.selectedIds.size; };       // ohne Auswahl ausgegraut
+      syncDeleteBtn();
+      let _wasShown = false;
+      const onSel = () => {
+        if (deleteBtn.isConnected) _wasShown = true;
+        else if (_wasShown) { document.removeEventListener("programmer-state-updated", onSel); return; }
+        syncDeleteBtn();
+      };
+      document.addEventListener("programmer-state-updated", onSel);
       deleteBtn.addEventListener("click", () => {
         const panelEl = deleteBtn.closest("[data-panel-type='fixtures']");
         const ids = [...window.ProgrammerState.selectedIds];
@@ -9643,6 +12870,7 @@ window.__panelAPI = {
 
       const wrap = document.createElement("div");
       wrap.className = "fx-table-wrap";
+      OCViewState.keepScroll(wrap, "fixtures");
 
       container.appendChild(toolbar);
       container.appendChild(wrap);
@@ -9664,7 +12892,7 @@ window.__panelAPI = {
     },
   });
 
-  // ── Programmer-Panel (dot2-Kachelgrid + Feature-Tabs) ─────────────
+  // ── Programmer-Panel (Kachelgrid + Feature-Tabs) ─────────────
   window.__panelPlugins.register({
     type: "programmer",
 
@@ -9823,7 +13051,7 @@ window.__panelAPI = {
       _sec("FXPROG_PROP_SECTION_DEFAULT_VIEW");
       [
         ["default_view_color",    "FXPROG_PROP_DEFAULT_VIEW_COLOR",    "fader",   [["fader", "FXPROG_SUBTAB_FADER"], ["picker", "FXPROG_SUBTAB_PICKER"]]],
-        ["default_view_position", "FXPROG_PROP_DEFAULT_VIEW_POSITION", "coarse",  [["coarse", "FXPROG_POS_COARSE"], ["fine", "FXPROG_POS_FINE"]]],
+        ["default_view_position", "FXPROG_PROP_DEFAULT_VIEW_POSITION", "coarse",  [["coarse", "FXPROG_POS_COARSE"], ["fine", "FXPROG_POS_FINE"], ["joystick", "FXPROG_POS_JOYSTICK"]]],
         ["default_view_beam",     "FXPROG_PROP_DEFAULT_VIEW_BEAM",     "shutter", [["shutter", "FXPROG_BEAM_SUBTAB_SHUTTER"], ["gobo", "FXPROG_BEAM_SUBTAB_GOBO"], ["prism", "FXPROG_BEAM_SUBTAB_PRISM"]]],
       ].forEach(([field, labelKey, fallback, options]) => {
         const id = "prog-module-" + field.replace(/_/g, "-");
@@ -9946,8 +13174,10 @@ window.__panelAPI = {
 
     onMessage(panelEl, messageType, payload) {
       if (messageType === "fixture_groups_changed") {
-        _renderDot2Grid(panelEl, _getState(panelEl).fixtures || {});       // neue Gruppen-Sortierung
+        _renderTileGrid(panelEl, _getState(panelEl).fixtures || {});       // neue Gruppen-Sortierung
         _updateSidebarForSelection(panelEl);
+      } else if (messageType === "fixture_layout_changed") {
+        _renderLayoutView(panelEl, _getState(panelEl).fixtures || {});     // andere Rasterfeinheit
       } else if (messageType === "fixtures_changed" || messageType === "state_snapshot") {
         const fixtures = payload.fixtures || {};
         const newIds = new Set(Object.keys(fixtures));
@@ -9955,7 +13185,7 @@ window.__panelAPI = {
         for (const id of [...PS.selectedIds]) {
           if (!newIds.has(id)) PS.selectedIds.delete(id);
         }
-        _renderDot2Grid(panelEl, fixtures);
+        _renderTileGrid(panelEl, fixtures);
         _updateSidebarForSelection(panelEl);
       } else if (messageType === "dmx_universe_changed") {
         // Cache immer aktualisieren - unabhaengig von Selektion/Universum -
@@ -9997,7 +13227,7 @@ window.__panelAPI = {
           });
         });
       } else if (messageType === "language_changed") {
-        _renderDot2Grid(panelEl, _getState(panelEl).fixtures || {});
+        _renderTileGrid(panelEl, _getState(panelEl).fixtures || {});
         // Re-populate preset dropdowns so translated "Manual" label shows immediately
         const langState = window.__panelAPI.getState();
         document.dispatchEvent(new CustomEvent("presets-data-updated", { detail: {
@@ -10037,6 +13267,16 @@ window.__panelAPI = {
   const TYPE_ICON = { dimmer: "bulb", color: "drop", position: "move", zoom: "scale", focus: "eye", gobo: "wheel" };
   const _sortMode = (panelEl) => (panelEl && panelEl.dataset.presetSort === "group" ? "group" : "type");
   const _typeLabel = (type) => { const key = "PRESET_TYPE_" + String(type).toUpperCase(); const text = i18n(key); return text === key ? String(type) : text; };
+
+  /** Suchtext des Panels (Variablen / Effekte): Woerter, alle muessen vorkommen. */
+  const _queryWords = (panelEl) => String((panelEl && panelEl.dataset.presetQuery) || "").trim().toLowerCase().split(/\s+/).filter(Boolean);
+  const _matchesWords = (words, text) => { const hay = String(text).toLowerCase(); return words.every((w) => hay.includes(w)); };
+  const _tagLabelOf = (tag) => (window.OCFxPicker ? window.OCFxPicker.tagLabel(tag) : tag);
+  /** Platzhalter des Suchfelds je Modus (Variablen / Effekte). */
+  function _syncSearchPlaceholder(panelEl) {
+    const input = panelEl && panelEl.querySelector(".preset-toolbar__search");
+    if (input) input.placeholder = i18n(panelEl.dataset.presetMode === "fx" ? "FXE_SEARCH_PH" : "PRESET_SEARCH_PH");
+  }
 
   /** Typ-Zeile einer Kachel: Symbol + Beschriftung in der Farbe des Typs. */
   function _typeBadge(type, text) {
@@ -10146,15 +13386,16 @@ window.__panelAPI = {
     grid.innerHTML = "";
 
     // Filter presets
+    const words = _queryWords(panelEl);
     const presets = Object.values(_allPresets).filter(p =>
-      filter === "all" || p.type === filter
+      (filter === "all" || p.type === filter) && (!words.length || _matchesWords(words, p.name + " " + _typeLabel(p.type) + " " + p.type))
     );
 
     const byType = _sortMode(panelEl) === "type";
-    if (presets.length === 0 && (byType || _allGroups.length === 0)) {
+    if (presets.length === 0 && (byType || _allGroups.length === 0 || words.length)) {
       const empty = document.createElement("div");
       empty.className = "preset-empty";
-      empty.textContent = i18n("PRESET_EMPTY");
+      empty.textContent = i18n(words.length ? "PRESET_SEARCH_NONE" : "PRESET_EMPTY");
       grid.appendChild(empty);
       return;
     }
@@ -10617,10 +13858,6 @@ window.__panelAPI = {
     const deleteBtn = document.getElementById("preset-delete-confirm-button");
     if (deleteBtn) {
       deleteBtn.addEventListener("click", () => {
-        if (_pendingDeleteFxId) {
-          window.__panelAPI.sendToServer("delete_fx", { id: _pendingDeleteFxId });
-          _pendingDeleteFxId = null;
-        }
         if (_pendingDeleteId) {
           window.__panelAPI.sendToServer("delete_preset", { id: _pendingDeleteId });
           _pendingDeleteId = null;
@@ -10646,10 +13883,6 @@ window.__panelAPI = {
     const groupDeleteBtn = document.getElementById("preset-group-delete-confirm-button");
     if (groupDeleteBtn) {
       groupDeleteBtn.addEventListener("click", () => {
-        if (_pendingDeleteFxGroup) {
-          window.__panelAPI.sendToServer("delete_fx_group", { name: _pendingDeleteFxGroup });
-          _pendingDeleteFxGroup = null;
-        }
         if (_pendingDeleteGroup) {
           window.__panelAPI.sendToServer("delete_preset_group", { name: _pendingDeleteGroup });
           _pendingDeleteGroup = null;
@@ -10706,6 +13939,7 @@ window.__panelAPI = {
         _populateProgrammerDropdown(row.querySelector("select"), cfg.cat);
       });
     });
+    _syncProgrammerDropdownsToFx();                       // frisch gebaute / neu befuellte Zeilen zeigen sofort den echten Zustand (Effekt, Variable, gemischt)
   }
 
   function _populateProgrammerDropdown(sel, paneType) {
@@ -10729,6 +13963,8 @@ window.__panelAPI = {
       sel.appendChild(opt);
     }
     sel.classList.toggle("fxprog-preset-row__select--active", !!sel.value);
+    sel.classList.remove("fxprog-preset-row__select--mixed");
+    sel.removeAttribute("title");
     // Sync locked pane state in case the active preset was deleted
     const panelEl = sel.closest('[data-panel-type="programmer"]');
     if (panelEl) {
@@ -10762,9 +13998,16 @@ window.__panelAPI = {
 
   function _onProgrammerPresetChange(sel, paneType) {
     const prevValue = sel.dataset.prevValue || "";
+    const wasMixed = sel.dataset.mixed === "1";
     sel.dataset.prevValue = sel.value;
+    sel.dataset.mixed = "";
+    sel.classList.remove("fxprog-preset-row__select--mixed");
     const PS = window.ProgrammerState;
     const fixtureIds = PS ? [...PS.selectedIds] : [];
+    if (wasMixed && !sel.value) {                           // aus "Gemischt" auf Manuell: Effekte UND Variablen aller gewaehlten Fixtures enden
+      window.__panelAPI.sendToServer("fx_assign", { fixture_ids: fixtureIds, category: paneType, fx_id: null });
+      if (PS) PS.releasePreset(fixtureIds, paneType);
+    }
     if (prevValue.startsWith("fx:") && prevValue !== sel.value) {
       window.__panelAPI.sendToServer("fx_assign", { fixture_ids: fixtureIds, category: paneType, fx_id: null });
     }
@@ -10802,8 +14045,6 @@ window.__panelAPI = {
   let _allFxGroups = [];       // string[]
   let _fxAssignments = {};     // fixture_id -> {kategorie: {fx_id, index, count}}
   let _fxEditingId = null;
-  let _pendingDeleteFxId = null;
-  let _pendingDeleteFxGroup = null;
   let _groupAddTarget = "preset";   // "preset" | "fx" - welche Gruppen-Liste der Dialog bedient
 
   function _fxPreviewStyle(d) {
@@ -10819,15 +14060,18 @@ window.__panelAPI = {
     grid.innerHTML = "";
     const filterBtn = panelEl.querySelector(".preset-filter__btn--active");
     const filter = filterBtn ? (filterBtn.dataset.filter || "all") : "all";
+    const words = _queryWords(panelEl);
     const entries = Object.entries(_allFx).filter(([, d]) =>
-      filter === "all" || _fxCategoryOf(d.kind) === filter
+      (filter === "all" || _fxCategoryOf(d.kind) === filter)
+      && (!words.length || _matchesWords(words, [d.name, _fxKindLabel(d.kind), d.kind, ((_fxScripts[d.kind] || {}).tags || []).map((t) => t + " " + _tagLabelOf(t)).join(" ")].join(" ")))
     );
     const byType = _sortMode(panelEl) === "type";
-    if (!entries.length && (byType || !_allFxGroups.length)) {
+    if (!entries.length && (byType || !_allFxGroups.length || words.length)) {
       const empty = document.createElement("div");
       empty.className = "preset-empty";
-      empty.dataset.i18n = "FXE_EMPTY";
-      empty.textContent = i18n("FXE_EMPTY");
+      const key = words.length ? "PRESET_SEARCH_NONE" : "FXE_EMPTY";
+      empty.dataset.i18n = key;
+      empty.textContent = i18n(key);
       grid.appendChild(empty);
       return;
     }
@@ -10891,6 +14135,29 @@ window.__panelAPI = {
 
       tile.appendChild(_typeBadge(_fxCategoryOf(d.kind) || "fx", _fxKindLabel(d.kind)));
 
+      const tags = ((_fxScripts[d.kind] || {}).tags || []).slice().sort((a, b) => _fxTagRank(a) - _fxTagRank(b)).slice(0, 3);
+      if (tags.length) {                                              // Schlagworte der Effektdatei (#TAGS, "audio" automatisch); ein Klick sucht danach
+        const tagRow = document.createElement("div");
+        tagRow.className = "preset-tile__tags";
+        tags.forEach((tag) => {
+          const chip = document.createElement("span");
+          chip.className = "preset-tile__tag preset-tile__tag--" + tag;
+          chip.textContent = _tagLabelOf(tag);
+          chip.title = i18n("PRESET_SEARCH_TAG").replace("{tag}", _tagLabelOf(tag));
+          chip.addEventListener("click", (e) => {
+            e.stopPropagation();
+            const panel = tile.closest("[data-panel-type='presets']");
+            const input = panel && panel.querySelector(".preset-toolbar__search");
+            if (!panel || !input) return;
+            input.value = tag;
+            panel.dataset.presetQuery = tag;
+            _renderPanel(panel);
+          });
+          tagRow.appendChild(chip);
+        });
+        tile.appendChild(tagRow);
+      }
+
       tile.addEventListener("contextmenu", (e) => {
         e.preventDefault();
         e.stopPropagation();
@@ -10903,6 +14170,11 @@ window.__panelAPI = {
 
   function _setPanelMode(panelEl, mode) {
     panelEl.dataset.presetMode = mode;
+    OCViewState.set(OCViewState.scopeOf(panelEl), "presets:mode", mode);          // zuletzt benutzte Ansicht (Variablen / Effekte) merken
+    panelEl.dataset.presetQuery = "";                      // die Suche gilt je Modus (Variablen / Effekte): beim Wechsel leeren
+    const searchInput = panelEl.querySelector(".preset-toolbar__search");
+    if (searchInput) searchInput.value = "";
+    _syncSearchPlaceholder(panelEl);
     const isFx = mode === "fx";
     panelEl.querySelectorAll(".preset-mode .fxprog-subtab").forEach(tab => {
       tab.classList.toggle("fxprog-subtab--active", tab.dataset.mode === mode);
@@ -10956,14 +14228,15 @@ window.__panelAPI = {
       const select = document.getElementById("fx-edit-type");
       if (select) select.insertAdjacentElement("afterend", desc);
     }
-    desc.textContent = script ? [script.description, script.rate ? i18n("FXS_RATE_SHORT").replace("{n}", script.rate) : ""].filter(Boolean).join(" \u00b7 ") : "";
+    desc.textContent = script ? [(window.OCFxPicker ? window.OCFxPicker.description(script) : script.description), script.audio ? i18n("FXS_AUDIO_TAG") : "", script.rate ? i18n("FXS_RATE_SHORT").replace("{n}", script.rate) : ""].filter(Boolean).join(" \u00b7 ") : "";
     if (!script) return;
     for (const v of script.variables) {
       const row = document.createElement("label");
       row.className = "fx-edit__param";
       const name = document.createElement("span");
       name.className = "fx-edit__param-name";
-      name.textContent = v.name;
+      name.textContent = window.OCFxPicker ? window.OCFxPicker.varLabel(script, v) : v.name;
+      row.title = window.OCFxPicker ? window.OCFxPicker.varTip(script, v) : v.name;               // Mouseover: Erklaerung + Variablenname
       row.appendChild(name);
       const current = params && params[v.name] !== undefined ? params[v.name] : v.default;
       if (v.kind === "ColorPicker") {
@@ -11004,6 +14277,39 @@ window.__panelAPI = {
         row.appendChild(wrap);
       }
       box.appendChild(row);
+    }
+  }
+
+  /** Zeigt den gewaehlten Effekttyp (Kategorie, Name, Datei, Schlagworte) neben dem Waehlen-Knopf und schlaegt seinen Namen als Vorgabe fuer den neuen Effekt vor. */
+  function _refreshFxTypeDisplay() {
+    const typeSel = document.getElementById("fx-edit-type");
+    const box = document.getElementById("fx-edit-type-display");
+    if (!typeSel || !box) return;
+    const script = _fxScripts[typeSel.value];
+    box.textContent = "";
+    if (script) {
+      const cat = document.createElement("span");
+      cat.className = "fxtype__cat";
+      cat.textContent = window.OCFxPicker ? window.OCFxPicker.catLabel(script.category) : script.category;
+      const name = document.createElement("span");
+      name.className = "fxtype__name";
+      name.textContent = script.label;
+      const file = document.createElement("span");
+      file.className = "fxtype__file";
+      file.textContent = "(" + script.name + ")";
+      box.append(cat, name, file);
+      (script.tags || []).forEach(tag => {
+        const badge = document.createElement("span");
+        badge.className = "fxpick__badge fxpick__badge--" + tag;
+        badge.textContent = window.OCFxPicker ? window.OCFxPicker.tagLabel(tag) : tag;
+        box.appendChild(badge);
+      });
+    } else if (typeSel.value) {
+      box.textContent = typeSel.value;
+    }
+    const nameInput = document.getElementById("fx-edit-name");
+    if (nameInput) {
+      nameInput.placeholder = script && !_fxEditingId ? i18n("FXE_NAME_PLACEHOLDER_NAMED").replace("{name}", script.label) : i18n("FXE_NAME_PLACEHOLDER");
     }
   }
 
@@ -11058,6 +14364,9 @@ window.__panelAPI = {
       typeSel.value = d ? d.kind : (Object.keys(_fxScripts)[0] || "");
       typeSel.disabled = !!d;                                  // beim Bearbeiten nur umbenennen und Parameter aendern, nicht die Art wechseln
     }
+    const chooseBtn = document.getElementById("fx-edit-type-choose");
+    if (chooseBtn) chooseBtn.disabled = !!d;
+    _refreshFxTypeDisplay();
 
     const grp = document.getElementById("fx-edit-group");
     if (grp) {
@@ -11084,24 +14393,37 @@ window.__panelAPI = {
     Modal.open("fx-edit");
   }
 
-  function _confirmDeleteFx(fxId) {
-    _pendingDeleteFxId = fxId;
+  async function _confirmDeleteFx(fxId) {
     const d = _allFx[fxId];
-    const body = document.getElementById("preset-delete-confirm-body");
-    if (body && d) body.textContent = i18n("FXE_DELETE_BODY").replace("{name}", d.name);
-    Modal.open("preset-delete-confirm");
+    if (!d) return;
+    if (await _askDelete("library", { title: i18n("FXS_DELETE_TITLE"), body: i18n("FXE_DELETE_BODY").replace("{name}", d.name), confirmKey: "FXS_DELETE_OK" })) {
+      window.__panelAPI.sendToServer("delete_fx", { id: fxId });
+    }
   }
 
-  function _confirmDeleteFxGroup(groupName) {
-    _pendingDeleteFxGroup = groupName;
-    const body = document.getElementById("preset-group-delete-confirm-body");
-    if (body) body.textContent = i18n("PRESET_GROUP_DELETE_CONFIRM").replace("{name}", groupName);
-    Modal.open("preset-group-delete-confirm");
+  async function _confirmDeleteFxGroup(groupName) {
+    if (await _askDelete("library", { title: i18n("FXG_DELETE_TITLE"), body: i18n("PRESET_GROUP_DELETE_CONFIRM").replace("{name}", groupName), confirmKey: "PRESET_DELETE_CONFIRM" })) {
+      window.__panelAPI.sendToServer("delete_fx_group", { name: groupName });
+    }
   }
 
   function _wireFxDialogs() {
     const typeEl = document.getElementById("fx-edit-type");
-    if (typeEl) typeEl.addEventListener("change", () => _renderFxParams(typeEl.value, null));
+    if (typeEl) typeEl.addEventListener("change", () => { _renderFxParams(typeEl.value, null); _refreshFxTypeDisplay(); });
+    const chooseBtn = document.getElementById("fx-edit-type-choose");
+    if (chooseBtn) {
+      chooseBtn.addEventListener("click", () => {
+        if (!window.OCFxPicker || !typeEl) return;
+        window.OCFxPicker.open({
+          scripts: _fxScripts,
+          current: typeEl.value,
+          onSelect: (kind) => {
+            typeEl.value = kind;
+            typeEl.dispatchEvent(new Event("change"));
+          },
+        });
+      });
+    }
     const grp = document.getElementById("fx-edit-group");
     if (grp) {
       grp.addEventListener("change", () => {
@@ -11115,7 +14437,7 @@ window.__panelAPI = {
     const confirmBtn = document.getElementById("fx-edit-confirm");
     if (confirmBtn) {
       confirmBtn.addEventListener("click", () => {
-        const name = (document.getElementById("fx-edit-name")?.value || "").trim();          // leer: der Server vergibt Kategorie_1, Kategorie_2 ...
+        const name = (document.getElementById("fx-edit-name")?.value || "").trim();          // leer: der Server nimmt den Namen des Effekttyps (mit Zaehler, wenn schon vergeben)
         if (!typeEl || !typeEl.value) return;
         if (name && Object.entries(_allFx).some(([id, d]) => id !== _fxEditingId && String(d.name).trim().toLowerCase() === name.toLowerCase())) {
           _showToast(i18n("FXE_DUPE_NAME").replace("{name}", name), "warn");
@@ -11175,17 +14497,31 @@ window.__panelAPI = {
   // auf den selektierten Fixtures laeuft, wird als "Effekt · Name" angezeigt.
   document.addEventListener("programmer-state-updated", _syncProgrammerDropdownsToFx);
 
+  // Gemischte Auswahl (einige Fixtures mit Effekt/Variable, andere ohne oder mit anderer): eigener Eintrag "Gemischt", nichts gesperrt - ein Fader-Zug
+  // setzt dann ALLE gewaehlten Fixtures auf Manuell (der Server beendet die Effekte, die Verknuepfungen entfallen).
+  const MIXED_VALUE = "__mixed__";
   function _setProgrammerSelectState(sel, value) {
+    const mixed = value === MIXED_VALUE;
+    if (mixed && !sel.querySelector(`option[value="${MIXED_VALUE}"]`)) {
+      const opt = document.createElement("option");
+      opt.value = MIXED_VALUE;
+      opt.disabled = true;                                   // nur anzeigen, nicht waehlbar
+      opt.textContent = i18n("PRESET_MIXED");
+      sel.insertBefore(opt, sel.options[1] || null);
+    }
     sel.value = value;
-    sel.dataset.prevValue = value;
-    sel.classList.toggle("fxprog-preset-row__select--active", !!value);
+    sel.dataset.prevValue = mixed ? "" : value;
+    sel.classList.toggle("fxprog-preset-row__select--active", !!value && !mixed);
+    sel.classList.toggle("fxprog-preset-row__select--mixed", mixed);
+    sel.dataset.mixed = mixed ? "1" : "";
+    if (mixed) sel.title = i18n("PRESET_MIXED_TIP"); else sel.removeAttribute("title");
     const panelEl = sel.closest('[data-panel-type="programmer"]');
     const paneType = sel.dataset.cat || sel.closest(".fxprog-pane")?.dataset.pane || null;
     if (panelEl && paneType) {
       if (!panelEl._activePresets) panelEl._activePresets = {};
-      panelEl._activePresets[paneType] = value || null;
+      panelEl._activePresets[paneType] = value && !mixed ? value : null;
     }
-    if (paneType) _lockProgrammerRow(sel, paneType, !!value);
+    if (paneType) _lockProgrammerRow(sel, paneType, !!value && !mixed);
   }
 
   function _setAllProgrammerDropdowns(value) {
@@ -11196,20 +14532,32 @@ window.__panelAPI = {
 
   // Jedes Dropdown zeigt den echten Zustand der Auswahl: Effekt (alle selektierten
   // Fixtures laufen denselben Effekt dieser Kategorie), sonst Variable (alle teilen
-  // dieselbe Variable), sonst Manuell.
+  // dieselbe Variable), sonst Manuell - und "Gemischt", wenn die Fixtures sich unterscheiden.
   function _syncProgrammerDropdownsToFx() {
     const PS = window.ProgrammerState;
     const ids = PS ? [...PS.selectedIds] : [];
     document.querySelectorAll('[data-panel-type="programmer"] .fxprog-preset-row__select').forEach(sel => {
       const paneType = sel.dataset.cat || sel.closest(".fxprog-pane")?.dataset.pane;
       if (!paneType) return;
-      const fxRefs = ids.map(fid => _fxAssignments[fid] && _fxAssignments[fid][paneType] && _fxAssignments[fid][paneType].fx_id);
-      const sharedFx = fxRefs.length && fxRefs.every(r => r && r === fxRefs[0]) ? fxRefs[0] : null;
-      const links = ids.map(fid => (PS && PS.getPresetRef) ? PS.getPresetRef(fid, paneType) : null);
-      const sharedPreset = links.length && links.every(l => l && l === links[0]) ? links[0] : null;
+      // je Fixture: "fx:<id>" | <Variablen-Id> | "" (manuell)
+      const states = ids.map(fid => {
+        const fxRef = _fxAssignments[fid] && _fxAssignments[fid][paneType] && _fxAssignments[fid][paneType].fx_id;
+        if (fxRef) return "fx:" + fxRef;
+        const link = (PS && PS.getPresetRef) ? PS.getPresetRef(fid, paneType) : null;
+        return link && _allPresets[link] && _allPresets[link].type === paneType ? link : "";
+      });
       let target = "";
-      if (sharedFx && sel.querySelector(`option[value="fx:${sharedFx}"]`)) target = "fx:" + sharedFx;
-      else if (sharedPreset && _allPresets[sharedPreset] && _allPresets[sharedPreset].type === paneType) target = sharedPreset;
+      if (states.length && states.some(s => s !== states[0])) target = MIXED_VALUE;
+      else if (states.length && states[0]) {
+        target = states[0];
+        if (target.startsWith("fx:") && !sel.querySelector(`option[value="${target}"]`)) {          // Effekt laeuft, steht aber (noch) nicht in der Liste: trotzdem anzeigen
+          const d = _allFx[target.slice(3)];
+          const opt = document.createElement("option");
+          opt.value = target;
+          opt.textContent = i18n("FXE_DROPDOWN_EFFECT").replace("{name}", d ? d.name : "?");
+          sel.appendChild(opt);
+        }
+      }
       if (sel.value !== target) _setProgrammerSelectState(sel, target);
     });
   }
@@ -11289,6 +14637,7 @@ window.__panelAPI = {
           tb.querySelectorAll(".preset-filter__btn").forEach(b => b.classList.remove("preset-filter__btn--active"));
           btn.classList.add("preset-filter__btn--active");
           const panelEl = wrap.closest("[data-panel-type='presets']") || wrap;
+          OCViewState.set(OCViewState.scopeOf(panelEl), "presets:filter", f);
           _renderPanel(panelEl);
         });
         filterWrap.appendChild(btn);
@@ -11307,20 +14656,36 @@ window.__panelAPI = {
         btn.addEventListener("click", () => {
           const panelEl = wrap.closest("[data-panel-type='presets']") || wrap;
           panelEl.dataset.presetSort = mode;
+          OCViewState.set(OCViewState.scopeOf(panelEl), "presets:sort", mode);
           sortWrap.querySelectorAll(".preset-sort__btn").forEach(b => b.classList.toggle("preset-sort__btn--active", b === btn));
           _renderPanel(panelEl);
         });
         sortWrap.appendChild(btn);
       });
 
+      const search = document.createElement("input");
+      search.type = "search";
+      search.className = "preset-toolbar__search";
+      search.maxLength = 60;
+      search.autocomplete = "off";
+      search.placeholder = i18n("PRESET_SEARCH_PH");
+      search.setAttribute("aria-label", i18n("PRESET_SEARCH_PH"));
+      search.addEventListener("input", () => {
+        const panelEl = wrap.closest("[data-panel-type='presets']") || wrap;
+        panelEl.dataset.presetQuery = search.value;
+        _renderPanel(panelEl);
+      });
+
       tb.appendChild(addBtn);
       tb.appendChild(grpBtn);
+      tb.appendChild(search);
       tb.appendChild(sortWrap);
       tb.appendChild(filterWrap);
 
       // Scroll area
       const scroll = document.createElement("div");
       scroll.className = "preset-scroll";
+      OCViewState.keepScroll(scroll, "presets");
 
       wrap.appendChild(modeWrap);
       wrap.appendChild(tb);
@@ -11329,7 +14694,16 @@ window.__panelAPI = {
       // Render after DOM attach (next frame)
       requestAnimationFrame(() => {
         const panelEl = wrap.closest("[data-panel-type='presets']") || wrap;
-        _renderPanel(panelEl);
+        // zuletzt benutzte Ansicht dieses Geraets: Sortierung, Typ-Filter, Variablen oder Effekte
+        const scope = OCViewState.scopeOf(panelEl);
+        const sort = OCViewState.get(scope, "presets:sort", "type") === "group" ? "group" : "type";
+        panelEl.dataset.presetSort = sort;
+        sortWrap.querySelectorAll(".preset-sort__btn").forEach((b) => b.classList.toggle("preset-sort__btn--active", b.dataset.sort === sort));
+        const filter = OCViewState.get(scope, "presets:filter", "all");
+        const filterBtn = tb.querySelector('.preset-filter__btn[data-filter="' + filter + '"]');
+        if (filterBtn) tb.querySelectorAll(".preset-filter__btn").forEach((b) => b.classList.toggle("preset-filter__btn--active", b === filterBtn));
+        if (OCViewState.get(scope, "presets:mode", "presets") === "fx") _setPanelMode(panelEl, "fx");
+        else _renderPanel(panelEl);
       });
       return wrap;
     },
@@ -11345,6 +14719,7 @@ window.__panelAPI = {
         _renderPanel(panelEl);
         _updateProgrammerPresetDropdowns();
       } else if (messageType === "language_changed") {
+        _syncSearchPlaceholder(panelEl);
         _renderPanel(panelEl);
         _updateProgrammerPresetDropdowns();
       }
@@ -11375,6 +14750,10 @@ window.__panelAPI = {
   // Markierte Zeilen (Mehrfachauswahl per Checkbox-Spalte, Umschalt-/Strg-Tippen oder "alle"). Bearbeiten, Loeschen und
   // "Speichern auf diese Nummer" brauchen genau EINE markierte Zeile; die Wisch-Anpassung des Delays wirkt auf alle.
   const _sel = new Set();
+  // Zellen-Auswahl (Rechteck): die Spalten (data-field), die das Rechteck beruehrt hat. Leer = ganze Zeilen sind markiert.
+  // Markiert ist dann nur der Schnitt aus markierten Zeilen und diesen Spalten; Doppelklick bearbeitet diese Zellen gemeinsam.
+  const _selFields = new Set();
+  let _pendingClick = null;  // aufgeschobener Klick innerhalb einer Mehrfachauswahl (ein Doppelklick bricht ihn ab)
   let _swipeEndedAt = 0;     // Zeitpunkt der letzten Wischgeste (das folgende click darf nichts markieren)
   const _singleId = () => (_sel.size === 1 ? [..._sel][0] : null);
   // Mehrfachmodus (Touch): ein Long-Press auf eine Zeile markiert sie und schaltet ihn ein; solange er laeuft, markiert/entmarkiert
@@ -11438,13 +14817,46 @@ window.__panelAPI = {
   }
 
   // Markierung in allen Cue-Listen-Panels nachfuehren, ohne die Tabelle neu aufzubauen.
+  /** Markierung zeichnen: ganze Zeile (keine Spalten gewaehlt) oder nur die Zellen im Schnitt aus Zeilen und Spalten. */
+  function _paintSelection(panelEl) {
+    const cellMode = _selFields.size > 0 && _sel.size > 0;
+    const rows = [...panelEl.querySelectorAll(".cue-row")];
+    rows.forEach((row, i) => {
+      const on = _sel.has(row.dataset.cueId);
+      row.classList.toggle("cue-row--selected", on && !cellMode);
+      const prevOn = i > 0 && _sel.has(rows[i - 1].dataset.cueId);
+      const nextOn = i < rows.length - 1 && _sel.has(rows[i + 1].dataset.cueId);
+      const cells = [...row.querySelectorAll("[data-field]")];
+      const picked = cells.map((cell) => on && cellMode && _selFields.has(cell.dataset.field));
+      cells.forEach((cell, k) => {
+        const sel = picked[k];
+        cell.classList.toggle("cue-td--sel", sel);
+        // Rahmen nur um den ganzen Block: oben / unten an der ersten / letzten markierten Zeile, links / rechts an der ersten / letzten Spalte
+        cell.classList.toggle("cue-td--sel-t", sel && !prevOn);
+        cell.classList.toggle("cue-td--sel-b", sel && !nextOn);
+        cell.classList.toggle("cue-td--sel-l", sel && !picked[k - 1]);
+        cell.classList.toggle("cue-td--sel-r", sel && !picked[k + 1]);
+      });
+    });
+    panelEl.classList.toggle("cuelist--multi", _multi && _sel.size > 0);
+    panelEl.classList.toggle("cuelist--cellsel", cellMode);
+  }
+
   function _syncSelection() {
-    if (!_sel.size) _multi = false;
+    if (!_sel.size) { _multi = false; _selFields.clear(); }
     document.querySelectorAll("[data-panel-type='cuelist']").forEach((panelEl) => {
-      panelEl.querySelectorAll(".cue-row").forEach((row) => row.classList.toggle("cue-row--selected", _sel.has(row.dataset.cueId)));
-      panelEl.classList.toggle("cuelist--multi", _multi && _sel.size > 0);
+      _paintSelection(panelEl);
       _updateActions(panelEl);
     });
+  }
+
+  /** Welche Cues bearbeitet eine Eingabe in diesem Feld? Gehoert die Zeile zu einer Mehrfachauswahl (und das Feld zu den
+   *  markierten Spalten), alle markierten Cues - sonst nur dieser. Die Cue-Nummer ist immer einzeln (Nummern sind eindeutig). */
+  function _multiGroup(cl, cue, field) {
+    if (field !== "number" && _sel.size > 1 && _sel.has(cue.id) && (!_selFields.size || _selFields.has(field))) {
+      return cl.cues.filter((c) => _sel.has(c.id));
+    }
+    return [cue];
   }
 
   // Aktionen der Listen-Leiste: Bearbeiten/Loeschen brauchen eine markierte Zeile, Aktualisieren einen aktiven Cue.
@@ -11457,6 +14869,7 @@ window.__panelAPI = {
     set(".cuelist-toolbar__btn--save", !!cl);
     set(".cuelist-toolbar__btn--update", hasActive);
     set(".cuelist-toolbar__btn--edit", hasSelection);
+    set(".cuelist-toolbar__btn--copy", hasAny);
     set(".cuelist-toolbar__btn--delete", hasAny);
   }
 
@@ -11474,6 +14887,18 @@ window.__panelAPI = {
   // ein dezenter Gedankenstrich statt einer irrefuehrenden "0".
   function _fmtOptNum(n) {
     return (n === null || n === undefined || n === "") ? "—" : _fmtNum(n);
+  }
+
+  // Wiedergabe-Art eines Cues: "tracking" (nur die gespeicherten Aenderungen) | "absolute" (der genau so gespeicherte Zustand aller Fixtures)
+  function _playModeLabel(cue) {
+    return i18n(cue && cue.play_mode === "absolute" ? "CUELIST_PLAY_ABSOLUTE_SHORT" : "CUELIST_PLAY_TRACKING_SHORT");
+  }
+  /** Eingabe fuer die Wiedergabe-Art: Absolut/Absolute/Abs, Relativ/Relative/Rel/Tracking (egal wie geschrieben) -> "absolute" | "tracking", sonst null. */
+  function _parsePlayMode(text) {
+    const t = String(text).trim().toLowerCase();
+    if (/^a(bs(olut(e)?)?)?$/.test(t)) return "absolute";
+    if (/^(r(el(ativ(e)?)?)?|t(rack(ing)?)?)$/.test(t)) return "tracking";
+    return null;
   }
 
   // ── Spaltenbreiten (pro Geraet im localStorage) ───────────────────────────────────────
@@ -11497,6 +14922,7 @@ window.__panelAPI = {
     { key: "delay_zoom",  width: 100, min: 44 },
     { key: "fx_fade_in",  width: 110, min: 44 },
     { key: "fx_fade_out", width: 110, min: 44 },
+    { key: "play_mode",   width: 100, min: 50 },
     { key: "cmd",         width: 280, min: 80 },
   ];
   const CUE_COLUMNS_STORAGE = "opencue.cuelistColumns";
@@ -11691,6 +15117,18 @@ window.__panelAPI = {
     // Am Listenende laeuft Go zum ersten Cue (kleinste Nummer > 0) um - die Vorschau zeigt das schon vorher.
     const firstCue = cl.cues.filter(c => c.number > 0).sort((a, b) => a.number - b.number)[0] || cl.cues[0];
     const nextCue = activeIndex < 0 ? cl.cues[0] : (cl.cues[activeIndex + 1] || firstCue);
+    // Was Go jetzt ausfuehrt: der naechste Cue und alle direkt danach folgenden Follow-Cues (laufen von selbst weiter, am Listenende
+    // wieder von vorn). Der erste ist der "naechste" (Ring), die weiteren sind die Kette (kleinerer Ring).
+    const goChain = new Set();
+    if (nextCue) {
+      const total = cl.cues.length;
+      let at = cl.cues.findIndex((c) => c.id === nextCue.id);
+      let guard = 0;
+      goChain.add(nextCue.id);
+      for (at = (at + 1) % total; guard < total && cl.cues[at].trigger === "follow" && cl.cues[at].id !== activeCueId && !goChain.has(cl.cues[at].id); at = (at + 1) % total, guard += 1) {
+        goChain.add(cl.cues[at].id);
+      }
+    }
     // Panel-Eigenschaft (Zahnrad -> Modul-Einstellungen): Standard an, kann
     // pro Panel-Instanz ausgeblendet werden (siehe onModuleConfigChanged).
     const showProgressBar = panelEl.dataset.showProgressBar !== "false";
@@ -11699,8 +15137,8 @@ window.__panelAPI = {
       const tr = document.createElement("tr");
       const isActive = cue.id === activeCueId;
       const isNext = !!nextCue && cue.id === nextCue.id && !isActive;
-      tr.className = "cue-row" + (isActive ? " cue-row--active" : "") + (isNext ? " cue-row--next" : "")
-        + (_sel.has(cue.id) ? " cue-row--selected" : "");
+      const isChain = !isActive && !isNext && goChain.has(cue.id);
+      tr.className = "cue-row" + (isActive ? " cue-row--active" : "") + (isNext ? " cue-row--next" : "");
       tr.dataset.cueId = cue.id;
       const triggerLabel = _triggerLabel(cue);
       // Der Ladebalken wird EXKLUSIV fuer den aktuell aktiven Cue gerendert -
@@ -11711,19 +15149,19 @@ window.__panelAPI = {
       const progressBarHtml = (isActive && showProgressBar)
         ? `<span class="cue-progress-bar"><span class="cue-progress-bar__fill"></span></span>`
         : "";
-      // dot2-exakte Spaltenreihenfolge: Cue # -> Name -> Trigger -> Fade ->
+      // konsolenübliche Spaltenreihenfolge: Cue # -> Name -> Trigger -> Fade ->
       // Delay -> MIB -> Color Fade/Delay -> Pos Fade/Delay -> Beam Fade/
       // Delay -> CMD. Attribut-spezifische Zeiten sind optional (None =
       // "nutzt die allgemeine Fade/Delay-Zeit") - _fmtOptNum() zeigt dafuer
       // einen Gedankenstrich statt "null"/"0".
       tr.innerHTML = `
-        <td class="fx-td cue-td--status"><span class="cue-status-dot${isActive ? " cue-status-dot--active" : isNext ? " cue-status-dot--next" : ""}"></span></td>
+        <td class="fx-td cue-td--status"><span class="cue-status-dot${isActive ? " cue-status-dot--active" : isNext ? " cue-status-dot--next" : isChain ? " cue-status-dot--chain" : ""}"></span></td>
         <td class="fx-td cue-td--num" data-field="number">${_esc(_fmtNum(cue.number))}</td>
         <td class="fx-td cue-td--name" data-field="name">
           <span class="cue-name-text">${_esc(cue.name)}</span>
           ${progressBarHtml}
         </td>
-        <td class="fx-td cue-td--trigger" data-field="trigger">${_esc(triggerLabel)}</td>
+        <td class="fx-td cue-td--trigger" data-field="trigger"><span class="cue-trig-ico" aria-hidden="true">${Icons.markup(_triggerIcon(cue))}</span><span class="cue-trig-text">${_esc(triggerLabel)}</span></td>
         <td class="fx-td cue-td--fade" data-field="fade">${_esc(_fmtNum(cue.fade))}</td>
         <td class="fx-td cue-td--fade cue-td--delay" data-field="delay"><input type="text" class="cue-delay-field" inputmode="decimal" autocomplete="off" autocorrect="off" spellcheck="false" value="${_esc(_fmtNum(cue.delay))}" title="${_esc(i18n("CUE_DELAY_SWIPE_TIP"))}" aria-label="${_esc(i18n("CUELIST_COL_DELAY"))}"></td>
         <td class="fx-td cue-td--mib" data-field="mib">${_esc(cue.mib || "Off")}</td>
@@ -11737,6 +15175,7 @@ window.__panelAPI = {
         <td class="fx-td cue-td--fade" data-field="delay_zoom">${_esc(_fmtOptNum(cue.delay_zoom))}</td>
         <td class="fx-td cue-td--fade" data-field="fx_fade_in">${_esc(_fmtNum(cue.fx_fade_in || 0))}</td>
         <td class="fx-td cue-td--fade" data-field="fx_fade_out">${_esc(_fmtNum(cue.fx_fade_out || 0))}</td>
+        <td class="fx-td cue-td--mib" data-field="play_mode">${_esc(_playModeLabel(cue))}</td>
         <td class="fx-td cue-td--cmd" data-field="cmd">${_esc(cue.cmd || "")}</td>
       `;
       const toggle = () => { if (_sel.has(cue.id)) _sel.delete(cue.id); else _sel.add(cue.id); _syncSelection(); };
@@ -11749,21 +15188,30 @@ window.__panelAPI = {
       tr.addEventListener("click", (e) => {
         if (Date.now() - _swipeEndedAt < 350) return;                 // Ende einer Wischgeste, kein Tipp
         if (e.target.closest(".cue-td-edit-input, .cue-delay-field")) return;
-        const anchorIdx = cl.cues.findIndex((c) => c.id === _anchorCueId);
-        const ownIdx = cl.cues.findIndex((c) => c.id === cue.id);
-        if (e.shiftKey && anchorIdx >= 0) {
-          const lo = Math.min(anchorIdx, ownIdx), hi = Math.max(anchorIdx, ownIdx);
-          cl.cues.slice(lo, hi + 1).forEach((c) => _sel.add(c.id));
-          _syncSelection();
+        const act = () => {
+          const anchorIdx = cl.cues.findIndex((c) => c.id === _anchorCueId);
+          const ownIdx = cl.cues.findIndex((c) => c.id === cue.id);
+          _selFields.clear();                                         // ein Klick markiert ganze Zeilen (Zellen nur per Rechteck)
+          if (e.shiftKey && anchorIdx >= 0) {
+            const lo = Math.min(anchorIdx, ownIdx), hi = Math.max(anchorIdx, ownIdx);
+            cl.cues.slice(lo, hi + 1).forEach((c) => _sel.add(c.id));
+            _syncSelection();
+            _anchorCueId = cue.id;
+            return;
+          }
           _anchorCueId = cue.id;
-          return;
-        }
-        _anchorCueId = cue.id;
-        if (e.ctrlKey || e.metaKey || _multi) { toggle(); return; }
-        if (_sel.size === 1 && _sel.has(cue.id)) return;
-        _sel.clear();
-        _sel.add(cue.id);
-        _syncSelection();
+          if (e.ctrlKey || e.metaKey || _multi) { toggle(); return; }
+          if (_sel.size === 1 && _sel.has(cue.id)) { _syncSelection(); return; }
+          _sel.clear();
+          _sel.add(cue.id);
+          _syncSelection();
+        };
+        // Ein Klick in eine bestehende Mehrfachauswahl wartet kurz: folgt ein Doppelklick (gemeinsam bearbeiten), bleibt die Auswahl bestehen
+        clearTimeout(_pendingClick);
+        const cellEl = e.target.closest("[data-field]");
+        const inSelection = _sel.size > 1 && _sel.has(cue.id) && !e.shiftKey && !e.ctrlKey && !e.metaKey
+          && (!_selFields.size || (cellEl && _selFields.has(cellEl.dataset.field)));
+        if (inSelection) _pendingClick = setTimeout(act, 320); else act();
       });
       _attachDelayField(panelEl, cl, cue, tr.querySelector(".cue-delay-field"));
       tr.addEventListener("contextmenu", (e) => {
@@ -11781,10 +15229,14 @@ window.__panelAPI = {
       });
       tr.querySelectorAll("[data-field]").forEach(cellEl => {
         if (cellEl.dataset.field === "delay") return;       // Delay ist ein Zahlenfeld mit Wischgeste
-        cellEl.addEventListener("dblclick", () => _startInlineEdit(panelEl, cl, cue, cellEl, cellEl.dataset.field));
+        cellEl.addEventListener("dblclick", () => {
+          clearTimeout(_pendingClick);
+          _startInlineEdit(panelEl, cl, cue, cellEl, cellEl.dataset.field);
+        });
       });
       tbody.appendChild(tr);
     });
+    _paintSelection(panelEl);
     _paintActiveBar(panelEl, cl.id);
     _syncFollowBar(panelEl, cl.id);
     _updateActions(panelEl);
@@ -11814,6 +15266,14 @@ window.__panelAPI = {
       const num = parseFloat(String(input.value).replace(",", "."));
       if (!Number.isFinite(num) || num < 0) { input.value = show(cue.delay); return; }
       const value = Math.round(num * 1000) / 1000;
+      const group = _multiGroup(cl, cue, "delay");                  // mehrere markierte Cues: derselbe Wert fuer alle
+      if (group.length > 1) {
+        if (group.every((c) => Number(c.delay) === value)) { input.value = show(value); return; }
+        group.forEach((c) => { c.delay = value; });
+        window.__panelAPI.sendToServer("update_cues", { cuelist_id: cl.id, cue_ids: group.map((c) => c.id), fields: { delay: value } });
+        _renderPanel(panelEl);
+        return;
+      }
       if (value !== Number(cue.delay)) {
         cue.delay = value;
         window.__panelAPI.sendToServer("update_cue", { cuelist_id: cl.id, cue_id: cue.id, delay: value });
@@ -11882,7 +15342,7 @@ window.__panelAPI = {
     input.addEventListener("pointerdown", (e) => {
       if (e.pointerType === "mouse" && e.button !== 0) return;
       if (typeof isEditMode !== "undefined" && isEditMode) return;
-      const group = _sel.size > 1 && _sel.has(cue.id) ? cl.cues.filter(c => _sel.has(c.id)) : [cue];
+      const group = _multiGroup(cl, cue, "delay");
       drag = { id: e.pointerId, y0: e.clientY, lastY: e.clientY, moved: false, fine: e.shiftKey, group,
                starts: new Map(group.map(c => [c.id, Number(c.delay) || 0])) };
       document.addEventListener("pointermove", onMove, true);
@@ -11903,7 +15363,7 @@ window.__panelAPI = {
 
   function _attachRowSwipe(tableWrap) {
     const rows = () => [...tableWrap.querySelectorAll(".cue-row")];
-    const clearPreview = () => tableWrap.querySelectorAll(".cue-row--preview").forEach((r) => r.classList.remove("cue-row--preview"));
+    const clearPreview = () => tableWrap.querySelectorAll(".cue-td--preview").forEach((c) => c.classList.remove("cue-td--preview"));
 
     function finish(commit) {
       const g = _rowSwipe;
@@ -11926,7 +15386,14 @@ window.__panelAPI = {
       if (g.moved) {
         _swipeEndedAt = Date.now();
         if (commit && ids.length) {
+          // Zellen-Auswahl: nur die vom Rechteck beruehrten Zeilen UND Spalten. Ohne Zusatztaste ersetzt es die bisherige Auswahl,
+          // mit Strg / Umschalt (oder im Touch-Mehrfachmodus) wird hinzugefuegt. Beruehrt es keine Daten-Spalte, werden ganze Zeilen markiert.
+          const add = g.additive && _sel.size > 0;
+          if (!add) { _sel.clear(); _selFields.clear(); }
+          if (add && _selFields.size === 0 && _sel.size > 0) { /* bisher ganze Zeilen: bleiben ganze Zeilen */ g.fields = []; }
           ids.forEach((id) => _sel.add(id));
+          if (_selFields.size === 0 && !add) g.fields.forEach((f) => _selFields.add(f));
+          else if (add && _selFields.size > 0) g.fields.forEach((f) => _selFields.add(f));
           if (g.touch) _multi = true;                    // wie nach einem Long-Press: weitere Tipps markieren/entmarkieren
           _syncSelection();
         }
@@ -11972,13 +15439,20 @@ window.__panelAPI = {
       g.box.style.width = (right - left) + "px";
       g.box.style.height = (bottom - top) + "px";
       const hit = [];
+      const fields = new Set();
       rows().forEach((row) => {
         const r = row.getBoundingClientRect();
         const on = r.top < bottom && r.bottom > top && r.left < right && r.right > left;
-        row.classList.toggle("cue-row--preview", on);
         if (on) hit.push(row.dataset.cueId);
+        row.querySelectorAll("[data-field]").forEach((cell) => {
+          const c = cell.getBoundingClientRect();
+          const inside = on && c.left < right && c.right > left;
+          cell.classList.toggle("cue-td--preview", inside);
+          if (inside) fields.add(cell.dataset.field);
+        });
       });
       g.ids = hit;
+      g.fields = [...fields];
     }
 
     tableWrap.addEventListener("pointerdown", (e) => {
@@ -11987,7 +15461,7 @@ window.__panelAPI = {
       if (!e.target.closest || e.target.closest("thead, th, input, button, select, textarea, .cue-delay-field, .cue-td-edit-input, .cue-col-resizer")) return;
       if (_rowSwipe) finish(false);
       const touch = e.pointerType !== "mouse";
-      const g = _rowSwipe = { id: e.pointerId, x0: e.clientX, y0: e.clientY, touch, active: !touch, moved: false, ids: [], timer: null, box: null, captured: false };
+      const g = _rowSwipe = { id: e.pointerId, x0: e.clientX, y0: e.clientY, touch, active: !touch, moved: false, ids: [], fields: [], additive: e.ctrlKey || e.metaKey || e.shiftKey || _multi, timer: null, box: null, captured: false };
       if (touch) {
         g.timer = setTimeout(() => {
           g.timer = null;
@@ -12019,7 +15493,52 @@ window.__panelAPI = {
   }
 
   /** Anzeige des Ausloesers: Go | Follow | "TC 00:00:04.300" (Timecode-Ausloeser mit seiner Zeit). */
+  const AUDIO_COUNT_SOURCES = ["beat", "kick", "snare", "hat"];
+  const AUDIO_SOURCES = AUDIO_COUNT_SOURCES.concat(["level", "bass", "mid", "high", "b1", "b2", "b3", "b4", "b5", "b6", "b7", "b8"]);
+
+  /** Kurzform des Audio-Ausloesers, wie man sie auch eintippt: "Audio: Kick", "Audio: Beat ÷4", "Audio: Bass ≥ 70 %". */
+  function _audioTriggerLabel(cue) {
+    const source = AUDIO_SOURCES.includes(cue.audio_source) ? cue.audio_source : "beat";
+    const name = source.charAt(0).toUpperCase() + source.slice(1);
+    const value = Number(cue.audio_value);
+    if (AUDIO_COUNT_SOURCES.includes(source)) return "Audio: " + name + (value > 1 ? " \u00f7" + _fmtNum(value) : "");
+    return "Audio: " + name + " \u2265 " + _fmtNum(Number.isFinite(value) ? value : 70) + " %";
+  }
+
+  const MIDI_NOTE_NAMES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+  const _midiNoteName = (n) => MIDI_NOTE_NAMES[((n % 12) + 12) % 12] + (Math.floor(n / 12) - 1);
+
+  /** Kurzform des MIDI-Ausloesers, wie man sie auch eintippt: "MIDI: Note C4 (60)", "MIDI: CC 20 \u2265 64 Ch 2", "MIDI: Program 5". */
+  function _midiTriggerLabel(cue) {
+    const kind = ["note", "cc", "pc"].includes(cue.midi_type) ? cue.midi_type : "note";
+    const number = Number.isFinite(Number(cue.midi_number)) ? Number(cue.midi_number) : 60;
+    const text = kind === "cc" ? "CC " + number + " \u2265 " + (Number(cue.midi_value) || 64) : kind === "pc" ? "Program " + number : "Note " + _midiNoteName(number) + " (" + number + ")";
+    return "MIDI: " + text + (cue.midi_channel ? " Ch " + cue.midi_channel : "");
+  }
+
+  /** Uhrzeit-Ausloeser: "Uhr: 19:30 (Mo\u2013Fr)". */
+  function _clockTriggerLabel(cue) {
+    const days = window.OCSchedule ? window.OCSchedule.fmtDays(cue.clock_days) : "";
+    return i18n("CUE_CLOCK_PREFIX") + ": " + (cue.clock_time || "20:00") + " (" + days + ")";
+  }
+
+  /** Uhrzeit wie der Server (app/timeofday.py clean_time): "7:05", "1930", "19:30:15" -> "07:05" / "19:30" / "19:30:15"; sonst null. */
+  function _cleanClockTime(text) {
+    const m = String(text || "").trim().match(/^(\d{1,2})[:.]?(\d{2})(?:[:.](\d{2}))?$/);
+    if (!m) return null;
+    const h = parseInt(m[1], 10), mi = parseInt(m[2], 10), s = parseInt(m[3] || "0", 10);
+    if (h > 23 || mi > 59 || s > 59) return null;
+    return String(h).padStart(2, "0") + ":" + String(mi).padStart(2, "0") + (s ? ":" + String(s).padStart(2, "0") : "");
+  }
+
+  /** Symbol je Ausloeser (Liste und Dialog): Go = Play, Follow, Timecode, Audio, MIDI, Uhrzeit. */
+  const TRIGGER_ICONS = { go: "play", follow: "follow", timecode: "timecode", audio: "audio", midi: "midi", clock: "clock" };
+  const _triggerIcon = (cue) => TRIGGER_ICONS[cue && cue.trigger] || "play";
+
   function _triggerLabel(cue) {
+    if (cue.trigger === "clock") return _clockTriggerLabel(cue);
+    if (cue.trigger === "midi") return _midiTriggerLabel(cue);
+    if (cue.trigger === "audio") return _audioTriggerLabel(cue);
     if (cue.trigger === "follow") return i18n("CUE_TRIGGER_FOLLOW");
     if (cue.trigger === "timecode") return "TC " + (window.OCTimecode ? window.OCTimecode.fmt(cue.timecode_ms || 0) : String(cue.timecode_ms || 0));
     return i18n("CUE_TRIGGER_GO");
@@ -12031,6 +15550,38 @@ window.__panelAPI = {
     const raw = String(text).trim();
     const simple = _parseTrigger(raw);
     if (simple) return { trigger: simple };
+    const audio = raw.match(/^audio\s*:?\s*([a-z0-9]*)\s*[^0-9a-z]*?\s*([0-9]+(?:[.,][0-9]+)?)?\s*%?\s*$/i);
+    if (audio) {                                                     // "audio kick", "audio beat 4", "Audio: Bass ≥ 70 %" (so steht es in der Zelle)
+      const source = (audio[1] || (cue && cue.trigger === "audio" ? cue.audio_source : "beat")).toLowerCase();
+      if (!AUDIO_SOURCES.includes(source)) return null;
+      const number = audio[2] !== undefined ? parseFloat(audio[2].replace(",", ".")) : null;
+      return { trigger: "audio", audio_source: source, audio_value: number };
+    }
+    const midi = raw.match(/^midi\s*:?\s*(note|cc|pc|program|controller)?\s*([a-g][#b]?-?\d|\d+)?\s*(?:\(\d+\))?\s*(?:[\u2265>]=?\s*(\d+))?\s*(?:ch(?:annel)?\s*(\d+))?\s*$/i);
+    if (midi) {                                                      // "midi note c4", "MIDI: CC 20 \u2265 64 Ch 2" (so steht es in der Zelle), "midi pc 5"
+      let kind = (midi[1] || (cue && cue.trigger === "midi" ? cue.midi_type : "note")).toLowerCase();
+      kind = kind === "program" ? "pc" : kind === "controller" ? "cc" : kind;
+      let number = null;
+      if (midi[2] !== undefined) {
+        const name = midi[2].match(/^([a-g])([#b]?)(-?\d)$/i);
+        number = name && kind === "note" ? (parseInt(name[3], 10) + 1) * 12 + ({ c: 0, d: 2, e: 4, f: 5, g: 7, a: 9, b: 11 })[name[1].toLowerCase()] + (name[2] === "#" ? 1 : name[2] === "b" ? -1 : 0) : parseInt(midi[2], 10);
+      } else if (cue && cue.trigger === "midi" && cue.midi_type === kind) number = cue.midi_number;
+      if (number === null || !(number >= 0 && number <= 127)) return null;
+      const channel = midi[4] !== undefined ? parseInt(midi[4], 10) : (cue && cue.trigger === "midi" && midi[1] === undefined ? (cue.midi_channel || 0) : 0);
+      if (!(channel >= 0 && channel <= 16)) return null;
+      const value = midi[3] !== undefined ? parseInt(midi[3], 10) : (cue && cue.trigger === "midi" && cue.midi_type === "cc" && kind === "cc" ? (cue.midi_value || 64) : 64);
+      if (!(value >= 1 && value <= 127)) return null;
+      return { trigger: "midi", midi_type: kind, midi_number: number, midi_channel: channel, midi_value: value };
+    }
+    const clock = raw.match(/^(?:clock|uhr(?:zeit)?|at)\s*:?\s*(\d{1,2}[:.]?\d{2}(?:[:.]\d{2})?)?\s*(?:\(([^)]*)\))?\s*(.*)$/i);
+    if (clock) {                                                     // "clock 19:30", "Uhr: 19:30 (Mo\u2013Fr)" (so steht es in der Zelle), "clock 20:00 sat,sun"
+      const timeText = clock[1] !== undefined ? _cleanClockTime(clock[1]) : (cue && cue.trigger === "clock" ? cue.clock_time : null);
+      if (!timeText) return null;
+      const dayText = (clock[2] !== undefined ? clock[2] : clock[3] || "").replace(/\u2013|\u2014/g, "-").trim();
+      const days = dayText ? (window.OCSchedule ? window.OCSchedule.parseDays(dayText) : null) : (clock[1] === undefined && cue && cue.trigger === "clock" ? (cue.clock_days || []) : []);
+      if (days === null) return null;
+      return { trigger: "clock", clock_time: timeText, clock_days: days };
+    }
     const match = raw.match(/^(?:timecode|tc)\s*(.*)$/i);
     const timeText = match ? match[1] : (cue && cue.trigger === "timecode" ? raw : null);
     if (timeText === null || !window.OCTimecode) return null;
@@ -12051,11 +15602,12 @@ window.__panelAPI = {
   function _startInlineEdit(panelEl, cl, cue, cellEl, field) {
     if (cellEl.classList.contains("cue-td--editing")) return;
     const originalHTML = cellEl.innerHTML;
-    const isChoice = field === "trigger" || field === "mib";           // Textfeld mit festen Werten (normalisiert)
+    const isChoice = field === "trigger" || field === "mib" || field === "play_mode";           // Textfeld mit festen Werten (normalisiert)
     const isText = field === "name" || field === "cmd" || isChoice;
     const isOptional = OPTIONAL_FLOAT_FIELDS.has(field);
     const currentValue = field === "trigger" ? _triggerLabel(cue)
       : field === "mib" ? (cue.mib || "Off")
+      : field === "play_mode" ? _playModeLabel(cue)
       : (isOptional ? (cue[field] != null ? cue[field] : "") : FX_FADE_FIELDS.has(field) ? (cue[field] || 0) : cue[field]);
 
     cellEl.classList.add("cue-td--editing");
@@ -12086,69 +15638,107 @@ window.__panelAPI = {
     input.focus();
     input.select();
 
+    // Mehrere markierte Zellen derselben Spalte: der Wert gilt fuer alle markierten Cues (ein Befehl, ein Broadcast)
+    const group = _multiGroup(cl, cue, field);
+    const multi = group.length > 1;
+    if (multi) {
+      cellEl.classList.add("cue-td--editing-multi");
+      input.title = i18n("CUE_MULTI_EDIT_TIP").replace("{n}", String(group.length));
+    }
+
     let settled = false;
     const commit = () => {
       if (settled) return;
       settled = true;
       const raw = input.value;
       let changed = false;
+      let valid = false;                     // Eingabe gueltig (auch wenn sie bei DIESEM Cue schon so steht, andere markierte Cues koennen abweichen)
       const msg = { cuelist_id: cl.id, cue_id: cue.id };
+      const fail = (toastKey) => {
+        cellEl.classList.remove("cue-td--editing", "cue-td--editing-multi");
+        cellEl.innerHTML = originalHTML;
+        _showToast(toastKey, "warn", 3500);
+      };
       if (isChoice && field === "trigger") {
         const parsed = _parseTriggerEdit(raw, cue);
-        if (parsed === null) {
-          cellEl.classList.remove("cue-td--editing");
-          cellEl.innerHTML = originalHTML;
-          _showToast("CUE_ERR_TRIGGER", "warn", 3500);
-          return;
+        if (parsed === null) { fail("CUE_ERR_TRIGGER"); return; }
+        const midiChanged = parsed.trigger === "midi" && (cue.trigger !== "midi" || ["midi_type", "midi_number", "midi_channel", "midi_value"].some((k) => parsed[k] !== cue[k]));
+        const audioChanged = parsed.trigger === "audio" && (cue.trigger !== "audio" || parsed.audio_source !== cue.audio_source || (parsed.audio_value !== null && parsed.audio_value !== cue.audio_value));
+        const clockChanged = parsed.trigger === "clock" && (cue.trigger !== "clock" || parsed.clock_time !== cue.clock_time || JSON.stringify(parsed.clock_days) !== JSON.stringify(cue.clock_days || []));
+        valid = true;
+        msg.trigger = parsed.trigger;
+        if (parsed.trigger === "clock") { msg.clock_time = parsed.clock_time; msg.clock_days = parsed.clock_days; }
+        if (parsed.trigger === "midi") ["midi_type", "midi_number", "midi_channel", "midi_value"].forEach((k) => { msg[k] = parsed[k]; });
+        if (parsed.trigger === "timecode") msg.timecode_ms = parsed.timecode_ms;
+        if (parsed.trigger === "audio") {
+          msg.audio_source = parsed.audio_source;
+          if (parsed.audio_value !== null) msg.audio_value = parsed.audio_value;
         }
-        if (parsed.trigger !== (cue.trigger || "go") || (parsed.trigger === "timecode" && parsed.timecode_ms !== cue.timecode_ms)) {
-          msg.trigger = parsed.trigger;
-          if (parsed.trigger === "timecode") msg.timecode_ms = parsed.timecode_ms;
-          changed = true;
-        }
+        changed = parsed.trigger !== (cue.trigger || "go") || (parsed.trigger === "timecode" && parsed.timecode_ms !== cue.timecode_ms) || audioChanged || midiChanged || clockChanged;
+      } else if (isChoice && field === "play_mode") {
+        const parsed = _parsePlayMode(raw);
+        if (parsed === null) { fail("CUE_ERR_PLAY_MODE"); return; }
+        valid = true;
+        msg.play_mode = parsed;
+        changed = parsed !== (cue.play_mode === "absolute" ? "absolute" : "tracking");
       } else if (isChoice) {
         const parsed = _parseMib(raw);
-        if (parsed === null) {                                       // ungueltig: Zelle bleibt unveraendert, kurze Meldung
-          cellEl.classList.remove("cue-td--editing");
-          cellEl.innerHTML = originalHTML;
-          _showToast("CUE_ERR_MIB", "warn", 3500);
-          return;
-        }
-        if (parsed !== (cue.mib || "Off")) { msg[field] = parsed; changed = true; }
+        if (parsed === null) { fail("CUE_ERR_MIB"); return; }     // ungueltig: Zelle bleibt unveraendert, kurze Meldung
+        valid = true;
+        msg[field] = parsed;
+        changed = parsed !== (cue.mib || "Off");
       } else if (field === "name") {
         const trimmed = raw.trim();
-        if (trimmed && trimmed !== cue.name) { msg.name = trimmed; changed = true; }
+        if (trimmed) { valid = true; msg.name = trimmed; changed = trimmed !== cue.name; }
       } else if (field === "cmd") {
         const trimmed = raw.trim();
-        if (trimmed !== (cue.cmd || "")) { msg.cmd = trimmed; changed = true; }
+        valid = true;
+        msg.cmd = trimmed;
+        changed = trimmed !== (cue.cmd || "");
       } else if (isOptional) {
         const trimmed = raw.trim();
         if (trimmed === "") {
-          if (cue[field] != null) { msg[field] = null; changed = true; }
+          valid = true;
+          msg[field] = null;
+          changed = cue[field] != null;
         } else {
-          const num = parseFloat(trimmed);
-          if (!isNaN(num) && num !== cue[field]) { msg[field] = num; changed = true; }
+          const num = parseFloat(trimmed.replace(",", "."));
+          if (!isNaN(num)) { valid = true; msg[field] = num; changed = num !== cue[field]; }
         }
       } else {
-        const num = parseFloat(raw);
-        if (!isNaN(num) && num !== cue[field]) { msg[field] = num; changed = true; }
+        const num = parseFloat(String(raw).replace(",", "."));
+        if (!isNaN(num)) { valid = true; msg[field] = num; changed = num !== cue[field]; }
       }
-      if (changed) {
+      if (multi && valid) {
+        // Gemeinsam bearbeiten: alle Felder der Eingabe an alle markierten Cues
+        const fields = { ...msg };
+        delete fields.cuelist_id;
+        delete fields.cue_id;
+        window.__panelAPI.sendToServer("update_cues", { cuelist_id: cl.id, cue_ids: group.map((c) => c.id), fields });
+        group.forEach((c) => {                                       // optimistisch: sofort sichtbar
+          Object.assign(c, fields);
+          if (fields.trigger && fields.trigger !== "timecode") c.timecode_ms = null;
+        });
+        _renderPanel(panelEl);
+      } else if (changed) {
         window.__panelAPI.sendToServer("update_cue", msg);
         // Optimistisches lokales Update: sofortiges visuelles Feedback statt
         // auf den naechsten cuelists_changed-Broadcast zu warten.
         if (field !== "number") cue[field] = Object.prototype.hasOwnProperty.call(msg, field) ? msg[field] : cue[field];
         if (field === "trigger" && msg.trigger === "timecode") cue.timecode_ms = msg.timecode_ms;
+        if (field === "trigger" && msg.trigger === "clock") { cue.clock_time = msg.clock_time; cue.clock_days = msg.clock_days; }
+        if (field === "trigger" && msg.trigger === "midi") ["midi_type", "midi_number", "midi_channel", "midi_value"].forEach((k) => { cue[k] = msg[k]; });
+        if (field === "trigger" && msg.trigger === "audio") { cue.audio_source = msg.audio_source; if (msg.audio_value !== undefined) cue.audio_value = msg.audio_value; }
         _renderPanel(panelEl);
       } else {
-        cellEl.classList.remove("cue-td--editing");
+        cellEl.classList.remove("cue-td--editing", "cue-td--editing-multi");
         cellEl.innerHTML = originalHTML;
       }
     };
     const cancel = () => {
       if (settled) return;
       settled = true;
-      cellEl.classList.remove("cue-td--editing");
+      cellEl.classList.remove("cue-td--editing", "cue-td--editing-multi");
       cellEl.innerHTML = originalHTML;
     };
     input.addEventListener("keydown", (e) => {
@@ -12212,6 +15802,8 @@ window.__panelAPI = {
     const nameEl = document.getElementById("cue-store-name");
     const hintEl = document.getElementById("cue-store-hint");
     const okEl = document.getElementById("cue-store-confirm");
+    const modeEl = document.getElementById("cue-store-playmode");
+    modeEl.value = ((client.state && client.state.console_defaults) || {}).cue_play_mode === "absolute" ? "absolute" : "tracking";    // Vorgabe: Einstellungen -> Standardwerte; hier nur fuer diesen Cue aenderbar
     posEl.innerHTML = "";
     const addOpt = (value, label) => { const o = document.createElement("option"); o.value = value; o.textContent = label; posEl.appendChild(o); };
     addOpt("free", i18n("CUE_STORE_POS_FREE"));
@@ -12257,7 +15849,7 @@ window.__panelAPI = {
         const result = refresh();
         if (result.error) return;
         const { position, afterId } = state();
-        finish({ number: result.n, position, after_cue_id: afterId, name: nameEl.value.trim() });
+        finish({ number: result.n, position, after_cue_id: afterId, name: nameEl.value.trim(), play_mode: modeEl.value });
       };
       listen(okEl, "click", accept);
       listen(numEl, "keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); accept(); } });
@@ -12298,6 +15890,7 @@ window.__panelAPI = {
       number: choice.number, position: choice.position, after_cue_id: choice.after_cue_id,
     };
     if (choice.name) msg.name = choice.name;
+    msg.play_mode = choice.play_mode === "absolute" ? "absolute" : "tracking";
     const existing = cl.cues.find(c => _sameNumber(c.number, choice.number));
     if (existing) {
       const mode = await _askConflict(existing.number, existing.name);
@@ -12312,17 +15905,61 @@ window.__panelAPI = {
     const cl = _currentCuelist(panelEl);
     const cue = cl && cl.cues.find(c => c.id === _activeCueIds[cl.id]);
     if (!cue) { _showToast("CUE_ERR_NO_ACTIVE", "warn", 3500); return; }
-    document.getElementById("cue-update-body").textContent =
-      i18n("CUE_UPDATE_BODY").replace("{n}", _fmtNum(cue.number)).replace("{name}", cue.name);
-    const mode = await _modalResult("cue-update", null, (finish, listen) => {
-      listen(document.getElementById("cue-update-normal"), "click", () => finish("normal"));
-      listen(document.getElementById("cue-update-only"), "click", () => finish("only"));
-    });
+    // Einstellungen -> Standardwerte -> Aktualisieren: "ask" fragt, "normal"/"only" aktualisiert gleich (der andere Weg bleibt der Befehl Update Tracking / Update CueOnly)
+    const preset = ((client.state && client.state.console_defaults) || {}).update_mode;
+    let mode = preset === "normal" || preset === "only" ? preset : null;
+    if (!mode) {
+      document.getElementById("cue-update-body").textContent =
+        i18n("CUE_UPDATE_BODY").replace("{n}", _fmtNum(cue.number)).replace("{name}", cue.name);
+      mode = await _modalResult("cue-update", null, (finish, listen) => {
+        listen(document.getElementById("cue-update-normal"), "click", () => finish("normal"));
+        listen(document.getElementById("cue-update-only"), "click", () => finish("only"));
+      });
+    }
     if (!mode) return;
     const PS = window.ProgrammerState;
     const fixtureValues = PS ? PS.getCueSnapshot() : {};
     window.__panelAPI.sendToServer("update_active_cue", { cuelist_id: cl.id, mode, fixture_values: fixtureValues });
     if (PS) PS.clearTouched(fixtureValues);
+  }
+
+  /** Kopieren: die markierten Cues in dieselbe oder eine andere Liste; die erste Kopie bekommt die gewaehlte Nummer, die weiteren
+   *  behalten den Abstand. Vorschlag: die naechste ganze Zahl nach dem letzten Cue der Zielliste. */
+  async function _copyCues(cuelistId, cueIds) {
+    const cl = _allCuelists[cuelistId];
+    if (!cl || !cueIds.length) return;
+    const listEl = document.getElementById("cue-copy-list");
+    const numEl = document.getElementById("cue-copy-number");
+    document.getElementById("cue-copy-body").textContent = i18n(cueIds.length === 1 ? "CUE_COPY_BODY_ONE" : "CUE_COPY_BODY").replace("{n}", String(cueIds.length));
+    listEl.innerHTML = "";
+    Object.values(_allCuelists).forEach((c) => {
+      const opt = document.createElement("option");
+      opt.value = c.id;
+      opt.textContent = c.name;
+      listEl.appendChild(opt);
+    });
+    listEl.value = cl.id;
+    const suggest = () => {
+      const target = _allCuelists[listEl.value];
+      numEl.value = target && target.cues.length ? String(Math.floor(target.cues[target.cues.length - 1].number) + 1) : "1";
+    };
+    suggest();
+    const result = await _modalResult("cue-copy", null, (finish, listen) => {
+      listen(listEl, "change", suggest);
+      listen(document.getElementById("cue-copy-confirm"), "click", () => finish({ target: listEl.value, number: numEl.value }));
+      listen(numEl, "keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); finish({ target: listEl.value, number: numEl.value }); } });
+      setTimeout(() => { numEl.focus(); numEl.select(); }, 30);
+    });
+    if (!result) return;
+    if (_parseNumber(result.number) === null) { _showToast("CUE_STORE_ERR_INVALID", "warn", 3500); return; }
+    window.__panelAPI.sendToServer("copy_cues", { cuelist_id: cl.id, cue_ids: cueIds, target_cuelist_id: result.target, number: _parseNumber(result.number) });
+  }
+
+  function _copySelected(panelEl) {
+    const cl = _currentCuelist(panelEl);
+    if (!cl) return;
+    const ids = cl.cues.filter((c) => _sel.has(c.id)).map((c) => c.id);
+    if (ids.length) _copyCues(cl.id, ids);
   }
 
   function _editSelected(panelEl) {
@@ -12365,7 +16002,12 @@ window.__panelAPI = {
     if (p.ok) {
       const key = { created: "CUE_TOAST_STORED", merged: "CUE_TOAST_MERGED", overwritten: "CUE_TOAST_OVERWRITTEN",
         updated: p.mode === "only" ? "CUE_TOAST_UPDATED_ONLY" : "CUE_TOAST_UPDATED" }[p.code];
+      if (p.code === "copied") { _showToast(i18n(p.count === 1 ? "CUE_TOAST_COPIED_ONE" : "CUE_TOAST_COPIED").replace("{c}", String(p.count)).replace("{n}", n), "info", 2500); return; }
       if (key) _showToast(i18n(key).replace("{n}", n), "info", 2500);
+      return;
+    }
+    if (p.code === "copy_conflict") {
+      _showToast(i18n("CUE_ERR_COPY_CONFLICT").replace("{n}", (p.numbers || []).slice(0, 5).map(_fmtNum).join(", ")), "warn", 5000);
       return;
     }
     if (p.code === "conflict" && _lastStore) {
@@ -12439,7 +16081,7 @@ window.__panelAPI = {
   }
 
   async function _confirmDeleteList(cl) {
-    const ok = await _askLayoutConfirm({ title: i18n("CUELIST_DELETE_LIST_TITLE"), body: i18n("CUELIST_DELETE_LIST_BODY").replace("{name}", cl.name).replace("{n}", String(cl.cues.length)), confirmKey: "CUELIST_DELETE_LIST" });
+    const ok = await _askDelete("cues", { title: i18n("CUELIST_DELETE_LIST_TITLE"), body: i18n("CUELIST_DELETE_LIST_BODY").replace("{name}", cl.name).replace("{n}", String(cl.cues.length)), confirmKey: "CUELIST_DELETE_LIST" });
     if (!ok) return;
     _manageOpen.delete(cl.id);
     _sel.clear();
@@ -12584,9 +16226,12 @@ window.__panelAPI = {
   }
 
   function _showContextMenu(cuelistId, cueId, x, y) {
+    const cl = _allCuelists[cuelistId];
+    const group = cl && _sel.has(cueId) && _sel.size > 1 ? cl.cues.filter((c) => _sel.has(c.id)).map((c) => c.id) : [cueId];
     ContextMenu.show(x, y, [
       { label: i18n("CUE_CTX_JUMP"), onClick: () => _jumpToCue(cuelistId, cueId) },
       { label: i18n("CUE_CTX_EDIT"), onClick: () => _openEditDialog(cuelistId, cueId) },
+      { label: i18n("CUE_CTX_COPY"), onClick: () => _copyCues(cuelistId, group) },
       { label: i18n("CUE_CTX_DELETE"), danger: true, onClick: () => _confirmDeleteCue(cuelistId, cueId) },
     ]);
   }
@@ -12602,17 +16247,30 @@ window.__panelAPI = {
     if (!cue) return;
     _editingCuelistId = cuelistId;
     _editingCueId = cueId;
+    window.__cueEditList = cl.name;                                          // fuer "MIDI-Ausloeser" im Dialog (static/js/midi.js)
     const titleEl = document.getElementById("cue-edit-title");
     if (titleEl) titleEl.textContent = i18n("CUE_EDIT_TITLE").replace("{name}", cue.name);
     const set = (id, value) => { const el = document.getElementById(id); if (el) el.value = value; };
     set("cue-edit-name", cue.name);
     set("cue-edit-number", cue.number);
     set("cue-edit-trigger", cue.trigger || "go");
+    _fillAudioSources();
+    set("cue-edit-audio-source", AUDIO_SOURCES.includes(cue.audio_source) ? cue.audio_source : "beat");
+    set("cue-edit-audio-value", cue.audio_source && cue.audio_value ? cue.audio_value : (AUDIO_COUNT_SOURCES.includes(cue.audio_source || "beat") ? 1 : 70));
+    set("cue-edit-midi-type", ["note", "cc", "pc"].includes(cue.midi_type) ? cue.midi_type : "note");
+    set("cue-edit-midi-number", Number.isFinite(Number(cue.midi_number)) ? cue.midi_number : 60);
+    set("cue-edit-midi-channel", String(cue.midi_channel || 0));
+    set("cue-edit-midi-value", cue.midi_value || 64);
+    set("cue-edit-clock-time", cue.clock_time || "20:00");
+    _setClockDays(cue.clock_days || []);
+    _stopMidiLearn();
+    Modal._hooks["cue-edit"] = _stopMidiLearn;                               // beim Schliessen: Einlernen beenden
     set("cue-edit-timecode", window.OCTimecode ? window.OCTimecode.fmt(cue.timecode_ms || 0) : "");
     _syncTimecodeField();
     set("cue-edit-fade", cue.fade);
     set("cue-edit-delay", cue.delay);
     set("cue-edit-mib", cue.mib || "Off");
+    set("cue-edit-play-mode", cue.play_mode === "absolute" ? "absolute" : "tracking");
     // Attribut-spezifische Zeiten sind optional (null = Platzhalter leer
     // lassen -> "nutzt die allgemeine Fade/Delay-Zeit", siehe cue_engine.py).
     ["fade_color", "delay_color", "fade_pos", "delay_pos", "fade_beam", "delay_beam", "fade_zoom", "delay_zoom"].forEach(field => {
@@ -12642,16 +16300,155 @@ window.__panelAPI = {
     Modal.open("cue-delete-confirm");
   }
 
-  /** Das Zeitfeld ist nur sichtbar, wenn der Ausloeser 'Timecode' gewaehlt ist. */
+  /** Das Zeitfeld ist nur sichtbar, wenn der Ausloeser 'Timecode' gewaehlt ist, die Audio-Felder nur bei 'Audio'. */
   function _syncTimecodeField() {
     const select = document.getElementById("cue-edit-trigger");
     const wrap = document.getElementById("cue-edit-timecode-wrap");
     if (select && wrap) wrap.hidden = select.value !== "timecode";
+    const audioWrap = document.getElementById("cue-edit-audio-wrap");
+    if (select && audioWrap) audioWrap.hidden = select.value !== "audio";
+    const midiWrap = document.getElementById("cue-edit-midi-wrap");
+    if (select && midiWrap) midiWrap.hidden = select.value !== "midi";
+    const clockWrap = document.getElementById("cue-edit-clock-wrap");
+    if (select && clockWrap) clockWrap.hidden = select.value !== "clock";
+    _syncAudioValueField();
+    _syncMidiFields();
+    _syncTriggerBar();
+  }
+
+  /** Auswahl des Ausloesers im Dialog: eine Reihe Tasten mit Symbol (steuert das versteckte Auswahlfeld, das alles andere weiter benutzt). */
+  function _buildTriggerBar() {
+    const bar = document.getElementById("cue-edit-trigger-bar");
+    const select = document.getElementById("cue-edit-trigger");
+    if (!bar || !select || bar.childElementCount) return;
+    [...select.options].forEach((opt) => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "cue-trig__btn";
+      btn.dataset.value = opt.value;
+      btn.setAttribute("role", "radio");
+      const ico = document.createElement("span");
+      ico.className = "cue-trig__ico";
+      ico.innerHTML = Icons.markup(TRIGGER_ICONS[opt.value] || "play");
+      const label = document.createElement("span");
+      label.className = "cue-trig__label";
+      label.dataset.i18n = opt.dataset.i18n || "";
+      label.textContent = opt.textContent;
+      btn.append(ico, label);
+      btn.addEventListener("click", () => { select.value = opt.value; select.dispatchEvent(new Event("change", { bubbles: true })); });
+      bar.appendChild(btn);
+    });
+  }
+
+  function _syncTriggerBar() {
+    const select = document.getElementById("cue-edit-trigger");
+    document.querySelectorAll("#cue-edit-trigger-bar .cue-trig__btn").forEach((btn) => {
+      const on = !!select && btn.dataset.value === select.value;
+      btn.classList.toggle("cue-trig__btn--on", on);
+      btn.setAttribute("aria-checked", on ? "true" : "false");
+    });
+    const hint = document.getElementById("cue-edit-trigger-hint");
+    if (hint && select) hint.textContent = i18n("CUE_TRIG_HINT_" + select.value);
+  }
+
+  /** MIDI-Ausloeser im Dialog: die Schwelle gibt es nur fuer einen Controller (CC); bei Noten steht der Notenname unter der Nummer; Einlernen von jedem Geraet aus. */
+  function _syncMidiFields() {
+    const kind = document.getElementById("cue-edit-midi-type")?.value || "note";
+    const valueWrap = document.getElementById("cue-edit-midi-value-wrap");
+    if (valueWrap) valueWrap.hidden = kind !== "cc";
+    const number = parseInt(document.getElementById("cue-edit-midi-number")?.value, 10);
+    const name = document.getElementById("cue-edit-midi-notename");
+    if (name) name.textContent = kind === "note" && number >= 0 && number <= 127 ? _midiNoteName(number) : "";
+  }
+
+  /** Wochentage des Uhrzeit-Ausloesers im Cue-Dialog: sieben Knoepfe (keiner gewaehlt = jeden Tag). */
+  let _clockDays = [];
+  function _setClockDays(days) {
+    _clockDays = (days || []).slice();
+    const box = document.getElementById("cue-edit-clock-days");
+    if (!box) return;
+    box.textContent = "";
+    for (let d = 0; d < 7; d += 1) {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "sch__day" + (_clockDays.includes(d) ? " sch__day--on" : "");
+      b.textContent = i18n("SCH_DAY_" + d);
+      b.addEventListener("click", () => {
+        _clockDays = _clockDays.includes(d) ? _clockDays.filter((x) => x !== d) : _clockDays.concat([d]).sort();
+        b.classList.toggle("sch__day--on", _clockDays.includes(d));
+      });
+      box.appendChild(b);
+    }
+  }
+
+  function _stopMidiLearn() {
+    if (typeof window.__cueMidiLearn === "function") {
+      window.__cueMidiLearn = null;
+      client.send("midi_learn", { on: false });
+    }
+    const msg = document.getElementById("cue-edit-midi-learn-msg");
+    if (msg) msg.textContent = "";
+  }
+
+  /** "Signal einlernen": der naechste Tastendruck / Reglerausschlag am MIDI-Geraet fuellt die Felder (Note, CC und Programmwechsel koennen einen Cue starten). */
+  function _startMidiLearn() {
+    const msg = document.getElementById("cue-edit-midi-learn-msg");
+    if (typeof window.__cueMidiLearn === "function") { _stopMidiLearn(); return; }          // zweiter Klick: abbrechen
+    if (msg) msg.textContent = i18n("CUE_EDIT_MIDI_LEARNING");
+    window.__cueMidiLearn = (payload) => {
+      const set = (id, value) => { const el = document.getElementById(id); if (el) el.value = value; };
+      if (!["note", "cc", "pc"].includes(payload.type)) { if (msg) msg.textContent = i18n("CUE_EDIT_MIDI_BADTYPE"); return; }
+      set("cue-edit-midi-type", payload.type);
+      set("cue-edit-midi-number", payload.number);
+      set("cue-edit-midi-channel", String(payload.channel || 0));
+      _syncMidiFields();
+      if (msg) msg.textContent = i18n("CUE_EDIT_MIDI_LEARNED").replace("{text}", payload.text || "");
+    };
+    client.send("midi_learn", { on: true });
+  }
+
+  /** Die Auswahl der Audioquelle (einmal aufbauen; die Namen kommen aus den Sprachdateien). */
+  function _fillAudioSources() {
+    const select = document.getElementById("cue-edit-audio-source");
+    if (!select || select.dataset.lang === String(i18n("CUE_TRIGGER_AUDIO"))) return;
+    select.dataset.lang = String(i18n("CUE_TRIGGER_AUDIO"));
+    const keep = select.value;
+    select.textContent = "";
+    AUDIO_SOURCES.forEach((id) => {
+      const option = document.createElement("option");
+      option.value = id;
+      option.textContent = i18n("AUDIO_SRC_" + id.toUpperCase());
+      select.appendChild(option);
+    });
+    if (keep) select.value = keep;
+  }
+
+  /** Das Wertfeld heisst "Jeder n-te" (Beat / Schlaege) oder "Schwelle in %" (Pegel) und passt Grenzen und Hinweis an. */
+  function _syncAudioValueField() {
+    const source = document.getElementById("cue-edit-audio-source");
+    const input = document.getElementById("cue-edit-audio-value");
+    const label = document.getElementById("cue-edit-audio-value-label");
+    const hint = document.getElementById("cue-edit-audio-hint");
+    if (!source || !input || !label) return;
+    const count = AUDIO_COUNT_SOURCES.includes(source.value);
+    label.textContent = i18n(count ? "CUE_EDIT_AUDIO_COUNT" : "CUE_EDIT_AUDIO_LEVEL");
+    input.max = count ? "64" : "100";
+    if (hint) hint.textContent = i18n(count ? "CUE_EDIT_AUDIO_HINT_COUNT" : "CUE_EDIT_AUDIO_HINT_LEVEL");
+    if (count && Number(input.value) > 64) input.value = "1";
   }
 
   // ── Wire static dialogs (once) ─────────────────────────────────
   function _wireDialogs() {
+    _buildTriggerBar();
     document.getElementById("cue-edit-trigger")?.addEventListener("change", _syncTimecodeField);
+    document.getElementById("cue-edit-midi-type")?.addEventListener("change", _syncMidiFields);
+    document.getElementById("cue-edit-midi-number")?.addEventListener("input", _syncMidiFields);
+    document.getElementById("cue-edit-midi-learn")?.addEventListener("click", _startMidiLearn);
+    document.getElementById("cue-edit-audio-source")?.addEventListener("change", () => {
+      const input = document.getElementById("cue-edit-audio-value");
+      if (input) input.value = AUDIO_COUNT_SOURCES.includes(document.getElementById("cue-edit-audio-source").value) ? "1" : "70";     // sinnvoller Vorgabewert je Art der Quelle
+      _syncAudioValueField();
+    });
     const newConfirmBtn = document.getElementById("cuelist-new-confirm");
     if (newConfirmBtn) {
       newConfirmBtn.addEventListener("click", () => {
@@ -12686,7 +16483,32 @@ window.__panelAPI = {
           msg.trigger = "timecode";
           msg.timecode_ms = tcMs;
         }
+        if (triggerVal === "midi") {
+          msg.trigger = "midi";
+          msg.midi_type = document.getElementById("cue-edit-midi-type")?.value || "note";
+          const midiNumber = parseInt(document.getElementById("cue-edit-midi-number")?.value, 10);
+          if (!(midiNumber >= 0 && midiNumber <= 127)) { _showToast("CUE_ERR_MIDI_NUMBER", "warn", 3500); document.getElementById("cue-edit-midi-number")?.focus(); return; }     // Dialog bleibt offen
+          msg.midi_number = midiNumber;
+          msg.midi_channel = parseInt(document.getElementById("cue-edit-midi-channel")?.value, 10) || 0;
+          const midiValue = parseInt(document.getElementById("cue-edit-midi-value")?.value, 10);
+          if (msg.midi_type === "cc" && midiValue >= 1 && midiValue <= 127) msg.midi_value = midiValue;
+        }
+        if (triggerVal === "clock") {
+          const clockTime = _cleanClockTime(document.getElementById("cue-edit-clock-time")?.value);
+          if (!clockTime) { _showToast("CUE_ERR_CLOCK_TIME", "warn", 3500); document.getElementById("cue-edit-clock-time")?.focus(); return; }     // Dialog bleibt offen
+          msg.trigger = "clock";
+          msg.clock_time = clockTime;
+          msg.clock_days = _clockDays.length === 7 ? [] : _clockDays.slice();
+        }
+        if (triggerVal === "audio") {
+          msg.trigger = "audio";
+          msg.audio_source = document.getElementById("cue-edit-audio-source")?.value || "beat";
+          const audioValue = parseFloat(document.getElementById("cue-edit-audio-value")?.value);
+          if (!isNaN(audioValue)) msg.audio_value = audioValue;
+        }
         if (mibVal === "Off" || mibVal === "Auto" || mibVal === "On") msg.mib = mibVal;
+        const playMode = document.getElementById("cue-edit-play-mode")?.value;
+        if (playMode === "absolute" || playMode === "tracking") msg.play_mode = playMode;
         if (cmdVal != null) msg.cmd = cmdVal.trim();
         // Attribut-spezifische Zeiten: leeres Feld -> null ("nutzt die
         // allgemeine Zeit"), sonst der eingegebene Wert.
@@ -12774,6 +16596,7 @@ window.__panelAPI = {
       mkBtn("cuelist-toolbar__btn--save", "CUELIST_SAVE_CUE", "CUELIST_SAVE_CUE_TIP", _saveCue);
       mkBtn("cuelist-toolbar__btn--update", "CUELIST_UPDATE", "CUELIST_UPDATE_TIP", _updateCue, true);
       mkBtn("cuelist-toolbar__btn--edit", "CUELIST_EDIT", "CUELIST_EDIT_TIP", _editSelected, true);
+      mkBtn("cuelist-toolbar__btn--copy", "CUELIST_COPY", "CUELIST_COPY_TIP", _copySelected, true);
       mkBtn("cuelist-toolbar__btn--delete", "CUELIST_DELETE", "CUELIST_DELETE_TIP", _deleteSelected, true);
 
       // Zeile 1: Listenauswahl + "Verwalten" (alle Listen: Reihenfolge, umbenennen, duplizieren, loeschen, neu); Zeile 2: die Cue-Aktionen
@@ -12793,6 +16616,7 @@ window.__panelAPI = {
 
       const tableWrap = document.createElement("div");
       tableWrap.className = "fx-table-wrap cuelist-table-wrap";
+      OCViewState.keepScroll(tableWrap, "cuelist");
       tableWrap.innerHTML = `
         <table class="fx-table cuelist-table list--zebra">
           <thead>
@@ -12814,6 +16638,7 @@ window.__panelAPI = {
               <th class="fx-th cue-th--fade" data-i18n="CUELIST_COL_ZOOM_DELAY">${_esc(i18n("CUELIST_COL_ZOOM_DELAY"))}</th>
               <th class="fx-th cue-th--fade" data-i18n="CUELIST_COL_FX_IN">${_esc(i18n("CUELIST_COL_FX_IN"))}</th>
               <th class="fx-th cue-th--fade" data-i18n="CUELIST_COL_FX_OUT">${_esc(i18n("CUELIST_COL_FX_OUT"))}</th>
+              <th class="fx-th cue-th--mib" data-i18n="CUELIST_COL_PLAY_MODE">${_esc(i18n("CUELIST_COL_PLAY_MODE"))}</th>
               <th class="fx-th cue-th--cmd" data-i18n="CUELIST_COL_CMD">${_esc(i18n("CUELIST_COL_CMD"))}</th>
             </tr>
           </thead>
@@ -12947,7 +16772,7 @@ window.__panelAPI = {
 })();
 
 // ═══════════════════════════════════════════════════════════════════
-// Executor-Panel (dot2-Stil): Fader MISCHT zwischen manuellem Wert (0 %) und Cue-Wert (100 %) fuer jedes Attribut der
+// Executor-Panel (Lichtpult-Stil): Fader MISCHT zwischen manuellem Wert (0 %) und Cue-Wert (100 %) fuer jedes Attribut der
 // zugeordneten Cue-Liste (nicht die Gesamthelligkeit - der Grand Master ist davon unabhaengig). Darunter Go / Pause /
 // Zurueck / Stopp. Die Cue-Liste verwaltet nur die Cues; die Wiedergabe laeuft ueber den Executor. Mehrere Executoren auf
 // verschiedene Cue-Listen mischen unabhaengig, die gespeicherten Cue-Werte bleiben unveraendert.
@@ -12963,6 +16788,12 @@ window.__panelAPI = {
   let _activeCues = {};       // cuelist_id -> aktiver cue_id
   let _playback = {};         // cuelist_id -> Wiedergabezustand der CueEngine (+ "at" = Empfangszeit)
   let _masters = {};          // cuelist_id -> Fader 0-100 (Spiegel des Servers)
+  // Stand des Faders einer Liste: der gespeicherte, sonst der Startstand aus den Standardwerten (Vorgabe 100)
+  const _masterOf = (id) => {
+    if (_masters[id] != null) return _masters[id];
+    const start = Number(((client.state && client.state.console_defaults) || {}).executor_start);
+    return Number.isFinite(start) ? start : 100;
+  };
   const SEND_MS = 40;
   // Taste -> Konfig-Schluessel und Klasse (die Klassen bleiben die der frueheren Listen-Tasten)
   const BUTTONS = [
@@ -13068,7 +16899,7 @@ window.__panelAPI = {
     cueEl.textContent = active ? i18n("EXEC_ACTIVE_CUE").replace("{cue}", _fmt(active.number) + " " + active.name) : i18n("EXEC_NO_ACTIVE");
     if (track) {
       track.classList.toggle("executor__track--disabled", !cl);
-      _paintFader(panelEl, cl ? (_masters[cl.id] != null ? _masters[cl.id] : 100) : 0);
+      _paintFader(panelEl, cl ? _masterOf(cl.id) : 0);
     }
     // Go-Vorschau: naechster Cue (nach dem aktiven; am Ende der erste mit Nummer > 0), wie bisher im Listen-Panel
     const goBtn = panelEl.querySelector(".cuelist-toolbar__btn--go");
@@ -13205,7 +17036,7 @@ window.__panelAPI = {
         const cl = _boundList(panelOf());
         if (!cl || !["ArrowUp", "ArrowDown"].includes(event.key)) return;
         event.preventDefault();
-        const level = Math.max(0, Math.min(100, (_masters[cl.id] != null ? _masters[cl.id] : 100) + (event.key === "ArrowUp" ? 5 : -5)));
+        const level = Math.max(0, Math.min(100, _masterOf(cl.id) + (event.key === "ArrowUp" ? 5 : -5)));
         _masters[cl.id] = level;
         _setFader(panelOf(), level);
         window.__panelAPI.sendToServer("set_cuelist_master", { cuelist_id: cl.id, value: level });
@@ -13423,7 +17254,7 @@ const CommandBuffer = (() => {
 })();
 
 // ═══════════════════════════════════════════════════════════════════
-// Command Line Panel Plugin (dot2-/MA-Lighting-Stil, siehe documentation/commands.md
+// Command Line Panel Plugin (Lichtpult-Stil, siehe static/help/commands.en.md
 // und app/command_line.py) - Log + Eingabezeile mit History, sendet jeden
 // Befehl per WebSocket ("run_command") an den serverseitigen Parser.
 // Log UND Historie sind modul-weit (nicht pro Panel-Instanz) geteilt -
@@ -13549,6 +17380,7 @@ const CommandBuffer = (() => {
   function _renderAllLogs() {
     document.querySelectorAll('[data-panel-type="command_line"]').forEach(_renderLog);
   }
+  const _loggedPayloads = new WeakSet();                       // schon eingetragene Nachrichten (siehe onMessage)
 
   // Fuehrt den Eingabepuffer aus (Enter in der Befehlszeile oder "Please" im Tasten-Panel).
   function _submit() {
@@ -13717,6 +17549,12 @@ const CommandBuffer = (() => {
     },
 
     onMessage(panelEl, messageType, payload) {
+      // Jedes geoeffnete Befehlszeilen-Panel bekommt dieselbe Nachricht, die Liste _log gehoert aber allen gemeinsam: nur EINMAL pro Nachricht eintragen
+      // (sonst steht bei zwei Panels - z. B. im Layout und als Fenster (Strg+F) - jeder Befehl doppelt im Verlauf; der Befehl selbst lief nur einmal).
+      if ((messageType === "command_log" || messageType === "dmx_reinit_done") && payload && typeof payload === "object") {
+        if (_loggedPayloads.has(payload)) return;
+        _loggedPayloads.add(payload);
+      }
       if (messageType === "command_log") {
         _log.push({
           command: payload.command,
@@ -14011,7 +17849,8 @@ const CommandBuffer = (() => {
       for (const def of BUTTON_KEYWORDS) {
         grid.appendChild(_makeButton(def));
       }
-      requestAnimationFrame(() => { if (window.__syncBlackout) window.__syncBlackout(); });
+      if (typeof ResizeObserver === "function") new ResizeObserver(() => _fitCommandButtons(grid)).observe(grid);          // die Tasten fuellen das Panel: Spalten und Zeilen passen sich der Groesse an
+      requestAnimationFrame(() => { _fitCommandButtons(grid); if (window.__syncBlackout) window.__syncBlackout(); });
       return grid;
     },
 
@@ -14019,6 +17858,46 @@ const CommandBuffer = (() => {
   });
 
 })();
+
+/** Befehls-Tasten: Spalten und Zeilen so waehlen, dass ALLE Tasten das Panel ausfuellen - kein Rest unten, nichts am Rand abgeschnitten. Die Tasten werden in beide Richtungen
+ *  gedehnt (hoeher, wenn unten Platz ist; schmaler, wenn die Breite knapp ist) und bevorzugt querformatig. Reicht der Platz auch mit den kleinsten Tasten nicht, gilt die Anordnung mit
+ *  den wenigsten Zeilen und das Panel rollt (die Breite rechnet dann die Rollleiste schon ein, damit keine Spalte angeschnitten wird). */
+function _fitCommandButtons(grid) {
+  const n = grid.children.length;
+  if (!n || !grid.isConnected) return;
+  const rect = grid.getBoundingClientRect();
+  if (!rect.width || !rect.height) return;
+  const rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+  const cs = getComputedStyle(grid);
+  const gap = parseFloat(cs.columnGap) || 0;
+  const pad = parseFloat(cs.paddingLeft) || 0;
+  const minW = 3.2 * rem;
+  const minH = 1.8 * rem;
+  const W = rect.width - 2 * pad;
+  const H = rect.height - 2 * pad;
+  let best = null;
+  for (let c = 1; c <= n; c++) {
+    const r = Math.ceil(n / c);
+    const cw = (W - (c - 1) * gap) / c;
+    const ch = (H - (r - 1) * gap) / r;
+    if (cw < minW || ch < minH) continue;
+    const score = -(c * r - n) * 1000 - Math.abs(Math.log((cw / ch) / 2.4)) * 100;       // moeglichst keine leeren Plaetze, dann etwa 2,4 : 1
+    if (!best || score > best.score) best = { c, r, score };
+  }
+  if (best) {
+    grid.style.gridTemplateColumns = "repeat(" + best.c + ", minmax(0, 1fr))";
+    grid.style.gridTemplateRows = "repeat(" + best.r + ", minmax(" + minH + "px, 1fr))";
+    grid.style.gridAutoRows = "";
+    grid.style.alignContent = "stretch";
+    return;
+  }
+  const usable = W - 16;                                                                  // Rollleiste
+  const c = Math.max(1, Math.min(n, Math.floor((usable + gap) / (minW + gap))));
+  grid.style.gridTemplateColumns = "repeat(" + c + ", minmax(0, 1fr))";
+  grid.style.gridTemplateRows = "";
+  grid.style.gridAutoRows = Math.max(minH, 2.2 * rem) + "px";
+  grid.style.alignContent = "start";
+}
 
 // ---- Effekt-Studio (Skripte in einer C++/Arduino-aehnlichen Sprache) ----------------------------------------------
 // Editor fuer Effekt-Skripte (.fx; Sprache und Anleitung: static/help/effect-studio.de.md bzw. .en.md, auch ueber den Knopf "Hilfe"). Der Server speichert, laedt und
@@ -14366,7 +18245,7 @@ const CommandBuffer = (() => {
           del.appendChild(Icons.svg("trash"));
           del.addEventListener("click", async (e) => {
             e.stopPropagation();
-            if (!(await _askLayoutConfirm({ title: T("FXS_DELETE_TITLE"), body: T("FXS_DELETE_BODY", { name: f.name }), confirmKey: "FXS_DELETE_OK" }))) return;
+            if (!(await _askDelete("library", { title: T("FXS_DELETE_TITLE"), body: T("FXS_DELETE_BODY", { name: f.name }), confirmKey: "FXS_DELETE_OK" }))) return;
             await deleteFile(f.name);
           });
           acts.append(star, del);
@@ -14718,7 +18597,7 @@ const CommandBuffer = (() => {
     const st = model.get(root);
     if (!st.name || st.origin !== "user") return;
     const name = st.name;
-    if (!(await _askLayoutConfirm({ title: T("FXS_DELETE_TITLE"), body: T("FXS_DELETE_BODY", { name }), confirmKey: "FXS_DELETE_OK" }))) return;
+    if (!(await _askDelete("library", { title: T("FXS_DELETE_TITLE"), body: T("FXS_DELETE_BODY", { name }), confirmKey: "FXS_DELETE_OK" }))) return;
     if (await deleteFile(name)) setStatus(root, true, T("FXS_DELETED", { name }));
   }
 
@@ -14803,6 +18682,7 @@ const CommandBuffer = (() => {
     g.textAlign = "right";
     let lx = w - pad.r - 4;
     for (const [label, color] of legend.reverse()) { g.fillStyle = color; g.fillText(label, lx, pad.t + 10); lx -= g.measureText(label).width + 10; }
+    if (data.audio) { g.fillStyle = c.text; g.textAlign = "left"; g.fillText(i18n("FXS_AUDIO_NOTE").replace("{bpm}", String(Math.round(data.bpm || 120))), pad.l + 6, pad.t + 10); }     // Audio-Effekt: die Vorschau laeuft mit einem Beispiel-Takt
   }
 
   function drawExtra(canvas, data) {
@@ -14871,7 +18751,8 @@ const CommandBuffer = (() => {
     if (!variables.length) { box.appendChild(el("div", "fxs-pv-hint", T("FXS_PV_NO_PARAMS"))); return; }
     for (const v of variables) {
       const row = el("label", "fxs-param");
-      row.appendChild(el("span", "fxs-param__name", v.name));
+      row.appendChild(el("span", "fxs-param__name", window.OCFxPicker ? window.OCFxPicker.varLabel({ category: st.good.category }, v) : v.name));
+      if (window.OCFxPicker) row.title = window.OCFxPicker.varTip({ category: st.good.category }, v);
       const current = st.params[v.name] !== undefined ? st.params[v.name] : v.default;
       if (v.kind === "ColorPicker") {
         const input = el("input");
@@ -14973,6 +18854,7 @@ const CommandBuffer = (() => {
       button("fxs-pv-toggle", "FXS_PREVIEW", () => {
         const preview = root.querySelector(".fxs-preview");
         preview.hidden = !preview.hidden;
+        OCViewState.set(OCViewState.scopeOf(root), "fxs:previewHidden", preview.hidden);          // zuletzt benutzte Ansicht dieses Geraets
         root.classList.toggle("fxs--no-preview", preview.hidden);
         if (!preview.hidden) requestAnimationFrame(() => drawPreview(root));
       }));
@@ -15044,6 +18926,10 @@ const CommandBuffer = (() => {
 
     root.append(head, main, status);
     root.classList.add("fxs");
+    if (OCViewState.get(OCViewState.scopeOf(root), "fxs:previewHidden", false)) {
+      const savedPreview = root.querySelector(".fxs-preview");
+      if (savedPreview) { savedPreview.hidden = true; root.classList.add("fxs--no-preview"); }
+    }
     studios.add(root);
     const observer = new ResizeObserver(() => {
       if (!root.isConnected) { observer.disconnect(); return; }

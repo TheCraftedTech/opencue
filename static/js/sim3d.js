@@ -1,14 +1,18 @@
-/* Panel "3D-Simulation" (Schritt 1: Ansicht; Schritt 2: Baumodus, siehe sim3d_build.js): eine leere 3D-Buehne, die die ganze Panel-Flaeche fuellt - Boden mit Raster und ein Koordinatensystem (Z nach oben,
+// Copyright (C) 2026 Samuel Zenker
+// SPDX-License-Identifier: GPL-3.0-or-later
+/* Panel "3D-Simulation" (Ansicht; Baumodus siehe sim3d_build.js): eine leere 3D-Buehne, die die ganze Panel-Flaeche fuellt - Boden mit Raster und ein Koordinatensystem (Z nach oben,
  * Meter: X rot, Y gruen, Z blau). Die Kamera laesst sich bewegen: Maus - links ziehen = drehen, rechts/Mitte ziehen = verschieben, Rad = zoomen;
  * Touch - ein Finger = drehen, zwei Finger = zoomen und verschieben (Pinch); Doppelklick oder der Pfeil-Knopf = Ansicht zuruecksetzen; der Vollbild-Knopf legt
  * die Buehne ueber die ganze Oberflaeche (eigenes Vollbild wie bei Video/Livestream, siehe fullscreen.js). Die Kamera darf bis auf den Boden herunter.
  * Leistung: gezeichnet wird nur bei Bedarf, die Schattenkarten nur bei Aenderungen der Szene (nicht beim Kamerafahren). Die Aufloesung folgt einem Pixelbudget (Megapixel), das je nach
  * Grafikkarte startet und sich im Modus "Auto" an die gemessene Bildrate anpasst; der Knopf unten links zeigt Bildrate/Grafikkarte und schaltet Niedrig/Mittel/Hoch um.
- * Aussehen wie die Vorlage (_old/3d-Bühne-Vorlage.html): ACES-Tonemapping, leichter Nebel, Schatten PCF. three.js liegt lokal in static/vendor/three (Import-Map in index.html). */
+ * Aussehen: ACES-Tonemapping, leichter Nebel, Schatten PCF. three.js liegt lokal in static/vendor/three (Import-Map in index.html). */
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { attachBuilder } from "/static/js/sim3d_build.js";
 import { createRoom } from "/static/js/sim3d_room.js";
+import { createCamSync } from "/static/js/sim3d_camsync.js";
+import { createVR } from "/static/js/sim3d_vr.js";
 
 /** Farbe eines Theme-Tokens (z. B. --surface-1) als THREE.Color: die Buehne folgt dem globalen Stil (neutrales Grau) statt eigener Blautoene. */
 function themeColor(host, name, fallback) {
@@ -115,6 +119,11 @@ function injectStyle() {
     .sim3d__btn.sim3d__btn--wide { width: auto; flex: 1 1 0; gap: 0.45rem; padding: 0 0.6rem; height: 2.5rem; font: inherit; justify-content: flex-start; }
     .sim3d__btn.sim3d__btn--danger { color: var(--error, #e5484d); }
     .sim3d__list { list-style: none; margin: 0; padding: 0; border: 1px solid var(--border-color); border-radius: var(--base-radius, 3px); max-height: 12rem; overflow: auto; }
+    .sim3d__group--fill { flex: 1 1 14rem; min-height: 10rem; }
+    .sim3d__group--fill > .sim3d__list { flex: 1 1 auto; max-height: none; min-height: 0; }
+    .sim3d__filter { display: flex; gap: 0.4rem; align-items: center; }
+    .sim3d__filter .sim3d__text { flex: 1 1 auto; min-width: 0; }
+    .sim3d__btn--on { border-color: var(--accent-color); color: var(--accent-color); }
     .sim3d__item { display: flex; align-items: center; gap: 0.5rem; min-height: 2.5rem; padding: 0 0.6rem; border-bottom: 1px solid var(--border-color); cursor: pointer; }
     .sim3d__item:last-child { border-bottom: 0; }
     .sim3d__item--sel { background: var(--accent-soft, rgba(255, 176, 0, 0.2)); }
@@ -128,6 +137,18 @@ function injectStyle() {
     .sim3d__swatch { width: 0.9rem; height: 0.9rem; border-radius: 2px; border: 1px solid var(--border-color); flex: 0 0 auto; }
     .sim3d__empty, .sim3d__hint { color: var(--secondary-text); padding: 0.5rem 0.2rem; margin: 0; font-size: 0.8rem; }
     .sim3d__list .sim3d__empty { padding: 0.6rem; }
+    .sim3d__hint--warn { color: var(--warn, #ffb000); }
+    .sim3d__btn.sim3d__btn--toggle { flex: 0 0 auto; width: 100%; }
+    .sim3d__btn.sim3d__btn--on { border-color: var(--accent-color); color: var(--accent-color); }
+    .sim3d__models { display: flex; flex-direction: column; gap: 0.4rem; padding: 0.45rem; border: 1px solid var(--border-color); border-radius: var(--base-radius, 3px); }
+    .sim3d__model-list { list-style: none; margin: 0; padding: 0; max-height: 11rem; overflow: auto; display: flex; flex-direction: column; gap: 0.25rem; }
+    .sim3d__model { display: flex; align-items: center; gap: 0.5rem; width: 100%; min-height: 2.4rem; padding: 0 0.55rem; box-sizing: border-box; background: transparent; color: var(--text-main);
+      border: 1px solid var(--border-color); border-radius: var(--base-radius, 3px); font: inherit; text-align: left; cursor: pointer; }
+    .sim3d__model:hover:not(:disabled) { border-color: var(--accent-color); }
+    .sim3d__model:disabled { opacity: 0.5; cursor: not-allowed; }
+    .sim3d__model .ico { width: 1.05rem; height: 1.05rem; flex: 0 0 auto; color: var(--secondary-text); }
+    .sim3d__model-name { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .sim3d__model-meta { flex: 0 0 auto; font-size: 0.7rem; color: var(--secondary-text); }
     .sim3d__grid { display: grid; grid-template-columns: 4.2rem repeat(3, minmax(0, 1fr)); gap: 0.25rem; align-items: center; }
     .sim3d__grid label { color: var(--secondary-text); font-size: 0.78rem; }
     .sim3d__field { display: inline-flex; align-items: center; gap: 0.15rem; min-width: 0; height: 2.5rem; padding: 0 0.3rem; box-sizing: border-box; background: var(--bg-color);
@@ -146,6 +167,14 @@ function injectStyle() {
     .sim3d__readout { position: absolute; z-index: 5; pointer-events: none; padding: 0.15rem 0.55rem; background: var(--surface-3); border: 1px solid var(--accent-color);
       border-radius: 1rem; color: #fff; font-size: 0.8rem; font-variant-numeric: tabular-nums; white-space: nowrap; }
     .sim3d__readout[hidden] { display: none; }
+    .sim3d__range { gap: 0.5rem; }
+    .sim3d__range .sim3d__snap-label { flex: 0 0 6.4rem; }
+    .sim3d__range input[type=range] { flex: 1 1 auto; min-width: 0; accent-color: var(--accent-color); }
+    .sim3d__range output { flex: 0 0 3.4rem; text-align: right; font-variant-numeric: tabular-nums; color: var(--secondary-text); font-size: 0.8rem; }
+    .sim3d__check { display: inline-flex; align-items: center; gap: 0.4rem; cursor: pointer; font-size: 0.85rem; }
+    .sim3d__check input { accent-color: var(--accent-color); margin: 0; }
+    .sim3d__btn--idle { opacity: 0.6; }
+    .sim3d__marquee { position: absolute; z-index: 4; pointer-events: none; border: 1px dashed var(--accent-color); background: color-mix(in srgb, var(--accent-color) 14%, transparent); }
     .sim3d__stage { display: flex; align-items: center; gap: 0.4rem; }
     .sim3d__stage-name { flex: 1 1 auto; min-width: 0; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .sim3d__btn:disabled { opacity: 0.4; cursor: default; }
@@ -206,8 +235,8 @@ function createScene(host) {
   const bg = themeColor(host, "--bg", 0x0c0c0d);
   scene.background = bg;
   scene.fog = new THREE.FogExp2(bg, 0.004 + 0.4 * 0.016);       // leichter Dunst wie in der Vorlage (Dichte folgt dem Nebel-Regler des Scheinwerfers)
-  const setHaze = (fraction) => {
-    const density = 0.004 + Math.max(0, Math.min(1, fraction)) * 0.016;
+  const setHaze = (fraction, noFog) => {
+    const density = noFog ? 0 : 0.004 + Math.max(0, Math.min(1, fraction)) * 0.016;          // im Baumodus kein Nebel um die Flaeche: beim Herauszoomen wird nichts dunkler
     if (Math.abs(density - scene.fog.density) < 1e-6) return;          // unveraendert: kein neues Bild (wird aus dem Bildhaken aufgerufen)
     scene.fog.density = density;
     invalidate();
@@ -258,7 +287,7 @@ function createScene(host) {
   controls.maxPolarAngle = Math.PI * 0.56;              // bis knapp ueber den Boden und leicht nach oben schauen (die Kamera selbst bleibt ueber dem Boden, siehe frame())
   controls.rotateSpeed = 0.9;
   controls.touches = { ONE: THREE.TOUCH.ROTATE, TWO: THREE.TOUCH.DOLLY_PAN };
-  controls.mouseButtons = { LEFT: THREE.MOUSE.ROTATE, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.PAN };
+  controls.mouseButtons = { LEFT: THREE.MOUSE.ROTATE, MIDDLE: THREE.MOUSE.PAN, RIGHT: THREE.MOUSE.ROTATE };      // wie Tinkercad: rechte Taste dreht die Ansicht, mittlere verschiebt, Mausrad zoomt (Umschalt + Drehen = Verschieben); im Baumodus gehoert die linke Taste den Objekten
   controls.update();
 
   let wake = false;                                      // ein Bildhaken (Live-Licht) animiert noch: im naechsten Takt weiterzeichnen
@@ -272,7 +301,7 @@ function createScene(host) {
   let shiftAnim = 0;
   const frame = () => {
     raf = 0;
-    if (destroyed) return;
+    if (destroyed || renderer.xr.isPresenting) return;      // mit VR-Brille zeichnet deren eigene Bildschleife (sim3d_vr.js)
     if (!host.isConnected) { destroy(); return; }       // Panel wurde entfernt
     if (inflight.length >= 2) { invalidateView(); return; }       // die Grafikkarte hinkt hinterher: kein weiteres Bild vorbestellen (sonst staut sich Arbeit und alles haengt)
     const moving = controls.update();                    // true, solange die Daempfung noch nachlaeuft
@@ -284,7 +313,7 @@ function createScene(host) {
     track();
     if (moving || wake) invalidateView();                // nie zwei Ketten: invalidateView plant nur, wenn noch nichts geplant ist (wake: ein Bildhaken animiert noch, z. B. Live-Licht)
   };
-  const invalidateView = () => { if (!raf && !destroyed) raf = requestAnimationFrame(frame); };           // nur die Kamera hat sich bewegt: Schattenkarten bleiben
+  const invalidateView = () => { if (!raf && !destroyed && !renderer.xr.isPresenting) raf = requestAnimationFrame(frame); };           // nur die Kamera hat sich bewegt: Schattenkarten bleiben
   const invalidate = () => { sceneVersion.n += 1; renderer.shadowMap.needsUpdate = true; invalidateView(); };                  // die Szene hat sich geaendert
   controls.addEventListener("change", invalidateView);
   controls.addEventListener("start", () => { interacting = true; clearTimeout(settle); });
@@ -298,8 +327,9 @@ function createScene(host) {
   try { const saved = localStorage.getItem(QUALITY_STORE); if (saved === "low" || saved === "medium" || saved === "high") setting = saved; } catch (err) { /* ohne Speicher: Auto */ }
   let autoLevel = Math.min(gpu.start, AUTO_MAX);
   let autoCap = AUTO_MAX;                                // wird gesenkt, wenn eine hoehere Stufe nicht hielt
-  const level = () => (setting === "auto" ? autoLevel : MANUAL_LEVEL[setting]);
-  const quality = { get level() { return level(); }, get shadowSize() { return SHADOW_SIZES[level()]; }, get setting() { return setting; }, setSetting: (next) => setSetting(next), gpu, listeners: [] };
+  let forcedLevel = null;                                // VR: feste Stufe 0 (einfaches Licht), solange die Brille benutzt wird
+  const level = () => (forcedLevel !== null ? forcedLevel : setting === "auto" ? autoLevel : MANUAL_LEVEL[setting]);
+  const quality = { get level() { return level(); }, get shadowSize() { return SHADOW_SIZES[level()]; }, get setting() { return setting; }, setSetting: (next) => setSetting(next), force: (next) => { forcedLevel = next; levelChanged(); }, gpu, listeners: [] };
   // Grenzen des Lichtvorrats (je Geraet, gespeichert im Browser): wie viele Scheinwerfer gleichzeitig ihr eigenes Licht auf die Flaechen werfen, wie viele davon mit Schatten und wie viele
   // Spiegel-Strahlen (Metall/Spiegel). 0 = unbegrenzt - es zaehlt dann nur, was die Grafikkarte leisten kann (limits.gpu: Texturen und Shader-Konstanten); live.js meldet in limits.info,
   // was tatsaechlich gilt. Ohne Grenze bekommt jeder Scheinwerfer dieselbe Behandlung (Lichtfleck, Raumlicht-Anteil, Nebel, Schatten).
@@ -490,7 +520,7 @@ function createScene(host) {
     };
     flight = requestAnimationFrame(step);
   };
-  canvas.addEventListener("dblclick", reset);
+  // (Doppelklick setzt die Ansicht NICHT mehr zurueck - das stoerte; dafuer gibt es den Knopf "Ansicht zuruecksetzen")
 
   function destroy() {
     if (destroyed) return;
@@ -590,6 +620,18 @@ function buildContent() {
       sim.room = { work: 100, envScale: 1, ambient: 0, pool: [], setMode() {}, onEnv() {}, update() {}, dispose() {} };
     }
     sim.onDestroy.push(() => sim.room.dispose());
+    try {
+      sim.vr = createVR(sim, root, tools);                           // VR-Modus (WebXR): Knopf nur, wenn der Browser eine Brille anbietet
+      sim.onDestroy.push(() => sim.vr.dispose());
+    } catch (err) {
+      console.error("VR-Modus konnte nicht aufgebaut werden:", err);
+    }
+    try {
+      sim.camSync = createCamSync(sim, root, tools);                 // Kamera mit anderen Geraeten teilen (Gruppen, siehe sim3d_camsync.js)
+      sim.onDestroy.push(() => sim.camSync.dispose());
+    } catch (err) {                                                  // ein Fehler hier darf die Simulation nicht verhindern
+      console.error("Kamera-Synchronisation konnte nicht aufgebaut werden:", err);
+    }
     root._builder = attachBuilder(root, sim);
     sim.onDestroy.push(() => root._builder && root._builder.dispose());
     resetButton.addEventListener("click", () => sim.reset());
@@ -604,6 +646,7 @@ function onMessage(panelEl, messageType) {
   const builder = root && root._builder;
   if (!builder) return;
   if (messageType === "grand_master_changed" && builder.liveChanged) builder.liveChanged();           // Grand Master wirkt auf die Helligkeit der Lichtkegel
+  if (messageType === "sim_models_changed" && builder.modelsChanged) builder.modelsChanged();         // Modell-Bibliothek geaendert (Dateimanager)
   if ((messageType === "fixtures_changed" || messageType === "state_snapshot" || messageType === "show_loaded") && builder.fixturesChanged) builder.fixturesChanged();
 }
 

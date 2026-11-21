@@ -1,3 +1,5 @@
+# Copyright (C) 2026 Samuel Zenker
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Macht aus selbst gebauten Layouts die mitgelieferten Beispiel-Layouts (defaults/layouts/*.json). Nur Entwicklung, gehoert nicht ins Programm.
 
 Ablauf: Layouts in OpenCue zusammenstellen und speichern (z. B. Standard_1, Standard_2 ...; sie liegen unter %LOCALAPPDATA%\\OpenCue\\layouts), dann

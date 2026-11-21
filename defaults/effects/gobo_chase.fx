@@ -1,5 +1,7 @@
 #NAME Gobo Chase
-#DESCRIPTION Jeder Scheinwerfer zeigt ein anderes Gobo, und alle schalten gemeinsam weiter.
+#DESCRIPTION en Every fixture shows a different gobo and they shift along.
+#DESCRIPTION de Jeder Scheinwerfer zeigt ein anderes Gobo, und sie rücken weiter.
+#TAGS advanced, chase
 #CATEGORY gobo
 #RATE 40
 #VAR speed Slider 0.5 0.05 8 0.05

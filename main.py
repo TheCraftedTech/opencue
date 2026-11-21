@@ -19,7 +19,14 @@
 main.py
 Einstiegspunkt von OpenCue.
 
-Version und Programm-Metadaten stehen an EINER Stelle: app/version.py (APP_VERSION = "1.0.0", Anzeige "v1.0.0"). `python main.py --version` gibt sie aus.
+Version und Programm-Metadaten stehen an EINER Stelle: app/version.py (APP_VERSION = "1.0.0", Anzeige "v1.0.0"). `python main.py --version` gibt sie aus. Alle Startparameter (--no-ui / --server-only fuer den Betrieb ohne Fenster, --show, --new-show, --port, --remote, --data-dir, --fullscreen, --priority, --no-splash ...) stehen in app/cli.py und in `--help`.
+
+START-PRUEFUNGEN UND FEHLER (immer in dieser Reihenfolge, bevor etwas anderes startet):
+1. app/single_instance.py: laeuft schon ein OpenCue mit demselben Datenordner? -> dessen Fenster nach vorn, Fehlerfenster OC-1001, Ende.
+2. app/logsetup.py: Protokolldatei <Datenordner>/logs/opencue.log (vorige: opencue.previous.log), Konsole wird gespiegelt, faulthandler.
+3. app/crash.py: unbehandelte Fehler (Hauptthread, Hintergrund-Threads, Server-Thread) -> Log + Fehlerfenster (OC-2001..OC-2004).
+4. Startbild; danach (in main()) WebView2-Pruefung (OC-1003) und Port-Pruefung (OC-1002) VOR dem Start des Servers.
+Fehlerfenster und Codes: app/error_window.py, app/errors.py (immer Englisch, nicht konfigurierbar).
 
 
 THREADING-MODELL (wichtig):
@@ -111,59 +118,117 @@ import sys
 import threading
 import time
 import webbrowser
+from pathlib import Path
 
+_T0 = time.monotonic()                          # Zeitnullpunkt fuer die Start-Messung im Protokoll
 
-def _prepare_frozen_streams() -> None:
-    """PyInstaller-Build ohne Konsole (--windowed): sys.stdout/sys.stderr sind None, uvicorns Logging ruft aber isatty() darauf auf und bricht ab. Deshalb gehen beide in
-    eine Protokolldatei (%LOCALAPPDATA%\\OpenCue\\logs\\opencue.log, bei jedem Start neu; ab 2 MB wird die alte als opencue.log.1 behalten). Im Quelltext-Betrieb passiert nichts."""
-    if not getattr(sys, "frozen", False) or (sys.stdout is not None and sys.stderr is not None):
-        return
-    base = os.environ.get("LOCALAPPDATA", "")
-    folder = os.path.join(base if base else os.path.expanduser("~"), "OpenCue" if base else ".opencue", "logs")
-    try:
-        os.makedirs(folder, exist_ok=True)
-        path = os.path.join(folder, "opencue.log")
-        if os.path.isfile(path) and os.path.getsize(path) > 2 * 1024 * 1024:
-            os.replace(path, path + ".1")
-        stream = open(path, "w", buffering=1, encoding="utf-8", errors="replace")
-    except OSError:
-        stream = open(os.devnull, "w", encoding="utf-8")
-    if sys.stdout is None:
-        sys.stdout = stream
-    if sys.stderr is None:
-        sys.stderr = stream
+# Der Ausgabe-Prozess der DMX-Ausgabe (app/dmx_output.py): ein zweiter, schlanker Prozess - vor ALLEM anderen, ohne Fenster, Server, Protokoll und Einzelstart-Pruefung.
+if len(sys.argv) > 2 and sys.argv[1] == "--dmx-output":
+    from app.dmx_output import child_main
+    sys.exit(child_main(sys.argv[2:]))
 
-
-_prepare_frozen_streams()                       # vor allen Importen, die Logging einrichten (uvicorn, app.server)
 
 from app.version import APP_NAME, APP_VERSION_LABEL, WEBVIEW2_URL  # noqa: E402  (leicht: nur Konstanten)
 
-if "--version" in sys.argv[1:]:
-    print(f"{APP_NAME} {APP_VERSION_LABEL}")
-    sys.exit(0)
+# Startparameter (app/cli.py: --no-ui, --show, --port, --remote, --data-dir ...). --help / --version / ein Fehler beenden hier. Setzt auch Umgebungsvariablen (Datenordner,
+# Start-Show), die erst die spaeteren Importe lesen - deshalb VOR ihnen.
+from app import cli  # noqa: E402  (leicht)
+
+OPTIONS = cli.parse()
+
+# Nur ein OpenCue je Datenordner: als ERSTES pruefen, noch vor Protokoll, Startbild, Server und Port (app/single_instance.py). Laeuft schon eines, kommt dessen
+# Fenster in den Vordergrund und das Fehlerfenster OC-1001 (app/error_window.py); dieses Programm beendet sich, ohne etwas anzufassen.
+from app import errors, single_instance  # noqa: E402
+
+
+def _check_data_folder() -> None:
+    """Der Datenordner muss sich anlegen und beschreiben lassen (OC-1004) - sonst gaebe es weder Einstellungen noch Log; ohne Pruefung kaeme nur ein stummer Absturz."""
+    try:
+        from app import paths
+        probe = paths.default_data_root() / "config" / ".write-test"
+        probe.write_text("ok", encoding="utf-8")
+        probe.unlink()
+    except Exception as exc:
+        folder = os.environ.get("OPENCUE_DATA_DIR") or os.path.join(os.environ.get("LOCALAPPDATA", "~"), "OpenCue")
+        errors.present("OC-1004", details=f"Folder: {folder}\n{type(exc).__name__}: {exc}")
+        sys.exit(1)
+
+
+_check_data_folder()
+if not single_instance.acquire():
+    _running = single_instance.read_runfile()
+    _raised = single_instance.raise_running_window()
+    print(f"[{APP_NAME}] another instance is already running (its window was raised: {_raised})")
+    if OPTIONS.show and _running.get("port") and single_instance.forward_show(_running["port"], os.environ.get("OPENCUE_START_SHOW") or OPTIONS.show):         # Doppelklick auf eine Show-Datei: das laufende OpenCue oeffnet sie
+        print(f"[{APP_NAME}] the file was handed to the running instance")
+        sys.exit(0)
+    if _running.get("headless") and _running.get("port"):                    # ein Server ohne Fenster laeuft: kein Fehler, sondern gleich die Konsole im Browser zeigen
+        webbrowser.open(f"http://127.0.0.1:{int(_running['port'])}")
+        sys.exit(0)
+    errors.present("OC-1001")
+    sys.exit(1)
+
+# Protokolldatei (opencue.log, vorige als opencue.previous.log) und Absturz-Haken - vor allen Importen, die Logging einrichten (uvicorn, app.server).
+from app import crash, logsetup  # noqa: E402
+
+logsetup.prepare()
+crash.install()
+
+from app import windows_env  # noqa: E402
+
+windows_env.set_priority(OPTIONS.priority)                      # stabileres Zeitverhalten der DMX-Ausgabe bei ausgelastetem Rechner (kein Administrator noetig)
+windows_env.precise_timers(True)                                # Zeitgeber 1 ms statt ~15,6 ms: gleichmaessigere 40-Hz-Schleifen
+print(f"[{APP_NAME}] {windows_env.describe()} | priority {OPTIONS.priority}" + (" | mode: server only (no window)" if OPTIONS.no_ui else ""))
+if windows_env.is_admin():
+    print(f"[{APP_NAME}] NOTE: OpenCue runs as administrator. That is not needed (only the firewall rule needs it) and Windows then blocks drag & drop of files from Explorer into the window.")
+
+# Startbild SOFORT zeigen, noch vor den schweren Importen unten (uvicorn, webview, Server ~2 s); es schliesst sich erst, wenn die Oberflaeche
+# im Programmfenster fertig aufgebaut ist (siehe main(): ui_ready). Rein ctypes, Details in app/splash.py.
+from app.splash import Splash, logo_path  # noqa: E402
+from app.version import APP_DESCRIPTION  # noqa: E402
+
+splash = Splash(logo_path(), APP_DESCRIPTION, APP_VERSION_LABEL)
+splash.start()
+from app import startup_progress  # noqa: E402  (winzig)
+from app.error_window import Button  # noqa: E402
+crash.install(before_dialog=lambda: splash.close(wait=0.3), cleanup=lambda: _emergency_cleanup())      # Startbild weg, bevor ein Fehlerfenster kommt
+startup_progress.set_callback(splash.progress)        # Stationen (hier und im Server) melden Prozent + Text; Ablauf siehe app/startup_progress.py
 
 # Medien-Player: Video/Audio sollen auch ohne vorherigen Klick starten koennen (Timecode-gesteuerte Wiedergabe an der Konsole).
 # Muss gesetzt sein, bevor WebView2 startet.
 os.environ.setdefault("WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS", "--autoplay-policy=no-user-gesture-required")
 
+startup_progress.report(4, "Loading libraries")
 import uvicorn
 import webview
 
+startup_progress.report(14, "Loading network and camera modules")
 from app import host_cameras, remote
-from app.paths import get_data_root, project_root
+from app.paths import APP_CONFIG_PATH, get_data_root, project_root
+startup_progress.report(22, "Loading DMX engine")
 from app.dmx_engine import dmx_engine
 from app.lan_listener import lan
+startup_progress.report(26, "Loading console server")
 from app.server import app, request_close_prompt
 from app.state_manager import state
-from app.window_signals import close_allowed, exit_requested, file_dialog, fullscreen_toggle_requested
+if not state.first_start_done and (not OPTIONS.no_ui or os.environ.get("OPENCUE_ONBOARDING")) and not os.environ.get("OPENCUE_NO_ONBOARDING"):          # frische Installation: der Willkommens-Dialog fuehrt durch die ersten Einstellungen (static/js/welcome.js)
+    state.onboarding_pending = True
+startup_progress.report(40, "Checking display component")
+from app.window_signals import close_allowed, exit_requested, file_dialog, fullscreen_toggle_requested, ui_ready
 
 HOST = "127.0.0.1"  # Adresse, unter der der lokale PyWebView-Client den Server erreicht
-PORT = state.server_port   # Einstellung 'server_port'; Aenderungen gelten ab dem naechsten Start
+PORT = OPTIONS.port or state.server_port   # Einstellung 'server_port'; Aenderungen gelten ab dem naechsten Start; --port gilt nur fuer diesen Lauf
 # Der Server lauscht immer nur lokal; der Netzwerk-Zugriff (Remote) haengt zur Laufzeit je Netzwerk-Adresse weitere Listener dazu und wieder ab
 # (app/lan_listener.py) - ein-/ausschalten in den Einstellungen wirkt sofort, ohne Neustart. Nur ein geaenderter Port gilt ab dem naechsten Start.
 BIND_HOST = "127.0.0.1"
 remote.bound_host = BIND_HOST
 remote.bound_port = PORT
+if OPTIONS.remote and not state.remote_enabled:                       # --remote: Netzwerk-Zugriff (Fernzugriff) einschalten und in den Einstellungen merken
+    if not state.remote_password:                                     # es gibt kein Standardpasswort: ohne eigenes Passwort bleibt der Fernzugriff aus
+        print(f"[{APP_NAME}] --remote ignored: no password set yet. Open OpenCue on this computer and set one (Settings -> Security), then start again.")
+    else:
+        state.set_remote_enabled(True)
+        print(f"[{APP_NAME}] --remote: network access switched on (saved in the settings)")
 MIN_WINDOW_SIZE = (1024, 600)
 
 
@@ -190,6 +255,24 @@ def _wait_for_server(timeout_seconds: float = 10.0) -> None:
         time.sleep(0.1)
 
 
+def _run_server(server: uvicorn.Server) -> None:
+    """Rumpf des Server-Threads: ein Absturz (oder ein Start, der scheitert - uvicorn beendet sich dann mit SystemExit) ist schwer, aber nie stumm (OC-2003)."""
+    try:
+        server.run()
+    except BaseException:
+        if not server.should_exit:                                       # nicht beim normalen Beenden
+            crash.fatal("OC-2003", sys.exc_info())
+
+
+def _emergency_cleanup() -> None:
+    """Vor dem harten Ende nach einem schweren Fehler: Kameras freigeben, DMX sauber beenden (so weit schon geladen)."""
+    for step in (lambda: host_cameras.stop_all(), lambda: dmx_engine.shutdown()):
+        try:
+            step()
+        except Exception:
+            pass
+
+
 def _start_server() -> tuple[uvicorn.Server, threading.Thread]:
     """Startet Uvicorn in einem Hintergrund-Thread und gibt Server + Thread zurueck.
 
@@ -197,12 +280,38 @@ def _start_server() -> tuple[uvicorn.Server, threading.Thread]:
     per `should_exit` einen sauberen Shutdown auszuloesen und den Thread
     danach zu joinen, statt sich auf das Daemon-Flag allein zu verlassen.
     """
-    config = uvicorn.Config(app, host=BIND_HOST, port=PORT, log_level="info")
+    # ws_per_message_deflate=False: keine WebSocket-Kompression. Im lokalen Netz bringt sie nichts, kostete aber ~35 % der Rechenzeit des Servers bei starker Bedienung (je Nachricht zlib).
+    config = uvicorn.Config(app, host=BIND_HOST, port=PORT, log_level="info", ws_per_message_deflate=False)
     server = uvicorn.Server(config)
     lan.attach(server)                                   # Netzwerk-Listener (Remote) richtet der Lifespan-Start ein, sobald der Server laeuft
-    thread = threading.Thread(target=server.run, daemon=True)
+    thread = threading.Thread(target=_run_server, args=(server,), name="uvicorn", daemon=True)
     thread.start()
     return server, thread
+
+
+def _stop_everything(server: uvicorn.Server, server_thread: threading.Thread) -> None:
+    """Gemeinsamer Rest des Beendens (mit und ohne Fenster): DMX stoppen, ungespeicherte Aenderungen sichern, Server anhalten, Markierungen loeschen, ein vorgemerktes Update starten."""
+    dmx_engine.shutdown()
+
+    from app import backups
+    try:
+        backups.manager.take_now_blocking("exit")                    # ungespeicherte Aenderungen noch einmal sichern (Datei -> Sicherung wiederherstellen); doppelt wird nichts geschrieben
+    except Exception as exc:                                         # noqa: BLE001 - das Beenden darf daran nie haengen
+        print(f"[OpenCue] Sicherung beim Beenden nicht geschrieben: {exc}")
+
+    server.should_exit = True
+    server_thread.join(timeout=5)
+    backups.manager.end_session()                                    # sauber beendet: beim naechsten Start kein Angebot "Wiederherstellen" (nach einem Absturz bleibt die Markierung liegen)
+    single_instance.clear_runfile()
+    windows_env.precise_timers(False)
+
+    print("[OpenCue] Shutdown complete.")
+    try:
+        from app import updater
+        if updater.launch_pending_installer():              # Update vorgemerkt ("Jetzt installieren"): das Setup startet erst jetzt, nach dem Beenden
+            print("[OpenCue] Update-Setup gestartet.")
+    except Exception as exc:
+        print(f"[OpenCue] Update-Setup konnte nicht gestartet werden: {exc}")
 
 
 def _watch_exit_signal(window: webview.Window, stop_watching: threading.Event) -> None:
@@ -360,21 +469,17 @@ def _webview2_installed() -> bool:
 
 
 def _ensure_webview2() -> bool:
-    """Ohne WebView2 oeffnet sich kein Fenster. Statt eines stillen Abbruchs eine verstaendliche Meldung (Windows 10 ohne Edge-Laufzeit): Ja = Download-Seite oeffnen und beenden,
-    Nein = trotzdem versuchen zu starten (falls die Erkennung irrt). True = weiter."""
+    """Ohne WebView2 oeffnet sich kein Fenster. Statt eines stillen Abbruchs das Fehlerfenster OC-1003 (Windows 10 ohne Edge-Laufzeit): Download-Seite oeffnen und beenden,
+    oder trotzdem versuchen zu starten (falls die Erkennung irrt; Esc/X = beenden). True = weiter."""
     if _webview2_installed():
         return True
-    try:
-        import ctypes
-        text = ("OpenCue needs the Microsoft Edge WebView2 Runtime to show its window, but it was not found on this computer.\n\n"
-                "Yes: open the download page and close OpenCue.\nNo: try to start anyway.\n\n" + WEBVIEW2_URL)
-        answer = ctypes.windll.user32.MessageBoxW(0, text, APP_NAME, 0x04 | 0x30)         # MB_YESNO | MB_ICONWARNING
-    except Exception:
+    splash.close(wait=0.3)
+    answer = errors.present("OC-1003", details=WEBVIEW2_URL, buttons=[Button("continue", "Start anyway"), Button("download", "Open download page", primary=True)])
+    if answer == "continue":
         return True
-    if answer == 6:                                                                        # IDYES
+    if answer == "download":
         webbrowser.open(WEBVIEW2_URL)
-        return False
-    return True
+    return False
 
 
 def _window_icon() -> str | None:
@@ -386,13 +491,114 @@ def _window_icon() -> str | None:
     return None
 
 
-def main() -> None:
-    _set_app_user_model_id()
-    if not _ensure_webview2():
-        return
-    print(f"[{APP_NAME}] {APP_VERSION_LABEL} starting ...")
+def _tray_labels() -> dict:
+    """Menuetexte des Tray-Symbols in der Sprache der Konsole."""
+    from app.languages import tr
+    language = getattr(state, "language", "en")
+    return {"open": tr("SRV_TRAY_OPEN", language), "logs": tr("SRV_TRAY_LOGS", language), "quit": tr("SRV_TRAY_QUIT", language)}
+
+
+def _confirm_quit_headless() -> bool:
+    """Beenden ueber das Tray-Symbol: hat die Show ungespeicherte Aenderungen, einmal nachfragen (eine Sicherung wird in jedem Fall geschrieben)."""
+    if not state.is_dirty:
+        return True
+    from app.languages import tr
+    text = tr("SRV_QUIT_CONFIRM", getattr(state, "language", "en"))
+    try:
+        import ctypes
+        return ctypes.windll.user32.MessageBoxW(None, text, "OpenCue", 0x00000004 | 0x00000030 | 0x00010000) == 6          # Ja/Nein, Warnsymbol, in den Vordergrund; 6 = Ja
+    except Exception:
+        return True
+
+
+def _main_headless() -> None:
+    """Server ohne Programmfenster (--no-ui / --server-only): alles laeuft wie gewohnt, bedient wird im Browser (http://127.0.0.1:<Port>) oder per Fernzugriff. Tray-Symbol zum Beenden."""
+    import signal
+    print(f"[{APP_NAME}] {APP_VERSION_LABEL} starting (server only) ...")
+    if _port_is_open(HOST, PORT):
+        errors.present("OC-1002", details=f"Address: {HOST}:{PORT}\nSettings file: {APP_CONFIG_PATH}", port=PORT)
+        sys.exit(1)
     server, server_thread = _start_server()
     _wait_for_server()
+    ui_ready.set()                                                       # (kein Fenster, das fertig werden muesste: Fehler ab jetzt sind Laufzeitfehler, kein Startfehler)
+    url = f"http://{HOST}:{PORT}"
+    single_instance.write_runfile(PORT, True)
+    print(f"[{APP_NAME}] Server only - open {url} in a browser" + ("" if state.remote_enabled else "  (network access is off: only this computer; start with --remote or switch it on in Settings -> Remote access)"))
+
+    def _open_browser() -> None:
+        webbrowser.open(url)
+
+    def _open_logs() -> None:
+        try:
+            os.startfile(str(logsetup.log_dir()))                        # noqa: S606 - Windows
+        except Exception as exc:                                         # noqa: BLE001
+            print(f"[{APP_NAME}] log folder: {exc}")
+
+    def _quit() -> None:
+        if _confirm_quit_headless():
+            exit_requested.set()
+
+    def _tray_info() -> dict:
+        """Kopfzeilen des Tray-Menues: Show (mit Warnung bei ungespeicherten Aenderungen) und die Adressen, unter denen die Konsole erreichbar ist."""
+        from app.languages import tr
+        language = getattr(state, "language", "en")
+        name = state.showfile_name or tr("SRV_TRAY_UNTITLED", language)
+        urls = [url]
+        if state.remote_enabled:
+            urls += [f"http://{ip}:{PORT}" for ip in remote.lan_addresses()[:4]]
+        return {"title": tr("SRV_TRAY_SHOW", language, name=name), "urls": urls, "warning": tr("SRV_TRAY_UNSAVED", language) if state.is_dirty else ""}
+
+    def _tray_tooltip() -> str:
+        from app.languages import tr
+        extra = tr("SRV_TRAY_TIP_UNSAVED", getattr(state, "language", "en")) if state.is_dirty else ""
+        return f"OpenCue {APP_VERSION_LABEL} - {url}{extra}"
+
+    from app.tray import Tray
+    tray = Tray(_tray_tooltip(), _tray_labels, _open_browser, _open_logs, _quit, on_end_session=exit_requested.set, icon_path=_window_icon(), info=_tray_info, on_url=lambda address: webbrowser.open(address))
+    if not tray.start():
+        print(f"[{APP_NAME}] WARNING: the tray icon is not available - quit with Ctrl+C, from the web interface (File -> Exit) or by ending the process")
+    for sig in ("SIGINT", "SIGBREAK", "SIGTERM"):                        # Ctrl+C / Konsole schliessen / beenden
+        try:
+            signal.signal(getattr(signal, sig), lambda *_a: exit_requested.set())
+        except (AttributeError, ValueError, OSError):
+            pass
+    if OPTIONS.open_browser:
+        _open_browser()
+    try:
+        last_tip = ""
+        while not exit_requested.is_set() and server_thread.is_alive():
+            exit_requested.wait(timeout=0.5)
+            tip = _tray_tooltip()                                        # das Symbol warnt bei ungespeicherten Aenderungen (Hinweistext)
+            if tip != last_tip:
+                last_tip = tip
+                tray.set_tooltip(tip)
+    except KeyboardInterrupt:
+        pass
+    finally:
+        crash.dialogs_enabled = False
+        print(f"[{APP_NAME}] Shutting down ...")
+        host_cameras.stop_all()
+        tray.stop()
+        _stop_everything(server, server_thread)
+
+
+def main() -> None:
+    _set_app_user_model_id()
+    if OPTIONS.no_ui:
+        _main_headless()
+        return
+    if not _ensure_webview2():
+        splash.close()
+        return
+    print(f"[{APP_NAME}] {APP_VERSION_LABEL} starting ...")
+    if _port_is_open(HOST, PORT):                                        # belegt (anderes Programm): klare Meldung statt dessen Seite im eigenen Fenster
+        splash.close(wait=0.3)
+        errors.present("OC-1002", details=f"Address: {HOST}:{PORT}\nSettings file: {APP_CONFIG_PATH}", port=PORT)
+        sys.exit(1)
+    startup_progress.report(43, "Starting server")
+    server, server_thread = _start_server()
+    _wait_for_server()
+    single_instance.write_runfile(PORT, False)
 
     initial_geometry = _resolve_window_geometry()
 
@@ -411,14 +617,63 @@ def main() -> None:
 
     # Kein js_api-Parameter (Dummy-Container-Prinzip) - das Fenster ist ein
     # reiner Viewport auf die WebSocket-getriebene UI.
+    startup_progress.report(68, "Opening window")
     window = webview.create_window(
         "OpenCue",
         url=f"http://{HOST}:{PORT}",
         resizable=True,
         min_size=MIN_WINDOW_SIZE,
         confirm_close=False,
+        hidden=splash.shown.is_set(),           # erst zeigen, wenn die Oberflaeche fertig ist (Startbild laeuft darueber); ohne Startbild sofort
         **initial_geometry,
     )
+
+    def _reveal_when_ready() -> None:
+        """Startbild-Ablauf. Das Programmfenster wird sofort "sichtbar, aber durchsichtig" (Opacity 0) gemacht: ein wirklich verborgenes Fenster
+        laedt seine Seite nur sehr langsam (Chromium drosselt Netzwerk und Timer verdeckter Seiten, die Oberflaeche wurde nie fertig). Sobald die
+        Oberflaeche fertig ist (ui_ready), wird es eingeblendet, waehrend das Startbild ausblendet."""
+        form = None
+        if splash.shown.is_set():
+            try:
+                from webview.platforms import winforms          # laedt pythonnet (clr); erst danach gibt es das Modul System
+                from System import Func, Type
+                winforms._main_window_created.wait(20)
+                form = winforms.BrowserView.instances.get(window.uid)
+
+                def _hold():
+                    form.Opacity = 0.0
+                    form.Show()
+
+                form.Invoke(Func[Type](_hold))
+            except Exception as exc:
+                print(f"[{APP_NAME}] Fenster vorbereiten: {exc}")
+                form = None
+                try:
+                    window.show()                       # Rueckfall: Fenster normal zeigen, das Startbild schliesst sich gleich
+                except Exception:
+                    pass
+        got = ui_ready.wait(timeout=30)
+        print(f"[{APP_NAME}] UI ready after {time.monotonic() - _T0:.1f} s" if got else f"[{APP_NAME}] UI not reported ready after 30 s - showing window anyway")
+        if form is not None:
+            time.sleep(0.3)                     # der Balken erreicht 100 %, bevor es einblendet
+            try:
+                from webview.platforms import winforms  # noqa: F401
+                from System import Func, Type
+                for step in range(1, 7):
+                    form.Invoke(Func[Type](lambda k=step: setattr(form, "Opacity", k / 6.0)))
+                    time.sleep(0.03)
+                form.Invoke(Func[Type](form.Activate))
+            except Exception as exc:
+                print(f"[{APP_NAME}] Fenster einblenden: {exc}")
+                try:
+                    window.show()
+                except Exception:
+                    pass
+        splash.close()
+        if OPTIONS.fullscreen:
+            fullscreen_toggle_requested.set()                           # --fullscreen: der Beobachter-Thread schaltet das Fenster in den Vollbildmodus
+
+    threading.Thread(target=_reveal_when_ready, name="reveal", daemon=True).start()
 
     def _on_moved(x: int, y: int) -> None:
         if window_geometry["is_fullscreen"] or window_geometry["mode"] not in ("normal", "maximized"):
@@ -460,13 +715,25 @@ def main() -> None:
     shutdown_started = threading.Event()
     stop_watching = threading.Event()
 
+    shutdown_done = threading.Event()
+
     def shutdown(*_args) -> None:
         """Zentraler Cleanup-Pfad - idempotent, damit mehrfaches Ausloesen
-        (Fenster-Event + finally-Block) keine doppelte Arbeit macht."""
+        (Fenster-Event + finally-Block) keine doppelte Arbeit macht. Wer ihn zum zweiten Mal
+        aufruft (der Hauptthread nach dem Schliessen des Fensters), wartet, bis der erste fertig ist:
+        sonst endet der Prozess mitten im Aufraeumen (Sicherung beim Beenden, Sitzungsmarkierung)."""
         if shutdown_started.is_set():
+            shutdown_done.wait(timeout=20)
             return
         shutdown_started.set()
+        try:
+            _shutdown_work()
+        finally:
+            shutdown_done.set()
+
+    def _shutdown_work() -> None:
         stop_watching.set()
+        crash.dialogs_enabled = False                                    # Fehler beim Beenden: nur ins Log, kein Fenster mehr
 
         print("[OpenCue] Shutting down...")
         host_cameras.stop_all()          # Kameras am Hauptgeraet sofort freigeben (Kamera-LED aus), bevor irgendetwas anderes passiert
@@ -478,18 +745,7 @@ def main() -> None:
             height=window_geometry["height"],
             maximized=window_geometry["maximized"],
         )
-        dmx_engine.shutdown()
-
-        server.should_exit = True
-        server_thread.join(timeout=5)
-
-        print("[OpenCue] Shutdown complete.")
-        try:
-            from app import updater
-            if updater.launch_pending_installer():              # Update vorgemerkt ("Jetzt installieren"): das Setup startet erst jetzt, nach dem Beenden
-                print("[OpenCue] Update-Setup gestartet.")
-        except Exception as exc:
-            print(f"[OpenCue] Update-Setup konnte nicht gestartet werden: {exc}")
+        _stop_everything(server, server_thread)
 
     def _on_closing() -> bool:
         # Ein Schliessen (X, Ctrl+Q, Datei > Beenden, Strg+C) wird abgebrochen und
@@ -533,6 +789,7 @@ def main() -> None:
         # Privatmodus und verwirft alles beim Beenden.
         storage_dir = get_data_root() / "webview"
         storage_dir.mkdir(parents=True, exist_ok=True)
+        startup_progress.report(70, "Starting display engine")
         webview.start(
             gui="edgechromium",
             private_mode=False,
@@ -540,10 +797,11 @@ def main() -> None:
             icon=_window_icon(),
         )
     finally:
+        splash.close(wait=0.3)
         # Sicherheitsnetz, falls "closed" aus irgendeinem Grund nicht feuert
         # (z.B. Abbruch waehrend des Fenster-Aufbaus).
         shutdown()
 
 
 if __name__ == "__main__":
-    main()
+    crash.run(main, startup_done=ui_ready.is_set)

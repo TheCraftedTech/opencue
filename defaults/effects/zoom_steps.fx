@@ -1,5 +1,7 @@
 #NAME Zoom Steps
-#DESCRIPTION Springt in Stufen von low nach high. steps = Anzahl der Stufen.
+#DESCRIPTION en The zoom steps through fixed values.
+#DESCRIPTION de Der Zoom schaltet durch feste Werte.
+#TAGS advanced, steps
 #CATEGORY zoom
 #RATE 40
 #VAR speed Slider 1 0.05 8 0.05

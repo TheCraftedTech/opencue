@@ -1,0 +1,111 @@
+[
+ {
+  "id": "startup-options-001",
+  "page": "startup-options",
+  "path": [
+   "Options de démarrage et mode serveur"
+  ],
+  "title": "Options de démarrage et mode serveur",
+  "keywords": [],
+  "text": "OpenCue peut être lancé avec des options – dans un raccourci, un fichier batch, le Planificateur de tâches ou un terminal. Ce guide les énumère, explique le **mode serveur sans fenêtre** (`--no-ui`), le **démarrage avec Windows**, ce que les **droits d'administrateur** changent (et ne changent pas) et la règle du **pare-feu Windows**."
+ },
+ {
+  "id": "startup-options-002",
+  "page": "startup-options",
+  "path": [
+   "Options de démarrage et mode serveur",
+   "1. Les options"
+  ],
+  "title": "1. Les options",
+  "keywords": [],
+  "text": "Placez-les derrière le programme : `OpenCue.exe --no-ui --open-browser` (depuis les sources : `python main.py ...`). Dans un raccourci : *Propriétés → Cible*, après les guillemets fermants du chemin."
+ },
+ {
+  "id": "startup-options-003",
+  "page": "startup-options",
+  "path": [
+   "Options de démarrage et mode serveur",
+   "1. Les options"
+  ],
+  "title": "1. Les options (2)",
+  "keywords": [],
+  "text": "| Option | Effet |\n|---|---|\n| `--no-ui` ou `--server-only` | Démarrer **sans fenêtre de programme** (section 2). Implique `--no-splash`. |\n| `--open-browser` | Avec `--no-ui` : ouvre au démarrage le navigateur par défaut sur la console. |\n| `SHOWFILE` ou `--show FICHIER` | Charge ce show au lieu du dernier. Un fichier de show en premier paramètre fonctionne comme un démarrage par double-clic ; cela inclut un fichier `.ocshow` (paquet d'export). Si OpenCue tourne déjà, le programme en cours reprend le fichier (et demande d'abord ce qu'il faut faire des modifications non enregistrées). |\n| `--new-show` | Démarre avec un **show vide** au lieu du dernier. Rien n'est supprimé ; le show « utilisé en dernier » reste tel quel. |\n| `--port N` | Port du serveur **pour cette exécution seulement** (1–65535). Le réglage enregistré ne change pas. |\n| `--remote` | Active l'**accès réseau** (comme dans *Paramètres → Accès distant*) – ce réglage-ci est **enregistré**. |\n| `--data-dir DOSSIER` | Utilise un autre **dossier de données** pour cette exécution (usage portable, tests). Identique à la variable `OPENCUE_DATA_DIR`. |\n| `--fullscreen` | Démarre la fenêtre du programme en plein écran. |\n| `--priority normal`, `above` ou `high` | Priorité du processus ; par défaut `above` (supérieure à la normale), voir la section 5. |\n| `--no-splash` | Pas d'écran de démarrage (aussi : `OPENCUE_NO_SPLASH=1`). |\n| `--version`, `--help` | Affiche la version ou la liste des options. |"
+ },
+ {
+  "id": "startup-options-004",
+  "page": "startup-options",
+  "path": [
+   "Options de démarrage et mode serveur",
+   "1. Les options"
+  ],
+  "title": "1. Les options (3)",
+  "keywords": [],
+  "text": "Le programme compilé n'a pas de console propre : `--help` et `--version` écrivent dans la console depuis laquelle il a été lancé (cmd, PowerShell)."
+ },
+ {
+  "id": "startup-options-005",
+  "page": "startup-options",
+  "path": [
+   "Options de démarrage et mode serveur",
+   "2. Mode serveur sans fenêtre (--no-ui)"
+  ],
+  "title": "2. Mode serveur sans fenêtre (--no-ui)",
+  "keywords": [],
+  "text": "OpenCue démarre comme d'habitude – sortie DMX, cues, effets, MIDI, accès distant, API REST – mais **aucune fenêtre de programme ne s'ouvre**. Vous le pilotez depuis\n\n- **un navigateur sur cet ordinateur :** `http://127.0.0.1:8000` (le port des *Paramètres → Accès distant*, ou `--port`) – exactement la même console que dans la fenêtre, ou\n- **une tablette ou un téléphone** via le réseau (activez l'**Accès distant** dans les paramètres ou démarrez une fois avec `--remote`).\n\nUne **icône dans la zone de notification** de la barre des tâches montre qu'OpenCue tourne : un **clic** ouvre la console dans votre navigateur ; un **clic droit** ouvre le menu *Ouvrir OpenCue dans le navigateur*, *Ouvrir le dossier des journaux* et *Quitter OpenCue*. Si le show a des modifications non enregistrées, la fermeture demande confirmation une fois (une copie de sauvegarde est de toute façon enregistrée).\n\nLe menu affiche en haut le **nom du show**, l'avertissement **⚠ Modifications non enregistrées** lorsqu'il y en a (l'info-bulle de l'icône aussi) et les **adresses** auxquelles la console est joignable (avec l'accès distant activé, aussi celles du réseau) – un clic en ouvre une dans le navigateur."
+ },
+ {
+  "id": "startup-options-006",
+  "page": "startup-options",
+  "path": [
+   "Options de démarrage et mode serveur",
+   "2. Mode serveur sans fenêtre (--no-ui)"
+  ],
+  "title": "2. Mode serveur sans fenêtre (--no-ui) (2)",
+  "keywords": [],
+  "text": "Autres façons de quitter : **Fichier → Quitter** dans le navigateur, **Ctrl+C** si le programme a été lancé depuis un terminal, ainsi que la fermeture de session ou l'arrêt de Windows (OpenCue essaie alors de se fermer proprement, avec la sauvegarde habituelle).\n\n**Lancer OpenCue une seconde fois** pendant que le serveur tourne n'affiche pas d'erreur : cela ouvre simplement votre navigateur sur la console en cours.\n\nCe qui **peut ne pas fonctionner** sans la fenêtre : ce qui nécessite la fenêtre native du programme elle-même – par exemple le sélecteur de fichiers pour *lier* un fichier vidéo ou audio, ou le basculement en plein écran de la fenêtre. Tout le reste est disponible dans le navigateur.\n\nAstuce : pour un PC de scène qui ne fait que sortir du DMX, activez *Démarrer OpenCue quand je me connecte à Windows* + *Démarrer sans fenêtre* (section 3)."
+ },
+ {
+  "id": "startup-options-007",
+  "page": "startup-options",
+  "path": [
+   "Options de démarrage et mode serveur",
+   "3. Démarrer avec Windows"
+  ],
+  "title": "3. Démarrer avec Windows",
+  "keywords": [],
+  "text": "**Paramètres → Général → Comportement :**\n\n- **Démarrer OpenCue quand je me connecte à Windows** – une entrée pour **votre utilisateur Windows** (aucun droit d'administrateur nécessaire ; supprimez-la en la désactivant).\n- **Démarrer sans fenêtre (serveur uniquement)** – démarre avec `--no-ui`.\n\nCette option existe dans le **programme installé**, pas lorsqu'on démarre depuis le code source. (Un show exporté avec l'extension `.ocshow` s'ouvre toujours dans OpenCue par double-clic – il n'y a pas d'interrupteur pour cela.) L'entrée pointe vers le fichier du programme : si vous déplacez ou réinstallez OpenCue ailleurs, désactivez puis réactivez l'option."
+ },
+ {
+  "id": "startup-options-008",
+  "page": "startup-options",
+  "path": [
+   "Options de démarrage et mode serveur",
+   "4. Droits d'administrateur et pare-feu"
+  ],
+  "title": "4. Droits d'administrateur et pare-feu",
+  "keywords": [],
+  "text": "**OpenCue tourne-t-il en administrateur ?** Le journal (`opencue.log`, premières lignes) et les détails d'un rapport d'erreur indiquent *« Administrator: yes »* ou *« no »*. Si c'est le cas, OpenCue écrit aussi une remarque dans le journal.\n\n**Vous n'en avez pas besoin – et ne devriez pas l'utiliser :** Windows bloque le **glisser-déposer de fichiers depuis l'Explorateur** vers un programme exécuté en administrateur, et un serveur web avec des droits d'administrateur est une cible plus grosse. Les droits d'administrateur n'aident que pour **une** chose : créer la **règle du pare-feu Windows**.\n\n**Règle de pare-feu :** sans elle, Windows pose la question la première fois qu'OpenCue utilise le réseau ; une question restée sans réponse ou refusée bloque les tablettes, le sACN et le nom réseau `opencue.local`. **Paramètres → Accès distant → Pare-feu Windows → Autoriser OpenCue dans le pare-feu** crée une règle pour ce programme précis, **entrante, uniquement dans les réseaux privés et de domaine** (jamais dans les réseaux publics). Windows demande l'autorisation **une seule fois** (invite d'administrateur) – seule cette petite commande est lancée avec des droits élevés, OpenCue lui-même continue de tourner normalement. *Supprimer la règle de pare-feu* la supprime de nouveau. La ligne d'état indique si la règle existe."
+ },
+ {
+  "id": "startup-options-009",
+  "page": "startup-options",
+  "path": [
+   "Options de démarrage et mode serveur",
+   "5. Priorité et précision du temps"
+  ],
+  "title": "5. Priorité et précision du temps",
+  "keywords": [],
+  "text": "Au démarrage, OpenCue règle la **priorité du processus** sur *supérieure à la normale* et la **résolution du minuteur sur 1 ms** (Windows bat normalement toutes les 15,6 ms). Les deux maintiennent la fluidité des boucles à 40 Hz des cues, des effets et du DMX quand l'ordinateur est occupé – aucun droit d'administrateur nécessaire. `--priority high` l'augmente encore (pour un PC qui ne fait rien d'autre), `--priority normal` la désactive."
+ },
+ {
+  "id": "startup-options-010",
+  "page": "startup-options",
+  "path": [
+   "Options de démarrage et mode serveur",
+   "6. Exemples"
+  ],
+  "title": "6. Exemples",
+  "keywords": [],
+  "text": "- Serveur sur un PC de scène, le navigateur s'ouvre : `OpenCue.exe --no-ui --open-browser`\n- Ouvrir un show depuis *Ouvrir avec* de l'Explorateur : `OpenCue.exe \"D:\\Shows\\Concert.json\"`\n- Démarrer vide sans toucher au dernier show : `OpenCue.exe --new-show`\n- Tester sur un autre port avec ses propres données : `OpenCue.exe --port 8080 --data-dir D:\\OpenCueTest`"
+ }
+]

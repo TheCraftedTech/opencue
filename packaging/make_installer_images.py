@@ -1,3 +1,5 @@
+# Copyright (C) 2026 Samuel Zenker
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Erzeugt die Bilder des Installers (packaging/installer-img/*.bmp) aus dem Logo - nur Entwicklung, das Ergebnis liegt im Repository.
 
   wizard-<n>.bmp   grosses Bild links auf der Willkommens- und der Abschlussseite (164x314 bei 100 %, dazu 150 %, 200 %)
@@ -37,7 +39,7 @@ WIZARD = """<html><body style="margin:0;width:164px;height:314px;overflow:hidden
 <div style="position:absolute;left:0;top:186px;width:164px;text-align:center;color:#fff;font-size:27px;font-weight:700;letter-spacing:.5px">Open<span style="color:#ffb000">Cue</span></div>
 <div style="position:absolute;left:0;top:226px;width:164px;text-align:center;color:#9a9aa3;font-size:11px;line-height:1.5">DMX lighting<br>control console</div>
 </body></html>"""
-SMALL = """<html><body style="margin:0;width:55px;height:55px;overflow:hidden;background:{bg}"><img src="file:///{lamp}" style="width:55px;height:55px;image-rendering:pixelated"></body></html>"""
+SMALL = """<html><body style="margin:0;width:55px;height:55px;overflow:hidden;background:#ffffff"><img src="file:///{lamp}" style="margin:3px;width:49px;height:49px;border-radius:10px;image-rendering:pixelated"></body></html>"""
 
 
 def png_to_bmp(png: bytes) -> bytes:

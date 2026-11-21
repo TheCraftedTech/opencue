@@ -1,5 +1,7 @@
 #NAME Gobo Scroll
-#DESCRIPTION Fährt den ganzen Wertebereich des Gobo-Kanals durch (für Geräte, die dort ein durchlaufendes Rad haben).
+#DESCRIPTION en Scrolls continuously through the gobo wheel (low to high).
+#DESCRIPTION de Läuft stufenlos durch das Gobo-Rad (von low bis high).
+#TAGS advanced, sweep
 #CATEGORY gobo
 #RATE 40
 #VAR speed Slider 0.2 0.02 4 0.02

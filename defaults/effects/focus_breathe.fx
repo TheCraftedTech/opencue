@@ -1,5 +1,7 @@
 #NAME Focus Breathe
-#DESCRIPTION Der Fokus atmet weich zwischen low und high.
+#DESCRIPTION en The focus breathes softly between low and high.
+#DESCRIPTION de Der Fokus atmet weich zwischen low und high.
+#TAGS advanced, wave
 #CATEGORY focus
 #RATE 40
 #VAR speed Slider 1 0.05 8 0.05

@@ -1,3 +1,5 @@
+# Copyright (C) 2026 Samuel Zenker
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Sammelt die Lizenztexte aller Pakete, die in den PyInstaller-Build wandern, nach packaging/third_party/ (nur Entwicklung; das Ergebnis wird mit ausgeliefert).
 
 Erzeugt:
@@ -36,6 +38,15 @@ PACKAGES = [
     ("proxy_tools", "pywebview"), ("bottle", "pywebview"),
     ("sacn", "sACN output"), ("stupidArtnet", "Art-Net output"), ("pyserial", "USB DMX (Enttec)"), ("pygdtf", "Reading GDTF fixture files"),
     ("assimp_py", "3D models inside GDTF files (Assimp)"), ("segno", "QR codes (remote access)"),
+    ("zeroconf", "Network name opencue.local (mDNS)"), ("ifaddr", "zeroconf"), ("cryptography", "Self-signed https certificate"),
+    ("numpy", "Audio analysis (spectrum, beat detection)"), ("PyAudioWPatch", "Audio capture (PortAudio, WASAPI)"),
+    ("python-rtmidi", "MIDI input and output (RtMidi)"),
+    ("vosk", "Offline speech recognition (wake word)"), ("requests", "vosk"), ("urllib3", "requests"), ("certifi", "requests"), ("charset_normalizer", "requests"),
+    ("tqdm", "vosk"), ("colorama", "tqdm"), ("srt", "vosk"),
+    ("faster-whisper", "Offline dictation: speech to text (Whisper)"), ("ctranslate2", "Inference engine of faster-whisper"), ("onnxruntime", "Voice activity detection (faster-whisper)"),
+    ("tokenizers", "Text tokenizer of the Whisper model"),
+    ("huggingface_hub", "Downloads the Whisper model once"), ("filelock", "huggingface_hub"), ("fsspec", "huggingface_hub"),
+    ("httpx2", "huggingface_hub"), ("httpcore2", "httpx2"), ("truststore", "httpx2"), ("packaging", "huggingface_hub"), ("protobuf", "onnxruntime"), ("flatbuffers", "onnxruntime"),
 ]
 LICENSE_FILE = re.compile(r"(licen[sc]e|copying|notice|authors)", re.IGNORECASE)
 
@@ -111,6 +122,13 @@ def main() -> None:
          [ROOT / "ffmpeg" / "LICENSE.txt"]),
         ("three.js", "r186", "MIT", "3D simulation and fixture model viewer (static/vendor/three)", "https://threejs.org/", [ROOT / "static" / "vendor" / "three" / "LICENSE"]),
         ("Python", sys.version.split()[0], "PSF-2.0", "Runtime bundled by PyInstaller", "https://www.python.org/", [python_license] if python_license.is_file() else []),
+        ("Vosk speech model (small, English)", "0.15", "Apache-2.0", "Wake word recognition, offline (downloaded once on request into the data folder: voice/vosk-model-small-en-us-0.15)", "https://alphacephei.com/vosk/models",
+         [EXTRA / "vosk.txt"]),
+        ("Whisper speech models (base, small; CTranslate2 conversion)", "1.2", "MIT", "Offline dictation (loaded once from Hugging Face into the data folder: models/whisper)", "https://huggingface.co/Systran",
+         [EXTRA / "whisper.txt"]),
+        ("Inter (font)", "4 (Fontsource 5.2.5, variable)", "OFL-1.1", "User interface font (static/fonts)", "https://rsms.me/inter/", [ROOT / "static" / "fonts" / "Inter-OFL.txt"]),
+        ("JetBrains Mono (font)", "2 (Fontsource 5.2.5, variable)", "OFL-1.1", "Monospace font for values and the command line (static/fonts)", "https://www.jetbrains.com/lp/mono/",
+         [ROOT / "static" / "fonts" / "JetBrainsMono-OFL.txt"]),
         ("Microsoft Edge WebView2", "Runtime installed separately", "Microsoft software licence terms", "Renders the application window", version.WEBVIEW2_URL, []),
         ("GDTF Share (online service)", "online", "Terms and Conditions of GDTF Share; files belong to their uploaders", "Optional download of fixture files by the user - no GDTF files are bundled", "https://gdtf-share.com/landing/pages/termsAndConditions.php",
          [EXTRA / "gdtf-share.txt"]),
@@ -129,6 +147,7 @@ def main() -> None:
     lines += [f"| {c['name']} | {c['version']} | {c['license']} | {c['purpose']} | {c['url']} |" for c in components]
     lines += [
         "", "Source code of FFmpeg: https://ffmpeg.org/download.html (version of the bundled build: run `ffmpeg -version`); the build comes from https://www.gyan.dev/ffmpeg/builds/ .",
+        "The PyAV wheel (av, used by faster-whisper for audio decoding) includes FFmpeg shared libraries under the LGPL v2.1 or later; they stay separate files next to the program and can be replaced. Source code: https://ffmpeg.org/download.html .",
         "The PyInstaller bootloader is GPL v2 or later with the special exception that allows distributing the bundled program under any licence.", "",
         f"Source code of {version.APP_NAME}: {version.SOURCE_URL}", "",
     ]

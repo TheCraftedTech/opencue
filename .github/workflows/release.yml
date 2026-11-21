@@ -1,0 +1,195 @@
+# OpenCue: baut den Installer selbst und legt ein GitHub-Release an, sobald eine NEUE Versionsnummer in app/version.py steht.
+#
+#   * Ausloeser: ein Push auf main, der app/version.py aendert - oder von Hand: Actions -> "Release" -> Run workflow.
+#   * Gibt es zur Versionsnummer schon ein Release (oder einen Tag v<Version>), passiert NICHTS (der Lauf endet nach einer Sekunde mit einem Hinweis).
+#   * Sonst: Python 3.13 + Abhaengigkeiten + Inno Setup -> packaging/build.ps1 -Installer (dasselbe Skript wie lokal) -> packaging/ci_smoke.py
+#     (startet das gebaute Programm, prueft es und installiert / deinstalliert den Installer in allen sechs Sprachen) -> Release v<Version> mit
+#     OpenCue-Setup-v<Version>.exe und SHA256SUMS.txt. Der Tag v<Version> entsteht beim Veroeffentlichen des Entwurfs (GitHub legt ihn dann am gebauten Commit an); bei sofortigem Veroeffentlichen beim Anlegen.
+#   * Versionen mit Bindestrich (z. B. 2.1.0-beta.1) werden als Vorabversion markiert.
+#   * "build_only" beim manuellen Start: baut und prueft nur, legt KEIN Release an (der Installer steht dann 30 Tage lang unter "Artifacts" des Laufs).
+#
+# SICHERHEIT: Standard ist ein ENTWURF (Draft). Er ist nur fuer Sie sichtbar, Sie pruefen ihn und klicken "Publish release". Wenn Sie das nicht mehr wollen,
+# setzen Sie PUBLISH_AUTOMATICALLY auf "true" - dann wird sofort oeffentlich veroeffentlicht.
+# Signieren (SignPath Foundation) kommt spaeter als zusaetzlicher Schritt zwischen "Build" und "Release".
+name: Release
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "app/version.py"
+  workflow_dispatch:
+    inputs:
+      build_only:
+        description: "Nur bauen und pruefen, kein Release anlegen"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write            # Release und Tag anlegen
+
+concurrency:
+  group: opencue-release
+  cancel-in-progress: false
+
+env:
+  PUBLISH_AUTOMATICALLY: "false"       # "true" = Release sofort oeffentlich; "false" = Entwurf, den Sie selbst veroeffentlichen
+  PYTHONIOENCODING: utf-8
+
+jobs:
+  release:
+    runs-on: windows-2022
+    timeout-minutes: 60
+    steps:
+      - name: Quellcode holen
+        uses: actions/checkout@v4
+
+      - name: Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: |
+            requirements.txt
+            packaging/requirements-build.txt
+
+      - name: Version lesen und pruefen, ob sie schon veroeffentlicht ist
+        id: plan
+        shell: powershell
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BUILD_ONLY: ${{ github.event.inputs.build_only }}
+        run: |
+          $version = (python -c "import sys; sys.path.insert(0, '.'); from app.version import APP_VERSION; print(APP_VERSION)").Trim()
+          if (-not $version) { throw "Version nicht lesbar (app/version.py)" }
+          $tag = "v$version"
+          $known = @(gh release list --limit 300 --json tagName --jq '.[].tagName')
+          $released = $known -contains $tag
+          git ls-remote --exit-code --tags origin "refs/tags/$tag" *> $null
+          if ($LASTEXITCODE -eq 0) { $released = $true }
+          $global:LASTEXITCODE = 0
+          $manual = "${{ github.event_name }}" -eq "workflow_dispatch"
+          $buildOnly = $manual -and ($env:BUILD_ONLY -eq "true")
+          $build = ($manual -or -not $released)
+          $release = ((-not $released) -and (-not $buildOnly))
+          # Release-Text = der Abschnitt "## v<Version>" aus CHANGELOG.md. Fehlt er (oder ist leer), bricht der Lauf HIER ab - vor dem teuren Bauen.
+          $notesFile = Join-Path $env:RUNNER_TEMP "changelog-section.md"
+          if ($release) {
+            $lines = @(Get-Content -LiteralPath "CHANGELOG.md" -Encoding UTF8)
+            $start = -1
+            for ($i = 0; $i -lt $lines.Count; $i++) { if ($lines[$i] -match ("^##\s+v?" + [regex]::Escape($version) + "(\s|$)")) { $start = $i; break } }
+            if ($start -lt 0) { throw "CHANGELOG.md hat keinen Abschnitt '## v$version'. Vor dem Veroeffentlichen die Ueberschrift 'Unreleased' in '## v$version - <Datum>' umbenennen (tools/prepare_release.ps1 im Entwicklungsordner macht das)." }
+            $end = $lines.Count
+            for ($j = $start + 1; $j -lt $lines.Count; $j++) { if ($lines[$j] -match "^##\s") { $end = $j; break } }
+            $body = if ($end -gt $start + 1) { (($lines[($start + 1)..($end - 1)]) -join "`n").Trim() } else { "" }
+            if ($body.Length -lt 50) { throw "Der CHANGELOG-Abschnitt fuer v$version ist leer oder viel zu kurz." }
+            [System.IO.File]::WriteAllText($notesFile, $body, (New-Object System.Text.UTF8Encoding($false)))
+            Write-Host "Release-Text aus CHANGELOG.md: $($body.Length) Zeichen."
+          }
+          "notes_file=$notesFile"                | Out-File -Append -Encoding ascii $env:GITHUB_OUTPUT
+          "version=$version"                     | Out-File -Append -Encoding ascii $env:GITHUB_OUTPUT
+          "tag=$tag"                             | Out-File -Append -Encoding ascii $env:GITHUB_OUTPUT
+          "build=$($build.ToString().ToLower())"     | Out-File -Append -Encoding ascii $env:GITHUB_OUTPUT
+          "release=$($release.ToString().ToLower())" | Out-File -Append -Encoding ascii $env:GITHUB_OUTPUT
+          "prerelease=$($version.Contains('-').ToString().ToLower())" | Out-File -Append -Encoding ascii $env:GITHUB_OUTPUT
+          if (-not $build) {
+            "### Nichts zu tun`nVersion **$version** ist schon veroeffentlicht (Tag $tag). Zum Veroeffentlichen eine neue Versionsnummer in ``app/version.py`` eintragen." | Out-File -Append -Encoding utf8 $env:GITHUB_STEP_SUMMARY
+          } elseif (-not $release) {
+            "### Nur Build`nVersion **$version** wird gebaut und geprueft, es wird kein Release angelegt." | Out-File -Append -Encoding utf8 $env:GITHUB_STEP_SUMMARY
+          } else {
+            "### Neue Version`nVersion **$version** wird gebaut und als Release $tag angelegt." | Out-File -Append -Encoding utf8 $env:GITHUB_STEP_SUMMARY
+          }
+
+      - name: Abhaengigkeiten installieren
+        if: steps.plan.outputs.build == 'true'
+        shell: powershell
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt -r packaging/requirements-build.txt
+          if ($LASTEXITCODE -ne 0) { throw "pip install fehlgeschlagen" }
+
+      - name: Inno Setup bereitstellen
+        if: steps.plan.outputs.build == 'true'
+        shell: powershell
+        run: |
+          $iscc = @("${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe", "$env:ProgramFiles\Inno Setup 6\ISCC.exe") | Where-Object { Test-Path $_ } | Select-Object -First 1
+          if (-not $iscc) {
+            choco install innosetup --no-progress -y
+            $iscc = @("${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe", "$env:ProgramFiles\Inno Setup 6\ISCC.exe") | Where-Object { Test-Path $_ } | Select-Object -First 1
+          }
+          if (-not $iscc) { throw "Inno Setup 6 nicht gefunden" }
+          Write-Host "Inno Setup: $iscc"
+
+      - name: Bauen (Programm und Installer)
+        if: steps.plan.outputs.build == 'true'
+        shell: powershell
+        run: |
+          $py = (Get-Command python).Source
+          ./packaging/build.ps1 -Installer -Python $py
+          if ($LASTEXITCODE -ne 0) { throw "build.ps1 fehlgeschlagen" }
+
+      - name: Gebautes Programm und Installer pruefen
+        if: steps.plan.outputs.build == 'true'
+        shell: powershell
+        run: |
+          python packaging/ci_smoke.py --languages english,german,french,dutch,italian,spanish
+          if ($LASTEXITCODE -ne 0) { throw "ci_smoke.py: Pruefungen fehlgeschlagen" }
+
+      - name: Installer als Artefakt speichern
+        if: steps.plan.outputs.build == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: OpenCue-Setup-${{ steps.plan.outputs.tag }}
+          path: |
+            dist/installer/OpenCue-Setup-v*.exe
+            dist/installer/SHA256SUMS.txt
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Release anlegen
+        if: steps.plan.outputs.release == 'true'
+        shell: powershell
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.plan.outputs.tag }}
+          VERSION: ${{ steps.plan.outputs.version }}
+          PRERELEASE: ${{ steps.plan.outputs.prerelease }}
+          CHANGELOG_SECTION: ${{ steps.plan.outputs.notes_file }}
+        run: |
+          $setup = (Get-ChildItem "dist/installer/OpenCue-Setup-v*.exe" | Select-Object -First 1).FullName
+          $sums = (Resolve-Path "dist/installer/SHA256SUMS.txt").Path
+          $hash = ((Get-Content $sums -Raw) -split "\s+")[0]
+          $changes = (Get-Content -LiteralPath $env:CHANGELOG_SECTION -Raw -Encoding UTF8).Trim()
+          $owner, $repoName = "${{ github.repository }}".Split("/")
+          $site = "https://$($owner.ToLower()).github.io/$repoName/"          # GitHub Pages der Website (Quelle: main / docs)
+          $notes = @(
+            "**Website:** $site",
+            "",
+            "## What is new in OpenCue $env:VERSION",
+            "",
+            $changes,
+            "",
+            "---",
+            "",
+            "### Installation",
+            "Download ``OpenCue-Setup-$($env:TAG).exe`` and run it (Windows 10/11, 64-bit). The setup is available in English, German, French, Dutch, Italian and Spanish.",
+            "",
+            "### Verification",
+            "* **SHA-256:** ``$hash``",
+            "",
+            "### Credits & Licenses",
+            "Includes FFmpeg (GPL build by gyan.dev, FFmpeg 8.1) as a separate program.",
+            "Source: https://ffmpeg.org/download.html",
+            "",
+            "---",
+            "Full change list: [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/$env:TAG/CHANGELOG.md)"
+          ) -join "`n"
+          $notesFile = Join-Path $env:RUNNER_TEMP "release-notes.md"
+          [System.IO.File]::WriteAllText($notesFile, $notes, (New-Object System.Text.UTF8Encoding($false)))
+          $opts = @("--title", "OpenCue $env:TAG", "--target", "${{ github.sha }}", "--notes-file", $notesFile)
+          if ($env:PRERELEASE -eq "true") { $opts += "--prerelease" }
+          if ($env:PUBLISH_AUTOMATICALLY -ne "true") { $opts += "--draft" }
+          gh release create $env:TAG $setup $sums @opts
+          if ($LASTEXITCODE -ne 0) { throw "gh release create fehlgeschlagen" }
+          $state = if ($env:PUBLISH_AUTOMATICALLY -eq "true") { "veroeffentlicht" } else { "als ENTWURF angelegt - unter Releases pruefen und 'Publish release' klicken" }
+          "### Release $env:TAG $state`nSHA-256: ``$hash``" | Out-File -Append -Encoding utf8 $env:GITHUB_STEP_SUMMARY

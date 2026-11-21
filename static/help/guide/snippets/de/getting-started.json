@@ -1,0 +1,256 @@
+[
+ {
+  "id": "getting-started-001",
+  "page": "getting-started",
+  "path": [
+   "Erste Schritte mit OpenCue"
+  ],
+  "title": "Erste Schritte mit OpenCue",
+  "keywords": [],
+  "text": "OpenCue ist ein Lichtsteuerpult für deinen PC. Diese Anleitung führt dich in etwa zehn Minuten vom Installer zum ersten Licht-Cue – ganz ohne angeschlossene Lampen, denn die ersten Schritte funktionieren mit der eingebauten Demo-Show.\n\nAlle Anleitungen gibt es auch im Programm, selbst ohne Internet: **Hilfe → Anleitungen** (oder **F1**) öffnet sie mit einer Suche (darin `Strg+F`)."
+ },
+ {
+  "id": "getting-started-002",
+  "page": "getting-started",
+  "path": [
+   "Erste Schritte mit OpenCue",
+   "1. Was du brauchst"
+  ],
+  "title": "1. Was du brauchst",
+  "keywords": [],
+  "text": "- Einen PC mit **Windows 10 oder 11** (64 Bit). Die **Microsoft Edge WebView2-Laufzeit** zeigt das OpenCue-Fenster; sie gehört zu aktuellem Windows, und der Installer richtet sie ein, falls sie fehlt (dafür ist einmalig Internet nötig).\n- Für echte Lampen: eine DMX-Verbindung – über das Netzwerk (**Art-Net** oder **sACN**) oder eine **USB-DMX-Schnittstelle** (Enttec DMX USB Pro und kompatible). Ohne Hardware kannst du trotzdem alles programmieren und in der **3D-Simulation** ansehen.\n- Kein Konto, kein Lizenzschlüssel, keine Internetverbindung während der Arbeit."
+ },
+ {
+  "id": "getting-started-003",
+  "page": "getting-started",
+  "path": [
+   "Erste Schritte mit OpenCue",
+   "2. Installieren"
+  ],
+  "title": "2. Installieren",
+  "keywords": [],
+  "text": "1. Lade `OpenCue-Setup-v<Version>.exe` von der Releases-Seite des Projekts herunter und starte sie.\n2. Das Setup beginnt mit einer Willkommensseite, auf der du die **Sprache** wählst (Englisch oder Deutsch; es ist auch die Sprache von OpenCue selbst).\n3. Klicke dich durch: **Lizenz** (die GNU GPL, zum Lesen), **Programmordner**, **Datenordner**, **Verknüpfungen** (Startmenü, Desktop), die Übersicht, **Installieren**.\n4. Beenden und OpenCue starten.\n\nDer **Datenordner** ist der Ort, an dem deine Shows, Layouts, Scheinwerfer und Einstellungen liegen. Der Vorschlag (`%LOCALAPPDATA%\\OpenCue`) passt für die meisten; du kannst im Setup einen anderen Ort wählen und ihn später in OpenCue unter *Einstellungen → Speicherort* ändern.\n\nIst OpenCue schon installiert, erkennt das Setup das und bietet *Aktualisieren*, *Neu installieren* oder *Deinstallieren* an – deine Daten bleiben immer erhalten. OpenCue prüft auch beim Start auf neue Versionen (abschaltbar unter *Einstellungen → Allgemein*) und bietet die Installation an; *Hilfe → Nach Updates suchen…* tut das auf Wunsch.\n\nOpenCue lässt sich über die Windows-Suche finden (Windows-Taste drücken und „OpenCue“ tippen)."
+ },
+ {
+  "id": "getting-started-004",
+  "page": "getting-started",
+  "path": [
+   "Erste Schritte mit OpenCue",
+   "3. Der erste Start"
+  ],
+  "title": "3. Der erste Start",
+  "keywords": [],
+  "text": "Bei einer frischen Installation öffnet OpenCue eine fertige **Demo-Show** namens **Default_1**:\n\n- fünf **Generic Dimmer** („Dimmer 1“ … „Dimmer 5“) im Universum 1 auf den Kanälen 1 bis 5,\n- eine Cue-Liste „Default“ mit zwei Cues („Cue 1“ und „Cue 2“, je eine Sekunde Überblendung),\n- ein **Layout** mit den Panels, die du zuerst brauchst: Cue-Liste, Scheinwerfer-Liste, Scheinwerfer-Steuerung, Executor, Befehlszeile, Befehls-Tasten und Ziffernblock.\n\nBeim allerersten Start öffnet sich ein kurzer **Willkommens-Dialog**: Sprache, dann – nur wenn du möchtest – das Netzwerk (Art-Net, Fernzugriff mit eigenem Passwort, OSC). Er lässt sich nicht schließen, man klickt sich durch (oder drückt auf der ersten Seite *Überspringen*). Nichts wird ohne dein Zutun eingeschaltet; schaltest du etwas ein, das das Netzwerk nutzt, fragt Windows eventuell einmal, ob OpenCue es benutzen darf. Nach einem Update zeigt **Hilfe → Was ist neu?** die Änderungen (öffnet sich einmal von selbst).\n\nIn der 3D-Simulation gibt es noch keine Bühne – die legst du an, wenn du sie brauchst. Die Demo-Dateien sind normale Dateien: ändere oder lösche sie nach Belieben."
+ },
+ {
+  "id": "getting-started-005",
+  "page": "getting-started",
+  "path": [
+   "Erste Schritte mit OpenCue",
+   "4. Die Oberfläche in einer Minute",
+   "Menüs (oben links)"
+  ],
+  "title": "Menüs (oben links)",
+  "keywords": [],
+  "text": "| Menü | Inhalt |\n|---|---|\n| **Datei** | Neu / Öffnen / Speichern / Speichern unter (Showfiles), Abmelden (nur Fernsteuer-Geräte), Beenden |\n| **Bearbeiten** | **Panels bearbeiten** (Bearbeitungsmodus), Rückgängig / Wiederholen, **Panel hinzufügen…**, Button / Fader hinzufügen, **Layouts verwalten…** |\n| **Bibliothek** | **Scheinwerfer-Bibliothek…**, 3D-Bühnen und die Dateimanager-Listen *Shows*, *Layouts*, *3D-Bühnen*, *Effekte* |\n| **Ansicht** | Vollbild, GUI-Skalierung, Layouts |\n| **Sprache** | English / Deutsch |\n| **Hilfe** | Tastenkürzel, GitHub-Repository, Nach Updates suchen…, Über OpenCue |"
+ },
+ {
+  "id": "getting-started-006",
+  "page": "getting-started",
+  "path": [
+   "Erste Schritte mit OpenCue",
+   "4. Die Oberfläche in einer Minute",
+   "Werkzeugleiste (oben)"
+  ],
+  "title": "Werkzeugleiste (oben)",
+  "keywords": [],
+  "text": "Die Werkzeugleiste zeigt das aktuelle **Layout** und die **Bühne**, den **Showfile-Namen** (ein Klick öffnet den Dateimanager), einen pulsierenden **Blackout**-Knopf (Glühbirne), den **Timecode**, eine DMX-Anzeige, die Zahl der verbundenen **Fernsteuer-Geräte** und den Knopf **Einstellungen**. Fährst du mit der Maus über einen Eintrag, hebt er sich ab und ein **Tooltip** nennt, was er ist. Was in der Leiste erscheint, bestimmst du unter *Einstellungen → Toolbar & Internet* (jeder Eintrag einzeln; nur für dieses Gerät; das Zahnrad bleibt immer sichtbar).\n\n**Bedienmodus in einfachen Worten** (*Ansicht → Bedienmodus …*): Du gibst die Konsole jemandem, der nur **bedienen** soll – Fader schieben, Tasten drücken, Cues starten –, aber nichts verstellen darf. Im Bedienmodus sind Menüs, Einstellungen und Umbauen gesperrt, und die **Sprachsteuerung ist aus** (das Mikrofon bleibt zu). Raus kommst du nur mit dem **Passwort** (Schloss unten rechts oder `Strg+L`). Er braucht das Passwort aus *Einstellungen → Sicherheit*. Etwas anderes ist **Bildschirm sperren** (*Steuerung → Bildschirm sperren*, `Strg+L`): Das verdunkelt alles, bis das Passwort eingegeben ist – nichts ist mehr bedienbar."
+ },
+ {
+  "id": "getting-started-007",
+  "page": "getting-started",
+  "path": [
+   "Erste Schritte mit OpenCue",
+   "4. Die Oberfläche in einer Minute",
+   "Panels"
+  ],
+  "title": "Panels",
+  "keywords": [],
+  "text": "Alles andere sind **Panels**, die du frei anordnest. Die wichtigsten:"
+ },
+ {
+  "id": "getting-started-008",
+  "page": "getting-started",
+  "path": [
+   "Erste Schritte mit OpenCue",
+   "4. Die Oberfläche in einer Minute",
+   "Panels"
+  ],
+  "title": "Panels (2)",
+  "keywords": [],
+  "text": "| Panel | Zweck |\n|---|---|\n| **Scheinwerfer-Liste** | Das Patch: Scheinwerfer hinzufügen, bearbeiten und löschen |\n| **Scheinwerfer-Steuerung** | Helligkeit, Position, Farbe, Beam, Fokus und DMX direkt für die gewählten Scheinwerfer; auch das Kachelraster zum Auswählen |\n| **Cue-Liste** | Die Cues einer Liste: speichern, aktualisieren, bearbeiten, löschen, abspielen |\n| **Executor** | Wiedergabe mit Go / Pause / Zurück / Stopp und einem Mix-Fader |\n| **Befehlszeile**, **Befehls-Ziffernblock**, **Befehls-Tasten** | Tipp- und Touch-Eingabe für Befehle |\n| **Variablen / Effekte** | Wiederverwendbare Farben, Positionen, Beams und Effekte |\n| **Effekt-Studio** | Eigene Effekte schreiben |\n| **DMX-Monitor** | Die gesendeten Werte ansehen |\n| **3D-Simulation** | Bühne und Lichter live sehen |\n| **Timecode**, **Timeline-Editor**, **Video/Audio-Player**, **Livestream / Kamera** | Zeit und Medien (Anleitung *Timeline-Editor und LTC*) |\n| **Audio** | Live-Musikanalyse (Spektrum, Beat, Tempo): Lichter und Cues können auf Musik reagieren |\n| **Einfache Steuerung** | Eine schlichte Bedienfläche zum Weitergeben: Lichter per Kachel wählen, **Joystick**, Helligkeit, Farbfeld, Zoom, Gobos – siehe *Fernzugriff → Bedienmodus* |\n| **Button**, **Fader**, **Schalter** | Eigene Knöpfe, Fader und Ein/Aus-Schalter, die Befehle ausführen (oder in die Befehlszeile schreiben) |"
+ },
+ {
+  "id": "getting-started-009",
+  "page": "getting-started",
+  "path": [
+   "Erste Schritte mit OpenCue",
+   "4. Die Oberfläche in einer Minute",
+   "Panels"
+  ],
+  "title": "Panels (3)",
+  "keywords": [],
+  "text": "Panels fügst du mit **Bearbeiten → Panel hinzufügen…** hinzu."
+ },
+ {
+  "id": "getting-started-010",
+  "page": "getting-started",
+  "path": [
+   "Erste Schritte mit OpenCue",
+   "5. Dein erster Cue",
+   "Schritt 1 – Auswählen"
+  ],
+  "title": "Schritt 1 – Auswählen",
+  "keywords": [],
+  "text": "Klicke im Tab **Scheinwerfer** der Scheinwerfer-Steuerung (oder in der Scheinwerfer-Liste) auf Scheinwerfer – oder tippe in der Befehlszeile:\n\n```\nFixture 1 Thru 3\n```"
+ },
+ {
+  "id": "getting-started-011",
+  "page": "getting-started",
+  "path": [
+   "Erste Schritte mit OpenCue",
+   "5. Dein erster Cue",
+   "Schritt 2 – Einen Look einstellen"
+  ],
+  "title": "Schritt 2 – Einen Look einstellen",
+  "keywords": [],
+  "text": "Nimm den **Helligkeit**-Fader – oder tippe:\n\n```\nAt 80\n```\n\nWähle eine Farbe, wenn deine Scheinwerfer eine haben (`Color Red`). Geänderte Scheinwerfer bekommen eine rote Markierung: Sie sind jetzt im **Programmer**.\n\nBei Moving Heads findest du unter **Position** drei Ansichten: **Grob** (Fader für Pan und Tilt), **Fein** (ein Wisch-Streifen je Achse: nach oben oder unten wischen, die Striche folgen dem Finger – ein Schritt im Fein-Kanal je 4 Pixel) und **Joystick**. Der Joystick ist ein runder Knauf mit zwei Achsen, **relativ**: je weiter du ihn auslenkst, desto schneller fährt der Scheinwerfer; im inneren Kreis ist es sehr genau, ganz außen schnell. Beim Loslassen springt der Knauf in die Mitte und der Scheinwerfer bleibt stehen. Er verstellt Grob- und Fein-Wert, und mehrere gewählte Scheinwerfer bewegen sich um dasselbe Stück (die Abstände bleiben). Maus und Touch funktionieren."
+ },
+ {
+  "id": "getting-started-012",
+  "page": "getting-started",
+  "path": [
+   "Erste Schritte mit OpenCue",
+   "5. Dein erster Cue",
+   "Schritt 3 – Einen Cue speichern"
+  ],
+  "title": "Schritt 3 – Einen Cue speichern",
+  "keywords": [],
+  "text": "Klicke im Panel Cue-Liste auf **Cue speichern**. Ein Dialog fragt nach der **Position** (am Ende, nach einem Cue oder frei), der **Cue-Nummer** und einem optionalen **Namen**. Klicke auf **Speichern**. Oder tippe:\n\n```\nStore Cue 3 \"Warmer Look\"\n```\n\nGibt es die Nummer schon, wählst du **Zusammenführen** (nur die geänderten Kanäle kommen hinein) oder **Überschreiben**."
+ },
+ {
+  "id": "getting-started-013",
+  "page": "getting-started",
+  "path": [
+   "Erste Schritte mit OpenCue",
+   "5. Dein erster Cue",
+   "Schritt 4 – Abspielen"
+  ],
+  "title": "Schritt 4 – Abspielen",
+  "keywords": [],
+  "text": "Drücke **Go** (Wiedergabe) im Panel Cue-Liste oder Executor – oder tippe `Go`. Der Look wird über die Fade-Zeit des Cues eingeblendet. `Go Cue 3` springt direkt zu einem Cue; **Zurück** geht einen Cue zurück; **Pause** und **Stopp** steuern eine laufende Überblendung.\n\nMit dem **Executor-Fader** mischst du zwischen deinen manuellen Werten (0 %) und dem Cue (100 %). Für eine große Show legst du **mehrere Executor-Panels** an, jedes an eine eigene Cue-Liste gebunden (Panel-Einstellungen → Liste): jedes hat seinen eigenen Fader und Go / Pause / Back / Stop – zusammen mit dem Hauptregler (*Master*) arbeiten sie als Submaster."
+ },
+ {
+  "id": "getting-started-014",
+  "page": "getting-started",
+  "path": [
+   "Erste Schritte mit OpenCue",
+   "5. Dein erster Cue",
+   "Schritt 5 – Speichern"
+  ],
+  "title": "Schritt 5 – Speichern",
+  "keywords": [],
+  "text": "Drücke `Strg+S`. Das speichert das **Showfile** und dein **Layout**. Ohne Speichern leben Änderungen nur im Arbeitsspeicher; OpenCue fragt vor dem Schließen nach."
+ },
+ {
+  "id": "getting-started-015",
+  "page": "getting-started",
+  "path": [
+   "Erste Schritte mit OpenCue",
+   "6. Echte Lampen anschließen"
+  ],
+  "title": "6. Echte Lampen anschließen",
+  "keywords": [],
+  "text": "1. Öffne **Einstellungen → DMX-Ausgabe**.\n2. **Art-Net**: ist beim ersten Start **aus** (es sendet ins Netzwerk) – schalte es ein. **Geräte automatisch finden** ist standardmäßig an: OpenCue sucht alle paar Sekunden Art-Net-Geräte im Netzwerk und sendet an jedes direkt, ein angesteckter Node funktioniert also einfach. **Netzwerk absuchen** zeigt, was gefunden wurde (Name, Adresse, Universen); **Verwenden** macht ein Gerät zum festen Ziel. Schalte den Automatik-Betrieb aus, um selbst eine feste **Ziel-IP** einzutragen (zum Beispiel die Art-Net-Broadcast-Adresse) und bei Bedarf die **Bind-IP** (welche Netzwerkkarte benutzt wird).\n3. **sACN (E1.31)**: schalte es ein. Auch das ist standardmäßig aus, damit Windows beim ersten Start keine Firewall-Frage zeigt.\n4. **USB DMX** (Enttec DMX USB Pro oder kompatibel): einschalten. Der **COM-Port** bleibt auf **Automatisch (empfohlen)**: OpenCue erkennt den Adapter beim Anstecken selbst, verbindet sich und verbindet sich nach Abziehen und Wiederanstecken erneut (auch an einem anderen USB-Anschluss). Das **Universum** wählen; einen COM-Port nur von Hand wählen, wenn mehrere Adapter angesteckt sind.\n5. Startet eine Schnittstelle nicht, nutze **DMX-Schnittstellen neu initialisieren** – ohne Neustart."
+ },
+ {
+  "id": "getting-started-016",
+  "page": "getting-started",
+  "path": [
+   "Erste Schritte mit OpenCue",
+   "6. Echte Lampen anschließen"
+  ],
+  "title": "6. Echte Lampen anschließen (2)",
+  "keywords": [],
+  "text": "Danach **patchst** du deine Scheinwerfer (Anleitung *Scheinwerfer und Patchen*): Universum und Startkanal müssen mit der am jeweiligen Gerät eingestellten Adresse übereinstimmen.\n\nDas Panel **DMX-Monitor** zeigt genau, was gesendet wird. Der **Blackout**-Knopf setzt alle Helligkeiten sofort auf 0; ein erneuter Klick bringt den Look zurück."
+ },
+ {
+  "id": "getting-started-017",
+  "page": "getting-started",
+  "path": [
+   "Erste Schritte mit OpenCue",
+   "7. Die Oberfläche zu deiner machen"
+  ],
+  "title": "7. Die Oberfläche zu deiner machen",
+  "keywords": [],
+  "text": "- **Bearbeitungsmodus** (**Bearbeiten → Panels bearbeiten**, `Strg+E`): Panels verschieben und in der Größe ändern (sehr klein möglich, der Inhalt rollt dann), ihre Eigenschaften und Farben anpassen, sie kopieren und einfügen. **Rechtsklick auf die leere Fläche** legt ein Panel, einen Button, Schalter oder Fader an der Klickstelle an. Der Haken **Bearbeiten → Hilfslinien** schaltet die Ausrichtungslinien beim Verschieben ein oder aus (`Alt` gedrückt halten: kurz aus).\n- **Layouts** sind Dateien. Baue mehrere (zum Beispiel ein kleines zum Programmieren und ein großes zur Wiedergabe) und wechsle mit `Strg+1` … `Strg+9` oder **Ansicht → Layouts**. Gespeichert wird mit `Strg+S` oder im Dateimanager.\n- **Themes** (Farbprofile): *Einstellungen → Darstellung* – dunkel, hell oder eigene.\n- **GUI-Skalierung** (`Strg +` / `Strg -`): macht alles größer, etwa für Touchscreens; sie wird pro Gerät gespeichert.\n- **Sprache:** Menü *Sprache* (Englisch, Deutsch, Français, Nederlands, Italiano, Español) oder `Strg+Umschalt+L`. Die Anleitungen gibt es in allen sechs Sprachen."
+ },
+ {
+  "id": "getting-started-018",
+  "page": "getting-started",
+  "path": [
+   "Erste Schritte mit OpenCue",
+   "7. Die Oberfläche zu deiner machen",
+   "Die Einstellungen im Überblick"
+  ],
+  "title": "Die Einstellungen im Überblick",
+  "keywords": [],
+  "text": "Das Zahnrad (**Einstellungen**) öffnet einen Dialog mit Kategorien links, gruppiert nach Aufgabe. Wichtige Kategorien beginnen mit einem **großen An/Aus-Schalter**: ist er aus, ist alles darunter abgeblendet und gesperrt. Nichts gilt, bevor du **Speichern** klickst (der Dialog bleibt dabei offen); **Schließen** fragt nach, wenn noch ungespeicherte Änderungen da sind. Das Feld **Einstellungen suchen …** findet auch Einstellungen in Kategorien, die du noch nie geöffnet hast, und listet die Treffer über **alle Kategorien** (*Einstellung – Kategorie / Abschnitt*); ein Klick springt zur Zeile. Das kleine **(i)** hinter einer Einstellung zeigt ihre Erklärung; der **(i)-Knopf neben dem Suchfeld** blendet alle Erklärungen ein oder aus (wird pro Gerät gemerkt).\n\n**Einstellungen sichern:** Unter *Allgemein* ganz unten speichert **Einstellungen exportieren** alle Einstellungen als Datei (`opencue-settings.json`), **Einstellungen importieren …** liest sie wieder ein. Importierte Werte erscheinen als **Änderungen** (markiert und gezählt) – erst **Speichern** übernimmt sie, **Schließen** verwirft sie. Nicht enthalten sind Passwörter und Zugangsschlüssel, geräte- oder rechnerbezogene Werte (Skalierung, Datenordner, Mikrofone, MIDI-Geräte) sowie die Tastenbelegung und die MIDI-Belegung – die haben ihren eigenen Export."
+ },
+ {
+  "id": "getting-started-019",
+  "page": "getting-started",
+  "path": [
+   "Erste Schritte mit OpenCue",
+   "7. Die Oberfläche zu deiner machen",
+   "Die Einstellungen im Überblick"
+  ],
+  "title": "Die Einstellungen im Überblick (2)",
+  "keywords": [],
+  "text": "| Gruppe | Kategorie | Wofür |\n|---|---|---|\n| Programm | **Allgemein** | Die Grundlagen: Sprache, GUI-Skalierung, Layout per Wischgeste wechseln, OpenCue mit Windows starten, Updates, Sicherungen der Show, Datenordner, Einstellungen sichern |\n| Programm | **Darstellung** | Farben, Themes, Voreinstellungen für neue Panels |\n| Ausgabe | **DMX-Ausgabe** | Art-Net, sACN, USB-DMX – jeweils mit eigenem Schalter, **alles ist beim ersten Start aus** |\n| Netzwerk | **Fernzugriff** | Tablet / Handy als Fernsteuerung: Hauptschalter, HTTP / HTTPS, Passwort, Adressen und QR-Codes, Netzwerk-Name `opencue.local` |\n| Netzwerk | **REST-API** | Andere Programme steuern OpenCue: Schalter, *Erreichbar von* (nur dieser PC / im Netzwerk), Tokens |\n| Bedienung | **Tastatur** | Tastaturkürzel ansehen, **eigene Tastenbelegung** (Anleitung *Tastaturkürzel*) |\n| Bedienung | **MIDI** | MIDI verwenden, Geräte wählen, Ausgang, Timecode / Tempo aus MIDI, **MIDI-Belegung** (Anleitung *MIDI*) |\n| Sprache & Audio | **Triggerwort** | Sprachsteuerung mit eigenem Mikrofon: Triggerwort + englischer Befehl, z. B. „OpenCue, blackout on“ (Anleitung *Sprachbefehle*); Ein/Aus mit dem Mikrofon-Symbol oben rechts |\n| Sprache & Audio | **Diktieren** | Mikrofon und Sprachmodell für das Diktieren im KI-Chat |\n| Assistent | **KI-Assistent** | Hauptschalter, Verbindung zu Ollama, Verhalten, Berechtigungen |\n| Erweitert | **Weitere Optionen** | **Schnellschalter** (Sprachsteuerung, MIDI, Blackout, Rückgängig mit Go – wirken sofort, auch wenn ihr Knopf in der Toolbar ausgeblendet ist), **Bildschirm wach halten** (Rechner und Tablets; am iPad nur auf einer sicheren Seite, https), was oben rechts in der Leiste erscheint (jeder Eintrag einzeln, pro Gerät) und die **Internet-Verbindung** (Knopf *Verbindung testen*) |\n| Erweitert | **Standardwerte** | Vorgaben für neue Cues, Grundzustand nach *Clear Clear*, Startwerte und **Löschen**: je Kategorie (Cues, Scheinwerfer, Bibliothek, Dateien, Sonstiges) eine Sicherheitsfrage vor dem Löschen – standardmäßig an |\n| Erweitert | **Ein- & Ausgänge** | Nur Anzeige: jede Verbindung, wofür sie dient und **wie weit sie reicht** (*nur dieser PC*, *lokales Netzwerk*, *Internet*), mit Link zur passenden Einstellung |"
+ },
+ {
+  "id": "getting-started-020",
+  "page": "getting-started",
+  "path": [
+   "Erste Schritte mit OpenCue",
+   "7. Die Oberfläche zu deiner machen",
+   "Die Einstellungen im Überblick"
+  ],
+  "title": "Die Einstellungen im Überblick (3)",
+  "keywords": [],
+  "text": "**Beim ersten Start verlässt nichts den Computer:** Fernzugriff, Art-Net, sACN und die REST-API nach außen sind aus. Nur die Suche nach Updates ist an (abschaltbar); sie braucht das Internet. Klappt das Internet im Browser, aber nicht in OpenCue (Firewall, Virenscanner, Firmennetz), zeigt *Allgemein → Internet-Verbindung → Verbindung testen*, **woran** es hakt."
+ },
+ {
+  "id": "getting-started-021",
+  "page": "getting-started",
+  "path": [
+   "Erste Schritte mit OpenCue",
+   "8. Was du als Nächstes erkunden kannst"
+  ],
+  "title": "8. Was du als Nächstes erkunden kannst",
+  "keywords": [],
+  "text": "| Thema | Wo |\n|---|---|\n| Scheinwerfer, GDTF-Bibliothek, Patchen, Gruppen | *Scheinwerfer und Patchen* |\n| Alle getippten Befehle | *Befehlsreferenz* |\n| Eigene Effekte mit einer kleinen Skriptsprache | *Effekt-Studio* |\n| Tablet und Handy als Fernsteuerung | *Fernsteuerung* |\n| Jedes Kürzel und jede Geste | *Tastenkürzel* (auch **Hilfe → Tastenkürzel**) |\n| Bühne in 3D, Moving Heads auf einen Punkt ausrichten | Panel **3D-Simulation** (über *Panel hinzufügen*; Modi Ansicht / Bauen / Scheinwerfer) |\n| Eigene 3D-Modelle (STL oder OBJ) auf der Bühne | 3D-Simulation → **Bauen** → **3D-Modell …** (Importieren oder aus der Bibliothek; die Datei-Einheit mm/cm/m/Zoll setzt die Originalgröße). **Mehrere Dateien auf einmal importieren** (im Dateidialog markieren oder im Modus *Bauen* aus dem Explorer auf die Bühne ziehen): Sie werden nebeneinander um die Bildmitte gestellt und gemeinsam ausgewählt. Verwaltet im Dateimanager unter **3D-Modelle** |\n| Ein Panel kurz benutzen, ohne es ins Layout zu legen | **Ansicht → Panel als Fenster öffnen**; Befehlszeile mit Ziffernblock und Tasten: **Strg+F** (Befehls-Konsole) |\n| Cues, die zu einer Zeit starten | Panel **Timecode** und der Cue-Trigger *Timecode* |\n| Lichter und Cues, die auf Musik reagieren | Panel **Audio**, Effekte mit dem Schlagwort *Audio*, Cue-Trigger *Audio* (Anleitung *Audio*) |\n| Cues, die auf eine Taste, ein Pad oder einen Regler eines MIDI-Geräts warten | Cue-Trigger *MIDI* (Anleitung *MIDI*, Abschnitt 5c) |\n| OpenCue von anderen Programmen aus steuern | **REST-API** (Einstellungen → REST-API; Anleitung *REST-API*) |\n| Dateien: Shows, Layouts, Bühnen, 3D-Modelle, Effekte | **Bibliothek → Shows… / Layouts… / 3D-Bühnen… / Effekte…** (der Dateimanager, mit Import und Export als ZIP; im Export-Paket einer Show sind auch die 3D-Modelle ihrer Bühne wählbar) |"
+ },
+ {
+  "id": "getting-started-022",
+  "page": "getting-started",
+  "path": [
+   "Erste Schritte mit OpenCue",
+   "9. Wo deine Daten liegen und wie du sie sicherst"
+  ],
+  "title": "9. Wo deine Daten liegen und wie du sie sicherst",
+  "keywords": [],
+  "text": "Deine Daten sind einfache Dateien im Datenordner (standardmäßig `%LOCALAPPDATA%\\OpenCue`):\n\n| Ordner | Inhalt |\n|---|---|\n| `showfiles` | Shows (Scheinwerfer, Gruppen, Cues, Presets, Effekte) |\n| `layouts` | Panel-Layouts |\n| `themes` | Farbprofile |\n| `fixtures` | GDTF-Scheinwerferdateien |\n| `effects` | Effekt-Skripte (`.fx`) |\n| `stages` | 3D-Bühnen |\n| `media` | Videos und Audio deiner Shows |\n| `config` | Einstellungen (`app_config.json`, auch die gewählte Audioquelle) und die API-Tokens (`api_tokens.json`, nur Hashes) |\n\nZum Sichern kopierst du den Ordner – oder nutzt den **Export** des Dateimanagers (eine Show als ZIP samt der Scheinwerfer und Effekte, die sie braucht), womit du eine Show auch auf einen anderen Computer bringst.\n\nBeim Deinstallieren von OpenCue wird gefragt, ob diese Daten auch gelöscht werden sollen; die Vorgabe ist **Nein**."
+ }
+]

@@ -1,0 +1,196 @@
+[
+ {
+  "id": "voice-commands-001",
+  "page": "voice-commands",
+  "path": [
+   "Spraakopdrachten"
+  ],
+  "title": "Spraakopdrachten",
+  "keywords": [],
+  "text": "Met **spraakopdrachten** bedient u OpenCue met uw stem: u zegt het **triggerwoord** (standaard \"OpenCue\") en direct daarna een **opdracht van de opdrachtregel** – OpenCue schrijft die op, zet hem om in de notatie van de opdrachtregel en **voert hem meteen uit**, precies zoals een getypte opdracht (hij staat ook in de opdrachtgeschiedenis, alle vensters volgen). Alles draait **offline** op de consolecomputer (na het eenmalig downloaden van de modellen), er is geen AI nodig.\n\nU spreekt **Engels**: de opdrachten van de opdrachtregel (`Fixture`, `At`, `Color`, `Blackout`, `Go` …) zijn Engels en de spraakherkenning is ingesteld om Engelse woorden te schrijven."
+ },
+ {
+  "id": "voice-commands-002",
+  "page": "voice-commands",
+  "path": [
+   "Spraakopdrachten",
+   "1. Aanzetten"
+  ],
+  "title": "1. Aanzetten",
+  "keywords": [],
+  "text": "1. Het **microfoonsymbool** rechtsboven in de werkbalk is een **aan/uit-schakelaar**:\n   - **groen** = de spraakbesturing luistert naar het triggerwoord,\n   - **rood en doorgestreept** = uit,\n   - **geel** = fout (microfoon onbereikbaar, model ontbreekt …; de aanwijzing staat in de tooltip).\n2. Eenmalig worden twee modellen gedownload (elk maar één keer, daarna werkt alles zonder internet): het kleine **triggerwoordmodel** (41 MB: *Instellingen → Triggerwoord → Spraakmodel downloaden*, of al in het installatieprogramma) en het **spraakmodel** voor de opdrachten (*Instellingen → Dictatie → Nu laden*; het is hetzelfde als bij dictatie). Het spraakmodel *Nauwkeurig* (small) begrijpt veel beter dan *Snel* (base).\n3. Microfoon, triggerwoord en gevoeligheid stelt u in onder *Instellingen → Triggerwoord*.\n\nHet symbool bestaat op de consolecomputer en ook op apparaten op afstand (iPad): de schakelaar zet de spraakbesturing van de server aan of uit; de microfoon zelf zit altijd aan de hoofdcomputer."
+ },
+ {
+  "id": "voice-commands-003",
+  "page": "voice-commands",
+  "path": [
+   "Spraakopdrachten",
+   "2. Hoe te spreken"
+  ],
+  "title": "2. Hoe te spreken",
+  "keywords": [],
+  "text": "```\n\"OpenCue … Blackout on.\"\n\"OpenCue … Fixture five at seventy nine, color green.\"\n\"OpenCue … Fixtures one through five at full.\"\n```\n\n- Eerst het **triggerwoord**, daarna – in dezelfde adem of na een korte pauze (tot ongeveer 2 seconden) – de **opdracht**.\n- Als de opdracht klaar is, **wacht dan ongeveer een seconde**: een korte pauze beëindigt de opname (maximaal 10 seconden).\n- Onderaan in het midden van het scherm toont een bel de voortgang: **Luisteren …** → **Begrijpen …** → **de opdracht** met zijn resultaat (groen = gedaan, rood = fout of niets begrepen). Heeft OpenCue een woord gecorrigeerd, dan staat dat erachter (\"gecorrigeerd: add → At\").\n- Spreek korte, duidelijke opdrachten. Stopwoorden (\"uh\", \"please\", \"now\", \"set\") en stotteren worden verwijderd."
+ },
+ {
+  "id": "voice-commands-004",
+  "page": "voice-commands",
+  "path": [
+   "Spraakopdrachten",
+   "3. Wat u kunt zeggen"
+  ],
+  "title": "3. Wat u kunt zeggen",
+  "keywords": [],
+  "text": "U zegt de opdrachten zoals ze in de opdrachtregel staan (zie de handleiding *Opdrachtregel*). Getallen kunt u in woorden zeggen (\"seventy nine\") of als cijfers. Meerdere opdrachten in één adem worden gescheiden door **\"then\"**."
+ },
+ {
+  "id": "voice-commands-005",
+  "page": "voice-commands",
+  "path": [
+   "Spraakopdrachten",
+   "3. Wat u kunt zeggen",
+   "Projectoren en helderheid kiezen"
+  ],
+  "title": "Projectoren en helderheid kiezen",
+  "keywords": [],
+  "text": "| U zegt | Wat wordt uitgevoerd |\n|---|---|\n| Fixture five | `Fixture 5` |\n| Fixtures one through ten | `Fixture 1 Thru 10` |\n| Fixture three and seven | `Fixture 3 + 7` |\n| Fixture five at seventy nine | `Fixture 5 At 79` |\n| Fixture five brightness fifty percent | `Fixture 5 At 50%` (ook *dimmer, intensity, level*) |\n| Fixtures one through five at full / at half | `Fixture 1 Thru 5 At Full` / `… At Half` |\n| Fixture five on / full | `Fixture 5 At Full` |\n| Fixture five off / out | `Fixture 5 At 0` |\n| Fixture five at seventy nine point five | `Fixture 5 At 79.5` |\n| At at / Everything on / All lights on | `At At` – **alles aan** (100 % + wit): zonder selectie alle projectoren, met een selectie alleen die selectie. Zeg eerst \"Clear\" om zeker te zijn dat het alles is. |\n| Fixtures one through ten minus five (ook *except / without*) | `Fixture 1 Thru 10 - 5` (zonder nr. 5) |\n| Next fixture / Previous fixture | `Next` / `Previous` (selecteert het volgende / vorige projector) |\n| Group front at full | `Group front At Full` |\n| Group front truss at forty | `Group \"front truss\" At 40` (meerdere naamwoorden horen bij elkaar tussen aanhalingstekens) |\n| Light / lamp / spot five | `Fixture 5` |"
+ },
+ {
+  "id": "voice-commands-006",
+  "page": "voice-commands",
+  "path": [
+   "Spraakopdrachten",
+   "3. Wat u kunt zeggen",
+   "Kleuren"
+  ],
+  "title": "Kleuren",
+  "keywords": [],
+  "text": "| U zegt | Wat wordt uitgevoerd |\n|---|---|\n| Fixture five color green | `Fixture 5 Color Green` |\n| Fixture five green | `Fixture 5 Color Green` (het woord \"color\" wordt toegevoegd) |\n| Fixture five warm white / cool white / light blue | `Fixture 5 Color Warm` / `Cool` / `Lightblue` |\n| RGB two fifty five zero zero | `RGB 255 0 0` |\n| Color two fifty five one twenty eight zero | `Color 255 128 0` (\"one twenty eight\" = 128 na *color / rgb / bpm*) |\n\nKleuren zoals in de opdrachtregel: red, green, blue, white, black, yellow, cyan, magenta, orange, pink, purple, amber, lime, teal, violet, light blue, warm, cool."
+ },
+ {
+  "id": "voice-commands-007",
+  "page": "voice-commands",
+  "path": [
+   "Spraakopdrachten",
+   "3. Wat u kunt zeggen",
+   "Positie en bundel"
+  ],
+  "title": "Positie en bundel",
+  "keywords": [],
+  "text": "| U zegt | Wat wordt uitgevoerd |\n|---|---|\n| Pan ninety / Pan fifty percent | `Pan 90` / `Pan 50%` |\n| Tilt minus forty five / Pan plus fifteen | `Tilt -45` / `Pan +15` (een teken = relatief) |\n| Fixture five home / center | `Fixture 5 Pan 50% Tilt 50%` |\n| Zoom half / full / minimum / fifty | `Zoom Half` / `Zoom Full` / `Zoom Min` / `Zoom 50` |\n| Focus twenty five | `Focus 25` |\n| Gobo forty / gobo spin thirty | `Gobo 40` / `GoboSpin 30` |\n| Prism one hundred | `Prism 100` |\n| Strobe zero / shutter ten | `Strobe 0` / `Strobe 10` |\n| Channel six one hundred twenty eight | `Channel 6 128` (kanaal 6 van de projector op DMX 128) |"
+ },
+ {
+  "id": "voice-commands-008",
+  "page": "voice-commands",
+  "path": [
+   "Spraakopdrachten",
+   "3. Wat u kunt zeggen",
+   "Master en blackout"
+  ],
+  "title": "Master en blackout",
+  "keywords": [],
+  "text": "| U zegt | Wat wordt uitgevoerd |\n|---|---|\n| Blackout | `Blackout` (omschakelen) |\n| Blackout on / Blackout off | `Blackout On` / `Blackout Off` |\n| Master eighty / Master full / Master minus ten | `Master 80` / `Master Full` / `Master -10` |"
+ },
+ {
+  "id": "voice-commands-009",
+  "page": "voice-commands",
+  "path": [
+   "Spraakopdrachten",
+   "3. Wat u kunt zeggen",
+   "Cuelijsten"
+  ],
+  "title": "Cuelijsten",
+  "keywords": [],
+  "text": "| U zegt | Wat wordt uitgevoerd |\n|---|---|\n| Go / Next cue | `Go` |\n| Back / Go back / Previous cue | `Back` |\n| Pause / Resume / Stop | `Pause` / `Resume` / `Stop` |\n| Go to cue five | `Go Cue 5` (ook *goto cue five*) |\n| Cue list main go | `Cuelist main Go` |\n| Cue list front of house back | `Cuelist \"front of house\" Back` |\n| Cuelist two go | `Cuelist 2 Go` |\n| Cuelist main fader eighty / Fader fifty | `Cuelist main Fader 80` / `Fader 50` |\n| Cue five fade three / Cue five delay one point five | `Cue 5 Fade 3` / `Cue 5 Delay 1.5` |\n| Store cue five (merge) | `Store Cue 5` (`Merge`) |\n| Update / Clear | `Update` / `Clear` |"
+ },
+ {
+  "id": "voice-commands-010",
+  "page": "voice-commands",
+  "path": [
+   "Spraakopdrachten",
+   "3. Wat u kunt zeggen",
+   "Tijdcode en audio"
+  ],
+  "title": "Tijdcode en audio",
+  "keywords": [],
+  "text": "| U zegt | Wat wordt uitgevoerd |\n|---|---|\n| Timecode play / pause / stop / reset / reverse | `Timecode Play` / `Pause` / `Stop` / `Reset` / `Reverse` |\n| Timecode rate two | `Timecode Rate 2` |\n| Tap | `Tap` (het tempo tikken) |\n| BPM one twenty eight / BPM auto / BPM half | `BPM 128` / `BPM Auto` / `BPM Half` (ook *beats per minute*) |\n| Audio start / stop / demo | `Audio Start` / `Stop` / `Demo` |"
+ },
+ {
+  "id": "voice-commands-011",
+  "page": "voice-commands",
+  "path": [
+   "Spraakopdrachten",
+   "3. Wat u kunt zeggen",
+   "Effecten, variabelen, programmer"
+  ],
+  "title": "Effecten, variabelen, programmer",
+  "keywords": [],
+  "text": "| U zegt | Wat wordt uitgevoerd |\n|---|---|\n| Effect rainbow / Effect off | `Effect rainbow` / `Effect Off` |\n| Variable warm white | `Variable \"warm white\"` |\n| Manual / Manual color | `Manual` / `Manual Color` |"
+ },
+ {
+  "id": "voice-commands-012",
+  "page": "voice-commands",
+  "path": [
+   "Spraakopdrachten",
+   "3. Wat u kunt zeggen",
+   "Meerdere opdrachten"
+  ],
+  "title": "Meerdere opdrachten",
+  "keywords": [],
+  "text": "\"Fixture one at full **then** fixture two at zero\" → `Fixture 1 At Full; Fixture 2 At 0`."
+ },
+ {
+  "id": "voice-commands-013",
+  "page": "voice-commands",
+  "path": [
+   "Spraakopdrachten",
+   "4. Wat automatisch wordt gecorrigeerd"
+  ],
+  "title": "4. Wat automatisch wordt gecorrigeerd",
+  "keywords": [],
+  "text": "Whisper schrijft soms woorden die hetzelfde klinken maar in de opdracht geen zin hebben (\"add\" in plaats van \"at\", \"true\" in plaats van \"thru\"). OpenCue controleert **op welke plek in de opdracht** het woord staat en zet het passende opdrachtwoord in – alleen waar het past:"
+ },
+ {
+  "id": "voice-commands-014",
+  "page": "voice-commands",
+  "path": [
+   "Spraakopdrachten",
+   "4. Wat automatisch wordt gecorrigeerd"
+  ],
+  "title": "4. Wat automatisch wordt gecorrigeerd (2)",
+  "keywords": [],
+  "text": "| Gehoord / geschreven | Wordt | Wanneer |\n|---|---|---|\n| add, ad, it, app | At | na een getal, vóór een getal (\"fixture 5 **add** 70\") |\n| true, threw, till, through, until, to, too, drew, grew, crew, throw … | Thru | tussen twee getallen (\"fixtures 1 **true** 5\") |\n| **2** (Whisper hoort \"thru\" als het getal *two*) | Thru | in een selectie precies tussen twee getallen (\"fixtures one **two** five\" = `Fixture 1 Thru 5`; ook \"fixture 1-5\" en \"1, 2, 5\") |\n| eight (8) | At | in een selectie tussen twee getallen (\"fixture 5 **eight** 70\") |\n| halve, calf | Half | altijd; \"fixture 3 half\" = `Fixture 3 At Half` |\n| chanel, clair, stroke, pawn, tell, fate, delight … | Channel, Clear, Strobe, Pan, Tilt, Fade, Delay | afhankelijk van de positie (vóór een getal, of altijd) |\n| oh | 0 | waar een getal moet staan (\"at oh\", \"master oh\") |\n| picture, pitcher, fix sure, fixer | Fixture | altijd (\"**picture** one to four\") |\n| for, to, too, won, ate, tree | 4, 2, 2, 1, 8, 3 | alleen waar een getal moet staan (\"fixture **for** at fifty\" → Fixture 4 At 50) |\n| collar, caller | Color | altijd |\n| pen, ban, pun | Pan | vóór een getal |\n| till, tilted | Tilt | vóór een getal (\"**till** minus ten\") |\n| queue, q, cute, cube, key | Cue | vóór een getal (\"go **key** five\") |\n| fool | Full | altijd |\n| of, own | Off, On | na Blackout |\n| prison, prisms | Prism | altijd |\n| strove | Strobe | altijd |\n| paws, pours | Pause | altijd |\n| affect, effects | Effect | altijd |\n| tab | Tap | altijd |\n| read, grin, grain, blew, wait … | Red, Green, Blue, White | na \"color\" of als kleurnaam |\n| black out, black art, blackouts | Blackout | altijd |\n| time code, cue list, grand master, go bo, b p m | Timecode, Cuelist, Master, Gobo, BPM | uitdrukkingen van meerdere woorden |"
+ },
+ {
+  "id": "voice-commands-015",
+  "page": "voice-commands",
+  "path": [
+   "Spraakopdrachten",
+   "4. Wat automatisch wordt gecorrigeerd"
+  ],
+  "title": "4. Wat automatisch wordt gecorrigeerd (3)",
+  "keywords": [],
+  "text": "Verder:\n\n- **Getalwoorden** → cijfers (\"twenty one\", \"one hundred and five\", \"two point five\", \"minus ten percent\").\n- **Klankvergelijking:** een onbekend woord dat staat waar een bepaald opdrachtwoord moet staan en hetzelfde klinkt, wordt dat woord.\n- **Kleine spelfouten** in sleutelwoorden → het dichtstbijzijnde opdrachtwoord (\"blakout\" → Blackout).\n- **Varianten van het triggerwoord** (\"open queue\", \"open Q\", \"OpenCue\") worden aan het begin verwijderd, ook alles wat vóór het triggerwoord is gezegd.\n- **Namen** (na *group, cuelist, effect, variable*) blijven zoals gesproken.\n- **Procent** na Master, Fader, BPM en cuenummers wordt weggelaten (\"master eighty percent\" → `Master 80`), omdat de opdrachtregel daar geen procent kent.\n- Inleidend gepraat vóór de opdracht (\"set\", \"please\", alles wat niet wordt begrepen) wordt weggelaten; de opdracht moet met een opdrachtwoord beginnen."
+ },
+ {
+  "id": "voice-commands-016",
+  "page": "voice-commands",
+  "path": [
+   "Spraakopdrachten",
+   "5. Wat niet met spraak werkt"
+  ],
+  "title": "5. Wat niet met spraak werkt",
+  "keywords": [],
+  "text": "In de **operatormodus** op de console (*Weergave → Operatormodus ...*) is de spraakbesturing **uitgeschakeld**, zodat op deze pc alleen mogelijk is wat het bedieningsoppervlak biedt; na het verlaten loopt ze weer als ze aan stond.\n\nVoor de veiligheid voert spraakbesturing **nooit iets uit dat verwijdert of overschrijft**: `Delete …`, `Clear Clear`, `Overwrite`. De bel zegt dan \"Niet met spraak\". Typ deze opdrachten of gebruik de interface."
+ },
+ {
+  "id": "voice-commands-017",
+  "page": "voice-commands",
+  "path": [
+   "Spraakopdrachten",
+   "6. Als het niet werkt"
+  ],
+  "title": "6. Als het niet werkt",
+  "keywords": [],
+  "text": "| Weergave | Wat te doen |\n|---|---|\n| Microfoon geel | Lees de tooltip; *Instellingen → Triggerwoord* (juiste microfoon?) |\n| \"Spraakmodel ontbreekt\" | *Instellingen → Dictatie → Nu laden* (en voor het triggerwoord: *Instellingen → Triggerwoord → Spraakmodel downloaden*) |\n| \"Niets begrepen\" | Dichter bij de microfoon, duidelijker spreken, de opdracht direct na het triggerwoord zeggen |\n| \"Geen opdracht herkend\" | De tekst begint niet met een opdrachtwoord – de bel toont wat is begrepen; spreek precies zoals in de opdrachtregel |\n| Opdracht rood (✗) | De opdrachtregel zegt wat niet klopt (bijvoorbeeld de projector bestaat niet, \"deze cuelijst heeft geen cues\") |\n| Het triggerwoord wordt niet herkend | Verhoog *Instellingen → Triggerwoord → Gevoeligheid* |\n| Een woord wordt steeds verkeerd geschreven | Noteer wat Whisper schrijft (de tekst staat in het logboek) – de tabel met correcties is gemakkelijk uit te breiden |\n\nHet triggerwoord wordt herkend door een klein offline model, de opdracht erna wordt door Whisper opgeschreven (ongeveer 1–3 seconden op een gewone computer). Harde muziek of lawaai in de ruimte verslechtert de herkenning – een microfoon dicht bij de mond helpt meer dan wat ook."
+ }
+]

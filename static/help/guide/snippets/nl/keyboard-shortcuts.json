@@ -1,0 +1,254 @@
+[
+ {
+  "id": "keyboard-shortcuts-001",
+  "page": "keyboard-shortcuts",
+  "path": [
+   "Toetsenbordsnelkoppelingen en gebaren"
+  ],
+  "title": "Toetsenbordsnelkoppelingen en gebaren",
+  "keywords": [],
+  "text": "Alle sneltoetsen en aanraakgebaren van OpenCue op één plek. In het programma is dezelfde lijst beschikbaar onder **Help → Toetsenbordsnelkoppelingen** en **Bedieningen → Toetsenbordsnelkoppelingen ...** – en daar kunt u ook de eigen sneltoetsen van het programma **wijzigen** (paragraaf 11b).\n\nOp een Mac-toetsenbord (of in een browser op een Mac) werkt `Cmd` als `Ctrl`."
+ },
+ {
+  "id": "keyboard-shortcuts-002",
+  "page": "keyboard-shortcuts",
+  "path": [
+   "Toetsenbordsnelkoppelingen en gebaren",
+   "1. Overzicht"
+  ],
+  "title": "1. Overzicht",
+  "keywords": [],
+  "text": "De meeste sneltoetsen zijn **globaal**: ze werken waar de focus ook is, met één regel – **terwijl u in een tekstveld typt, blijven maar enkele sneltoetsen actief**: `Ctrl+S`, `Ctrl+Shift+S`, `Ctrl+F`, `F1`, `F5`, `Ctrl+F5`, `F11` en `Ctrl+L`. Al het andere (`Ctrl+N`, `Ctrl+O`, `Ctrl+Q`, `Ctrl+E`, pijltoetsen, `Ctrl+1–9`, schaal, klembord en ongedaan maken) blijft stil, zodat typen nooit wordt verstoord."
+ },
+ {
+  "id": "keyboard-shortcuts-003",
+  "page": "keyboard-shortcuts",
+  "path": [
+   "Toetsenbordsnelkoppelingen en gebaren",
+   "2. Showbestand"
+  ],
+  "title": "2. Showbestand",
+  "keywords": [],
+  "text": "| Sneltoets | Actie |\n|---|---|\n| `Ctrl+N` | Nieuw showbestand (vraagt eerst als er niet-opgeslagen wijzigingen zijn) |\n| `Ctrl+O` | Een showbestand openen (opent het bestandsbeheer op *Shows*) |\n| `Ctrl+M` | Bestandsbeheer (alle bestanden: shows, indelingen, podia, modellen, media, effecten ...) |\n| `Ctrl+L` | **Scherm vergrendelen** (menu *Bedieningen → Scherm vergrendelen*; vereist *Instellingen → Beveiliging → Vergrendelmodus gebruiken*; op een apparaat op afstand: afmelden; in operatormodus: vraagt om het wachtwoord om het te verlaten) |\n| `Ctrl+S` | Het showbestand **en** de indeling van deze console opslaan (een show zonder naam opent *Opslaan als*) |\n| `Ctrl+Shift+S` | Het showbestand onder een nieuwe naam opslaan |\n| `Ctrl+Q` | OpenCue afsluiten (vraagt eerst om op te slaan) |\n\n`Ctrl+S` werkt ook terwijl u in een naamveld typt, bijvoorbeeld in het venster *Opslaan als*."
+ },
+ {
+  "id": "keyboard-shortcuts-004",
+  "page": "keyboard-shortcuts",
+  "path": [
+   "Toetsenbordsnelkoppelingen en gebaren",
+   "3. Weergave en interface"
+  ],
+  "title": "3. Weergave en interface",
+  "keywords": [],
+  "text": "| Sneltoets | Actie |\n|---|---|\n| `?` | **Dit overzicht van alle sneltoetsen tonen / verbergen** (niet terwijl u in een veld typt of een ander venster open is) |\n| `F1` | De **Handleidingen** openen (alle handleidingen in het programma, ook offline). Daarin zoekt `Ctrl+F`, springen `Enter` / `Shift+Enter` naar de volgende / vorige treffer, wist `Esc` de zoekopdracht |\n| `F5` | **De indeling opnieuw laden**: de huidige indeling wordt opnieuw geladen zoals bij het wisselen van indeling en **alle panelen worden opnieuw opgebouwd** (helpt als iets – bijvoorbeeld de 3D-simulatie – na het starten niet goed verscheen). Bij niet-opgeslagen indelingswijzigingen wordt niets uit het bestand gehaald: de panelen worden alleen opnieuw opgebouwd en uw wijzigingen blijven. Ook in *Weergave → Layout opnieuw laden* |\n| `Ctrl+F5` | **De hele interface opnieuw laden** (zoals het herladen van een webpagina; het apparaat krijgt daarna zijn indeling terug). Ook in *Weergave → Interface opnieuw laden* |\n| `F11` | Volledig scherm (consolevenster, of de browser van dit apparaat) |\n| `Ctrl +` / `Ctrl =` | De interface vergroten (interfaceschaal, stappen van 5 %) |\n| `Ctrl -` | De interface verkleinen |\n| `Ctrl+0` | De schaal terugzetten op 100 % |\n| `Ctrl+Shift+L` | Taal wisselen (na elkaar: Engels, Duits, Frans, Nederlands, Italiaans, Spaans) |\n| `Ctrl+F` | De **opdrachtconsole** openen / sluiten: opdrachtregel met toetsenblok en opdrachttoetsen in één venster – ook zonder deze panelen in de indeling; de cursor staat meteen in het invoerveld |\n| `Esc` | Het bovenste venster, paneelvenster of menu sluiten / annuleren – één druk sluit **één** venster (Instellingen vragen eerst als er wijzigingen zijn) |"
+ },
+ {
+  "id": "keyboard-shortcuts-005",
+  "page": "keyboard-shortcuts",
+  "path": [
+   "Toetsenbordsnelkoppelingen en gebaren",
+   "3. Weergave en interface"
+  ],
+  "title": "3. Weergave en interface (2)",
+  "keywords": [],
+  "text": "De interfaceschaal (50–200 %) wordt **per apparaat** opgeslagen: een tablet kan groot zijn terwijl de console klein blijft."
+ },
+ {
+  "id": "keyboard-shortcuts-006",
+  "page": "keyboard-shortcuts",
+  "path": [
+   "Toetsenbordsnelkoppelingen en gebaren",
+   "4. Indelingen"
+  ],
+  "title": "4. Indelingen",
+  "keywords": [],
+  "text": "| Sneltoets | Actie |\n|---|---|\n| `Ctrl+1` … `Ctrl+9` | Indeling 1 tot 9 laden (favorieten eerst, dan A–Z) |\n| `←` / `→` | Vorige / volgende indeling (niet in tekstvelden, vensters, menu's of bewerkmodus) |\n| Horizontaal vegen | Vorige / volgende indeling op aanraakapparaten (*Instellingen → Algemeen → Layouts wisselen door vegen*, per apparaat) |\n\nHet laden van een indeling verwerpt niet-opgeslagen wijzigingen van de huidige. De volgorde is dezelfde als onder **Weergave → Layouts**."
+ },
+ {
+  "id": "keyboard-shortcuts-007",
+  "page": "keyboard-shortcuts",
+  "path": [
+   "Toetsenbordsnelkoppelingen en gebaren",
+   "5. Paneelbewerkmodus"
+  ],
+  "title": "5. Paneelbewerkmodus",
+  "keywords": [],
+  "text": "In de bewerkmodus (**Bewerken → Panelen bewerken**) kunt u panelen verplaatsen, van grootte veranderen en configureren.\n\n| Sneltoets | Actie |\n|---|---|\n| `Ctrl+E` | Bewerkmodus aan / uit |\n| Klik op een paneel | Markeert het (dun accentkader) |\n| `Shift`/`Ctrl` + klik | Een paneel aan de markering toevoegen / eruit verwijderen |\n| Klik op lege werkruimte | Wist de markering |\n| `Ctrl+C` / `Ctrl+X` / `Ctrl+V` | De gemarkeerde panelen kopiëren / knippen / plakken (het klembord overleeft een indelingswissel) |\n| `Ctrl+Z` | De laatste paneelwijziging ongedaan maken |\n| `Ctrl+Y` of `Ctrl+Shift+Z` | Opnieuw uitvoeren |\n| Rechtsklik → *Dupliceren* | Kopieert de gemarkeerde (of aangeklikte) panelen met een kleine verschuiving |\n\nIn de **bewerkmodus** gelden `Ctrl+Z` / `Ctrl+Y` voor de indeling van de panelen. **Daarbuiten** maken ze wijzigingen aan de **inhoud van de show** ongedaan (zie *Ongedaan maken en opnieuw uitvoeren* hieronder).\n\nHet verlaten van de bewerkmodus met niet-opgeslagen wijzigingen vraagt: **Opslaan**, **Wijzigingen verwerpen** (laadt de opgeslagen indeling opnieuw) of **Verder bewerken**."
+ },
+ {
+  "id": "keyboard-shortcuts-008",
+  "page": "keyboard-shortcuts",
+  "path": [
+   "Toetsenbordsnelkoppelingen en gebaren",
+   "6. Projectorenlijst en programmer"
+  ],
+  "title": "6. Projectorenlijst en programmer",
+  "keywords": [],
+  "text": "| Actie | Hoe |\n|---|---|\n| Een projector selecteren | Op de tegel klikken / tikken |\n| Meerdere selecteren | **Lasso**: een kader over de tegels slepen (muis en aanraking); de lasso blijft binnen zijn eigen paneel |\n| De geselecteerde projectoren verwijderen | `Delete` of `Backspace` (vraagt om bevestiging) |\n| Een Pan/Tilt-waarde fijn wijzigen | **Vegen** omhoog/omlaag op het getalveld (grof: 2 px per stap, fijn: 4 px per fijne stap); tikken om te typen |\n| Het contextmenu openen | Rechtsklik (muis) of lang drukken (aanraking) op een projector of op lege ruimte |"
+ },
+ {
+  "id": "keyboard-shortcuts-009",
+  "page": "keyboard-shortcuts",
+  "path": [
+   "Toetsenbordsnelkoppelingen en gebaren",
+   "7. Opdrachtregel"
+  ],
+  "title": "7. Opdrachtregel",
+  "keywords": [],
+  "text": "| Toets | Effect |\n|---|---|\n| `Enter` | De opdracht uitvoeren |\n| `↑` / `↓` | Oudere / nieuwere opdracht uit de geschiedenis (omlaag keert terug naar uw concept) |\n| `Tab` | Het eerste voorstel overnemen; elke volgende `Tab` gaat naar het volgende |\n| `Shift+Tab` | Achteruit door de voorstellen gaan |\n| `Esc` | De voorstellenlijst sluiten (in de opdrachtconsole: de console sluiten) |\n\nDetails over de opdrachten: *Opdrachtenreferentie*."
+ },
+ {
+  "id": "keyboard-shortcuts-010",
+  "page": "keyboard-shortcuts",
+  "path": [
+   "Toetsenbordsnelkoppelingen en gebaren",
+   "8. Effectenstudio"
+  ],
+  "title": "8. Effectenstudio",
+  "keywords": [],
+  "text": "| Sneltoets | Actie |\n|---|---|\n| `Ctrl+S` | Het effect opslaan (**niet** de show) als de cursor in het script staat |\n| `Tab` | Voegt twee spaties in |\n| `Enter` | Nieuwe regel met de inspringing van de vorige (twee spaties extra na `{`) |"
+ },
+ {
+  "id": "keyboard-shortcuts-011",
+  "page": "keyboard-shortcuts",
+  "path": [
+   "Toetsenbordsnelkoppelingen en gebaren",
+   "9. 3D-simulatie – bouwmodus"
+  ],
+  "title": "9. 3D-simulatie – bouwmodus",
+  "keywords": [],
+  "text": "Deze sneltoetsen werken in de 3D-simulatie alleen tijdens het bouwen (modi *Bouwen* / *Projectoren*), niet in de modus *Weergave*.\n\n| Sneltoets | Actie |\n|---|---|\n| `Ctrl+C` / `Ctrl+X` / `Ctrl+V` | Objecten kopiëren / knippen / plakken |\n| `Ctrl+D` | Het geselecteerde object dupliceren (nogmaals drukken om de verschuiving te herhalen) |\n| `Delete` / `Backspace` | Het geselecteerde object verwijderen (vraagt om bevestiging); in projectormodus: de projector van het podium verwijderen |\n| `Esc` | De selectie wissen |\n| `Shift` + klik | Een object aan de selectie toevoegen / eruit verwijderen |\n| Pijltoetsen | De selectie verplaatsen (met `Shift` vijf keer zo ver); zolang iets is geselecteerd, wisselen de pijlen geen indelingen |\n| `Ctrl+Z` | Ongedaan maken |\n| `Ctrl+Y` of `Ctrl+Shift+Z` | Opnieuw uitvoeren |\n\nProjectoren bestaan maar één keer op een podium, dus in projectormodus zijn kopiëren, knippen en dupliceren uitgeschakeld.\n\nTijdens het richten (*Punt instellen in 3D-simulatie* in de projectorbediening) beëindigt `Esc` het richten."
+ },
+ {
+  "id": "keyboard-shortcuts-012",
+  "page": "keyboard-shortcuts",
+  "path": [
+   "Toetsenbordsnelkoppelingen en gebaren",
+   "10. Aanraakgebaren"
+  ],
+  "title": "10. Aanraakgebaren",
+  "keywords": [],
+  "text": "| Gebaar | Hetzelfde als |\n|---|---|\n| Lang drukken | Rechtsklik (contextmenu) |\n| Lang drukken op een element met tooltip | Toont de tooltip |\n| Dubbeltik | Dubbelklik |\n| Horizontaal vegen (indien ingeschakeld) | Vorige / volgende indeling |\n| Vegen op een Pan/Tilt-getalveld | De waarde wijzigen (grof / fijn) |\n\nPaneelgrepen en werkbalkknoppen hebben een aanraakdoel van minstens 44 × 44 px. Het vegen voor de indeling wordt herkend aan de richting van de eerste beweging (hoogstens 25° van horizontaal, minstens 40 % van de breedte) en begint nooit op elementen met een eigen sleepfunctie (faders, lasso-tegels, veeg-getalvelden, invoervelden, het kleurenwiel, kolom- en paneelgrepen). Verticaal scrollen blijft scrollen."
+ },
+ {
+  "id": "keyboard-shortcuts-013",
+  "page": "keyboard-shortcuts",
+  "path": [
+   "Toetsenbordsnelkoppelingen en gebaren",
+   "11. Eigen sneltoetsen"
+  ],
+  "title": "11. Eigen sneltoetsen",
+  "keywords": [],
+  "text": "Een eigen toets of toetscombinatie kan een **opdracht van de opdrachtregel** activeren – bijvoorbeeld `Ctrl+H` voor `Blackout` of de spatiebalk voor `Cuelist Main Go`. Open de lijst met **Bedieningen → Aangepaste toetsenbordsnelkoppelingen ...** of met de knop onderaan het venster *Toetsenbordsnelkoppelingen*.\n\n**Eén toets voor de volgende cue:** klik onder *Snelstart* bovenaan het venster op **Volgende cue (Go)** (of *Vorige cue*, *Pauze*, *Blackout*): er verschijnt een nieuwe rij met de opdracht `Go`, klik dan op het toetsveld en druk op de toets – bijvoorbeeld de spatiebalk of een toets van een tweede toetsenbord / numeriek blok (kies *Alleen dit toetsenbord* in het venster *Toets instellen*). `Go` start de volgende cue van de actieve cuelijst; `Cuelist Main Go` altijd die lijst.\n\nElke rij heeft, van links naar rechts:"
+ },
+ {
+  "id": "keyboard-shortcuts-014",
+  "page": "keyboard-shortcuts",
+  "path": [
+   "Toetsenbordsnelkoppelingen en gebaren",
+   "11. Eigen sneltoetsen"
+  ],
+  "title": "11. Eigen sneltoetsen (2)",
+  "keywords": [],
+  "text": "| Veld | Betekenis |\n|---|---|\n| **Aan** | Zet de rij aan of uit zonder haar te verwijderen. |\n| **Toets** | Toont de toets of combinatie. Klikken erop of op de **toetsenbordknop** ernaast opent het venster **Toets instellen**: u hebt **10 seconden** om de toets of combinatie in te drukken (bijvoorbeeld `Ctrl` en `H` samen) – alles vanaf de eerste druk tot alle toetsen zijn losgelaten wordt opgenomen. `Esc` annuleert, de knop naast het veld neemt opnieuw op. Eronder kiest u waarvoor het geldt: **Alle toetsenborden** of **Alleen dit toetsenbord**. Een rij krijgt haar toets alleen via dit venster. |\n| **Opdracht** | De opdracht zoals u hem in de opdrachtregel zou typen. |\n| **Uitvoeren** | Aan: de opdracht wordt meteen uitgevoerd. Uit: hij wordt alleen in de opdrachtregel **geschreven** (u bevestigt hem zelf). |\n| **In geschiedenis** | Aan: de opdracht verschijnt in de geschiedenis van de opdrachtregel. |\n| Prullenbak | Verwijdert de rij (na bevestiging). |\n\n**Nieuwe toetsencombinatie** onderaan voegt zoveel lege rijen toe als u wilt (zonder opname). Wijzigingen gelden meteen en op elk apparaat met een toetsenbord (ook een iPad)."
+ },
+ {
+  "id": "keyboard-shortcuts-015",
+  "page": "keyboard-shortcuts",
+  "path": [
+   "Toetsenbordsnelkoppelingen en gebaren",
+   "11. Eigen sneltoetsen"
+  ],
+  "title": "11. Eigen sneltoetsen (3)",
+  "keywords": [],
+  "text": "**Back-up maken en delen:** Onderaan het venster slaat **Exporteren ...** de toewijzing op als bestand (`opencue-keyboard-mapping.json`), **Importeren ...** leest zo'n bestand. De rijen worden **toegevoegd**; toetsen die het programma of een andere rij al gebruikt worden overgeslagen (het bericht geeft het aantal).\n\n**Goed om te weten**"
+ },
+ {
+  "id": "keyboard-shortcuts-016",
+  "page": "keyboard-shortcuts",
+  "path": [
+   "Toetsenbordsnelkoppelingen en gebaren",
+   "11. Eigen sneltoetsen"
+  ],
+  "title": "11. Eigen sneltoetsen (4)",
+  "keywords": [],
+  "text": "- Combinaties die het programma of de browser al gebruikt (`Ctrl+S`, `Ctrl+1...9`, `Links`/`Rechts`, `F5` ...) worden tijdens het opnemen geweigerd; elke combinatie kan maar één keer worden gebruikt.\n- Terwijl u **in een invoerveld typt**, gelden alleen combinaties met `Ctrl`. Met een venster open doen gewone toetsen niets, en met het venster *Aangepaste toetsenbordsnelkoppelingen* open wordt niets geactiveerd.\n- De opdracht wordt uitgevoerd als de toets wordt **ingedrukt** (niet bij loslaten). Een ingedrukt gehouden toets activeert hem **maar één keer**.\n- Een combinatie kan **meerdere hoofdtoetsen** hebben, bijv. `Ctrl+H+J`: ze geldt zodra alle zijn ingedrukt (de volgorde maakt niet uit). Bestaat `Ctrl+H` ook, dan wacht die kortere combinatie even om te zien of `J` erbij komt.\n- Wordt een combinatie al gebruikt door het programma of de browser (ook als onderdeel van een langere, bijv. `Ctrl+S+J`), dan accepteert OpenCue haar niet en toont een bericht bovenaan het venster.\n- Toetsen worden onafhankelijk van de toetsenbordindeling opgeslagen (de `Z`-toets blijft de toets op die plek). Het numerieke blok heet `Num1` ... `Num9`.\n\n**Toets van een specifiek toetsenbord (bijv. macropad, alleen Windows)**"
+ },
+ {
+  "id": "keyboard-shortcuts-017",
+  "page": "keyboard-shortcuts",
+  "path": [
+   "Toetsenbordsnelkoppelingen en gebaren",
+   "11. Eigen sneltoetsen"
+  ],
+  "title": "11. Eigen sneltoetsen (5)",
+  "keywords": [],
+  "text": "In het venster **Toets instellen** (toetsenbordknop van een rij) drukt u op de toets van het gewenste toetsenbord. Op de console onder Windows herkent OpenCue **van welk** toetsenbord hij komt (de naam verschijnt onder het veld) en kiest u **Alle toetsenborden** of **Alleen dit toetsenbord**. Op een tablet of zonder Windows neemt de browser op en geldt het altijd voor \"Alle toetsenborden\". Een toets geldt of voor alle toetsenborden of voor specifieke – niet allebei tegelijk. Een rij die op \"alleen dit toetsenbord\" staat, activeert alleen als de toets op precies dat toetsenbord wordt ingedrukt – ook als OpenCue niet op de voorgrond staat. De rij toont het toetsenbord onder de toets."
+ },
+ {
+  "id": "keyboard-shortcuts-018",
+  "page": "keyboard-shortcuts",
+  "path": [
+   "Toetsenbordsnelkoppelingen en gebaren",
+   "11. Eigen sneltoetsen"
+  ],
+  "title": "11. Eigen sneltoetsen (6)",
+  "keywords": [],
+  "text": "- Dit werkt **op de console zelf** alleen onder Windows, niet vanaf een tablet.\n- OpenCue **luistert alleen terwijl** er minstens één ingeschakelde rij voor een specifiek toetsenbord is (of tijdens het opnemen). Hij beoordeelt alleen de toetsenborden in de lijst; al het andere wordt meteen weggegooid en nooit opgeslagen.\n- Windows meldt de toets alleen, het **blokkeert** hem niet: de toets bereikt ook het actieve programma (bijvoorbeeld als teken in een tekstveld). Kies voor een macropad toetsen die verder niets doen – zoals `F13` tot `F24` of het numerieke blok.\n- Sommige toetsenborden melden zich als meerdere apparaten (bijvoorbeeld toetsen en mediatoetsen afzonderlijk). OpenCue herkent dat zelf tijdens het opnemen.\n- Twee verschillende toetsenborden kunnen dezelfde toets verschillend toewijzen. Een dubbele melding van dezelfde toetsaanslag (binnen 80 ms) activeert maar één keer."
+ },
+ {
+  "id": "keyboard-shortcuts-019",
+  "page": "keyboard-shortcuts",
+  "path": [
+   "Toetsenbordsnelkoppelingen en gebaren",
+   "11b. De eigen sneltoetsen van het programma wijzigen"
+  ],
+  "title": "11b. De eigen sneltoetsen van het programma wijzigen",
+  "keywords": [],
+  "text": "De sneltoetsen die het programma al heeft (`Ctrl+S`, `F11`, `Ctrl+E` ...) kunnen naar andere toetsen worden verplaatst of worden uitgeschakeld. Open **Bedieningen → Toetsenbordsnelkoppelingen ...** en klik onderaan op **Snelkoppelingen bewerken**:\n\n1. Elke wijzigbare rij toont een gestippeld kader rond haar toets. **Klik op de toets**, druk de nieuwe combinatie in en **laat los** – ze wordt meteen ingesteld (de toets toont *Toetsen indrukken ...* zolang u hem vasthoudt). `Esc` annuleert.\n2. Het **kruisje** naast een rij zet die sneltoets **uit**, de **pijl** herstelt de standaardtoets. **Alle standaardtoetsen herstellen** zet alles terug. **Klaar** verlaat de bewerkmodus.\n3. Gewijzigde toetsen worden hier, in de menu's (bijvoorbeeld *Bestand → Showbestand opslaan*) en in het venster *Aangepaste toetsenbordsnelkoppelingen* in de accentkleur getoond; dat venster weigert toetsen die al bezet zijn.\n\nOpenCue weigert een combinatie die al wordt gebruikt (door een andere sneltoets, door een eigen toetsopdracht of door de browser / Windows – bijvoorbeeld `Ctrl+W`). Een sneltoets van het programma heeft **één hoofdtoets plus Ctrl, Alt of Shift**; een enkele letter of cijfer wordt geweigerd omdat dat het typen zou blokkeren – functietoetsen (`F1` ... `F24`) werken alleen. De wijziging geldt voor **alle apparaten** van de console."
+ },
+ {
+  "id": "keyboard-shortcuts-020",
+  "page": "keyboard-shortcuts",
+  "path": [
+   "Toetsenbordsnelkoppelingen en gebaren",
+   "11b. De eigen sneltoetsen van het programma wijzigen"
+  ],
+  "title": "11b. De eigen sneltoetsen van het programma wijzigen (2)",
+  "keywords": [],
+  "text": "Niet te wijzigen (ze hangen van de situatie af): `Esc`, `Ctrl+C / X / V` voor panelen, `Ctrl+1 ... 9` voor indelingen, de pijltoetsen en de 3D-bewerkingstoetsen."
+ },
+ {
+  "id": "keyboard-shortcuts-021",
+  "page": "keyboard-shortcuts",
+  "path": [
+   "Toetsenbordsnelkoppelingen en gebaren",
+   "Ongedaan maken en opnieuw uitvoeren (inhoud van de show)"
+  ],
+  "title": "Ongedaan maken en opnieuw uitvoeren (inhoud van de show)",
+  "keywords": [],
+  "text": "Buiten de paneelbewerkmodus maken `Ctrl+Z` en `Ctrl+Y` (of `Ctrl+Shift+Z`) – en *Bewerken → Ongedaan maken / Opnieuw uitvoeren* – alles ongedaan en opnieuw, wat **in het showbestand is opgeslagen**, en het bedienen daarvoor:\n\n- **cues en cuelijsten:** opslaan, bijwerken, tijden / triggers / namen wijzigen (ook meerdere tegelijk), kopiëren, verwijderen, aanmaken, hernoemen, herordenen en lijsten verwijderen;\n- **variabelen** en hun groepen, **projectorgroepen**, de **patch** (projectoren toevoegen, verwijderen, opnieuw adresseren, hernoemen, ordenen), **effecten** (definities en groepen), de **planning** en **opdrachtsporen van de tijdlijn**;\n- de **selectie** van projectoren;\n- **programmerwaarden** (kleur, positie, helderheid, bundel …) – één faderbeweging of één opdracht zoals `At 80` is **één** stap; ook de DMX-status van de betrokken projectoren gaat terug;\n- **lopende effecten:** een effect op projectoren toepassen of deselecteren;\n- de **executor-fader** van een cuelijst (één sleepbeweging = één stap).\n\nEen kort bericht noemt wat ongedaan is gemaakt. Snelle wijzigingen van dezelfde soort (bijvoorbeeld vegen op een tijd of een faderbeweging) tellen als **één** stap; de geschiedenis bewaart de laatste 100 stappen. Een nieuwe show starten (*Nieuw*, *Openen*) wist haar."
+ },
+ {
+  "id": "keyboard-shortcuts-022",
+  "page": "keyboard-shortcuts",
+  "path": [
+   "Toetsenbordsnelkoppelingen en gebaren",
+   "Ongedaan maken en opnieuw uitvoeren (inhoud van de show)"
+  ],
+  "title": "Ongedaan maken en opnieuw uitvoeren (inhoud van de show) (2)",
+  "keywords": [],
+  "text": "**Go en Back (schakelaar):** of **Go / Back / Jump** (en een als opdracht getypte `Go`) ook ongedaan worden gemaakt – `Ctrl+Z` springt dan terug naar de vorige cue. Standaard: **uit**, zodat u tijdens een voorstelling nooit per ongeluk een cue terugdraait. De schakelaar is een pictogram (ongedaan-pijl met een kleine afspeeldriehoek) in de werkbalk **en** onder *Instellingen → Meer opties → Snelschakelaars* – daar werkt hij ook als het pictogram in de werkbalk is verborgen.\n\n**Niet inbegrepen:** instellingen, Go via MIDI / OSC / tijdcode en wijzigingen via de REST-interface. In een open venster en in tekstvelden doen de sneltoetsen niets. U kunt de toetsen opnieuw toewijzen onder *Toetsenbordsnelkoppelingen → Snelkoppelingen bewerken*."
+ },
+ {
+  "id": "keyboard-shortcuts-023",
+  "page": "keyboard-shortcuts",
+  "path": [
+   "Toetsenbordsnelkoppelingen en gebaren",
+   "12. Spiekbriefje"
+  ],
+  "title": "12. Spiekbriefje",
+  "keywords": [],
+  "text": "```\nCtrl+N  Nieuwe show        Ctrl+O  Show openen        Ctrl+S  Opslaan       Ctrl+Shift+S  Opslaan als\nCtrl+E  Panelen bewerken   Ctrl+Z / Ctrl+Y  Ongedaan maken / Opnieuw (panelen in bewerkmodus, anders showinhoud)\nCtrl+C / X / V  Panelen kopiëren / knippen / plakken (bewerkmodus)\nCtrl+1…9  Indeling laden   ← / →  Vorige / volgende indeling\nCtrl +  Ctrl -  Ctrl+0     Interfaceschaal groter / kleiner / 100 %\nCtrl+Shift+L  Taal         F11  Volledig scherm  Ctrl+Q  Afsluiten    Esc  Venster sluiten\nCtrl+F  Opdrachtconsole (opdrachtregel + toetsenblok + toetsen)\n```"
+ }
+]

@@ -1,0 +1,474 @@
+[
+ {
+  "id": "effect-studio-001",
+  "page": "effect-studio",
+  "path": [
+   "Effect Studio – Guide"
+  ],
+  "title": "Effect Studio – Guide",
+  "keywords": [],
+  "text": "An **effect** is a small program that changes light over time: a dimmer that pulses, a color that walks through the rainbow, a moving head that travels a circle. You write effects in the **Effect Studio** (panel *Effect Studio*) in a language that looks like C++ or Arduino: with variables, `if`, `for`, `while` and your own functions. You do not have to be a programmer – the templates under **New...** run right away and are meant to be read and changed.\n\nThis guide is also available inside the studio via the **Help** button."
+ },
+ {
+  "id": "effect-studio-002",
+  "page": "effect-studio",
+  "path": [
+   "Effect Studio – Guide",
+   "1. The idea in one minute"
+  ],
+  "title": "1. The idea in one minute",
+  "keywords": [],
+  "text": "- A **script** is a text file (`.fx`). It describes what happens in **one pass**. That pass is called `loop()` and runs **`#RATE` times per second** (1 to 40, default 40).\n- In every pass the script computes new **output values**: `dimmer`, or `r`/`g`/`b`, or `pan`/`tilt`. Which ones is decided by the **category** (`#CATEGORY`).\n- Between two passes the **output stays where it is**. At 10 passes per second the value therefore changes ten times a second – on purpose, that is how you build stepped effects.\n- The script runs **for every fixture on its own**. Each one knows its number (`index`) and the total (`count`); use them to spread waves and chases over several fixtures.\n- Variables you create outside `loop()` **keep their value between passes**: counters, states, timers.\n\n```\n#NAME Sine\n#CATEGORY dimmer\n#RATE 40\n#VAR speed Slider 1 0.05 8 0.05\n\nloop() {\n  dimmer = 50 + 50 * sin(2 * PI * speed * elapsed);\n}\n```\n\nThat is a complete effect: the dimmer swings between 0 and 100 % with `speed` waves per second."
+ },
+ {
+  "id": "effect-studio-003",
+  "page": "effect-studio",
+  "path": [
+   "Effect Studio – Guide",
+   "2. Command overview (cheat sheet)"
+  ],
+  "title": "2. Command overview (cheat sheet)",
+  "keywords": [],
+  "text": "All commands at a glance. The chapters after this explain them with examples."
+ },
+ {
+  "id": "effect-studio-004",
+  "page": "effect-studio",
+  "path": [
+   "Effect Studio – Guide",
+   "2. Command overview (cheat sheet)"
+  ],
+  "title": "2. Command overview (cheat sheet) (2)",
+  "keywords": [],
+  "text": "| Area | Commands |\n|---|---|\n| Header lines | `#NAME`, `#DESCRIPTION`, `#CATEGORY dimmer` / `color` / `position`, `#RATE 1` to `40`, `#VAR name Slider` / `NumberInput` / `ColorPicker` / `Internal ...` |\n| Structure | `setup() { }` (once at start), `loop() { }` (`#RATE` times per second) |\n| Types | `float` (`double`), `int` (`long`, `short`, `byte`), `bool` (`boolean`), `void`, `const` |\n| Assigning | `x = 1;`, `x += 1;` (also `-=` `*=` `/=` `%=`), `x++;`, `x--;` |\n| Branching | `if (...) { } else if (...) { } else { }`, `condition ? a : b` |\n| Loops | `for (int i = 0; i < n; i++) { }`, `while (...) { }`, `do { } while (...);`, `break;`, `continue;` |\n| Functions | `float name(float x) { return x * 2; }`, `void name() { }`, `return value;` |\n| Calculating | `+ - * / %`, `== != < <= > >=`, `&& \\|\\| !` |\n| Comments | `// to the end of the line`, `/* over several lines */` |\n| Outputs | Dimmer: `dimmer` · Color: `r`, `g`, `b` or `hsv(h, s, v);` · Position: `pan`, `tilt` · Zoom: `zoom` · Focus: `focus` · Gobo: `gobo`, `gobo_spin`, `gobo2`, `gobo2_spin` |\n| Time | `t` (shared system time), `elapsed` (since effect start), `dt`, `tick` (`loop_count`), `rate` |\n| Fixtures | `index`, `count`, `phase` (= `index / count`), `slots`, `slots2` (number of gobos on wheel 1 and wheel 2) |\n| Constants | `PI`, `TWO_PI`, `HALF_PI`, `E`, `true`, `false` |\n| Math | `sin` `cos` `tan` `asin` `acos` `atan` `atan2` `sqrt` `pow` `exp` `log` `abs` `sign` `min` `max` `floor` `ceil` `round` `fract` `mod` |\n| Helpers | `constrain(x, lo, hi)` `map(x, inMin, inMax, outMin, outMax)` `lerp(a, b, k)` `smoothstep(e0, e1, x)` `radians(d)` `degrees(r)` |\n| Waveforms | `saw(x)` `tri(x)` `square(x)` `square(x, duty)` – each 0 to 1 per period |\n| Random, color, gobo | `random()` `random(max)` `random(min, max)` · `hsv(h, s, v)` · `slot(n)` `slot(n, wheel)` |"
+ },
+ {
+  "id": "effect-studio-005",
+  "page": "effect-studio",
+  "path": [
+   "Effect Studio – Guide",
+   "3. Using the studio"
+  ],
+  "title": "3. Using the studio",
+  "keywords": [],
+  "text": "| Area | What it does |\n|---|---|\n| **Open...** | Dialog with all effects, **favorites first** (search, category, loops per second, origin; bundled effects carry the badge **Default**). The list scrolls. Click a row to open it, the **star** makes an effect a favorite (applies to all devices), the trash can deletes it from the user folder. At the bottom: **Restore default effects**. |\n| **New...** | Dialog: first the **category** (dimmer, color, position, zoom, focus, gobo) or **Empty file**, then a **template** (*Empty* is preselected), then the **loops per second**. *Empty file* creates a completely empty editor without header lines. **Create** loads the result into the editor – nothing is saved until you say so. |\n| **Save** | Saves to the effect's file. A new effect asks for a file name. A dot next to the name shows unsaved changes. Keyboard: **Ctrl+S** in the text (saves the effect, not the show). |\n| **Save as...** | A new file name. If it already exists, the studio asks whether to overwrite it. |\n| **Delete** | Deletes the loaded effect (user folder only; you are asked first). Afterwards the editor is empty. If the button is grey, a hint says why (not saved yet, or not in the user folder). |\n| **Help** | Opens this guide. The cheat sheet (chapter 2) lists all commands. |\n| **Preview** | Shows or hides the preview on the right. |\n| **Status bar** | Green = fine. Red = error with line number. On the right: line and column of the caret. |"
+ },
+ {
+  "id": "effect-studio-006",
+  "page": "effect-studio",
+  "path": [
+   "Effect Studio – Guide",
+   "3. Using the studio"
+  ],
+  "title": "3. Using the studio (2)",
+  "keywords": [],
+  "text": "The editor **colors** keywords, types, numbers, comments, functions, system variables, outputs and your sliders (`#VAR`). **Enter** keeps the indentation of the line (two more spaces after `{`), **Tab** inserts two spaces."
+ },
+ {
+  "id": "effect-studio-007",
+  "page": "effect-studio",
+  "path": [
+   "Effect Studio – Guide",
+   "3. Using the studio",
+   "The preview"
+  ],
+  "title": "The preview",
+  "keywords": [],
+  "text": "The preview runs your script **without any fixtures** while you type – with exactly the loops per second you chose with `#RATE` – and draws the result:\n\n- **Dimmer:** one curve per fixture, 0 to 100 %.\n- **Color:** R/G/B as curves and a **color strip** per fixture below.\n- **Position:** pan and tilt as curves and the **path** in the pan/tilt field.\n\nDefault: **1 fixture, 2 seconds**. At the top you set the number of fixtures (1 to 16) and the duration (1 to 20 s); several fixtures show how `index`, `count` and `phase` offset the waves. Below are **sliders for your `#VAR` parameters** – drag one and the curve follows at once. At a low rate (up to 20 loops per second) the preview draws steps, up to 10 additionally the single points.\n\nIf the script has an error, the preview stays as the **last good state, faded**, the error line is marked red and the status bar names the line and the message."
+ },
+ {
+  "id": "effect-studio-008",
+  "page": "effect-studio",
+  "path": [
+   "Effect Studio – Guide",
+   "4. Your first effect"
+  ],
+  "title": "4. Your first effect",
+  "keywords": [],
+  "text": "1. **New...** → category **Dimmer** → template **Sine** → **Create**.\n2. The preview shows two waves in two seconds (`speed` is 1).\n3. Move `speed` to 2: twice as fast. Set 3 fixtures in the preview and move `spread` to 0.33: the waves are offset against each other.\n4. Change `0.5 + 0.5 * sin(...)` in the text and watch the curve.\n5. **Save** (Ctrl+S), enter a file name. The effect now appears in the programmer's effect list."
+ },
+ {
+  "id": "effect-studio-009",
+  "page": "effect-studio",
+  "path": [
+   "Effect Studio – Guide",
+   "5. Structure of a script"
+  ],
+  "title": "5. Structure of a script",
+  "keywords": [],
+  "text": "A script has three parts:\n\n```\n#NAME My effect                            // 1. Header lines (start with #)\n#CATEGORY dimmer\n#RATE 25\n#VAR speed Slider 1 0.1 8 0.1\n\nfloat level = 0;                           // 2. Variables and functions (optional)\n\nsetup() {                                  //    setup(): once when the effect starts (optional)\n  level = 50;\n}\n\nloop() {                                   // 3. loop(): required, runs #RATE times per second\n  dimmer = level;\n}\n```"
+ },
+ {
+  "id": "effect-studio-010",
+  "page": "effect-studio",
+  "path": [
+   "Effect Studio – Guide",
+   "5. Structure of a script",
+   "Header lines"
+  ],
+  "title": "Header lines",
+  "keywords": [],
+  "text": "| Line | Meaning |\n|---|---|\n| `#NAME text` | Display name in the program. Without it the file name is used. |\n| `#CATEGORY dimmer` / `color` / `position` | **Required.** What the effect controls. |\n| `#RATE n` | How often `loop()` runs per second: a whole number from **1 to 40**. Default 40 – the DMX output rate. |\n| `#DESCRIPTION text` | A short description (also `#DESCRIPTION en ...` and `#DESCRIPTION de ...` for one text per language; the program shows the one of the interface language). |\n| `#INFO name en Label \\| Hint` | Gives the slider `name` a **label** and a **mouseover hint** in a language (`en` or `de`), for example `#INFO speed de Tempo \\| Wie schnell der Effekt läuft`. Without `#INFO` the program uses its built-in glossary of the usual names (`speed`, `size`, `low`, `high`, `strobe` ...) and finally the variable name itself. |\n| `#TAGS a, b, c` | Keywords for searching and filtering in the effect type dialog (for example `strobe, flash, toggle`; up to 8, lower case). A script that reads audio variables gets the tag `audio` automatically - you do not write it. The bundled effects carry `basic` (for beginners, 19 of them) or `advanced` (all others) as their first tag; the dialog shows them as \"Basic\" / \"Advanced\" - use them for your own effects as well. |\n| `#VAR ...` | A **slider** (see section 9) or an internal variable. |"
+ },
+ {
+  "id": "effect-studio-011",
+  "page": "effect-studio",
+  "path": [
+   "Effect Studio – Guide",
+   "6. Time and rate"
+  ],
+  "title": "6. Time and rate",
+  "keywords": [],
+  "text": "**The most important rule:** `loop()` runs exactly `#RATE` times per second – no matter how fast the computer is. So you can **think in exact seconds**.\n\n| Name | Meaning |\n|---|---|\n| `elapsed` | **Seconds since the effect started** on this fixture. Starts at 0. Exactly `tick / rate`. This is how you program \"in second 3 this should happen\". |\n| `t` | Shared system time in seconds. The same for **all** effects – effects that compute with `t` stay **in sync** with each other even when they were started at different times. |\n| `tick` | Number of the pass, starts at 0. |\n| `rate` | Passes per second (the value of `#RATE`). |\n| `dt` | Time between two passes in seconds (`1 / rate`). |\n\nWhich rate should I choose?\n\n- **40** (default): smoothest curves – for waves, circles, crossfades.\n- **10 to 25**: enough for color changes and effects that are stepped anyway.\n- **1 to 5**: step effects (one step per second, \"click-click\" chases), cheap to compute.\n\n**The \"speed\" convention:** the bundled effects and all templates have a slider `speed` with default **1**: that is **one period per second**. `sin(2 * PI * speed * elapsed)` is one wave per second at `speed = 1`."
+ },
+ {
+  "id": "effect-studio-012",
+  "page": "effect-studio",
+  "path": [
+   "Effect Studio – Guide",
+   "6. Time and rate",
+   "In second X ..."
+  ],
+  "title": "In second X ...",
+  "keywords": [],
+  "text": "```\n#NAME Sequence\n#CATEGORY dimmer\n#RATE 20\n#VAR length Slider 8 2 30 1       // length of the sequence in seconds\n\nloop() {\n  float s = elapsed % length;     // time within the sequence; jumps back to 0 after \"length\" seconds\n  if (s < 2) {\n    dimmer = map(s, 0, 2, 0, 100);                 // seconds 0 to 2: fade in\n  } else if (s < 5) {\n    dimmer = 100;                                  // seconds 2 to 5: full\n  } else {\n    dimmer = 100 * (1 - (s - 5) / (length - 5));   // then fade out\n  }\n}\n```"
+ },
+ {
+  "id": "effect-studio-013",
+  "page": "effect-studio",
+  "path": [
+   "Effect Studio – Guide",
+   "7. The language"
+  ],
+  "title": "7. The language",
+  "keywords": [],
+  "text": "Everything is a **number**. The types are `float` (decimal, also `double`), `int` (whole number, also `long`, `short`, `byte`) and `bool` (0 or 1, also `boolean`). `true` and `false` are 1 and 0."
+ },
+ {
+  "id": "effect-studio-014",
+  "page": "effect-studio",
+  "path": [
+   "Effect Studio – Guide",
+   "7. The language",
+   "Variables"
+  ],
+  "title": "Variables",
+  "keywords": [],
+  "text": "```\nfloat x = 1.5;          // decimal number (dot, not comma)\nint n = 3;              // whole number: assigning truncates (7.9 becomes 7)\nbool on = true;         // 0 or 1: any value other than 0 becomes 1\nconst float K = 0.25;   // constant, cannot be changed\nfloat a = 1, b2 = 2;    // several in one line\n```\n\n- Variables created **outside** functions are **global** and **keep their value** from pass to pass. Their initial value applies when the effect starts (to reset them later, write `setup()`).\n- Variables created **inside** `{ }` are **local**: they last until the closing brace and start fresh in every pass.\n- Assigning to an **undeclared** variable (`counter = counter + 1;`) creates a global `float` automatically – that is how older scripts worked. Better: declare it.\n- The names `t`, `elapsed`, `dt`, `tick`, `rate`, `index`, `count`, `phase`, `dimmer`, `r`, `g`, `b`, `pan`, `tilt`, `PI` and all keywords and function names are taken."
+ },
+ {
+  "id": "effect-studio-015",
+  "page": "effect-studio",
+  "path": [
+   "Effect Studio – Guide",
+   "7. The language",
+   "Calculating and comparing"
+  ],
+  "title": "Calculating and comparing",
+  "keywords": [],
+  "text": "| Symbol | Meaning |\n|---|---|\n| `+ - * /` | Basic arithmetic. Division by 0 gives 0. |\n| `%` | Remainder (also for decimals): `5.5 % 2` is 1.5. |\n| `== != < <= > >=` | Comparisons; result 1 (true) or 0 (false). |\n| `&& \\|\\| !` | And, or, not. Conditions are true when they are not 0. |\n| `condition ? a : b` | Choice: `a` if the condition is true, otherwise `b`. |\n| `= += -= *= /= %=` | Assignment; `x += 2;` is `x = x + 2;`. |\n| `x++;` `x--;` | Increase / decrease by 1. |"
+ },
+ {
+  "id": "effect-studio-016",
+  "page": "effect-studio",
+  "path": [
+   "Effect Studio – Guide",
+   "7. The language",
+   "Branching and repeating"
+  ],
+  "title": "Branching and repeating",
+  "keywords": [],
+  "text": "```\nif (x > 10) {                 // if ...\n  dimmer = 100;\n} else if (x > 5) {           // else if ...\n  dimmer = 50;\n} else {                      // else\n  dimmer = 0;\n}\n\nfor (int i = 0; i < 5; i++) { // count i from 0 to 4\n  total += i;\n}\n\nwhile (n > 0) { n--; }        // as long as n is greater than 0\n\ndo { n++; } while (n < 3);    // run at least once\n\nbreak;                        // leave the loop at once\ncontinue;                     // jump to the next loop pass\n```\n\nBraces `{ }` are optional for a single statement (`if (a) b = 1;`), but clearer with them. There is no `switch` – use `if` / `else if`."
+ },
+ {
+  "id": "effect-studio-017",
+  "page": "effect-studio",
+  "path": [
+   "Effect Studio – Guide",
+   "7. The language",
+   "Your own functions"
+  ],
+  "title": "Your own functions",
+  "keywords": [],
+  "text": "```\nfloat wave(float x) {                     // return type, name, parameters\n  return 0.5 + 0.5 * sin(2 * PI * x);     // return hands the value back\n}\n\nvoid setBright(float v) {                 // void: returns nothing\n  dimmer = v;\n}\n\nloop() {\n  setBright(100 * wave(speed * elapsed));\n}\n```\n\nFunctions may stand before or after the place where they are called, and may call themselves (recursion, limited). Parameters are local; global variables and outputs (`dimmer` ...) are reachable everywhere."
+ },
+ {
+  "id": "effect-studio-018",
+  "page": "effect-studio",
+  "path": [
+   "Effect Studio – Guide",
+   "7. The language",
+   "Comments"
+  ],
+  "title": "Comments",
+  "keywords": [],
+  "text": "```\n// rest of the line is a comment\n/* several\n   lines */\n```"
+ },
+ {
+  "id": "effect-studio-019",
+  "page": "effect-studio",
+  "path": [
+   "Effect Studio – Guide",
+   "7. The language",
+   "Limits"
+  ],
+  "title": "Limits",
+  "keywords": [],
+  "text": "- One pass may do at most **60,000 loop iterations and function calls**; an endless loop stops with the message \"endless loop?\".\n- An effect that **throws an error or needs more than 50 ms per pass** is switched off (\"rests\") so it cannot hold up the others. Save the script again and it runs again.\n- There are only numbers: no text, lists (arrays) or pointers."
+ },
+ {
+  "id": "effect-studio-020",
+  "page": "effect-studio",
+  "path": [
+   "Effect Studio – Guide",
+   "8. Outputs per category"
+  ],
+  "title": "8. Outputs per category",
+  "keywords": [],
+  "text": "The script writes its result into variables that fit the category:\n\n| `#CATEGORY` | Outputs | Range |\n|---|---|---|\n| `dimmer` | `dimmer` | 0 to 100 (%) |\n| `color` | `r`, `g`, `b` | 0 to 255 |\n| `position` | `pan`, `tilt` | 0 to 100 (%), 50 is the centre. If the fixture has fine channels (16 bit), decimals are used: `pan = 33.3333;` is more precise than `pan = 33;` |\n| `zoom` | `zoom` | 0 to 100 (%) – the ends of the zoom channel (wide/narrow, depending on the fixture) |\n| `focus` | `focus` | 0 to 100 (%) – the ends of the focus channel (near/far) |\n| `gobo` | `gobo` | 0 to 100 (%) – the position of the gobo channel of wheel 1; pick gobos best with `slot(n)` (see below) |\n| `gobo` | `gobo_spin` | 0 to 100 (%) – rotation or shake of wheel 1 (the range sets direction and speed, depending on the fixture) |\n| `gobo` | `gobo2` | 0 to 100 (%) – gobo wheel 2 (fixtures with a second wheel only), pick gobos with `slot(n, 2)` |\n| `gobo` | `gobo2_spin` | 0 to 100 (%) – rotation of wheel 2 |"
+ },
+ {
+  "id": "effect-studio-021",
+  "page": "effect-studio",
+  "path": [
+   "Effect Studio – Guide",
+   "8. Outputs per category"
+  ],
+  "title": "8. Outputs per category (2)",
+  "keywords": [],
+  "text": "Values outside the range are clamped. **An effect drives only the outputs its script assigns somewhere** (`hsv()` counts as `r`, `g`, `b`; for color always all three). If a script writes only `pan`, `tilt` is left alone: the channel does not follow the effect, and in the programmer only the Pan fader is locked - you can keep setting Tilt by hand. If an output is not reached in one pass (e.g. the assignment sits in an `if`), it stands at 0 for that pass (`pan`/`tilt`: center, 50). If the fixture lacks the channel, the output is silently ignored. Outputs of another category are ignored. With `hsv(h, s, v);` you set `r`, `g`, `b` from hue, saturation and value (each 0 to 1) in one step.\n\nNote: outputs only apply to **the current pass** – to remember a value, create your own variable (`float level = 0;` ... `dimmer = level;`)."
+ },
+ {
+  "id": "effect-studio-022",
+  "page": "effect-studio",
+  "path": [
+   "Effect Studio – Guide",
+   "9. Sliders: #VAR"
+  ],
+  "title": "9. Sliders: #VAR",
+  "keywords": [],
+  "text": "```\n#VAR <name> <type> <default> [min max step]\n```\n\n| Type | Default | Control |\n|---|---|---|\n| `Slider` | number, plus `min max step` | slider |\n| `NumberInput` | number, plus `min max step` | number field |\n| `ColorPicker` | hex color, e.g. `#ff8800` | color picker; in the script as `name_r`, `name_g`, `name_b` (0 to 255) |\n| `Internal` | number | no control – a global variable with an initial value (like `float name = 0;`) |\n\n```\n#VAR speed Slider 1 0.05 8 0.05          // periods per second\n#VAR size Slider 100 0 100 1             // strength in %\n#VAR color ColorPicker #00aaff           // color_r, color_g, color_b\n```\n\nThe sliders appear in the **Create / edit effect** dialog and in the studio preview. In the script they are **read-only**."
+ },
+ {
+  "id": "effect-studio-023",
+  "page": "effect-studio",
+  "path": [
+   "Effect Studio – Guide",
+   "10. System variables"
+  ],
+  "title": "10. System variables",
+  "keywords": [],
+  "text": "| Name | Meaning |\n|---|---|\n| `t` | Shared system time in seconds (keeps effects in sync). |\n| `elapsed` | Seconds since this effect started on this fixture. |\n| `dt` | Seconds between two passes (`1 / rate`). |\n| `tick` | Number of the pass (0, 1, 2 ...). Also `loop_count`. |\n| `rate` | Passes per second. |\n| `index` | Number of this fixture in the programmer's selection order (0, 1, 2 ...). |\n| `count` | Number of fixtures the effect runs on. |\n| `phase` | `index / count`: even offset across the selection (0 to almost 1). |\n| `slots` | Number of fixed gobos on wheel 1 (only in the `gobo` category, otherwise 0). The preview uses 8 gobos. |\n| `slots2` | The same for wheel 2 (0 if the fixture has only one wheel). |\n\nThe selection order is the order in which you picked the fixtures."
+ },
+ {
+  "id": "effect-studio-024",
+  "page": "effect-studio",
+  "path": [
+   "Effect Studio – Guide",
+   "10. System variables",
+   "Audio variables (a...)"
+  ],
+  "title": "Audio variables (a...)",
+  "keywords": [],
+  "text": "Effects can react to music. The **Audio** panel analyses the sound (see the *Audio* guide); these variables hold the result. All start with `a_`, so they never clash with your own names. Without a running audio source they are all `0`. A script that reads one of them is an **audio effect** (marked in the list and in the studio; the preview then runs a sample beat with 120 BPM).\n\n| Name | Meaning |\n|---|---|\n| `a_active` | `1` while sound arrives, otherwise `0`. |\n| `a_level` | Overall loudness 0 to 1 (relative to the loudest parts of the last seconds). |\n| `a_bass`, `a_mid`, `a_high` | Bass (to 150 Hz), mids (150 Hz to 2.5 kHz) and highs (above 2.5 kHz), 0 to 1. |\n| `a_b1` ... `a_b8` | The eight bands one by one (20-60, 60-150, 150-400, 400-1k, 1k-2.5k, 2.5k-5k, 5k-10k, 10k-20k Hz), 0 to 1. |\n| `a_kick`, `a_snare`, `a_hat` | Hits of the bass drum, snare (or clap) and hi-hat: jumps to 0.45 - 1 at each hit and fades out within about 0.15 s (hi-hat 0.07 s). |\n| `a_beat` | The same kind of pulse on every beat of the detected tempo. |\n| `a_beat_phase` | Position within the beat, 0 to 1, rising evenly from one beat to the next: ideal for tempo-synchronous waves. |\n| `a_beat_count` | Number of the beat; counts up by 1 at every beat. |\n| `a_bpm` | Detected (or set) tempo in beats per minute; `0` while unknown. |\n| `a_conf` | How sure the tempo detection is, 0 to 1. |"
+ },
+ {
+  "id": "effect-studio-025",
+  "page": "effect-studio",
+  "path": [
+   "Effect Studio – Guide",
+   "10. System variables",
+   "Audio variables (a...)"
+  ],
+  "title": "Audio variables (a...) (2)",
+  "keywords": [],
+  "text": "```\n#CATEGORY dimmer\n#RATE 40\nloop() {\n  dimmer = lerp(5, 100, a_kick);                              // flash on every bass drum\n}\n```\n\nTip: a pass only sees the state at its own moment. Reading a pulse (`a_kick`) is always safe because it fades out; to react to the *moment* of a hit, remember the last value in a global variable and compare (see the *Audio: Hi-Hat Sparkle* effect). Use `#RATE 40` for audio effects so they stay snappy."
+ },
+ {
+  "id": "effect-studio-026",
+  "page": "effect-studio",
+  "path": [
+   "Effect Studio – Guide",
+   "11. Functions"
+  ],
+  "title": "11. Functions",
+  "keywords": [],
+  "text": "| Function | Meaning |\n|---|---|\n| `sin(x)`, `cos(x)`, `tan(x)` | Angle in radians (full circle = `2 * PI`). |\n| `asin(x)`, `acos(x)`, `atan(x)`, `atan2(y, x)` | Inverse functions. |\n| `sqrt(x)`, `pow(x, y)`, `exp(x)`, `log(x)` | Root, power, e-function, natural logarithm. Invalid input gives 0. |\n| `abs(x)`, `sign(x)` | Absolute value; sign (-1, 0, 1). |\n| `min(a, b)`, `max(a, b)` | Smaller / larger value. |\n| `floor(x)`, `ceil(x)`, `round(x)` | Round down, round up, round. |\n| `fract(x)` | Fractional part: `fract(2.25)` is 0.25. Useful for \"position within the period\". |\n| `mod(a, b)` | Remainder that is never negative (unlike `%` for negative numbers). |\n| `constrain(x, low, high)` | Limits `x` to the range. |\n| `map(x, inMin, inMax, outMin, outMax)` | Converts `x` from one range to another (as in Arduino). |\n| `lerp(a, b, k)` | Linear from `a` to `b`: `a + (b - a) * k`. |\n| `smoothstep(e0, e1, x)` | Soft transition from 0 to 1 between `e0` and `e1`. |\n| `saw(x)`, `tri(x)`, `square(x)`, `square(x, duty)` | Waveforms with 0 to 1 per period of `x`: sawtooth, triangle, square (`duty` = share \"on\", default 0.5). |\n| `radians(d)`, `degrees(r)` | Degrees ↔ radians. |\n| `random()`, `random(max)`, `random(min, max)` | Random number (0 to 1, 0 to `max`, `min` to `max`). Every fixture has its own **reproducible** sequence. |\n| `hsv(h, s, v)` | Sets `r`, `g`, `b` from hue `h` (0 to 1, wraps around), saturation `s` and value `v` (0 to 1). |\n| `slot(n)` | The value (in %) of the n-th gobo of wheel 1; `slot(0)` is the first (usually open). Only in the `gobo` category; the list comes from the fixture file, without data `slot()` returns 0. |\n| `slot(n, wheel)` | Like `slot(n)`, but for wheel `wheel` (1 or 2): `gobo2 = slot(3, 2);` |"
+ },
+ {
+  "id": "effect-studio-027",
+  "page": "effect-studio",
+  "path": [
+   "Effect Studio – Guide",
+   "11. Functions"
+  ],
+  "title": "11. Functions (2)",
+  "keywords": [],
+  "text": "Constants: `PI`, `TWO_PI`, `HALF_PI`, `E`, `true`, `false`."
+ },
+ {
+  "id": "effect-studio-028",
+  "page": "effect-studio",
+  "path": [
+   "Effect Studio – Guide",
+   "12. Examples",
+   "Pulse (dimmer)"
+  ],
+  "title": "Pulse (dimmer)",
+  "keywords": [],
+  "text": "Hard on and off; `duty` is the share of the period in which the light is on.\n\n```\n#NAME Pulse\n#CATEGORY dimmer\n#RATE 40\n#VAR speed Slider 1 0.05 8 0.05\n#VAR duty Slider 0.25 0.05 1 0.05\n#VAR spread Slider 0 0 1 0.05\n\nloop() {\n  float p = fract(speed * elapsed + index * spread);\n  dimmer = p < duty ? 100 : 0;\n}\n```"
+ },
+ {
+  "id": "effect-studio-029",
+  "page": "effect-studio",
+  "path": [
+   "Effect Studio – Guide",
+   "12. Examples",
+   "Chase (dimmer)"
+  ],
+  "title": "Chase (dimmer)",
+  "keywords": [],
+  "text": "One light travels across all selected fixtures.\n\n```\n#NAME Chase\n#CATEGORY dimmer\n#RATE 40\n#VAR speed Slider 1 0.1 8 0.1\n#VAR width Slider 1 0.5 8 0.5\n\nloop() {\n  float pos = fract(speed * elapsed) * count;   // current step (decimal)\n  float d = abs(index - pos);\n  if (d > count / 2) d = count - d;             // distance on the circle\n  dimmer = d < width ? 100 : 0;\n}\n```"
+ },
+ {
+  "id": "effect-studio-030",
+  "page": "effect-studio",
+  "path": [
+   "Effect Studio – Guide",
+   "12. Examples",
+   "Random color (color)"
+  ],
+  "title": "Random color (color)",
+  "keywords": [],
+  "text": "Switches `speed` times per second to a random hue. The global variable `hue` remembers it.\n\n```\n#NAME Random color\n#CATEGORY color\n#RATE 40\n#VAR speed Slider 1 0.1 8 0.1\n\nfloat hue = 0;\n\nloop() {\n  if (tick % max(1, round(rate / speed)) == 0) {\n    hue = random();\n  }\n  hsv(hue, 1, 1);\n}\n```"
+ },
+ {
+  "id": "effect-studio-031",
+  "page": "effect-studio",
+  "path": [
+   "Effect Studio – Guide",
+   "12. Examples",
+   "Four positions (position, state machine)"
+  ],
+  "title": "Four positions (position, state machine)",
+  "keywords": [],
+  "text": "The head jumps to the next of four corners every `interval` seconds. The state lives in `step`.\n\n```\n#NAME Four positions\n#CATEGORY position\n#RATE 10\n#VAR interval Slider 1 0.2 10 0.1\n\nint step = 0;\nfloat start = 0;\n\nloop() {\n  if (elapsed - start >= interval) {\n    step = (step + 1) % 4;\n    start = elapsed;\n  }\n  pan = (step == 0 || step == 3) ? 20 : 80;\n  tilt = (step < 2) ? 20 : 80;\n}\n```"
+ },
+ {
+  "id": "effect-studio-032",
+  "page": "effect-studio",
+  "path": [
+   "Effect Studio – Guide",
+   "12. Examples",
+   "Harmonics (dimmer, loop)"
+  ],
+  "title": "Harmonics (dimmer, loop)",
+  "keywords": [],
+  "text": "Adds several waves with a `for` loop (the higher, the quieter).\n\n```\n#NAME Harmonics\n#CATEGORY dimmer\n#RATE 40\n#VAR speed Slider 1 0.1 4 0.1\n#VAR harmonics Slider 3 1 8 1\n\nloop() {\n  float sum = 0;\n  float norm = 0;\n  for (int k = 1; k <= harmonics; k++) {\n    sum += sin(2 * PI * k * speed * elapsed) / k;\n    norm += 1.0 / k;\n  }\n  dimmer = 50 + 50 * sum / norm;\n}\n```"
+ },
+ {
+  "id": "effect-studio-033",
+  "page": "effect-studio",
+  "path": [
+   "Effect Studio – Guide",
+   "12. Examples",
+   "Zoom breathing (zoom)"
+  ],
+  "title": "Zoom breathing (zoom)",
+  "keywords": [],
+  "text": "The zoom swings between `low` and `high` (0 and 100 are the ends of the zoom channel).\n\n```\n#NAME Zoom breathing\n#CATEGORY zoom\n#RATE 40\n#VAR speed Slider 1 0.05 8 0.05\n#VAR low Slider 20 0 100 1\n#VAR high Slider 80 0 100 1\n\nloop() {\n  float k = 0.5 + 0.5 * sin(2 * PI * speed * elapsed);\n  zoom = lerp(low, high, k);\n}\n```"
+ },
+ {
+  "id": "effect-studio-034",
+  "page": "effect-studio",
+  "path": [
+   "Effect Studio – Guide",
+   "12. Examples",
+   "Gobo change (gobo)"
+  ],
+  "title": "Gobo change (gobo)",
+  "keywords": [],
+  "text": "Steps through the fixture's gobos in turn. `slots` is their number, `slot(n)` the value of the n-th (0 = first, usually open). Every fixture has different gobos – so the effect asks the fixture instead of guessing percentages.\n\n```\n#NAME Gobo change\n#CATEGORY gobo\n#RATE 20\n#VAR speed Slider 0.5 0.05 8 0.05\n#VAR first Slider 0 0 20 1\n\nloop() {\n  float n = max(1, slots - first);\n  gobo = slot(first + mod(floor(speed * elapsed), n));\n}\n```"
+ },
+ {
+  "id": "effect-studio-035",
+  "page": "effect-studio",
+  "path": [
+   "Effect Studio – Guide",
+   "12. Examples",
+   "Gobo with rotation and second wheel (gobo)"
+  ],
+  "title": "Gobo with rotation and second wheel (gobo)",
+  "keywords": [],
+  "text": "The outputs `gobo`, `gobo_spin`, `gobo2` and `gobo2_spin` can be used individually. This example steps through wheel 1, lets wheel 2 follow with an offset and rotates the chosen gobo:\n\n```\n#NAME Two wheels\n#CATEGORY gobo\n#RATE 20\n#VAR speed Slider 0.5 0.05 8 0.05\n\nloop() {\n  float n  = max(1, slots);\n  float n2 = max(1, slots2);\n  gobo  = slot(mod(floor(speed * elapsed), n));\n  gobo2 = slot(mod(floor(speed * elapsed) + 1, n2), 2);\n  gobo_spin = 70;                    // rotation of wheel 1 (set only if wanted)\n}\n```"
+ },
+ {
+  "id": "effect-studio-036",
+  "page": "effect-studio",
+  "path": [
+   "Effect Studio – Guide",
+   "12. Examples",
+   "Two-color runner (color)"
+  ],
+  "title": "Two-color runner (color)",
+  "keywords": [],
+  "text": "All fixtures show color A, one or two run through the row in color B (selection order). `direction` sets the direction - this is the bundled *Color Runner* in short form:\n\n```\n#NAME Color runner\n#CATEGORY color\n#RATE 40\n#VAR speed Slider 0.5 0.05 4 0.05\n#VAR width Slider 1.5 0.5 8 0.5\n#VAR direction Slider 1 0 1 1\n#VAR color_a ColorPicker #ffcc00\n#VAR color_b ColorPicker #ff0000\n\nloop() {\n  float run = fract(speed * t);\n  if (direction < 0.5) run = 1 - run;\n  float d = abs(index - run * count);\n  if (d > count / 2) d = count - d;\n  float k = d < width ? 1 : 0;\n  r = lerp(color_a_r, color_b_r, k);\n  g = lerp(color_a_g, color_b_g, k);\n  b = lerp(color_a_b, color_b_b, k);\n}\n```"
+ },
+ {
+  "id": "effect-studio-037",
+  "page": "effect-studio",
+  "path": [
+   "Effect Studio – Guide",
+   "12. Examples",
+   "Your own function (dimmer)"
+  ],
+  "title": "Your own function (dimmer)",
+  "keywords": [],
+  "text": "```\n#NAME Triangle with function\n#CATEGORY dimmer\n#RATE 40\n#VAR speed Slider 1 0.1 8 0.1\n\nfloat triangle(float x) {\n  return 1 - abs(2 * fract(x) - 1);\n}\n\nloop() {\n  dimmer = 100 * triangle(speed * elapsed + phase);\n}\n```"
+ },
+ {
+  "id": "effect-studio-038",
+  "page": "effect-studio",
+  "path": [
+   "Effect Studio – Guide",
+   "13. Errors and checking"
+  ],
+  "title": "13. Errors and checking",
+  "keywords": [],
+  "text": "The studio checks while you type. Typical messages (always with a line number):\n\n| Message | Cause |\n|---|---|\n| `Unbekannte Variable 'x'` | Name never declared or assigned (typo?). |\n| `Unbekannte Funktion 'foo()'` | The function does not exist. |\n| `sin() erwartet 1 Argument(e)` | Wrong number of arguments. |\n| `';' erwartet, gefunden '}'` | A semicolon is missing (the message often points to the line after). |\n| `Ausdruck erwartet, gefunden ';'` | A value is missing, e.g. `dimmer = 1 +;`. |\n| `'speed' ist ein Regler (#VAR) ...` | Sliders are read-only; create your own variable. |\n| `'b' ist eine Ausgabe des Effekts ...` | `dimmer`, `r`, `g`, `b`, `pan`, `tilt` and the system names are taken. |\n| `'break' ist nur in einer Schleife erlaubt` | `break` / `continue` outside `for` / `while`. |\n| `#RATE erwartet eine ganze Zahl von 1 bis 40` | Invalid rate. |\n| `#CATEGORY fehlt` | The header has no category. |\n| `loop() erwartet` | The script has no `loop()` function. |\n| `Zu viele Schritte in einem Durchlauf ... Endlosschleife?` | A loop never ends (runtime error, shows in the preview). |\n\n(The messages are shown in German whatever the interface language.)\n\n**Save** also saves scripts with errors so you can keep working. A faulty script is not executed; running effects keep the **last good version**."
+ },
+ {
+  "id": "effect-studio-039",
+  "page": "effect-studio",
+  "path": [
+   "Effect Studio – Guide",
+   "13. Errors and checking"
+  ],
+  "title": "13. Errors and checking (2)",
+  "keywords": [],
+  "text": "If a script is saved while effects are running, they take the new code on the next pass. Their **memory** (global variables, counters, state) is kept; newly added variables start with their initial value."
+ },
+ {
+  "id": "effect-studio-040",
+  "page": "effect-studio",
+  "path": [
+   "Effect Studio – Guide",
+   "14. How effects work in the program"
+  ],
+  "title": "14. How effects work in the program",
+  "keywords": [],
+  "text": "- **Script and effect:** the script (`.fx`) is the file. An **effect** (in the programmer's effect list) is a **definition**: a name, a script and values for its sliders. Several effects can use the same script with different slider values. When you create one, the dialog shows the script's description and its loops per second.\n- **Applying:** in the programmer you assign an effect per **category** (dimmer, color, position, zoom, focus, gobo) to the selected fixtures: the **Variable:/Effect** row in the matching programmer view (focus and zoom in the focus view, gobo in the gobo tab of the beam area; while an effect runs, the matching fader is locked). The selection order determines `index` and with it the spread across the fixtures. An effect only controls the channels of its category.\n- **In cues:** a cue stores the effect assignments (with the selection order) and starts them when played; the cue's **effect fade-in** and **fade-out** times blend the amplitude from / to the previous value. If a cue sets a fixed value for a category, the running effect ends there and the cue fades from the effect's last output.\n- **Sync:** effects that use `t` (or `phase`/`index` together with `t`) run in step with each other. With `elapsed`, every effect starts from the beginning when it starts – right for sequences \"from now\".\n- **State:** every effect has its **own memory** per fixture and category. It starts fresh when the effect is assigned again.\n- **Files:** scripts live in the `effects/` folder of the data folder. The studio, the **file manager** (kind *Effects*: rename, duplicate, download, upload) and the show **export** (used scripts go into the package) work with the same files. The bundled effects are copied on first start; **Restore default effects** (in the Open dialog or the file manager) recreates missing ones and **never** overwrites anything.\n- **The show stores the definitions** (name, script name, slider values), not the script text. If the script is missing the definitions lose their effect and work again when it returns; a cue with a missing effect leaves the channel unchanged."
+ },
+ {
+  "id": "effect-studio-041",
+  "page": "effect-studio",
+  "path": [
+   "Effect Studio – Guide",
+   "14. How effects work in the program",
+   "Limits today"
+  ],
+  "title": "Limits today",
+  "keywords": [],
+  "text": "- There are six categories (dimmer, color, position, zoom, focus, gobo). More (prism, strobe, raw DMX values) are prepared but not built in yet.\n- Zoom and focus use the fixture's own channel and must exist; gobos depend on the fixture file. The preview shows only the values for gobos, not the picture.\n- One effect controls one category per fixture; two categories at once need two effects.\n- The rate is at most 40 per second because the DMX output does not send faster."
+ }
+]

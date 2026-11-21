@@ -1,3 +1,5 @@
+# Copyright (C) 2026 Samuel Zenker
+# SPDX-License-Identifier: GPL-3.0-or-later
 """
 fixture_library.py
 Scheinwerfer-Bibliothek: installierte GDTF-Dateien verwalten (Liste, Vorschau, Import, Loeschen) und die Fixture-Datenbank
@@ -35,8 +37,9 @@ from typing import Any, Dict, List, Optional, Tuple
 import pygdtf
 from xml.etree import ElementTree
 
+from app import fixture_editor as _editor
 from app import fixture_manager
-from app import gdtf_model
+from app import gdtf_model, net_diag
 from app import paths as _paths
 
 SHARE_BASE = os.environ.get("OPENCUE_GDTF_SHARE_URL", "https://gdtf-share.com").rstrip("/")
@@ -98,7 +101,7 @@ def category_from_channels(attribute_names: List[str], fallback_text: str = "") 
         return "dimmer"
     if base & {"Strobe", "Shutter1", "StrobeMode"} and not (base - {"Dimmer", "Strobe", "Shutter1", "StrobeMode"}):
         return "strobe"
-    if base & {"Fog", "Haze", "Smoke", "Fan"}:
+    if any(re.match(r"(Fog|Haze|Smoke|Fan)\d*$", name) for name in base):
         return "effect"
     return category_from_text(fallback_text)
 
@@ -121,10 +124,23 @@ def _normalize(text: str) -> str:
 
 # ----------------------------------------------------------------------------------------- installierte Dateien
 
+PREVIEW_DIR = Path(tempfile.gettempdir()) / "opencue-gdtf-preview"        # Vorschau-Dateien von GDTF Share: nur vorlaeufig, nie in der Bibliothek
+PREVIEW_MAX_AGE = 3600.0                                                  # hoechstens eine Stunde im Zwischenspeicher (GDTF Share verlangt: nie aelter als 24 Stunden)
+PREVIEW_MAX_FILES = 12
+
+
 def _path_for(fixture_id: str, scope: str = "library") -> Path:
-    """Pfad der installierten Datei - nur fuer eine ID, die es als Datei im Ordner gibt (keine Pfadteile moeglich). scope bleibt aus Kompatibilitaet (die Show hat keine eigenen Kopien mehr)."""
+    """Pfad der installierten Datei - nur fuer eine ID, die es als Datei im Ordner gibt (keine Pfadteile moeglich). scope "preview" = Vorschau-Datei von GDTF Share (Ordner PREVIEW_DIR).
+    "show" bleibt aus Kompatibilitaet (die Show hat keine eigenen Kopien mehr)."""
     if not fixture_id or fixture_id != Path(fixture_id).name or "/" in fixture_id or "\\" in fixture_id:
         raise LibraryError("not_found", "Unbekannter Scheinwerfertyp", 404)
+    if scope == "preview":
+        if not re.fullmatch(r"preview-[0-9A-Za-z]{1,24}", fixture_id):
+            raise LibraryError("not_found", "Unbekannte Vorschau", 404)
+        path = PREVIEW_DIR / f"{fixture_id}.gdtf"
+        if not path.exists():
+            raise LibraryError("not_found", "The preview has expired - please reload", 404)
+        return path
     for path in _paths.FIXTURES_DIR.glob("*.gdtf"):
         if path.stem == fixture_id:
             return path
@@ -147,20 +163,25 @@ def installed_entries(usage: Optional[Dict[str, int]] = None) -> List[Dict[str, 
         main = max(modes, key=lambda m: len(m.get("channels", [])), default={"channels": []})
         names = [c["name"] for c in main.get("channels", [])]
         stat = path.stat()
+        own = _editor.own_info(path)                  # None = Datei von GDTF Share / Import; sonst mit dem Editor gebaut
         entries.append({
             "id": path.stem,
             "name": ft.get("name") or path.stem,
             "manufacturer": ft.get("manufacturer") or path.stem.split("@")[0],
+            "long_name": ft.get("long_name") or "",
+            "short_name": ft.get("short_name") or "",
             "revision": _revision_of(path.stem),
             "modes": [{"name": m.get("name", ""), "channel_count": m.get("channel_count", 0)} for m in modes],
             "channel_count": ft.get("channel_count", 0),
-            "category": category_from_channels(names, f"{ft.get('name', '')} {ft.get('manufacturer', '')}") if names else category_from_text(path.stem),
+            "category": (own or {}).get("category") or (category_from_channels(names, f"{ft.get('name', '')} {ft.get('manufacturer', '')}") if names else category_from_text(path.stem)),
             "size": stat.st_size,
             "installed_at": int(stat.st_mtime),
             "file": path.name,
             "has_thumbnail": _thumbnail_name(path) is not None,
             "in_use": int(usage.get(path.stem, 0)),
             "error": ft.get("error"),
+            "own": own is not None,                        # mit dem Editor gebaut: "eigen, ungeprueft", im Editor wieder zu oeffnen
+            "tags": (own or {}).get("tags", []),
         })
     return entries
 
@@ -192,7 +213,7 @@ def thumbnail(fixture_id: str, scope: str = "library") -> Tuple[bytes, str, int]
     with zipfile.ZipFile(path) as archive:
         info = archive.getinfo(name)
         if info.file_size > 2 * 1024 * 1024:
-            raise LibraryError("no_thumbnail", "Vorschaubild zu gross", 404)
+            raise LibraryError("no_thumbnail", "Thumbnail too large", 404)
         data = archive.read(name)
     return data, ("image/svg+xml" if name.lower().endswith(".svg") else "image/png"), int(path.stat().st_mtime)
 
@@ -229,7 +250,7 @@ def details(fixture_id: str, scope: str = "library") -> Dict[str, Any]:
         fixture = pygdtf.FixtureType(str(path))
         fixture.__exit__(None, None, None)
     except Exception as exc:
-        raise LibraryError("invalid_file", f"Die Datei konnte nicht gelesen werden ({type(exc).__name__})", 422)
+        raise LibraryError("invalid_file", f"The file could not be read ({type(exc).__name__})", 422)
     try:
         with zipfile.ZipFile(path) as archive:
             names = archive.namelist()
@@ -306,7 +327,7 @@ def model_scene(fixture_id: str, scope: str = "library") -> Dict[str, Any]:
     except gdtf_model.ModelError as exc:
         raise LibraryError("invalid_file", str(exc), 422)
     except Exception as exc:
-        raise LibraryError("invalid_file", f"Die 3D-Daten konnten nicht gelesen werden ({type(exc).__name__})", 422)
+        raise LibraryError("invalid_file", f"The 3D data could not be read ({type(exc).__name__})", 422)
 
 
 def asset(fixture_id: str, relative: str, scope: str = "library") -> Tuple[bytes, str, int]:
@@ -363,9 +384,9 @@ def _inspect_gdtf(data: bytes) -> Dict[str, Any]:
     pygdtf ist nachsichtig (bei kaputtem XML oder ohne DMX-Modus erfindet es Ersatzwerte), deshalb wird die description.xml hier
     selbst gelesen und streng geprueft; pygdtf muss die Datei danach zusaetzlich einlesen koennen."""
     if len(data) > MAX_GDTF_BYTES:
-        raise LibraryError("too_large", "Die Datei ist zu gross (max. 30 MB)", 413)
+        raise LibraryError("too_large", "The file is too large (max. 30 MB)", 413)
     if len(data) < 100 or data[:2] != b"PK":
-        raise LibraryError("invalid_file", "Das ist keine GDTF-Datei (kein ZIP-Archiv)", 400)
+        raise LibraryError("invalid_file", "This is not a GDTF file (not a ZIP archive)", 400)
     tmp_dir = Path(tempfile.mkdtemp(prefix="opencue-gdtf-"))
     try:
         tmp = tmp_dir / "check.gdtf"
@@ -374,33 +395,33 @@ def _inspect_gdtf(data: bytes) -> Dict[str, Any]:
             with zipfile.ZipFile(tmp) as archive:
                 infos = {i.filename: i for i in archive.infolist()}
                 if sum(i.file_size for i in infos.values()) > MAX_UNPACKED_BYTES:
-                    raise LibraryError("invalid_file", "Die Datei ist ungewoehnlich gross entpackt", 400)
+                    raise LibraryError("invalid_file", "The file is unusually large when unpacked", 400)
                 info = infos.get("description.xml")
                 if info is None:
-                    raise LibraryError("invalid_file", "In der Datei fehlt die description.xml", 400)
+                    raise LibraryError("invalid_file", "The file has no description.xml", 400)
                 if info.file_size > 40 * 1024 * 1024:
-                    raise LibraryError("invalid_file", "Die description.xml ist ungewoehnlich gross", 400)
+                    raise LibraryError("invalid_file", "description.xml is unusually large", 400)
                 xml = archive.read("description.xml")
             if b"<!ENTITY" in xml or b"<!DOCTYPE" in xml:
                 raise LibraryError("invalid_file", "Die description.xml enthaelt unzulaessige Deklarationen", 400)
             try:
                 root = ElementTree.fromstring(xml)
             except ElementTree.ParseError:
-                raise LibraryError("invalid_file", "Die description.xml ist kein gueltiges XML", 400)
+                raise LibraryError("invalid_file", "description.xml is not valid XML", 400)
             ft = root.find("FixtureType") if root.tag == "GDTF" else None
             if ft is None:
                 raise LibraryError("invalid_file", "Kein GDTF-Geraetetyp (FixtureType) in der description.xml", 400)
             if not any(m.find("DMXChannels") is not None and m.find("DMXChannels").find("DMXChannel") is not None
                        for m in ft.iterfind("DMXModes/DMXMode")):
-                raise LibraryError("invalid_file", "Die GDTF-Datei enthaelt keinen DMX-Modus mit Kanaelen", 400)
+                raise LibraryError("invalid_file", "The GDTF file contains no DMX mode with channels", 400)
             fixture = pygdtf.FixtureType(str(tmp))
             fixture.__exit__(None, None, None)           # Handle freigeben, sonst laesst sich das Temp-Verzeichnis unter Windows nicht loeschen
             if not fixture.dmx_modes:
-                raise LibraryError("invalid_file", "Die GDTF-Datei enthaelt keinen DMX-Modus", 400)
+                raise LibraryError("invalid_file", "The GDTF file contains no DMX mode", 400)
         except LibraryError:
             raise
         except Exception as exc:
-            raise LibraryError("invalid_file", f"Die GDTF-Datei konnte nicht gelesen werden ({type(exc).__name__})", 400)
+            raise LibraryError("invalid_file", f"The GDTF file could not be read ({type(exc).__name__})", 400)
         revisions = [r.get("Text", "") for r in ft.iterfind("Revisions/Revision")]
         return {"name": str(ft.get("Name") or ""), "manufacturer": str(ft.get("Manufacturer") or ""),
                 "revision": str(revisions[-1]) if revisions else ""}
@@ -482,7 +503,7 @@ def _dpapi(data: bytes, protect: bool) -> bytes:
     blob_entropy = Blob(len(_ENTROPY), ctypes.cast(entropy, ctypes.POINTER(ctypes.c_char)))
     blob_out = Blob()
     if not function(ctypes.byref(blob_in), None, ctypes.byref(blob_entropy), None, None, 0, ctypes.byref(blob_out)):
-        raise OSError("DPAPI nicht verfuegbar oder Daten gehoeren einem anderen Benutzer")
+        raise OSError("DPAPI not available or the data belongs to another user")
     try:
         return ctypes.string_at(blob_out.pbData, blob_out.cbData)
     finally:
@@ -646,9 +667,11 @@ class GdtfShareClient:
                     with self._opener.open(request, timeout=HTTP_TIMEOUT) as response:
                         data = response.read(max_bytes + 1)
                         if len(data) > max_bytes:
-                            raise LibraryError("too_large", "Die Antwort ist zu gross", 413)
+                            raise LibraryError("too_large", "The response is too large", 413)
+                        net_diag.record("gdtf", True)
                         return response.status, data
                 except urllib.error.HTTPError as err:
+                    net_diag.record("gdtf", True)                                  # der Server hat geantwortet: die Verbindung steht
                     if err.code in (429, 503):
                         header = err.headers.get("Retry-After", "") if err.headers else ""
                         wait = float(header) if header.strip().isdigit() else BACKOFF_DEFAULT
@@ -658,7 +681,8 @@ class GdtfShareClient:
                     return err.code, err.read(65536)
                 except (urllib.error.URLError, TimeoutError, OSError) as exc:
                     reason = getattr(exc, "reason", exc)
-                    raise LibraryError("network", f"GDTF Share ist nicht erreichbar ({reason})", 502)
+                    net_diag.record("gdtf", False, exc)                            # die Einstellungen zeigen die Ursache (Ein- & Ausgaenge, Allgemein -> Verbindung testen)
+                    raise LibraryError("network", f"GDTF Share is not reachable ({reason})", 502)
             finally:
                 self._last_request = time.monotonic()
                 if download:
@@ -677,7 +701,7 @@ class GdtfShareClient:
         """remember=True: Zugangsdaten verschluesselt speichern; False: eine gespeicherte Anmeldung loeschen; None: unveraendert (Wiederanmeldung)."""
         user, password = str(user or "").strip(), str(password or "")
         if not user or not password:
-            raise LibraryError("auth", "Bitte E-Mail-Adresse bzw. Benutzernamen und Passwort eingeben", 401)
+            raise LibraryError("auth", "Please enter the e-mail address or user name and the password", 401)
         with self._lock:
             self._reset()
             ok, message = False, ""
@@ -695,7 +719,7 @@ class GdtfShareClient:
                 message = str(parsed.get("error") or message)
             if not ok:
                 self._reset()
-                raise LibraryError("auth", message or "Anmeldung bei GDTF Share fehlgeschlagen", 401)
+                raise LibraryError("auth", message or "Sign-in to GDTF Share failed", 401)
             self.user, self.logged_in = user, True
             if remember is True:
                 save_login(user, password)
@@ -753,7 +777,22 @@ class GdtfShareClient:
             rating = float(pick("rating", "Rating") or 0)
         except (TypeError, ValueError):
             rating = 0.0
+        uploader = str(pick("uploader")).strip()
+        modes = []
+        for m in (raw.get("modes") if isinstance(raw.get("modes"), list) else [])[:12]:
+            if isinstance(m, dict) and str(m.get("name", "")).strip():
+                try:
+                    modes.append({"name": str(m["name"]).strip()[:40], "footprint": int(m.get("dmxfootprint") or 0)})
+                except (TypeError, ValueError):
+                    modes.append({"name": str(m["name"]).strip()[:40], "footprint": 0})
+        try:
+            filesize = int(float(pick("filesize") or 0))
+        except (TypeError, ValueError):
+            filesize = 0
         return {
+            "uploader": uploader if uploader in ("Manuf.", "User") else "",
+            "filesize": max(0, filesize),
+            "modes": modes,
             "rid": int(rid) if str(rid).isdigit() else str(rid),
             "name": name,
             "manufacturer": manufacturer,
@@ -764,7 +803,7 @@ class GdtfShareClient:
             "modified": str(pick("lastModified", "modified", "uploadDate", "date")),
             "created": str(pick("creationDate", "created", "uploaded")),
             "uuid": str(pick("uuid", "UUID")),
-            "verified": _verified_flag(raw),
+            "verified": (uploader == "Manuf.") if uploader in ("Manuf.", "User") else _verified_flag(raw),       # offizielles Feld: "Manuf." = vom Hersteller hochgeladen, "User" = von einem Nutzer
             "category": category_from_text(name, manufacturer),
             "id": install_id(manufacturer or "Unbekannt", name, revision or "Rev"),
         }
@@ -773,7 +812,7 @@ class GdtfShareClient:
         """Die Liste (aus dem Zwischenspeicher, wenn jung genug). Rueckgabe: (Eintraege, 'Neuladen wurde gebremst')."""
         with self._lock:
             if not self.logged_in:
-                raise LibraryError("auth", "Bitte zuerst bei GDTF Share anmelden", 401)
+                raise LibraryError("auth", "Please sign in to GDTF Share first", 401)
             throttled = False
             if self._list is not None:
                 age = time.time() - self._list_at
@@ -784,12 +823,12 @@ class GdtfShareClient:
             status, data = self._request("/apis/public/getList.php")
             if status == 401:
                 self._reset()
-                raise LibraryError("auth", "Die Sitzung bei GDTF Share ist abgelaufen - bitte neu anmelden", 401)
+                raise LibraryError("auth", "The GDTF Share session has expired - please sign in again", 401)
             if status != 200:
                 raise LibraryError("bad_response", f"GDTF Share antwortete mit Status {status}", 502)
             parsed = self._json(data)
             if parsed.get("result") is False:
-                raise LibraryError("bad_response", str(parsed.get("error") or "Liste nicht verfuegbar"), 502)
+                raise LibraryError("bad_response", str(parsed.get("error") or "List not available"), 502)
             rows = parsed.get("list")
             if rows is None:
                 rows = parsed.get("data") or parsed.get("fixtures") or []
@@ -800,14 +839,14 @@ class GdtfShareClient:
     def download(self, rid: Any) -> bytes:
         with self._lock:
             if not self.logged_in:
-                raise LibraryError("auth", "Bitte zuerst bei GDTF Share anmelden", 401)
+                raise LibraryError("auth", "Please sign in to GDTF Share first", 401)
         status, data = self._request("/apis/public/downloadFile.php?" + urllib.parse.urlencode({"rid": str(rid)}), max_bytes=MAX_GDTF_BYTES, download=True)
         if status == 401:
             with self._lock:
                 self._reset()
-            raise LibraryError("auth", "Die Sitzung bei GDTF Share ist abgelaufen - bitte neu anmelden", 401)
+            raise LibraryError("auth", "The GDTF Share session has expired - please sign in again", 401)
         if status == 404:
-            raise LibraryError("not_found", "Diese Datei gibt es bei GDTF Share nicht (mehr)", 404)
+            raise LibraryError("not_found", "This file no longer exists on GDTF Share", 404)
         if status != 200:
             raise LibraryError("bad_response", f"GDTF Share antwortete mit Status {status}", 502)
         return data
@@ -913,13 +952,45 @@ def updates_for_installed() -> Dict[str, Dict[str, Any]]:
     return updates
 
 
+def preview_from_share(rid: Any) -> Dict[str, Any]:
+    """Laedt die Datei zur rid nur zur Ansicht (Detail-Fenster mit 'Installieren'): vorlaeufig im Temp-Ordner, nicht in der Bibliothek, nach einer Stunde weg."""
+    items, _ = share.fetch_list()
+    item = next((i for i in items if str(i["rid"]) == str(rid)), None)
+    if item is None:
+        raise LibraryError("not_found", "This file no longer exists on GDTF Share", 404)
+    PREVIEW_DIR.mkdir(parents=True, exist_ok=True)
+    now = time.time()
+    files = sorted(PREVIEW_DIR.glob("preview-*.gdtf"), key=lambda p: p.stat().st_mtime)
+    for old in files:                                                      # alte und ueberzaehlige Vorschauen aufraeumen
+        try:
+            if now - old.stat().st_mtime > PREVIEW_MAX_AGE:
+                old.unlink()
+        except OSError:
+            pass
+    files = sorted(PREVIEW_DIR.glob("preview-*.gdtf"), key=lambda p: p.stat().st_mtime)
+    for old in files[:max(0, len(files) - PREVIEW_MAX_FILES + 1)]:
+        try:
+            old.unlink()
+        except OSError:
+            pass
+    pid = "preview-" + re.sub(r"[^0-9A-Za-z]", "", str(item["rid"]))[:20]
+    path = PREVIEW_DIR / f"{pid}.gdtf"
+    if not path.exists():
+        data = share.download(item["rid"])
+        _inspect_gdtf(data)                                                # muss eine brauchbare GDTF-Datei sein
+        partial = PREVIEW_DIR / f".{pid}.part"
+        partial.write_bytes(data)
+        os.replace(partial, path)
+    return {"id": pid, "rid": item["rid"], "name": item["name"], "manufacturer": item["manufacturer"], "revision": item["revision"], "installed": item["id"] in {p.stem for p in _paths.FIXTURES_DIR.glob("*.gdtf")}}
+
+
 def install_from_share(rid: Any, replace: str = "", usage: Optional[Dict[str, int]] = None) -> Dict[str, Any]:
     """Laedt die Datei zur rid herunter und baut sie ein (Dateiname wie bei GDTF Share aus der Liste: Hersteller@Name@Revision).
     replace = ID einer installierten aelteren Revision desselben Geraets ('Aktualisieren'): sie wird danach entfernt, ausser die Show benutzt sie."""
     items, _ = share.fetch_list()
     item = next((i for i in items if str(i["rid"]) == str(rid)), None)
     if item is None:
-        raise LibraryError("not_found", "Diese Datei gibt es bei GDTF Share nicht (mehr)", 404)
+        raise LibraryError("not_found", "This file no longer exists on GDTF Share", 404)
     data = share.download(rid)
     result = install_bytes(data, stem_hint=item["id"], revision_hint=item["revision"], usage=usage)
     result["removed_old"] = None

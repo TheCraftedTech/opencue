@@ -1,0 +1,188 @@
+[
+ {
+  "id": "midi-001",
+  "page": "midi",
+  "path": [
+   "MIDI"
+  ],
+  "title": "MIDI",
+  "keywords": [],
+  "text": "Avec le **MIDI**, vous pilotez OpenCue depuis un contrôleur, un clavier, des pads ou un logiciel de musique – et OpenCue peut lui-même envoyer du MIDI. Une touche, un fader, un potentiomètre ou un changement de programme déclenche une **commande de la ligne de commande**, exactement comme un raccourci clavier personnalisé (voir *Raccourcis clavier*) – avec en plus les faders.\n\nL'assignation appartient au **programme**, pas au show : elle s'applique à tous les shows et est enregistrée dans la configuration de l'application. Vous y accédez de quatre façons : l'**icône MIDI** en haut à droite de la barre d'outils, **Paramètres → Contrôles → MIDI**, **Contrôles → Mapping MIDI …** et – pour les touches et faders d'un panneau – **Assigner MIDI …** dans les propriétés du panneau. L'appareil MIDI est branché sur l'ordinateur de la console ; modifier la liste fonctionne aussi depuis une tablette, l'apprentissage et le moniteur seulement sur l'ordinateur de la console."
+ },
+ {
+  "id": "midi-002",
+  "page": "midi",
+  "path": [
+   "MIDI",
+   "1. Qu'est-ce que le MIDI ? (en bref)"
+  ],
+  "title": "1. Qu'est-ce que le MIDI ? (en bref)",
+  "keywords": [],
+  "text": "Le MIDI n'envoie pas de son, mais de petits **messages**. Il en faut trois sortes :\n\n| Message | Ce que signale votre appareil | Dans OpenCue |\n|---|---|---|\n| **Note** | Une touche (touche de piano, pad) est pressée ou relâchée. Chacune a un numéro, p. ex. 60 = **Do4** (do central), et une **vélocité** (0–127, la force de la frappe). | Types **Touche**, **Interrupteur**, **Maintenir** – ou **Fader** (la vélocité devient la valeur) |\n| **Contrôleur (CC)** | Un fader ou un potentiomètre. Chacun a un numéro (0–127) et une valeur 0–127. | Types **Fader** (faders, potentiomètres) ou **Encodeur** (potentiomètres sans fin) |\n| **Changement de programme** | Un « programme » avec un numéro est choisi. | Type **Touche** (p. ex. programme 3 = `Go Cue 3`) |\n\nChaque message a aussi un **canal** (1–16) afin que plusieurs appareils puissent partager une même ligne. Si vous ne savez pas : laissez sur **Tous**."
+ },
+ {
+  "id": "midi-003",
+  "page": "midi",
+  "path": [
+   "MIDI",
+   "2. Premiers pas"
+  ],
+  "title": "2. Premiers pas",
+  "keywords": [],
+  "text": "1. Branchez l'appareil MIDI en USB (Windows le reconnaît tout seul – les appareils conformes à la classe n'ont pas besoin de pilote).\n2. Cliquez sur l'**icône MIDI** en haut à droite (ou **Contrôles → Mapping MIDI …**). Le haut indique quels appareils sont reconnus. Le **moniteur** en bas montre en direct tout ce que votre appareil envoie – appuyez sur une touche et regardez : `Note On C4 (60) · 100`.\n3. **Nouveau mapping MIDI** → cliquez sur le champ du signal dans la ligne → **appuyez ou bougez** quelque chose sur l'appareil → **Appliquer**. Le signal est appris.\n4. Saisissez la **commande** à droite, p. ex. `Go`. C'est fait – la touche déclenche maintenant `Go`. La ligne s'allume brièvement quand elle se déclenche.\n\nL'assignation est enregistrée aussitôt. L'interrupteur **MIDI activé** en haut désactive tout (OpenCue n'écoute alors plus aucun appareil).\n\n**L'icône de la barre d'outils** montre l'état : **vert** = un appareil est prêt, **gris** = aucun appareil connecté, **jaune** = un appareil ne peut pas être ouvert (généralement un autre programme le retient), **rouge et barré** = le MIDI est désactivé. Un clic ouvre l'assignation ; l'info-bulle nomme les appareils reconnus."
+ },
+ {
+  "id": "midi-004",
+  "page": "midi",
+  "path": [
+   "MIDI",
+   "2. Premiers pas"
+  ],
+  "title": "2. Premiers pas (2)",
+  "keywords": [],
+  "text": "**Paramètres → Contrôles → MIDI** (comme tous les paramètres avec *Enregistrer*) : utiliser le MIDI, **quels appareils** sont utilisés (chaque appareil connecté a un interrupteur – un appareil décoché n'est jamais ouvert), la **sortie**, le **code temporel (MTC)** et le **tempo depuis l'horloge MIDI** (section 5b) et des boutons vers l'assignation.\n\nSous **Paramètres → Entrées et sorties → MIDI**, vous voyez les appareils reconnus, s'ils sont lus en ce moment, la sortie et combien d'assignations sont actives."
+ },
+ {
+  "id": "midi-005",
+  "page": "midi",
+  "path": [
+   "MIDI",
+   "3. Les types"
+  ],
+  "title": "3. Les types",
+  "keywords": [],
+  "text": "| Type | Effet | Exemple |\n|---|---|---|\n| **Touche** | La commande s'exécute quand la touche est pressée. | Pad 1 → `Go` ; Pad 2 → `Back` ; Pad 3 → `Clear` |\n| **Interrupteur** | Chaque pression bascule entre la **commande** et la **commande d'arrêt** (vide = la même commande les deux fois). | `Blackout` (bascule tout seul) ; ou `Effect Rainbow` / `Effect Off` |\n| **Maintenir** | La **commande** s'exécute à l'appui, la **commande de relâchement** au relâchement (« flash »). | `Group front At Full` / `Group front At 0` |\n| **Fader** | La commande reçoit la valeur comme `{value}`, mise à l'échelle dans la plage **De … À** (aussi **Inverser**). | Fader → `Master {value}` (0–100) ; Fader → `Cuelist main Fader {value}` |\n| **Encodeur** | Pour les **potentiomètres sans fin** : chaque pas s'exécute comme `{delta}` (avec un signe, multiplié par **Pas**). Le type d'encodeur (habituel / bit de signe / centre 64) se règle dans la ligne. | Potentiomètre → `Pan {delta}` (sélectionnez d'abord des projecteurs) |\n\n**Variables dans la commande :** `{value}` (valeur du fader dans la plage De–À), `{delta}` (pas d'encodeur, p. ex. `+1` / `-2`), `{velocity}` (vélocité 0–127), `{note}` et `{number}` (numéro de note / contrôleur / programme), `{channel}`, `{raw}` (valeur brute 0–127)."
+ },
+ {
+  "id": "midi-006",
+  "page": "midi",
+  "path": [
+   "MIDI",
+   "3. Les types"
+  ],
+  "title": "3. Les types (2)",
+  "keywords": [],
+  "text": "**Start / Stop / Continue (transport) :** vous pouvez aussi choisir *Start*, *Stop* et *Continue* du logiciel de musique comme signal (type dans la boîte d'apprentissage ; ils n'ont ni canal ni numéro). Exemple : Start → `Timecode Play`, Stop → `Timecode Stop`.\n\n**Pickup :** un **fader** sans moteur se trouve souvent à une autre position que la valeur dans le programme. Avec **Pickup**, le fader ne prend la main qu'après avoir atteint ou franchi la valeur actuelle – pas de saut au premier contact. Si la valeur a été modifiée ailleurs entre-temps, il doit la rattraper de nouveau. Cela fonctionne pour `Master {value}`, `Fader {value}`, `Cuelist <nom> Fader {value}` et la luminosité ou un attribut de faisceau d'un projecteur, d'un groupe ou de la sélection (`Fixture 5 At {value}`, `Group front At {value}`, `At {value}`, `Zoom {value}`) ; les autres commandes prennent la main aussitôt."
+ },
+ {
+  "id": "midi-007",
+  "page": "midi",
+  "path": [
+   "MIDI",
+   "3. Les types"
+  ],
+  "title": "3. Les types (3)",
+  "keywords": [],
+  "text": "**Autres types :** *Double-clic* (la commande s'exécute à la seconde pression dans les 0,4 s) et *Appui long* (elle s'exécute quand la touche est maintenue le temps réglé – p. ex. 600 ms ; relâcher plus tôt annule). Pour les faders, vous choisissez une **courbe** : *Linéaire*, *Départ lent* (valeurs fines en bas) ou *Départ rapide*. L'**aftertouch** (pression sur une touche maintenue) et la **pression de canal** peuvent aussi être assignés comme faders. **Un fader, plusieurs commandes :** séparez-les par un point-virgule, p. ex. `Master {value}; Group front At {value}`.\n\n**Retour vers l'appareil (LED, faders motorisés) :** dans la ligne, choisissez sous **Retour** un état de la console : *Blackout*, *Master*, *Sélection présente*, *Cue actif*, *Code temporel en cours* ou *Fader de liste de cues*. OpenCue l'envoie comme note / contrôleur / pitch bend **avec le même numéro et le même canal** que le signal vers la sortie qui porte le même nom que l'appareil – sur un contrôleur à pads, la LED s'allume, un fader motorisé suit. Pour les états marche/arrêt, vous réglez **LED allumée / LED éteinte** (la vélocité ; sur les pads colorés, c'est la couleur). L'envoi n'a lieu que lorsque la valeur change, et après le branchement d'un appareil, tout est renvoyé.\n\nAutres exemples :"
+ },
+ {
+  "id": "midi-008",
+  "page": "midi",
+  "path": [
+   "MIDI",
+   "3. Les types"
+  ],
+  "title": "3. Les types (4)",
+  "keywords": [],
+  "text": "| Appareil | Assignation |\n|---|---|\n| Changement de programme (p. ex. sur un clavier) | Touche, commande `Go Cue {number}` – le programme 5 saute au cue 5 |\n| Touche avec vélocité | Fader (source Note), commande `Group front At {value}`, De 0 À 100 – plus on frappe fort, plus c'est lumineux |\n| Molette de pitch bend | Fader, commande `Master {value}` |\n| Banque de faders | une ligne par fader (CC 1…8) : `Fixture 1 At {value}`, `Fixture 2 At {value}` … |\n\nDéclenchement : une touche se déclenche à l'**appui**. Un CC utilisé comme touche (les pads de nombreux contrôleurs) se déclenche à une valeur **de 64 ou plus**. Un fader envoie au plus **environ 40 commandes par seconde** (les mouvements rapides sont fusionnés, la dernière valeur arrive toujours)."
+ },
+ {
+  "id": "midi-009",
+  "page": "midi",
+  "path": [
+   "MIDI",
+   "3b. Copier des lignes, exporter, importer, depuis un panneau"
+  ],
+  "title": "3b. Copier des lignes, exporter, importer, depuis un panneau",
+  "keywords": [],
+  "text": "- **Copier** (icône à côté de la corbeille) : duplique une ligne avec type et commande, le signal reste vide – pratique pour une série de faders semblables (fader 1 … 8).\n- **Exporter / Importer** (en bas de la boîte de dialogue) : enregistre l'assignation dans un fichier (`opencue-midi-mapping.json`) ou lit un tel fichier. À l'import, les lignes sont **ajoutées** – rien n'est remplacé.\n- **Modèle …** (en bas de la boîte de dialogue) : crée une **série** de lignes – *Banque de faders* (projecteurs 1...8), *Pads de cues*, *Touches de transport* (Go, Back, Pause, Blackout), *Master et blackout* – puis vous laisse **appuyer ou bouger les commandes l'une après l'autre** (« Signal 2 sur 8 », *Passer* continue, Annuler termine la série). Cela assigne n'importe quel contrôleur sans connaître les numéros.\n- Un **champ de recherche** au-dessus de la liste (signal, commande, appareil) et les **flèches** sur chaque ligne (monter / descendre ; désactivées pendant une recherche).\n- **Aller à ce cue avec une touche MIDI …** dans la boîte de dialogue d'un **cue** (*Modifier le cue*) : crée une assignation `Cuelist \"<liste>\" Go Cue <numéro>` et apprend le signal – le cue démarre alors à l'appui d'une touche, **à tout moment** (une touche de « saut » libre). Pour un cue qui attend son signal à l'intérieur d'une séquence, voir le déclencheur de cue **MIDI** (section 5c).\n- **Assigner MIDI …** dans les propriétés d'un **bouton, interrupteur ou fader** : crée une assignation avec la commande du panneau (interrupteur : commande d'activation et de désactivation, fader : avec De/À) et apprend aussitôt le signal. L'assignation reste même si vous supprimez le panneau."
+ },
+ {
+  "id": "midi-010",
+  "page": "midi",
+  "path": [
+   "MIDI",
+   "4. S'applique à, Exécuter, Historique"
+  ],
+  "title": "4. S'applique à, Exécuter, Historique",
+  "keywords": [],
+  "text": "- **Apprendre le signal → S'applique à :** *Tous les appareils* (tout appareil qui envoie ce signal déclenche) ou *Cet appareil uniquement* (p. ex. quand deux contrôleurs envoient les mêmes numéros).\n- **Exécuter** désactivé : la commande est seulement **écrite dans la ligne de commande**, pas exécutée (pour la vérifier ou la compléter).\n- **Dans l'historique :** la commande apparaît dans l'historique de la ligne de commande (toutes les fenêtres le voient).\n- Il n'y a pas de contrôle des signaux en double : deux lignes avec le même signal se déclenchent **toutes les deux** (la boîte d'apprentissage vous avertit).\n\n**Sécurité :** `Delete …` et les commandes contenant `Overwrite` ne **s'exécutent jamais par MIDI** (une touche frappée par accident ne doit pas détruire de données). `Clear Clear` est autorisé."
+ },
+ {
+  "id": "midi-011",
+  "page": "midi",
+  "path": [
+   "MIDI",
+   "5. OpenCue envoie du MIDI : la commande Midi"
+  ],
+  "title": "5. OpenCue envoie du MIDI : la commande Midi",
+  "keywords": [],
+  "text": "La commande `Midi` envoie vers la **sortie** (choisie en haut de la boîte de dialogue ; **Automatique** prend le premier vrai appareil, sinon le synthétiseur Windows « Microsoft GS Wavetable Synth » – vous entendez donc aussitôt quelque chose) :\n\n| Commande | Effet |\n|---|---|\n| `Midi Note 60` | Joue la note Do4 (60), vélocité 100, coupée après 0,3 s |\n| `Midi Note 60 90 Ch 2 Len 1` | Note 60, vélocité 90, canal 2, pendant 1 seconde |\n| `Midi On 60 100` / `Midi Off 60` | Note activée / désactivée séparément (reste jusqu'à ce que vous envoyiez `Off`) |\n| `Midi CC 7 100` | Contrôleur 7 à la valeur 100 |\n| `Midi PC 3` | Changement de programme 3 |\n| `Midi MSC Go 5 List 2` | Envoie du **MIDI Show Control** (`Go`, `Stop`, `Resume`, `AllOff`, `Restore` ... ; `List <n>`, `Device <0-127>` facultatifs) |\n| `Midi Panic` | All notes off (tous les canaux) |\n\nCombinable avec des boutons, des raccourcis clavier, des commandes de cue ou la **commande vocale** (« OpenCue, MIDI note sixty ») – p. ex. un cue qui déclenche un son dans votre logiciel de musique. Aussi via l'**API REST** : `POST /api/v1/command` avec `Midi Note 60` ; `GET /api/v1/midi` renvoie les appareils et l'état."
+ },
+ {
+  "id": "midi-012",
+  "page": "midi",
+  "path": [
+   "MIDI",
+   "5b. Temps et tempo depuis le logiciel de musique (MTC et horloge MIDI)"
+  ],
+  "title": "5b. Temps et tempo depuis le logiciel de musique (MTC et horloge MIDI)",
+  "keywords": [],
+  "text": "Deux interrupteurs sous **Paramètres → Contrôles → MIDI** font suivre à OpenCue un logiciel de musique (DAW) ou un autre appareil. Les deux ne réagissent **qu'au format correspondant et seulement quand quelque chose de valide arrive réellement** – sinon il ne se passe rien. Tant que l'un est actif, les appareils utilisés restent ouverts.\n\n**Code temporel depuis le MIDI (MTC).** Si le logiciel envoie du *MIDI Timecode* (MTC, 24 / 25 / 29,97 / 30 images par seconde), le **code temporel global** avance au même rythme que ce temps : les cues avec le déclencheur « Code temporel », le lecteur de timecode et les panneaux suivent. Seul un **flux sans trous et plausible** est pris en compte (trois groupes concordants, valeurs dans la plage valide) ; le bruit, la marche arrière et les signaux étrangers sont ignorés. Si votre propre horloge dérive de plus de 0,1 s, elle est remise à l'heure. **Si le flux s'arrête** (logiciel arrêté, câble débranché), le code temporel s'arrête. Si le logiciel saute à une position à l'arrêt (*full frame*), le code temporel saute aussi. Un code temporel que vous avez démarré à la main n'est **pas** arrêté quand le MTC est absent ; tant que le MTC tourne, le MTC est prioritaire. Les paramètres montrent l'heure reçue et la cadence d'images."
+ },
+ {
+  "id": "midi-013",
+  "page": "midi",
+  "path": [
+   "MIDI",
+   "5b. Temps et tempo depuis le logiciel de musique (MTC et horloge MIDI)"
+  ],
+  "title": "5b. Temps et tempo depuis le logiciel de musique (MTC et horloge MIDI) (2)",
+  "keywords": [],
+  "text": "**Envoi : OpenCue comme source de temps.** *Envoyer le code temporel (MTC)* envoie le code temporel global comme MIDI Timecode (cadence 24 / 25 / 29,97 / 30 ; quarts d'image cadencés avec précision, message full frame lors des sauts) vers la sortie choisie. *Envoyer l'horloge MIDI* envoie *Start* / *Stop* et l'horloge au tempo du panneau Audio pendant que le code temporel tourne.\n\n**Recevoir le show control (MSC).** Avec *Recevoir le contrôle de show* et un **ID d'appareil** (0-127, 127 = tous), GO, STOP, RESUME, ALL_OFF et RESTORE (aussi avec numéro de cue et de liste) pilotent les listes de cues – p. ex. depuis un logiciel de show ou une console. La commande `Midi MSC ...` les envoie.\n\n**Tempo depuis l'horloge MIDI.** Une **horloge MIDI stable** (24 impulsions par noire, 30 à 300 BPM) règle le tempo comme tempo fixe du panneau Audio (comme la commande `BPM 128`) et suit les changements de tempo. Assignez *Start*, *Stop* et *Continue* comme signaux (voir plus haut).\n\nPour essayer sans logiciel : un générateur de timecode MIDI (il existe des programmes et des pages web gratuits) envoie via un port MIDI virtuel (sous Windows p. ex. *loopMIDI*) – les deux côtés choisissent le même port."
+ },
+ {
+  "id": "midi-014",
+  "page": "midi",
+  "path": [
+   "MIDI",
+   "5c. Déclencheur de cue : MIDI"
+  ],
+  "title": "5c. Déclencheur de cue : MIDI",
+  "keywords": [],
+  "text": "Outre *Go*, *Follow*, *Code temporel* et *Audio*, un cue peut avoir le déclencheur **MIDI** : il attend alors **un signal MIDI** et se déclenche à son arrivée – une **séquence que vous jouez avec un clavier, un pad ou une pédale**. Dans la boîte de dialogue du cue (*Modifier le cue*), choisissez le déclencheur *MIDI*, puis sélectionnez le **signal** (ou appuyez sur **Apprendre le signal** et frappez la touche – il est rempli pour vous ; l'apprentissage fonctionne sur l'ordinateur de la console). Dans la liste de cues, vous pouvez aussi le saisir dans la cellule du déclencheur (`midi note c4`, `midi cc 20 64`, `midi pc 5 ch 2`) ou utiliser la commande `Cue 3 Trigger Midi Note 60` (voir *Ligne de commande*).\n\n| Signal | Le cue se déclenche … |\n|---|---|\n| **Note** (touche / pad), numéro 0–127 | … quand la touche est pressée (Note On ; le relâchement ne fait rien). |\n| **Contrôleur (CC)**, numéro 0–127, seuil 1–127 (par défaut 64) | … quand la valeur du contrôleur **atteint** le seuil par le bas. Un pad envoyé en CC (127) se déclenche aussitôt ; un fader se déclenche quand on le pousse au-delà du seuil, et de nouveau après l'avoir ramené en dessous puis repoussé. |\n| **Changement de programme**, numéro 0–127 | … quand ce programme est choisi sur l'appareil. |\n\nChaque signal peut être limité à un **canal** (1–16) ; *Tous* accepte tous les canaux et tous les appareils."
+ },
+ {
+  "id": "midi-015",
+  "page": "midi",
+  "path": [
+   "MIDI",
+   "5c. Déclencheur de cue : MIDI"
+  ],
+  "title": "5c. Déclencheur de cue : MIDI (2)",
+  "keywords": [],
+  "text": "Fonctionnement :\n- Comme le déclencheur audio, le cue se déclenche lorsqu'il est le **cue suivant** d'une liste en cours : démarrez d'abord la liste avec *Go*, puis le cue MIDI suivant attend son signal. Ensuite, le cue suivant (s'il a aussi un déclencheur MIDI) attend à son tour – vous pouvez enchaîner toute une séquence sur des touches ou des pads.\n- Une courte pause de 0,25 s après chaque déclenchement évite qu'une frappe démarre deux cues.\n- Le **MIDI doit être activé** (*Paramètres → MIDI → Utiliser MIDI*, ou l'interrupteur en haut de la boîte de dialogue d'assignation). OpenCue ouvre lui-même les appareils MIDI dès qu'un cue a un déclencheur MIDI – il n'y a pas besoin de ligne d'assignation pour cela – et les libère quand aucun cue n'a plus besoin du MIDI. Les appareils que vous avez décochés sous *Paramètres → MIDI* restent fermés.\n- Le déclencheur fonctionne pour chaque liste de cues indépendamment, et aussi du point de vue des appareils distants : le signal provient des appareils MIDI de l'**ordinateur de la console**.\n- **Différence avec l'assignation** (section 3) : une ligne d'assignation exécute une commande **à tout moment** (p. ex. `Go`, ou `Cuelist \"Main\" Go Cue 5` = y sauter). Le déclencheur de cue fait partie du **cue lui-même** et ne compte que tant que le cue est le suivant. Les deux peuvent être utilisés ensemble ; un signal utilisé par les deux fait les deux."
+ },
+ {
+  "id": "midi-016",
+  "page": "midi",
+  "path": [
+   "MIDI",
+   "6. Quand ça ne marche pas"
+  ],
+  "title": "6. Quand ça ne marche pas",
+  "keywords": [],
+  "text": "| Problème | Solution |\n|---|---|\n| Appareil non reconnu | Un autre câble/port USB ; **Paramètres → Entrées et sorties** actualise les appareils toutes les quelques secondes ; beaucoup d'appareils ont besoin d'un instant après le branchement. |\n| « en cours d'utilisation ? » sur l'appareil | **Un autre programme** (logiciel de musique, éditeur du fabricant) a ouvert l'appareil – sous Windows, généralement **un seul** programme peut le lire. Fermez l'autre programme, puis désactivez et réactivez **MIDI activé**. |\n| Le moniteur n'affiche rien | Le moniteur ne tourne que tant que la boîte de dialogue est ouverte. **MIDI activé** est-il activé ? |\n| Un cue avec le déclencheur **MIDI** ne se déclenche jamais | Il ne se déclenche que lorsqu'il est le **cue suivant** d'une liste **en cours** (démarrez d'abord la liste avec *Go*). *MIDI activé* doit être activé, l'appareil ne doit pas être décoché dans *Paramètres → MIDI*, et le numéro, le canal et le type doivent correspondre à ce que montre le moniteur quand vous frappez la touche (utilisez *Apprendre le signal* dans la boîte de dialogue du cue). |\n| Une touche ne déclenche rien | Vérifiez le canal / l'appareil sous « S'applique à » ; testez la commande à la main dans la ligne de commande ; la ligne s'allume-t-elle dans la boîte de dialogue ? (alors le signal arrive et c'est la commande qui pose problème). |\n| Le fader saute | Activez **Pickup** dans la ligne (master et fader) : le fader ne prend la main qu'après avoir atteint la valeur actuelle. |\n| Le logiciel de musique et OpenCue doivent se connecter | Windows a besoin d'un **port MIDI virtuel** pour cela (gratuit, p. ex. *loopMIDI*). Il apparaît alors comme entrée/sortie dans les deux programmes. |"
+ },
+ {
+  "id": "midi-017",
+  "page": "midi",
+  "path": [
+   "MIDI",
+   "7. Limites"
+  ],
+  "title": "7. Limites",
+  "keywords": [],
+  "text": "- **Tablettes :** l'iPad (Safari) ne sait pas faire de MIDI dans le navigateur. Les appareils MIDI appartiennent à l'ordinateur de la console ; vous pouvez modifier l'assignation depuis n'importe quel appareil.\n- **Plusieurs programmes :** sous Windows, généralement **un seul** programme lit un appareil MIDI (voir « en cours d'utilisation ? »). Les versions récentes de Windows (*Windows MIDI Services*) pourraient changer cela – OpenCue n'ouvre les appareils qu'en cas de besoin et les libère quand **MIDI activé** est désactivé.\n- **Le MIDI réseau et les ports virtuels** sont configurés par le système d'exploitation (p. ex. *loopMIDI*, *rtpMIDI*) ; ils apparaissent ensuite comme n'importe quel appareil.\n- **Profils de contrôleurs :** au lieu de profils fixes pour des modèles précis, il y a des **modèles avec une série d'apprentissage** – ils fonctionnent avec tous les contrôleurs. Les couleurs des LED (vélocités) diffèrent selon l'appareil ; elles se règlent sous le retour comme *LED allumée / LED éteinte*.\n- **Plusieurs assignations entre lesquelles basculer** (p. ex. « scène » et « répétition ») : sous forme de fichiers via **Exporter / Importer** dans la boîte de dialogue ; il n'y a pas d'interrupteur séparé.\n- Le pitch bend, l'aftertouch et la pression de canal sont évalués comme des faders ; il n'y a pas de position de morceau et pas d'événements MIDI dans le flux WebSocket de l'API.\n- Pas encore essayé avec tous les appareils : les faders, encodeurs, pads et le retour sont testés avec des messages artificiels – le **moniteur** de la boîte de dialogue montre ce que votre appareil envoie réellement."
+ }
+]

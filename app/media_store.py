@@ -1,3 +1,5 @@
+# Copyright (C) 2026 Samuel Zenker
+# SPDX-License-Identifier: GPL-3.0-or-later
 """
 media_store.py
 Medien (Video/Audio) der Show: Ablage und Pruefung.
@@ -38,9 +40,18 @@ def file_path(meta: Dict[str, Any]) -> Optional[Path]:
     """Wo die Datei zu diesem Medium liegt: die Kopie im Medien-Ordner."""
     return path_for(str(meta.get("id", "")))
 def sniff(head: bytes, filename: str = "") -> Optional[Tuple[str, str, str]]:
-    """Erkennt Video/Audio am Dateianfang. Rueckgabe (mime, art, kuerzel) oder None.
-    art: 'video' | 'audio' (bei mp4/ogg/webm nach Dateiendung/Marke; abgespielt wird immer in einem <video>-Element)."""
+    """Erkennt Video/Audio/Bild am Dateianfang. Rueckgabe (mime, art, kuerzel) oder None.
+    art: 'video' | 'audio' (bei mp4/ogg/webm nach Dateiendung/Marke; abgespielt wird immer in einem <video>-Element) | 'image' (PNG, JPEG, GIF, WebP - fuer Bildschirme in der 3D-Simulation;
+    kein SVG: das koennte Skripte enthalten)."""
     ext = Path(filename).suffix.lower()
+    if head[:8] == b"\x89PNG\r\n\x1a\n":
+        return ("image/png", "image", "png")
+    if head[:3] == b"\xff\xd8\xff":
+        return ("image/jpeg", "image", "jpg")
+    if head[:6] in (b"GIF87a", b"GIF89a"):
+        return ("image/gif", "image", "gif")
+    if len(head) >= 12 and head[:4] == b"RIFF" and head[8:12] == b"WEBP":
+        return ("image/webp", "image", "webp")
     if len(head) >= 12 and head[4:8] == b"ftyp":
         brand = head[8:12]
         audio_brand = brand in (b"M4A ", b"M4B ", b"F4A ") or ext in (".m4a", ".m4b")
@@ -75,14 +86,14 @@ class MediaError(Exception):
 def ingest(temp_path: Path, filename: str, size: int, digest: str, duration_ms: Any = None) -> Dict[str, Any]:
     """Nimmt eine vollstaendig empfangene Datei in den Speicher auf (verschiebt temp_path). Rueckgabe: Metadaten."""
     if size <= 0:
-        raise MediaError("invalid_file", "Die Datei ist leer")
+        raise MediaError("invalid_file", "The file is empty")
     if size > MAX_FILE_BYTES:
-        raise MediaError("too_large", "Die Datei ist zu gross (max. 1 GB)", 413)
+        raise MediaError("too_large", "The file is too large (max. 1 GB)", 413)
     with open(temp_path, "rb") as handle:
         head = handle.read(64)
     kind = sniff(head, filename)
     if kind is None:
-        raise MediaError("invalid_type", "Das ist keine unterstuetzte Video- oder Audiodatei (MP4, WebM, OGG, WAV, MP3, FLAC, AAC, M4A)", 415)
+        raise MediaError("invalid_type", "This is not a supported video, audio or image file (MP4, WebM, OGG, WAV, MP3, FLAC, AAC, M4A, PNG, JPEG, GIF, WebP)", 415)
     mime, art, _ = kind
     target = path_for(digest)
     if target is None:
@@ -128,6 +139,10 @@ def delete_stored(media_id: str) -> bool:
         return False
     try:
         path.unlink()
+        try:
+            path.with_name(path.name + ".peaks").unlink()                     # die zwischengespeicherte Wellenform (app/media_peaks.py) geht mit
+        except OSError:
+            pass
         return True
     except OSError:
         return False
@@ -182,11 +197,11 @@ def clean_entry(entry: Any) -> Optional[Dict[str, Any]]:
     if not ID_RE.match(media_id):
         return None
     mime = str(entry.get("mime", ""))
-    if not re.match(r"^(audio|video)/[a-z0-9.+-]{1,30}$", mime):
+    if not re.match(r"^(audio|video|image)/[a-z0-9.+-]{1,30}$", mime):
         return None
     try:
         size = int(entry.get("size", 0))
     except (TypeError, ValueError):
         return None
-    return {"id": media_id, "name": clean_name(str(entry.get("name", "media"))), "mime": mime, "kind": "audio" if entry.get("kind") == "audio" else "video", "size": size,
+    return {"id": media_id, "name": clean_name(str(entry.get("name", "media"))), "mime": mime, "kind": entry.get("kind") if entry.get("kind") in ("audio", "image") else "video", "size": size,
             "duration_ms": entry.get("duration_ms") if isinstance(entry.get("duration_ms"), int) else None}

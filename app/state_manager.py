@@ -1,3 +1,5 @@
+# Copyright (C) 2026 Samuel Zenker
+# SPDX-License-Identifier: GPL-3.0-or-later
 """
 state_manager.py
 Zentraler State-Master von OpenCue.
@@ -22,20 +24,36 @@ from __future__ import annotations
 import copy
 import ipaddress
 import json
+import logging
 import math
+import os
 import re
+import shutil
 import threading
 import uuid
 from dataclasses import asdict, dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
+from app.version import APP_VERSION
+
+logger = logging.getLogger("opencue.state")
+
+from app import backups as _backups
+from app import schedule as _schedule
+from app import timeline_tracks as _timeline_tracks
+from app import timeofday
+from app import console_defaults as _console_defaults
+from app import show_safety
+from app import ui_store as _ui_store
 from app import fx_categories
 from app import legacy_show
 from app import media_store
+from app import cue_fade as _cue_fade
 from app.dmx_resolve import DISCRETE_ATTRS, raw_offset
-#3D-AUS# from app import stage3d
+from app.audio_vars import clean_audio_trigger
+from app.midi_vars import clean_midi_trigger
 from app import sim_stages
 from app import paths as _paths
 
@@ -44,15 +62,21 @@ APP_CONFIG_PATH = _paths.APP_CONFIG_PATH
 MIN_GUI_SCALE = 0.5
 MAX_GUI_SCALE = 2.0
 DEFAULT_SERVER_PORT = 8000
+DEFAULT_HTTPS_PORT = 8001              # https-Adresse des Netzwerk-Zugriffs (selbstsigniertes Zertifikat, siehe app/https_cert.py)
 MIN_SERVER_PORT = 1024
 MAX_SERVER_PORT = 65535
 DEFAULT_LANGUAGE = "en"
-SUPPORTED_LANGUAGES = {"en", "de"}
+SUPPORTED_LANGUAGES = {"en", "de", "fr", "nl", "it", "es"}          # = app/languages.py (Sprachdateien static/locales/<Kuerzel>.json)
 
 MIN_UNIVERSE = 1
 MAX_UNIVERSE = 64
-DEFAULT_REMOTE_PASSWORD = "12345678"
-DEFAULT_ARTNET_IP = "2.255.255.255"  # Ziel-/Broadcast-Adresse ("Target IP")
+# Es gibt KEIN Standardpasswort: das Passwort ("" = noch keines) legt der Nutzer selbst fest, bevor Fernzugriff oder Sichermodus eingeschaltet werden koennen.
+# Es ist frei waehlbar (mindestens 4, hoechstens 64 Zeichen) - jedes Passwort ist erlaubt, auch ein einfaches.
+MIN_PASSWORD_LENGTH = 4
+MAX_PASSWORD_LENGTH = 64
+LOCK_AUTO_CHOICES = (0, 1, 2, 5, 10, 15, 30, 60)          # Sichermodus: automatisch sperren nach so vielen Minuten ohne Eingabe (0 = nie)
+MAX_RECENT_SHOWS = 10  # Liste "Zuletzt benutzt" im Datei-Menue
+DEFAULT_ARTNET_IP = "auto"  # Ziel ("Target IP"): "auto" = Geraete im Netzwerk selbst finden (app/artnet_discovery.py); sonst eine feste Adresse, z. B. 2.255.255.255 (Broadcast)
 DEFAULT_ARTNET_BIND_IP = ""  # leer = Betriebssystem waehlt das Interface
 
 # Theme: ein flaches Token-Objekt. Gespeichert wird nur die Abweichung von der Basis:
@@ -67,11 +91,11 @@ THEME_TOKEN_KEYS = (
     "border", "border-strong",
     "text-1", "text-2", "text-3",
     "accent",
-    "ok", "warn", "error", "live",
+    "ok", "warn", "error", "live", "modified",
 )
 THEME_BASES = ("dark", "light")
 DEFAULT_RADIUS = 0  # Standard: eckig. --radius-md in px; sm und lg werden proportional abgeleitet
-OLD_DEFAULT_RADIUS = 7  # bis Schritt 4b der Standard: gilt in aelteren Konfigurationen als "nicht angepasst"
+OLD_DEFAULT_RADIUS = 7  # frueherer Standard: gilt in aelteren Konfigurationen als "nicht angepasst"
 THEME_SCHEMA = 2  # 2 = Standard-Rundung eckig; aeltere Konfigurationen werden beim Laden angehoben
 MAX_RADIUS = 16
 MAX_THEME_PROFILES = 200
@@ -131,9 +155,9 @@ LEGACY_PANEL_DEFAULTS = {
     "header_background_color": "#141414",
 }
 
-MIN_PANEL_SIZE = 5.0         # Prozent der Arbeitsflaeche - Untergrenze fuer Breite/Hoehe
-MIN_COMPACT_PANEL_SIZE = 0.5 # Button/Fader duerfen sehr klein skaliert werden
-COMPACT_PANEL_TYPES = {"button", "fader", "executor"}
+MIN_PANEL_SIZE = 1.0         # Prozent der Arbeitsflaeche - harte Untergrenze fuer Breite/Hoehe (die Oberflaeche begrenzt je Panel-Typ und Zoom enger, siehe getPanelMinSize in app.js)
+MIN_COMPACT_PANEL_SIZE = 0.5 # Button/Fader/Toggle duerfen sehr klein skaliert werden
+COMPACT_PANEL_TYPES = {"button", "fader", "toggle", "executor"}
 MIN_PANEL_SCALE = 0.5
 MAX_PANEL_SCALE = 2.0
 HEX_COLOR_PATTERN = re.compile(r"^#[0-9a-fA-F]{6}$")
@@ -180,7 +204,7 @@ def _clamp_percent(value: Any) -> float:
         return 100.0
 
 
-CUE_TRIGGERS = ("go", "follow", "timecode")
+CUE_TRIGGERS = ("go", "follow", "timecode", "audio", "midi", "clock")
 MAX_TIMECODE_MS = 100 * 3600 * 1000        # wie timecode.MAX_MS (hier ohne Import, damit der Zustand ohne die Uhr auskommt)
 
 
@@ -205,11 +229,15 @@ def _normalize_cue_trigger(cue: "Cue") -> "Cue":
     cue.timecode_ms = _parse_timecode_ms(cue.timecode_ms) if cue.trigger == "timecode" else None
     if cue.trigger == "timecode" and cue.timecode_ms is None:
         cue.trigger = "go"
+    cue.audio_source, cue.audio_value = clean_audio_trigger(cue.audio_source, cue.audio_value)
+    cue.midi_type, cue.midi_number, cue.midi_channel, cue.midi_value = clean_midi_trigger(cue.midi_type, cue.midi_number, cue.midi_channel, cue.midi_value)
+    cue.clock_time = timeofday.clean_time(cue.clock_time) or "20:00"
+    cue.clock_days = timeofday.clean_days(cue.clock_days)
     return cue
 
 
 def _parse_optional_float(value: Any) -> Optional[float]:
-    """Fuer die dot2-Stil Attribut-Zeiten (Cue.fade_color/_pos/_beam etc.):
+    """Fuer die Lichtpult-Stil Attribut-Zeiten (Cue.fade_color/_pos/_beam etc.):
     None/leer = "nutzt die allgemeine fade/delay-Zeit dieser Gruppe"
     (siehe cue_engine.py), ansonsten ein nicht-negativer Sekundenwert."""
     if value is None or value == "":
@@ -236,6 +264,9 @@ class Fixture:
     # Freier Sortierwert (aufsteigend) fuer die Reihenfolge in der Scheinwerfer-Liste, unabhaengig von FID und DMX-Adresse;
     # None = nicht gesetzt (zaehlt wie 0, Gleichstand -> nach Adresse wie bisher).
     sort_index: Optional[float] = None
+    # Platz im freien 2D-Raster der Scheinwerfersteuerung (Ansicht "Layout"), in Raster-Einheiten (1 = eine Kachel); None = noch nicht gesetzt (wird automatisch vergeben)
+    layout_x: Optional[float] = None
+    layout_y: Optional[float] = None
 
 
 @dataclass
@@ -266,7 +297,18 @@ class Cue:
     delay: float = 0.0      # Haupt-/Dimmer-Verzoegerung in Sekunden (siehe auch trigger == "follow")
     trigger: str = "go"     # "go" (manueller Start) | "follow" (automatischer Folgestart) | "timecode" (feuert zur Zeit timecode_ms)
     timecode_ms: Optional[int] = None   # nur bei trigger == "timecode": Zeit in ms auf dem globalen Timecode
-    # dot2-Stil Attribut-Zeiten: pro Gruppe optional eine eigene Fade-/
+    # Audio-Ausloeser (trigger == "audio"): der Cue feuert, wenn er der NAECHSTE der laufenden Liste ist und das Ereignis eintritt (app/audio_vars.py: CUE_AUDIO_SOURCES)
+    audio_source: str = "beat"          # beat | kick | snare | hat | level | bass | mid | high | b1 .. b8
+    audio_value: float = 1.0            # beat/kick/snare/hat: jeder n-te Schlag; Pegel-Quellen: Schwelle in Prozent
+    # MIDI-Ausloeser (trigger == "midi"): wie "audio" - der Cue feuert, wenn er der NAECHSTE der laufenden Liste ist und sein Signal eintrifft (app/midi_vars.py)
+    midi_type: str = "note"             # note | cc | pc
+    midi_number: int = 60               # Note / Controller / Programm 0-127
+    midi_channel: int = 0               # 0 = jeder Kanal, 1-16
+    midi_value: int = 64                # nur cc: Schwelle 1-127 (feuert beim Ueberschreiten von unten)
+    # Uhrzeit-Ausloeser (trigger == "clock"): der Cue wartet als NAECHSTER der laufenden Liste auf eine Uhrzeit der Wanduhr (app/timeofday.py)
+    clock_time: str = "20:00"           # "HH:MM" oder "HH:MM:SS"
+    clock_days: List[int] = field(default_factory=list)   # Wochentage 0-6 (Montag = 0); leer = jeden Tag
+    # Lichtpult-Stil Attribut-Zeiten: pro Gruppe optional eine eigene Fade-/
     # Delay-Zeit, die VOR der allgemeinen fade/delay bevorzugt wird (siehe
     # cue_engine.py). None = "nutzt die allgemeine Zeit dieser Gruppe".
     fade_color: Optional[float] = None
@@ -287,6 +329,12 @@ class Cue:
     # Amplituden-Ein-/Ausblendzeit der Effekte dieses Cues in Sekunden (0 = sofort)
     fx_fade_in: float = 0.0
     fx_fade_out: float = 0.0
+    # Wie der Cue abgespielt wird: "tracking" = nur die gespeicherten Aenderungen (fixture_values), alles andere bleibt stehen;
+    # "absolute" = der ganze beim Speichern gesehene Zustand (absolute), darueber die Aenderungen/Variablen (fixture_values) und alle Effekt-Zuweisungen
+    play_mode: str = "tracking"
+    # Voller Zustand ALLER Fixtures beim Speichern: fixture_id -> {Attribut: Wert} (abstrakt wie fixture_values, dazu rohe "ch<Offset>"-Kanaele).
+    # Wird immer mitgespeichert (kostet kaum Platz); angewandt wird er nur bei play_mode == "absolute".
+    absolute: Dict[str, Dict[str, Any]] = field(default_factory=dict)
 
 
 @dataclass
@@ -298,6 +346,7 @@ class CueList:
     cues: List[Cue] = field(default_factory=list)
 
 
+PLAY_MODES = ("tracking", "absolute")            # Cue.play_mode
 PRESET_TYPES = ("dimmer", "position", "color", "focus", "zoom", "gobo")
 # Welche abstrakten Attribute eine Variable (Preset) dieses Typs setzt - die Grenze einer Verknuepfung im Programmer und im Cue
 PRESET_TYPE_ATTRS = {
@@ -369,6 +418,9 @@ class StateManager:
         self.media: Dict[str, Dict[str, Any]] = {}
         self.fixtures: Dict[str, Fixture] = {}
         self.groups: Dict[str, List[str]] = {}
+        self.change_counter = 0                  # siehe mark_dirty()
+        self.show_epoch = 0                      # zaehlt Show-Wechsel (Neu / Laden): das globale Rueckgaengig beginnt dann von vorn
+        self.fixture_layout: Dict[str, Any] = self._default_fixture_layout()      # Einstellungen der Ansicht "Layout" (Rasterfeinheit, Ueberlappen, gespeicherte Ansichten), gehoeren zur Show
         self.cues: List[Cue] = []
         self.presets: Dict[str, Preset] = {}
         self.preset_groups: List[str] = []
@@ -378,23 +430,30 @@ class StateManager:
         # Lieblings-Effekte (Skriptnamen): eine Einstellung der Konsole fuer alle Geraete, nicht Teil der Show (steht in der app_config.json)
         self.fx_favorites: List[str] = []
         self.cmd_suggestions: bool = True          # Autocomplete-Vorschlaege der Befehlszeile (Schalter neben der Eingabe, gilt fuer alle Geraete)
-#3D-AUS#         # 3D-Buehne (app/stage3d.py): RAUM (Geometrie) und RIG (Scheinwerfer-Positionen) sind getrennte Einheiten mit eigener Bibliothek; beide stecken
-#3D-AUS#         # immer vollstaendig in der Show. *_source = Dateiname in der jeweiligen Bibliothek, aus der sie stammen (Anzeige "weicht ab"), None = nur in der Show
-#3D-AUS#         self.room: Dict[str, Any] = stage3d.default_room()
-#3D-AUS#         self.room_source: Optional[str] = None
-#3D-AUS#         self.rig: Dict[str, Any] = stage3d.default_rig()
-#3D-AUS#         self.rig_source: Optional[str] = None
+        self.schedule: List[Dict[str, Any]] = []         # Zeitplan der Show (app/schedule.py): Befehle zu Uhrzeiten
+        self.undo_playback: bool = False                 # globales Rueckgaengig schliesst Go / Back / Springen ein (Schalter in der Toolbar; App-Config, show-unabhaengig)
+        self.keep_awake: bool = True                     # Rechner + Bildschirm wach halten, solange OpenCue laeuft (app/keep_awake.py; Tablets: Wake Lock im Browser); App-Config, show-unabhaengig
+        self.timeline_tracks: List[Dict[str, Any]] = []  # Befehlsspuren der Timeline (app/timeline_tracks.py): Befehle zu Zeiten des globalen Timecodes
+        self.shortcut_overrides: Dict[str, str] = {}     # umbelegte eingebaute Tastenkuerzel (app/hotkeys.py BUILTIN_ACTIONS), ein Programm-Setting fuer alle Geraete
+        self.hotkeys: List[Dict[str, Any]] = []     # eigene Tastaturbelegung (Taste -> Befehl), ein Programm-Setting fuer alle Geraete (app/hotkeys.py)
+        self.dmx_in_config: Dict[str, Any] = {"enabled": False, "artnet": True, "sacn": True, "bind": "", "timeout": 3.0, "allow": [], "merge": [], "triggers": []}      # DMX-Eingang (App-Konfiguration; app/dmx_in.py)
+        self.osc_config: Dict[str, Any] = {"enabled": False, "port": 9000, "allow": [], "raw": False, "send": {"host": "", "port": 9001}, "bindings": []}      # OSC (App-Config, show-unabhaengig; app/osc.py)
+        self.ltc_config: Dict[str, Any] = {"enabled": False, "device": "", "channel": "left", "out": {"enabled": False, "device": "", "channel": "both", "fps": 25.0, "level": 0.5}}      # LTC-Eingang (Timecode als Audiosignal; app/ltc.py), App-Config, show-unabhaengig
+        self.midi: Dict[str, Any] = {"enabled": True, "output": "", "ignore": [], "clock": False, "mtc": False, "bindings": []}      # MIDI-Belegung + Ausgang (App-Config, show-unabhaengig; app/midi_engine.py)
         # Programmer-Zuweisungen: fixture_id -> {kategorie: {fx_id, index, count}}.
         # Transient wie programmer_values, wird im runtime_state gespeichert.
         self.fx_assignments: Dict[str, Dict[str, Dict[str, Any]]] = {}
 
-        # Cue-Execution-System (Phase 1: Anlegen/Verwalten/hartes Abfeuern,
+        # Cue-Execution-System (Anlegen/Verwalten/hartes Abfeuern,
         # siehe save_cue()/step_cue() weiter unten). active_cue_ids wird im
         # Showfile unter "runtime_state" mitgespeichert, damit der Wiederanlauf
         # die zuletzt aktiven Cues wiederherstellt (siehe server.py).
         self.cuelists: Dict[str, CueList] = {}
         self.active_cuelist_id: Optional[str] = None
         self.active_cue_ids: Dict[str, str] = {}  # cuelist_id -> aktuell aktiver cue_id
+        # Die zuletzt benutzte Cue-Liste (Go, Zurueck, Springen, Auswahl, Speichern): auf ihren aktiven Cue bezieht sich die Anzeige "geaendert" (cue_changes). Nicht gespeichert.
+        self.last_used_cuelist_id: Optional[str] = None
+        self.cue_context_hook: Optional[Callable[[], None]] = None      # vom Server gesetzt: aktiver Cue / Cue-Inhalt hat sich geaendert
 
         # Gesamthelligkeit (Grand Master, 0-100 %) - skaliert alle Dimmer-
         # Kanaele, siehe dmx_resolve.apply_abstract_values(). Persistiert im
@@ -428,6 +487,12 @@ class StateManager:
         # Befehlszeile unabhaengig vom Eingabeweg denselben Programmer-Inhalt
         # sieht wie das Frontend (ProgrammerState.touchedAttrs/activeValues).
         self.selected_fixture_ids: List[str] = []
+        # Auswahl der Konsole ueber einen Neustart hinweg (nicht Teil der Show): {"show": Pfad der Show, "ids": [...]} - gespeichert in der app_config.json,
+        # beim Start nur wiederhergestellt, wenn dieselbe Show geladen wurde (siehe restore_startup_selection)
+        self.ui_store: Dict[str, str] = {}               # Oberflaechenzustand der Konsole (opencue.* aus dem localStorage, siehe app/ui_store.py), nicht Teil der Show
+        self.selection_memory: Dict[str, Any] = {}
+        self._startup_selection: Dict[str, Any] = {}
+        self._selection_timer: Optional[threading.Timer] = None
         self.programmer_values: Dict[str, Dict[str, Any]] = {}
         # fixture_id -> {Variablen-Typ: preset_id}: welche Variable (Platzhalter) gerade welchen Teil der Fixture im Programmer vorgibt.
         # Aendert man die Variable, folgt die Fixture live; ein manueller Wert, ein Effekt oder ein Cue loest die Verknuepfung.
@@ -441,10 +506,20 @@ class StateManager:
 
         # Remote-Zugriff aus dem Netzwerk (persistiert in app_config.json). Standard: aus.
         # Der Server-Bind (0.0.0.0 / 127.0.0.1) wird beim Start gewaehlt (siehe main.py).
-        self.remote_enabled: bool = False
-        self.remote_password: str = DEFAULT_REMOTE_PASSWORD
+        self.http_enabled: bool = False          # Netzwerk-Zugriff ueber http (Standard: aus)
+        # (https_enabled siehe unten) - der Netzwerk-Zugriff ist an, sobald http ODER https an ist (Eigenschaft remote_enabled)
+        self.remote_password: str = ""           # EIN Passwort fuer Fernzugriff und Sichermodus; leer = noch keines festgelegt
+        # Sichermodus (Sperrbildschirm der Konsole, Strg+L): Einstellung in der App-Config, der Zustand "gesperrt" nur zur Laufzeit (ein Neustart entsperrt).
+        self.lock_enabled: bool = False
+        self.lock_auto_minutes: int = 0
+        self.locked: bool = False
+        # Bedienmodus (Kiosk): Geraete, die gerade NUR bedienen duerfen ("console" = das Konsolen-Fenster, sonst die Client-ID eines Fernzugriffs-Geraets). Nur zur Laufzeit.
+        self.kiosk_keys: set = set()
         # Port des Servers; eine Aenderung wirkt erst nach einem Neustart (siehe main.py).
         self.server_port: int = DEFAULT_SERVER_PORT
+        self.https_enabled: bool = False         # Netzwerk-Zugriff ueber https (eigener Schalter, unabhaengig von http)
+        self.https_port: int = DEFAULT_HTTPS_PORT
+        self.mdns_enabled: bool = True           # Netzwerk-Name opencue.local (mDNS) zusaetzlich zu den IP-Adressen (app/mdns.py); gilt, sobald der Netzwerk-Zugriff an ist
         # True waehrend ein Remote-Client seine eigene Panel-Liste bearbeitet:
         # unterdrueckt das Schreiben der Host-Konfiguration (siehe app/remote.py).
         self._panel_scope_active: bool = False
@@ -454,7 +529,7 @@ class StateManager:
         # sACN hat sonst keine weitere Konfiguration (Multicast, siehe
         # dmx_engine.py), Art-Net zusaetzlich Ziel- ("Target") und
         # Sende-Interface- ("Bind") Adresse.
-        self.artnet_enabled: bool = True
+        self.artnet_enabled: bool = False                 # Standard aus: Art-Net sendet Broadcast ins Netzwerk - das soll erst passieren, wenn man es einschaltet
         self.artnet_ip: str = DEFAULT_ARTNET_IP  # "Target IP"
         self.artnet_bind_ip: str = DEFAULT_ARTNET_BIND_IP
         self.sacn_enabled: bool = False                  # aus: der sACN-Sender bindet einen UDP-Port, dafuer fragt die Windows-Firewall - das soll erst kommen, wenn man sACN einschaltet
@@ -485,6 +560,11 @@ class StateManager:
 
         # Letzter geoeffneter Showfile-Pfad (persistiert in app_config.json)
         self.last_showfile_path: Optional[str] = None
+        # Willkommens-Dialog beim allerersten Start (nur Laufzeit, main.py setzt es bei einer frischen Installation) und "Was ist neu?" nach einem Update (zuletzt gesehene Programmversion, persistiert)
+        self.onboarding_pending: bool = False
+        self.seen_version: str = APP_VERSION
+        # Zuletzt benutzte Shows (Datei-Menue -> Zuletzt benutzt; neueste zuerst, hoechstens MAX_RECENT_SHOWS; persistiert in app_config.json)
+        self.recent_shows: List[str] = []
 
         # Zuletzt aktives Panel-Layout (Anzeigename, persistiert in app_config.json)
         self.last_active_layout: Optional[str] = None
@@ -495,6 +575,7 @@ class StateManager:
         # damit ein vom Nutzer geloeschtes Beispiel nicht bei jedem Start wiederkommt.
         self.example_layouts_seeded: bool = False
         self.update_check_enabled: bool = True           # beim Start nach einer neuen Version suchen (GitHub; ohne Netz passiert nichts)
+        self.fetch_voice_model: bool = False             # vom Installer gesetzt ("Sprachmodell mitladen"): beim naechsten Start laedt OpenCue es (app/voice.py) und loescht den Merker
         self.update_skipped_version: str = ""           # 'Diese Version nicht mehr anzeigen': Kennung der uebersprungenen Version
         self.first_start_done: bool = False              # frische Installation: beim ersten Start wird die Demo-Show geoeffnet (server.open_first_start_demo); eine vorhandene Konfiguration gilt als 'schon gestartet'
 
@@ -503,6 +584,11 @@ class StateManager:
 
         # Raum-Einstellungen der 3D-Simulation (Licht, Reflexion, ...; Normalisierung in sim_stages.normalize_room)
         self.sim_room: Dict[str, Any] = {}
+        self.audio_config: Dict[str, Any] = {}           # Audio-Quelle und Einstellungen der Konsole (app/audio_engine.py), nicht Teil der Show
+        self.ai_config: Dict[str, Any] = {}              # KI-Assistent: Server, Modell, Berechtigungen (app/ai/config.py), nicht Teil der Show
+        self.backup_config: Dict[str, Any] = dict(_backups.DEFAULTS)                 # Sicherungen im Hintergrund (app/backups.py), nicht Teil der Show
+        self.console_defaults: Dict[str, Any] = dict(_console_defaults.DEFAULTS)     # Standardwerte (neue Cues, Clear Clear; app/console_defaults.py), nicht Teil der Show
+        self.voice_config: Dict[str, Any] = {}           # Sprachsteuerung: Mikrofon, Weckwort, Empfindlichkeit (app/voice.py), nicht Teil der Show
 
         # Dirty-Flag: True sobald Show-Daten (Fixtures) seit dem letzten
         # Speichern geaendert wurden. Wird im Snapshot mitgeschickt und vom
@@ -521,8 +607,21 @@ class StateManager:
         except OSError:
             pass
 
+        # Startparameter (app/cli.py): --show DATEI laedt diese Show, --new-show beginnt leer (der Merker "zuletzt benutzt" bleibt dabei unveraendert)
+        start_show = os.environ.get("OPENCUE_START_SHOW", "").strip()
+        skip_last = start_show == "-"
+        self.pending_start_file: Optional[str] = None                 # ein Paket (.ocshow / ZIP): der Server liest es ein und oeffnet die Show (app/server.py, Start)
+        if start_show and not skip_last:
+            if Path(start_show).is_file() and Path(start_show).suffix.lower() in (".ocshow", ".zip"):
+                self.pending_start_file = start_show
+                skip_last = True
+            elif Path(start_show).is_file():
+                self.last_showfile_path = start_show
+            else:
+                logger.warning("[START] --show: the file %s does not exist - the last show is loaded instead", start_show)
+
         # Auto-load letztes Showfile beim Start
-        if self.last_showfile_path:
+        if self.last_showfile_path and not skip_last:
             try:
                 self.load_showfile(self.last_showfile_path)
             except Exception:
@@ -543,6 +642,9 @@ class StateManager:
                 "cuelist_masters": dict(self.cuelist_masters),
                 "gui_scale": self.gui_scale,
                 "language": self.language,
+                "onboarding_pending": bool(self.onboarding_pending),
+                "whats_new_pending": bool(not self.onboarding_pending and self.seen_version != APP_VERSION),
+                "app_version": APP_VERSION,
                 "artnet_enabled": self.artnet_enabled,
                 "artnet_ip": self.artnet_ip,
                 "artnet_bind_ip": self.artnet_bind_ip,
@@ -554,10 +656,14 @@ class StateManager:
                 "theme": self.theme_payload(),
                 "theme_profiles": self.theme_profiles_payload(),
                 "panel_defaults": dict(self.panel_defaults),
+                "console_defaults": dict(self.console_defaults),
+                "backup_config": dict(self.backup_config),
+                "settings_defaults": self.settings_defaults(),
                 "panel_types": PanelRegistry.get_all_info(),
                 "panels": self.panels_as_dicts(),
                 "last_active_layout": self.last_active_layout,
-                "fixtures": {fid: asdict(fx) for fid, fx in self.fixtures.items()},
+                "fixtures": self.fixtures_as_dicts(),
+                "fixture_layout": dict(self.fixture_layout),
                 "groups": self.groups,
                 "cues": [asdict(cue) for cue in self.cues],
                 "presets": {pid: asdict(p) for pid, p in self.presets.items()},
@@ -565,10 +671,6 @@ class StateManager:
                 "cuelists": self.cuelists_as_dicts(),
                 "active_cuelist_id": self.active_cuelist_id,
                 "active_cue_ids": dict(self.active_cue_ids),
-#3D-AUS#                 "room": self.room,
-#3D-AUS#                 "rig": self.rig,
-#3D-AUS#                 "room_library": stage3d.library_status("room", self.room, self.room_source),
-#3D-AUS#                 "rig_library": stage3d.library_status("rig", self.rig, self.rig_source),
                 "media": self.media_payload(),
                 "media_dir": str(media_store.store_dir()),
                 "media_max_bytes": media_store.MAX_FILE_BYTES,
@@ -576,6 +678,14 @@ class StateManager:
                 "custom_data_path": self.custom_data_path,
                 "data_root": str(_paths.get_data_root()),
                 "cmd_suggestions": self.cmd_suggestions,
+                "hotkeys": list(self.hotkeys),
+                "shortcut_overrides": dict(self.shortcut_overrides),
+                "schedule": [dict(entry) for entry in self.schedule],
+                "timeline_tracks": copy.deepcopy(self.timeline_tracks),
+                "midi": dict(self.midi),
+                "ltc": dict(self.ltc_config),
+                "keep_awake": self.keep_awake,
+                "undo_playback": self.undo_playback,
                 "update_check_enabled": self.update_check_enabled,
                 "update_skipped_version": self.update_skipped_version,
                 "blackout": self.blackout,
@@ -588,6 +698,17 @@ class StateManager:
     def mark_dirty(self) -> None:
         """Markiert die Show als ungespeichert (Fixture-Aenderungen)."""
         self.is_dirty = True
+        self.change_counter += 1                  # zaehlt jede Aenderung am Inhalt der Show (das globale Rueckgaengig, app/show_undo.py, merkt daran, dass etwas passiert ist)
+        self.note_cue_context()
+
+    def note_cue_context(self) -> None:
+        """Der aktive Cue oder der Inhalt der Cues hat sich geaendert: die Anzeige "geaendert gegenueber dem Cue" neu rechnen lassen."""
+        hook = self.cue_context_hook
+        if hook is not None:
+            try:
+                hook()
+            except Exception:
+                pass
 
     def _next_fid(self) -> int:
         if not self.fixtures:
@@ -627,10 +748,19 @@ class StateManager:
         universe: int,
         start_channel: int,
         name_start_index: int = 1,
+        spill: bool = True,
     ) -> List[Fixture]:
+        """Legt `quantity` Scheinwerfer hintereinander an. Passt der naechste nicht mehr ganz in das Universum (Kanal 512), geht es - wie an einem Pult - bei Kanal 1 des naechsten
+        Universums weiter (spill=True); ohne spill oder nach dem letzten Universum hoert es auf (der Aufrufer sieht an der Anzahl, wie viele es wurden)."""
         created: List[Fixture] = []
         ch = start_channel
+        count = max(1, int(channel_count))
         for i in range(quantity):
+            if ch < 1 or ch + count - 1 > 512:
+                if not spill or universe >= MAX_UNIVERSE or count > 512:
+                    break               # nicht anlegen (frueher: angelegt und teilweise ueber Kanal 512 hinaus)
+                universe += 1
+                ch = 1
             idx = name_start_index + i
             name = f"{name_prefix} {idx}" if (quantity > 1 or name_start_index > 1) else name_prefix
             fx = Fixture(
@@ -646,23 +776,50 @@ class StateManager:
             self.fixtures[fx.id] = fx
             created.append(fx)
             ch += channel_count
-            if ch > 512:
-                break  # stop if we'd exceed the universe
-        self.mark_dirty()
+        if created:
+            self.mark_dirty()
         return created
 
-    def remove_fixture(self, fixture_id: str) -> bool:
+    def _forget_fixture(self, fixture_id: str) -> None:
+        """Alles, was sich ein geloeschter Scheinwerfer im Live-Zustand gemerkt hatte (sonst bleiben Werte eines Geraets, das es nicht mehr gibt, im Programmer, in der Auswahl und in den Cue-Schichten)."""
         self.fx_assignments.pop(fixture_id, None)
         self.programmer_refs.pop(fixture_id, None)
-        return self.fixtures.pop(fixture_id, None) is not None
+        self.programmer_values.pop(fixture_id, None)
+        for table in (self.cue_layer, self.cue_base):
+            for fixtures in table.values():
+                fixtures.pop(fixture_id, None)
+        if fixture_id in self.selected_fixture_ids:
+            self.selected_fixture_ids = [f for f in self.selected_fixture_ids if f != fixture_id]
+
+    def _purge_fixtures_from_cues(self, fixture_ids) -> bool:
+        """Ein geloeschter Scheinwerfer verschwindet auch aus allen Cues (Werte, Effekt-Zuweisungen, absoluter Zustand) - sonst blieben Eintraege fuer Geraete, die es nicht mehr gibt, fuer immer in der Show."""
+        ids = set(fixture_ids)
+        changed = False
+        for cl in self.cuelists.values():
+            for cue in cl.cues:
+                for table in (cue.fixture_values, cue.fx, cue.fx_order, cue.absolute):
+                    for fid in ids & set(table):
+                        table.pop(fid, None)
+                        changed = True
+        return changed
+
+    def remove_fixture(self, fixture_id: str) -> bool:
+        self._forget_fixture(fixture_id)
+        if self.fixtures.pop(fixture_id, None) is None:
+            return False
+        self._purge_fixtures_from_cues([fixture_id])
+        return True
 
     def delete_fixtures_bulk(self, fixture_ids: List[str]) -> int:
         removed = 0
+        gone = []
         for fx_id in fixture_ids:
-            self.fx_assignments.pop(fx_id, None)
+            self._forget_fixture(fx_id)
             if self.fixtures.pop(fx_id, None) is not None:
                 removed += 1
+                gone.append(fx_id)
         if removed:
+            self._purge_fixtures_from_cues(gone)
             self.prune_groups()
             self.mark_dirty()
         return removed
@@ -756,8 +913,12 @@ class StateManager:
         fx = self.fixtures.get(fixture_id)
         if fx is None:
             return None
-        fx.universe = max(MIN_UNIVERSE, min(MAX_UNIVERSE, int(universe)))
-        fx.start_channel = max(1, min(512, int(start_channel)))
+        new_universe = max(MIN_UNIVERSE, min(MAX_UNIVERSE, int(universe)))
+        new_start = max(1, min(512, int(start_channel)))
+        if new_start + max(1, fx.channel_count) - 1 > 512:
+            return None                 # der Scheinwerfer wuerde ueber Kanal 512 hinausragen: Adresse bleibt unveraendert (frueher still uebernommen)
+        fx.universe = new_universe
+        fx.start_channel = new_start
         self.mark_dirty()
         return fx
 
@@ -781,7 +942,131 @@ class StateManager:
         return fx
 
     def fixtures_as_dicts(self) -> Dict[str, Any]:
+        self._ensure_layout_positions()
         return {fx_id: asdict(fx) for fx_id, fx in self.fixtures.items()}
+
+    # ---- Layout-Ansicht der Scheinwerfersteuerung: freie Plaetze im 2D-Raster (Einheit = eine Kachel) -----------------------------
+    LAYOUT_COLUMNS = 10                       # Zeilenbreite der automatischen Anordnung
+    LAYOUT_MAX = 2000.0                       # groesste Koordinate (in alle Richtungen, auch negativ)
+    LAYOUT_SNAPS = (0.25, 0.5, 1.0)           # Rasterfeinheit (Schrittweite beim Verschieben)
+    LAYOUT_MAX_VIEWS = 40                     # gespeicherte Ansichten ("Bereiche")
+
+    @classmethod
+    def _default_fixture_layout(cls) -> Dict[str, Any]:
+        return {"snap": 1.0, "overlap": False, "views": []}
+
+    @classmethod
+    def _clean_fixture_layout(cls, raw: Any) -> Dict[str, Any]:
+        """Einstellungen der Layout-Ansicht aus einer Show pruefen: {snap, overlap, views: [{id, name, x, y, zoom}]}."""
+        out = cls._default_fixture_layout()
+        if not isinstance(raw, dict):
+            return out
+        if raw.get("snap") in cls.LAYOUT_SNAPS:
+            out["snap"] = float(raw["snap"])
+        out["overlap"] = bool(raw.get("overlap"))
+        out["views"] = cls._clean_layout_views(raw.get("views"))
+        return out
+
+    @classmethod
+    def _clean_layout_views(cls, views: Any) -> List[Dict[str, Any]]:
+        out: List[Dict[str, Any]] = []
+        seen: set = set()
+        for item in views if isinstance(views, list) else []:
+            if not isinstance(item, dict) or len(out) >= cls.LAYOUT_MAX_VIEWS:
+                continue
+            name = " ".join(str(item.get("name") or "").split())[:40]
+            x, y = cls._clean_layout_coord(item.get("x")), cls._clean_layout_coord(item.get("y"))
+            try:
+                zoom = round(max(0.2, min(4.0, float(item.get("zoom", 1.0)))), 3)
+            except (TypeError, ValueError):
+                zoom = 1.0
+            view_id = str(item.get("id") or "")[:40] or str(uuid.uuid4())
+            if not name or x is None or y is None or view_id in seen:
+                continue
+            seen.add(view_id)
+            out.append({"id": view_id, "name": name, "x": x, "y": y, "zoom": zoom})
+        return out
+
+    @staticmethod
+    def _layout_free(x: float, y: float, taken: List[tuple]) -> bool:
+        return all(abs(x - ox) >= 1.0 or abs(y - oy) >= 1.0 for ox, oy in taken)
+
+    def _ensure_layout_positions(self) -> bool:
+        """Scheinwerfer ohne Platz bekommen einen: der Reihe nach (Sortier-Index/FID) in die ersten freien Felder, 10 pro Zeile. Gibt True zurueck, wenn etwas vergeben wurde."""
+        missing = [fx for fx in self.fixtures.values() if fx.layout_x is None or fx.layout_y is None]
+        if not missing:
+            return False
+        taken = [(fx.layout_x, fx.layout_y) for fx in self.fixtures.values() if fx.layout_x is not None and fx.layout_y is not None]
+        missing.sort(key=lambda fx: ((fx.sort_index if fx.sort_index is not None else (fx.fid or 1e9)), fx.fid or 1e9, fx.universe, fx.start_channel))
+        index = 0
+        for fx in missing:
+            while True:
+                x, y = float(index % self.LAYOUT_COLUMNS), float(index // self.LAYOUT_COLUMNS)
+                index += 1
+                if self._layout_free(x, y, taken):
+                    break
+            fx.layout_x, fx.layout_y = x, y
+            taken.append((x, y))
+        return True
+
+    @classmethod
+    def _clean_layout_coord(cls, value: Any) -> Optional[float]:
+        try:
+            number = float(value)
+        except (TypeError, ValueError):
+            return None
+        if number != number or abs(number) == float("inf"):
+            return None
+        return round(max(-cls.LAYOUT_MAX, min(cls.LAYOUT_MAX, number)), 3)
+
+    def set_fixture_positions(self, positions: Any) -> List[str]:
+        """positions: {Fixture-Id: [x, y]}. Ungueltige Eintraege werden ignoriert. Gibt die geaenderten Ids zurueck."""
+        changed: List[str] = []
+        if not isinstance(positions, dict):
+            return changed
+        for fixture_id, pos in positions.items():
+            fx = self.fixtures.get(fixture_id)
+            if fx is None or not isinstance(pos, (list, tuple)) or len(pos) != 2:
+                continue
+            x, y = self._clean_layout_coord(pos[0]), self._clean_layout_coord(pos[1])
+            if x is None or y is None:
+                continue
+            if fx.layout_x != x or fx.layout_y != y:
+                fx.layout_x, fx.layout_y = x, y
+                changed.append(fixture_id)
+        if changed:
+            self.mark_dirty()
+        return changed
+
+    def reset_fixture_positions(self) -> None:
+        """Alle Plaetze verwerfen: die Scheinwerfer werden neu der Reihe nach angeordnet."""
+        for fx in self.fixtures.values():
+            fx.layout_x = fx.layout_y = None
+        self._ensure_layout_positions()
+        self.mark_dirty()
+
+    def set_fixture_layout_options(self, snap: Any = None, overlap: Any = None) -> Dict[str, Any]:
+        """Rasterfeinheit (1 / 1/2 / 1/4) und "Kacheln duerfen sich ueberlappen" der Layout-Ansicht."""
+        new = dict(self.fixture_layout)
+        try:
+            if snap is not None and float(snap) in self.LAYOUT_SNAPS:
+                new["snap"] = float(snap)
+        except (TypeError, ValueError):
+            pass
+        if overlap is not None:
+            new["overlap"] = bool(overlap)
+        if new != self.fixture_layout:
+            self.fixture_layout = new
+            self.mark_dirty()
+        return self.fixture_layout
+
+    def set_fixture_layout_views(self, views: Any) -> Dict[str, Any]:
+        """Gespeicherte Ansichten ("Bereiche") der Layout-Ansicht ersetzen: [{id, name, x, y, zoom}] (Mitte in Kacheln, Zoom)."""
+        cleaned = self._clean_layout_views(views)
+        if cleaned != self.fixture_layout.get("views"):
+            self.fixture_layout = {**self.fixture_layout, "views": cleaned}
+            self.mark_dirty()
+        return self.fixture_layout
 
     # ------------------------------------------------------------------
     # Medien
@@ -813,6 +1098,7 @@ class StateManager:
         return meta
 
     def new_show(self) -> None:
+        self.show_epoch += 1
         sim_stages.store.reset()
         self.showfile_name = "Untitled"
         self.showfile_path = None
@@ -820,17 +1106,19 @@ class StateManager:
         self.media = {}
         self.fixtures = {}
         self.groups = {}
+        self.fixture_layout = self._default_fixture_layout()
         self.cues = []
+        self.schedule = []
+        self.timeline_tracks = []
         self.presets = {}
         self.preset_groups = []
         self.fx_effects = {}
         self.fx_groups = []
         self.fx_assignments = {}
-#3D-AUS#         self.room, self.room_source = stage3d.default_room(), None
-#3D-AUS#         self.rig, self.rig_source = stage3d.default_rig(), None
         self.cuelists = {}
         self.active_cuelist_id = None
         self.active_cue_ids = {}
+        self.last_used_cuelist_id = None
         # Live-Zustand der alten Show verwerfen: sonst bleiben Master, Programmer-Werte,
         # Selektion und der gespeicherte DMX-Stand in der neuen, leeren Show haengen.
         self.grand_master = 100.0
@@ -936,10 +1224,184 @@ class StateManager:
         return True
 
     # ------------------------------------------------------------------
-    # CueLists & Cues (Phase 1: Anlegen/Verwalten/hartes Abfeuern)
+    # CueLists & Cues (Anlegen/Verwalten/hartes Abfeuern)
     # ------------------------------------------------------------------
-    def cuelists_as_dicts(self) -> Dict[str, Any]:
-        return {cl_id: asdict(cl) for cl_id, cl in self.cuelists.items()}
+    def cuelists_as_dicts(self, full: bool = False) -> Dict[str, Any]:
+        """Die Cue-Listen fuer die Oberflaeche: ohne den (grossen) absoluten Zustand, dafuer mit dem Merker `has_absolute`.
+        full=True (Showfile speichern): alles, auch der absolute Zustand."""
+        if full:
+            return {cl_id: asdict(cl) for cl_id, cl in self.cuelists.items()}
+        out: Dict[str, Any] = {}
+        for cl_id, cl in self.cuelists.items():
+            cues = []
+            for cue in cl.cues:
+                data = {name: copy.deepcopy(getattr(cue, name)) for name in Cue.__dataclass_fields__ if name != "absolute"}
+                data["has_absolute"] = bool(cue.absolute)
+                cues.append(data)
+            out[cl_id] = {"id": cl.id, "name": cl.name, "cues": cues}
+        return out
+
+    # ------------------------------------------------------------------
+    # Absoluter Cue-Zustand (immer mitgespeichert, siehe Cue.absolute / Cue.play_mode)
+    # ------------------------------------------------------------------
+    def capture_absolute(self, fx_map: Optional[Dict[str, Dict[str, str]]] = None, only: Optional[Any] = None) -> Dict[str, Dict[str, Any]]:
+        """Der Zustand ALLER Fixtures jetzt (aus dem DMX-Puffer, der Wahrheit): fixture_id -> {Attribut: Wert}. Attribute, die ein
+        laufender Effekt steuert (fx_map = Effekt-Zuweisungen), fehlen - der Puffer zeigt dort nur den gerade modulierten Wert."""
+        from app.dmx_engine import dmx_engine
+        from app.dmx_resolve import absolute_from_dmx
+        from app.fx_engine import fx_engine
+        snapshots: Dict[int, List[int]] = {}
+        out: Dict[str, Dict[str, Any]] = {}
+        for fid, fx in list(self.fixtures.items()):                      # Kopie: ein Schreibzugriff aus einem anderen Thread (REST-API) darf die Anzeige nicht abbrechen
+            if only is not None and fx.universe not in only:             # only = Menge von Universen (die Anzeige rechnet nur die geaenderten neu)
+                continue
+            try:
+                if fx.universe not in snapshots:
+                    snapshots[fx.universe] = dmx_engine.get_universe_snapshot(fx.universe)
+                values = absolute_from_dmx(fx, snapshots[fx.universe], self.effective_master(fid))
+            except Exception:                      # eine unlesbare Fixture darf das Speichern nicht verhindern
+                continue
+            cats = (fx_map or {}).get(fid)
+            if cats:
+                blocked = fx_engine.attrs_of_effects(cats)
+                values = {k: v for k, v in values.items() if k not in blocked}
+            if values:
+                out[fid] = values
+        return out
+
+    def _absolute_for_store(self, fixture_values: Dict[str, Dict[str, Any]],
+                            fx_map: Optional[Dict[str, Dict[str, str]]]) -> Dict[str, Dict[str, Any]]:
+        """Vollzustand fuer einen neuen/ueberschriebenen Cue: der gesehene Zustand, darueber die angefassten Werte (exakt, Variablen aufgeloest)."""
+        absolute = self.capture_absolute(fx_map)
+        self._overlay_absolute(absolute, fixture_values)
+        return absolute
+
+    def _overlay_absolute(self, absolute: Dict[str, Dict[str, Any]], fixture_values: Dict[str, Dict[str, Any]]) -> None:
+        for fid, step in fixture_values.items():
+            if fid in self.fixtures:
+                absolute.setdefault(fid, {}).update(self.step_values(step))
+
+    def cue_absolute(self, cl: Optional[CueList], cue: Cue) -> Dict[str, Dict[str, Any]]:
+        """Der absolute Zustand eines Cues. Aeltere Cues ohne gespeicherten Zustand: was die Cue-Liste von Anfang an bis zu diesem Cue (Tracking) ergibt."""
+        if cue.absolute:
+            return cue.absolute
+        idx = next((i for i, c in enumerate(cl.cues) if c.id == cue.id), None) if cl is not None else None
+        return self._tracked_values(cl, idx) if idx is not None else {}
+
+    # ------------------------------------------------------------------
+    # Aenderungen gegenueber einem Cue-Stand (Speichern, Aktualisieren, Anzeige "geaendert")
+    # ------------------------------------------------------------------
+    def cue_end_state(self, cl: Optional[CueList], upto_index: int) -> Dict[str, Dict[str, Any]]:
+        """Der Stand (Fixture -> Attribute), den die Liste nach dem Cue `upto_index` hinterlaesst (-1 = vor dem ersten): Tracking - jeder Cue
+        aendert nur, was er enthaelt; ein absoluter Cue setzt zuerst seinen ganzen gespeicherten Zustand."""
+        state: Dict[str, Dict[str, Any]] = {}
+        if cl is None:
+            return state
+        for cue in cl.cues[:upto_index + 1]:
+            if getattr(cue, "play_mode", "tracking") == "absolute":
+                for fid, values in self.cue_absolute(cl, cue).items():
+                    state.setdefault(fid, {}).update(copy.deepcopy(values))
+            for fid, step in cue.fixture_values.items():
+                state.setdefault(fid, {}).update(self.step_values(step))
+        return state
+
+    @staticmethod
+    def attr_equal(attr: str, a: Any, b: Any) -> bool:
+        """Gleicher Wert im Sinne der Ausgabe (DMX-Schritte)? Prozent auf ganze Schritte, Pan/Tilt auf den Grobschritt, Farbe je Kanal +-1, rohe Kanaele exakt."""
+        if a is None or b is None:
+            return a is b
+        try:
+            if isinstance(a, dict) or isinstance(b, dict):
+                if not (isinstance(a, dict) and isinstance(b, dict)):
+                    return False
+                return all(abs(float(a.get(k, 0)) - float(b.get(k, 0))) <= 1.0 for k in ("r", "g", "b"))
+            if str(attr).startswith("ch"):
+                return int(a) == int(b)
+            tolerance = 0.4 if attr in ("pan", "tilt") else 0.6
+            return abs(float(a) - float(b)) < tolerance
+        except (TypeError, ValueError):
+            return a == b
+
+    def live_changes(self, base: Dict[str, Dict[str, Any]], fill: Dict[str, Dict[str, Any]],
+                     fx_map: Optional[Dict[str, Dict[str, str]]] = None, universes: Optional[Any] = None) -> Dict[str, Dict[str, Any]]:
+        """Was gegenueber `base` JETZT anders ist: fixture -> {Attribut: aktueller Wert}, gelesen aus dem DMX-Puffer (was man sieht). Attribute, die `base` nicht kennt,
+        werden mit `fill` (dem beim Speichern gesehenen Zustand des Bezugs-Cues) verglichen, danach mit dem Neutralwert; rohe Kanaele ohne bekannten Ausgangswert zaehlen nicht.
+        Ein "Clear" aendert also viel: alles, was vorher leuchtete, ist jetzt gegenueber dem Cue geaendert."""
+        out: Dict[str, Dict[str, Any]] = {}
+        for fid, current in self.capture_absolute(fx_map, only=universes).items():
+            known, filled = base.get(fid, {}), fill.get(fid, {})
+            changed: Dict[str, Any] = {}
+            for attr, value in current.items():
+                if attr in known:
+                    ref = known[attr]
+                elif attr in filled:
+                    ref = filled[attr]
+                elif str(attr).startswith("ch"):
+                    continue
+                else:
+                    ref = self._neutral_value(attr)
+                if not self.attr_equal(attr, value, ref):
+                    changed[attr] = copy.deepcopy(value)
+            if changed:
+                out[fid] = changed
+        return out
+
+    def live_cue_content(self, cl: CueList, touched: Dict[str, Dict[str, Any]], fx_map: Optional[Dict[str, Dict[str, str]]],
+                         end_index: int, ref_cue: Optional[Cue]) -> Dict[str, Dict[str, Any]]:
+        """Inhalt (fixture_values), den ein Cue braucht, damit nach ihm das aktuelle Bild steht: alle Aenderungen des Bildes gegenueber dem Stand nach `end_index`,
+        darueber die ausdruecklich angefassten Werte des Programmers (exakt; Variablen bleiben Verweise). Der erste Cue einer Liste hat keinen Vorgaenger: er bekommt nur die angefassten Werte."""
+        if end_index < 0 or ref_cue is None:
+            return copy.deepcopy(touched or {})              # kein Cue davor: es gibt nichts, wogegen das Bild eine Aenderung waere - nur das ausdruecklich Angefasste
+        base = self.cue_end_state(cl, end_index)
+        fill = self.cue_absolute(cl, ref_cue)
+        content = {fid: {"values": values} for fid, values in self.live_changes(base, fill, fx_map).items()}
+        for fid, step in (touched or {}).items():
+            content[fid] = self._merge_step(content.get(fid), step) if fid in content else copy.deepcopy(step)
+        return content
+
+    @staticmethod
+    def index_before_number(cl: CueList, number: float, exclude_id: Optional[str] = None) -> int:
+        """Index des letzten Cues mit kleinerer Nummer (-1: es gibt keinen) - der Cue, der vor einem Cue mit dieser Nummer abgespielt wird."""
+        index = -1
+        for i, cue in enumerate(cl.cues):
+            if cue.id != exclude_id and cue.number < number - 1e-6:
+                index = i
+        return index
+
+    def reference_cue(self) -> Tuple[Optional[CueList], Optional[Cue]]:
+        """Der Cue, auf den sich die Anzeige "geaendert" bezieht: der aktive Cue der zuletzt benutzten Liste (sonst der gewaehlten Liste)."""
+        for cuelist_id in (self.last_used_cuelist_id, self.active_cuelist_id):
+            cl = self.cuelists.get(cuelist_id) if cuelist_id else None
+            cue_id = self.active_cue_ids.get(cl.id) if cl else None
+            cue = next((c for c in cl.cues if c.id == cue_id), None) if cl and cue_id else None
+            if cue is not None:
+                return cl, cue
+        return None, None
+
+    def protect_following_cue(self, cl: CueList, cue: Cue, before: Dict[str, Dict[str, Any]]) -> None:
+        """Nach dem Einfuegen eines Cues in die Mitte: der Folge-Cue soll weiter so aussehen wie vorher. Jeder Wert, den der neue Cue aendert und den der Folge-Cue
+        nicht selbst setzt, wird dort mit dem alten Stand (`before` = Stand vor dem neuen Cue; nie gesetzt: Neutralwert) festgeschrieben."""
+        index = next((i for i, c in enumerate(cl.cues) if c.id == cue.id), None)
+        if index is None or index + 1 >= len(cl.cues):
+            return
+        following = cl.cues[index + 1]
+        if getattr(following, "play_mode", "tracking") == "absolute":
+            return                                                  # ein absoluter Cue setzt ohnehin alles selbst
+        for fid, step in cue.fixture_values.items():
+            own = self.step_values(following.fixture_values[fid]) if fid in following.fixture_values else {}
+            keep: Dict[str, Any] = {}
+            for attr, value in self.step_values(step).items():
+                if attr in own:
+                    continue
+                old = before.get(fid, {}).get(attr)
+                if old is None:
+                    if str(attr).startswith("ch"):
+                        continue
+                    old = self._neutral_value(attr)
+                if not self.attr_equal(attr, value, old):
+                    keep[attr] = copy.deepcopy(old)
+            if keep:
+                following.fixture_values[fid] = self._merge_step(following.fixture_values.get(fid), {"values": keep})
 
     def cuelist_name_taken(self, name: str, exclude_id: Optional[str] = None) -> bool:
         """Gibt es schon eine Cue-Liste dieses Namens (Gross-/Kleinschreibung egal)? Eine Liste zaehlt nicht gegen sich selbst."""
@@ -1038,9 +1500,12 @@ class StateManager:
         und geladen); eine Aenderung macht die Show 'ungespeichert'."""
         if cuelist_id not in self.cuelists:
             return False
+        self.last_used_cuelist_id = cuelist_id
         if self.active_cuelist_id != cuelist_id:
             self.active_cuelist_id = cuelist_id
             self.mark_dirty()
+        else:
+            self.note_cue_context()
         return True
 
     def save_cue(
@@ -1049,10 +1514,10 @@ class StateManager:
         fixture_values: Dict[str, Dict[str, Any]],
         number: Optional[float] = None,
         name: Optional[str] = None,
-        fade: float = 0.0,
-        delay: float = 0.0,
-        trigger: str = "go",
-        mib: str = "Off",
+        fade: Optional[float] = None,
+        delay: Optional[float] = None,
+        trigger: Optional[str] = None,
+        mib: Optional[str] = None,
         cmd: str = "",
         fade_color: Optional[float] = None,
         delay_color: Optional[float] = None,
@@ -1064,16 +1529,32 @@ class StateManager:
         delay_zoom: Optional[float] = None,
         fx: Optional[Dict[str, Dict[str, str]]] = None,
         fx_order: Optional[Dict[str, Dict[str, int]]] = None,
-        fx_fade_in: float = 0.0,
-        fx_fade_out: float = 0.0,
+        fx_fade_in: Optional[float] = None,
+        fx_fade_out: Optional[float] = None,
         timecode_ms: Any = None,
+        audio_source: Any = None,
+        audio_value: Any = None,
+        midi_type: Any = None,
+        midi_number: Any = None,
+        midi_channel: Any = None,
+        midi_value: Any = None,
+        clock_time: Any = None,
+        clock_days: Any = None,
+        play_mode: Any = None,
+        absolute: Optional[Dict[str, Dict[str, Any]]] = None,
     ) -> Optional[Cue]:
-        """Uebernimmt die aktuell im Programmer gesetzten (relativen) Werte
-        als neuen Cue - KEIN voller DMX-Snapshot, nur was tatsaechlich
-        angefasst wurde (siehe Cue-Docstring)."""
+        """Uebernimmt die aktuell im Programmer gesetzten (relativen) Werte als neuen Cue (fixture_values = nur was angefasst wurde)
+        und zusaetzlich den vollen gesehenen Zustand aller Fixtures (absolute; wird bei fehlender Angabe jetzt aus der Ausgabe gelesen)."""
         cl = self.cuelists.get(cuelist_id)
         if cl is None:
             return None
+        defaults = self.console_defaults                  # Einstellungen -> Standardwerte: gelten, wo der Speichernde nichts angibt
+        fade = defaults["cue_fade"] if fade is None else fade
+        delay = defaults["cue_delay"] if delay is None else delay
+        trigger = defaults["cue_trigger"] if trigger is None else trigger
+        mib = defaults["cue_mib"] if mib is None else mib
+        fx_fade_in = defaults["cue_fx_fade_in"] if fx_fade_in is None else fx_fade_in
+        fx_fade_out = defaults["cue_fx_fade_out"] if fx_fade_out is None else fx_fade_out
         if number is None:
             number = (max((c.number for c in cl.cues), default=0.0)) + 1.0
         try:
@@ -1090,6 +1571,14 @@ class StateManager:
             delay=max(0.0, float(delay)),
             trigger=trigger if trigger in CUE_TRIGGERS else "go",
             timecode_ms=(_parse_timecode_ms(timecode_ms) or 0) if trigger == "timecode" else None,
+            audio_source=clean_audio_trigger(audio_source, audio_value)[0],
+            audio_value=clean_audio_trigger(audio_source, audio_value)[1],
+            midi_type=clean_midi_trigger(midi_type, midi_number, midi_channel, midi_value)[0],
+            midi_number=clean_midi_trigger(midi_type, midi_number, midi_channel, midi_value)[1],
+            midi_channel=clean_midi_trigger(midi_type, midi_number, midi_channel, midi_value)[2],
+            midi_value=clean_midi_trigger(midi_type, midi_number, midi_channel, midi_value)[3],
+            clock_time=timeofday.clean_time(clock_time) or "20:00",
+            clock_days=timeofday.clean_days(clock_days),
             mib=mib if mib in ("Off", "Auto", "On") else "Off",
             cmd=str(cmd).strip()[:200],
             fade_color=_parse_optional_float(fade_color),
@@ -1105,6 +1594,8 @@ class StateManager:
             fx_order={fid: dict(cats) for fid, cats in (fx_order or {}).items() if cats},
             fx_fade_in=max(0.0, _parse_optional_float(fx_fade_in) or 0.0),
             fx_fade_out=max(0.0, _parse_optional_float(fx_fade_out) or 0.0),
+            play_mode=play_mode if play_mode in PLAY_MODES else defaults["cue_play_mode"],
+            absolute=copy.deepcopy(absolute) if absolute is not None else self._absolute_for_store(fixture_values, fx),
         )
         cl.cues.append(cue)
         cl.cues.sort(key=lambda c: c.number)
@@ -1146,10 +1637,26 @@ class StateManager:
                 cue.timecode_ms = 0
         else:
             cue.timecode_ms = None
+        if "audio_source" in fields or "audio_value" in fields:
+            source = fields.get("audio_source") if fields.get("audio_source") is not None else cue.audio_source
+            value = fields.get("audio_value")
+            if value is None and source == cue.audio_source:
+                value = cue.audio_value
+            cue.audio_source, cue.audio_value = clean_audio_trigger(source, value)
+        if any(key in fields for key in ("midi_type", "midi_number", "midi_channel", "midi_value")):
+            current = {"midi_type": cue.midi_type, "midi_number": cue.midi_number, "midi_channel": cue.midi_channel, "midi_value": cue.midi_value}
+            merged = {key: (fields[key] if fields.get(key) is not None else current[key]) for key in current}
+            cue.midi_type, cue.midi_number, cue.midi_channel, cue.midi_value = clean_midi_trigger(merged["midi_type"], merged["midi_number"], merged["midi_channel"], merged["midi_value"])
+        if fields.get("clock_time") is not None:
+            cue.clock_time = timeofday.clean_time(fields["clock_time"]) or cue.clock_time
+        if "clock_days" in fields and fields["clock_days"] is not None:
+            cue.clock_days = timeofday.clean_days(fields["clock_days"])
         if "mib" in fields and fields["mib"] in ("Off", "Auto", "On"):
             cue.mib = fields["mib"]
         if "cmd" in fields and fields["cmd"] is not None:
             cue.cmd = str(fields["cmd"]).strip()[:200]
+        if fields.get("play_mode") in PLAY_MODES:
+            cue.play_mode = fields["play_mode"]
         # Attribut-spezifische Fade/Delay-Zeiten: ein explizites None im
         # Payload setzt gezielt "nutzt wieder die allgemeine Zeit" zurueck,
         # ein fehlender Schluessel laesst das Feld unveraendert.
@@ -1162,6 +1669,58 @@ class StateManager:
         cl.cues.sort(key=lambda c: c.number)
         self.mark_dirty()
         return cue
+
+    # Felder, die fuer mehrere Cues auf einmal gesetzt werden duerfen (Mehrfach-Bearbeiten in der Cue-Liste; "number" nie: Nummern sind eindeutig)
+    MULTI_EDIT_FIELDS = (
+        "name", "fade", "delay", "trigger", "timecode_ms", "mib", "cmd", "play_mode",
+        "audio_source", "audio_value", "midi_type", "midi_number", "midi_channel", "midi_value", "clock_time", "clock_days",
+        "fade_color", "delay_color", "fade_pos", "delay_pos", "fade_beam", "delay_beam", "fade_zoom", "delay_zoom",
+        "fx_fade_in", "fx_fade_out",
+    )
+
+    def update_cues_fields(self, cuelist_id: str, cue_ids: List[str], fields: Dict[str, Any]) -> int:
+        """Dieselben Felder in mehreren Cues einer Liste setzen (Anzahl der geaenderten Cues)."""
+        clean = {k: v for k, v in (fields or {}).items() if k in self.MULTI_EDIT_FIELDS}
+        if not clean:
+            return 0
+        return sum(1 for cid in cue_ids if self.update_cue(cuelist_id, str(cid), **clean) is not None)
+
+    def copy_cues(self, cuelist_id: str, cue_ids: List[str], start_number: Any = None, target_cuelist_id: Optional[str] = None):
+        """Kopiert Cues (mit allen Werten, Effekten und Einstellungen) in dieselbe oder eine andere Liste.
+        Die erste Kopie bekommt `start_number` (leer = die naechste ganze Zahl nach dem letzten Cue der Zielliste), die weiteren behalten
+        den Abstand der Originale. Liefert (status, daten): "ok" (daten = Liste der neuen Cues), "conflict" (daten = belegte Nummern;
+        es wird nichts kopiert), "invalid" | "error"."""
+        source = self.cuelists.get(cuelist_id)
+        target = self.cuelists.get(target_cuelist_id or cuelist_id)
+        if source is None or target is None:
+            return "error", None
+        wanted = {str(c) for c in (cue_ids or [])}
+        originals = sorted((c for c in source.cues if c.id in wanted), key=lambda c: c.number)
+        if not originals:
+            return "error", None
+        if start_number is None or str(start_number).strip() == "":
+            start = float(math.floor(target.cues[-1].number) + 1) if target.cues else 1.0
+        else:
+            start = self.parse_cue_number(start_number)
+            if start is None:
+                return "invalid", None
+        offset = start - originals[0].number
+        numbers = [round(c.number + offset, 3) for c in originals]
+        if any(n < 0 for n in numbers):
+            return "invalid", None
+        taken = [n for n in numbers if self.find_cue_by_number(target, n) is not None]
+        if taken:
+            return "conflict", taken
+        created = []
+        for original, number in zip(originals, numbers):
+            clone = copy.deepcopy(original)
+            clone.id = str(uuid.uuid4())
+            clone.number = number
+            target.cues.append(clone)
+            created.append(clone)
+        target.cues.sort(key=lambda c: c.number)
+        self.mark_dirty()
+        return "ok", created
 
     def delete_cue(self, cuelist_id: str, cue_id: str) -> bool:
         cl = self.cuelists.get(cuelist_id)
@@ -1191,28 +1750,16 @@ class StateManager:
 
     def mix_level(self, cuelist_id: str) -> float:
         """Executor-Fader der Liste als Faktor 0..1 (1 = voller Cue-Wert)."""
-        return self.cuelist_masters.get(cuelist_id, 100.0) / 100.0
+        return self.cuelist_master(cuelist_id) / 100.0
+
+    def cuelist_master(self, cuelist_id: str) -> float:
+        """Stand des Executor-Faders (Prozent): der gespeicherte, sonst der Startstand aus den Standardwerten (Vorgabe 100 %)."""
+        return self.cuelist_masters.get(cuelist_id, self.console_defaults.get("executor_start", 100.0))
 
     @classmethod
     def mix_abstract(cls, base: Dict[str, Any], layer: Dict[str, Any], f: float) -> Dict[str, Any]:
-        """Mischt die Cue-Werte (layer) linear mit den manuellen Werten (base): f = 1 -> Cue, f = 0 -> manuell. Gilt fuer
-        jedes Attribut (Skalare und Farbe je Kanal); fehlt ein manueller Wert, gilt der Neutralwert."""
-        out: Dict[str, Any] = {}
-        for attr, cue_value in layer.items():
-            if f >= 1.0:
-                out[attr] = copy.deepcopy(cue_value)
-                continue
-            manual = base.get(attr)
-            if manual is None:
-                manual = cls._neutral_value(attr)
-            if attr in DISCRETE_ATTRS or raw_offset(attr) is not None:
-                out[attr] = copy.deepcopy(cue_value if f >= 0.5 else manual)           # Raeder/rohe Kanaele: umschalten statt ueberblenden
-            elif attr == "color":
-                out[attr] = {k: float(manual.get(k, 0)) + (float(cue_value.get(k, 0)) - float(manual.get(k, 0))) * f
-                             for k in ("r", "g", "b")}
-            else:
-                out[attr] = float(manual) + (float(cue_value) - float(manual)) * f
-        return out
+        """Mischt die Cue-Werte (layer) linear mit den manuellen Werten (base): f = 1 -> Cue, f = 0 -> manuell (Formel: app/cue_fade.py, damit Server und Ausgabe-Prozess dasselbe rechnen)."""
+        return _cue_fade.mix_abstract(base, layer, f)
 
     def release_layers(self, fixture_id: str, attrs: Any = None) -> None:
         """Der Programmer uebernimmt diese Attribute der Fixture: die Cue-Listen mischen sie nicht mehr (bis zum naechsten Go)."""
@@ -1323,17 +1870,46 @@ class StateManager:
     def store_cue(self, cuelist_id: str, fixture_values: Dict[str, Dict[str, Any]], number: Any = None,
                   mode: Optional[str] = None, position: Optional[str] = None, after_cue_id: Optional[str] = None,
                   fx: Optional[Dict[str, Dict[str, str]]] = None,
-                  fx_order: Optional[Dict[str, Dict[str, int]]] = None, name: Optional[str] = None, **fields: Any):
+                  fx_order: Optional[Dict[str, Dict[str, int]]] = None, name: Optional[str] = None,
+                  live: bool = False, protect_next: bool = False, **fields: Any):
         """Speichert den Programmer-Stand als Cue. Liefert (status, daten):
         "created" | "merged" | "overwritten" (daten = Cue), "conflict" (die Nummer gibt es schon, kein mode angegeben;
-        daten = der bestehende Cue), "out_of_bounds" (daten = {"lower", "upper"}), "invalid" | "error".
+        daten = der bestehende Cue), "out_of_bounds" (daten = {"lower", "upper"}), "empty" (live: nichts hat sich geaendert), "invalid" | "error".
         mode "merge": nur die gesendeten Kanaele/Effekte kommen in den bestehenden Cue, der Rest bleibt;
-        mode "overwrite": der Inhalt des bestehenden Cues wird komplett ersetzt (Zeiten/Trigger/CMD bleiben)."""
+        mode "overwrite": der Inhalt des bestehenden Cues wird komplett ersetzt (Zeiten/Trigger/CMD bleiben).
+
+        live=True (Speichern aus der Oberflaeche / Befehlszeile): `fixture_values` sind nur die ausdruecklich angefassten Werte. Der Cue bekommt ausserdem JEDE Aenderung des
+        gesehenen Bildes gegenueber dem Stand, der vor ihm abgespielt wuerde (der Cue mit der naechstkleineren Nummer, getrackt) - auch ein Clear, das alles dunkel macht.
+        Ein bestehender Cue (merge) wird gegen seinen eigenen Stand verglichen. Danach ist der gespeicherte Cue der aktive Cue der Liste (das Bild entspricht ihm).
+        protect_next: beim Einfuegen in die Mitte bleibt der Folge-Cue unveraendert (Cue Only) statt die neuen Werte per Tracking zu erben."""
         cl = self.cuelists.get(cuelist_id)
         if cl is None:
             return "error", None
+
+        def prepare(end_index: int, ref_cue: Optional[Cue]):
+            if not live:
+                return fixture_values
+            return self.live_cue_content(cl, fixture_values, fx, end_index, ref_cue)
+
+        def nothing(content: Dict[str, Any]) -> bool:
+            return live and not content and not fx and fields.get("play_mode") != "absolute"
+
+        def finish(cue: Cue, before: Optional[Dict[str, Dict[str, Any]]] = None):
+            if protect_next and before is not None:
+                self.protect_following_cue(cl, cue, before)
+            if live:
+                self.active_cue_ids[cl.id] = cue.id
+                self.last_used_cuelist_id = cl.id
+            self.mark_dirty()
+
         if number is None or str(number).strip() == "":
-            cue = self.save_cue(cuelist_id, fixture_values, number=None, name=name, fx=fx, fx_order=fx_order, **fields)
+            last = len(cl.cues) - 1
+            content = prepare(last, cl.cues[last] if last >= 0 else None)
+            if nothing(content):
+                return "empty", None
+            cue = self.save_cue(cuelist_id, content, number=None, name=name, fx=fx, fx_order=fx_order, **fields)
+            if cue:
+                finish(cue)
             return ("created", cue) if cue else ("error", None)
         n = self.parse_cue_number(number)
         if n is None:
@@ -1351,19 +1927,40 @@ class StateManager:
                 upper = cl.cues[idx + 1].number if idx + 1 < len(cl.cues) else None
                 if not (lower < n and (upper is None or n < upper)):
                     return "out_of_bounds", {"lower": lower, "upper": upper}
-            cue = self.save_cue(cuelist_id, fixture_values, number=n, name=name, fx=fx, fx_order=fx_order, **fields)
+            before_index = self.index_before_number(cl, n)
+            content = prepare(before_index, cl.cues[before_index] if before_index >= 0 else None)
+            if nothing(content):
+                return "empty", None
+            before_state = self.cue_end_state(cl, before_index) if protect_next else None
+            cue = self.save_cue(cuelist_id, content, number=n, name=name, fx=fx, fx_order=fx_order, **fields)
+            if cue:
+                finish(cue, before_state)
             return ("created", cue) if cue else ("error", None)
         if mode == "merge":
-            self._merge_content(existing, fixture_values, fx, fx_order)
+            own_index = next(i for i, c in enumerate(cl.cues) if c.id == existing.id)
+            content = prepare(own_index, existing)               # gegen den eigenen Stand: was am Bild anders ist, kommt in den Cue
+            if nothing(content):
+                return "empty", None
+            absolute = copy.deepcopy(self.cue_absolute(cl, existing))      # der bisherige Zustand, nur die gesendeten Werte kommen darauf
+            self._overlay_absolute(absolute, content)
+            self._merge_content(existing, content, fx, fx_order)
+            existing.absolute = absolute
         elif mode == "overwrite":
-            existing.fixture_values = {fid: copy.deepcopy(step) for fid, step in fixture_values.items()}
+            before_index = self.index_before_number(cl, n, exclude_id=existing.id)
+            content = prepare(before_index, cl.cues[before_index] if before_index >= 0 else None)
+            if nothing(content):
+                return "empty", None
+            existing.fixture_values = {fid: copy.deepcopy(step) for fid, step in content.items()}
             existing.fx = {fid: dict(cats) for fid, cats in (fx or {}).items() if cats}
             existing.fx_order = {fid: dict(cats) for fid, cats in (fx_order or {}).items() if cats}
+            existing.absolute = self._absolute_for_store(content, fx)
         else:
             return "conflict", existing
+        if fields.get("play_mode") in PLAY_MODES:
+            existing.play_mode = fields["play_mode"]
         if name and str(name).strip():
             existing.name = str(name).strip()[:80]
-        self.mark_dirty()
+        finish(existing)
         return ("merged" if mode == "merge" else "overwritten"), existing
 
     def _tracked_values(self, cl: CueList, upto_index: int) -> Dict[str, Dict[str, Any]]:
@@ -1377,9 +1974,10 @@ class StateManager:
 
     def update_active_cue(self, cuelist_id: str, fixture_values: Dict[str, Dict[str, Any]],
                           fx: Optional[Dict[str, Dict[str, str]]] = None,
-                          fx_order: Optional[Dict[str, Dict[str, int]]] = None, mode: str = "normal"):
+                          fx_order: Optional[Dict[str, Dict[str, int]]] = None, mode: str = "normal", live: bool = False):
         """Uebernimmt die aktuellen Programmer-Werte in den AKTIVEN Cue der Liste (nur die angefassten Attribute, der
         Rest des Cues bleibt). Liefert (status, cue): "updated" | "no_active_cue" | "empty" | "error".
+        live=True: zusaetzlich kommt JEDE Aenderung des gesehenen Bildes gegenueber dem Stand dieses Cues hinein (auch ein Clear, das alles dunkel macht).
 
         mode "normal": nur dieser Cue wird geaendert. OpenCue verfolgt Werte von Cue zu Cue (ein Cue enthaelt nur,
         was er aendert, alles andere bleibt stehen) - Folge-Cues, die ein Attribut nicht selbst setzen, uebernehmen
@@ -1394,11 +1992,19 @@ class StateManager:
         idx = next((i for i, c in enumerate(cl.cues) if c.id == cue_id), None)
         if idx is None:
             return "no_active_cue", None
-        if not fixture_values and not fx:
-            return "empty", None
         cue = cl.cues[idx]
-        before = self._tracked_values(cl, idx)                 # Stand NACH diesem Cue, vor der Aenderung
+        before = self.cue_end_state(cl, idx)                   # Stand NACH diesem Cue, vor der Aenderung
+        if live:
+            fixture_values = self.live_cue_content(cl, fixture_values, fx, idx, cue)
+        if not fixture_values and not fx and not cue.fx:
+            return "empty", None
+        absolute = copy.deepcopy(self.cue_absolute(cl, cue))   # bisheriger Zustand des Cues; die aktualisierten Werte kommen darauf
+        self._overlay_absolute(absolute, fixture_values)
         self._merge_content(cue, fixture_values, fx, fx_order)
+        cue.absolute = absolute
+        if fx is not None:                                     # Effekte sind immer ein Gesamtzustand: was nicht mehr laeuft, faellt aus dem Cue
+            cue.fx = {fid: dict(cats) for fid, cats in fx.items() if cats}
+            cue.fx_order = {fid: dict(cats) for fid, cats in (fx_order or {}).items() if cats}
         if mode == "only" and idx + 1 < len(cl.cues):
             nxt = cl.cues[idx + 1]
             for fid, step in fixture_values.items():
@@ -1416,14 +2022,14 @@ class StateManager:
                 if blocked:
                     nxt_vals.update(blocked)
                     nxt.fixture_values[fid] = {"values": nxt_vals}
+        if live:
+            self.last_used_cuelist_id = cl.id
         self.mark_dirty()
         return "updated", cue
 
     @staticmethod
     def _neutral_value(attr: str) -> Any:
-        if attr == "color":
-            return {"r": 0, "g": 0, "b": 0}
-        return 50.0 if attr in ("pan", "tilt") else 0.0
+        return _cue_fade.neutral_value(attr)
 
     def renumber_cue(self, cuelist_id: str, cue_id: str, number: Any, on_conflict: Optional[str] = None):
         """Gibt einem Cue eine neue Nummer. Liefert (status, daten): "ok" (daten = Cue), "conflict" (daten = der
@@ -1496,6 +2102,8 @@ class StateManager:
                 else:
                     new_cue = cl.cues[new_idx]
         self.active_cue_ids[cuelist_id] = new_cue.id
+        self.last_used_cuelist_id = cuelist_id
+        self.note_cue_context()
         return new_cue
 
     # ------------------------------------------------------------------
@@ -1508,7 +2116,25 @@ class StateManager:
         stillschweigend verworfen. Rueckgabe ist die tatsaechlich
         uebernommene, gefilterte Liste."""
         self.selected_fixture_ids = [i for i in ids if i in self.fixtures]
+        self._remember_selection()
         return self.selected_fixture_ids
+
+    def _remember_selection(self) -> None:
+        """Die Auswahl fuer den naechsten Programmstart merken; das Schreiben der Datei wird gesammelt (nicht bei jedem Klick)."""
+        self.selection_memory = {"show": self.last_showfile_path or "", "ids": list(self.selected_fixture_ids)}
+        if self._selection_timer is not None:
+            self._selection_timer.cancel()
+        self._selection_timer = threading.Timer(2.0, self.save_app_config)
+        self._selection_timer.daemon = True
+        self._selection_timer.start()
+
+    def restore_startup_selection(self) -> List[str]:
+        """Programmstart: dieselben Scheinwerfer wieder auswaehlen wie beim Beenden - nur wenn dieselbe Show geladen ist und die Scheinwerfer noch existieren."""
+        saved = self._startup_selection
+        self._startup_selection = {}
+        if not saved or not saved.get("ids") or str(saved.get("show") or "") != str(self.last_showfile_path or ""):
+            return []
+        return self.set_selection([i for i in saved["ids"] if isinstance(i, str)])
 
     def set_programmer_value(self, fixture_id: str, attr: str, value: Any) -> None:
         if fixture_id not in self.fixtures:
@@ -1557,7 +2183,7 @@ class StateManager:
         Aufrufer (siehe app/command_line.py's "Clear Clear"-Handler,
         apply_full_baseline_reset) - dort ist dmx_resolve/dmx_engine verfuegbar.
 
-        fixture_ids=None leert den GESAMTEN Programmer (dot2 "Clear
+        fixture_ids=None leert den GESAMTEN Programmer (Pult-"Clear
         Clear"). Gibt die tatsaechlich betroffenen Fixture-IDs zurueck -
         der Aufrufer broadcastet das als programmer_cleared, damit alle
         Clients auch ihre lokale "touched"-Markierung (rote Punkte) aufraeumen."""
@@ -1599,7 +2225,7 @@ class StateManager:
     def _find_panel(self, panel_id: str) -> Optional[Panel]:
         return next((p for p in self.panels if p.id == panel_id), None)
 
-    def add_panel(self, panel_type: str) -> Panel:
+    def add_panel(self, panel_type: str, x: Optional[float] = None, y: Optional[float] = None) -> Panel:
         from app.panel_registry import PanelRegistry  # deferred to avoid circular import
         # New panels must always land on top of everything already on the
         # desktop - default=9 so an empty workspace's first panel still
@@ -1625,6 +2251,9 @@ class StateManager:
             show_header=panel_info.default_show_header if panel_info else True,
             module_config=dict(panel_info.default_module_config) if panel_info else {},
         )
+        if x is not None and y is not None:                              # Rechtsklick auf die leere Flaeche: das Panel liegt mittig an der Klickstelle
+            panel.x = max(0.0, min(100.0 - panel.width, float(x) - panel.width / 2))
+            panel.y = max(0.0, min(100.0 - panel.height, float(y) - panel.height / 2))
         self.panels.append(panel)
         self.save_app_config()
         return panel
@@ -1805,8 +2434,14 @@ class StateManager:
         self.save_app_config()
         return self.language
 
+    @property
+    def remote_enabled(self) -> bool:
+        """Netzwerk-Zugriff insgesamt: an, sobald http oder https freigegeben ist (beide Schalter sind unabhaengig)."""
+        return bool(self.http_enabled or self.https_enabled)
+
     def set_remote_enabled(self, enabled: bool) -> bool:
-        self.remote_enabled = bool(enabled)
+        """Der http-Schalter (aeltere Bezeichnung "Remote"). Ohne eigenes Passwort bleibt er aus. Gibt zurueck, ob der Netzwerk-Zugriff insgesamt an ist."""
+        self.http_enabled = bool(enabled) and bool(self.remote_password)
         self.save_app_config()
         return self.remote_enabled
 
@@ -1816,18 +2451,53 @@ class StateManager:
             port = int(port)
         except (TypeError, ValueError):
             return False
-        if not (MIN_SERVER_PORT <= port <= MAX_SERVER_PORT):
+        if not (MIN_SERVER_PORT <= port <= MAX_SERVER_PORT) or port == self.https_port:
             return False
         self.server_port = port
         self.save_app_config()
         return True
 
+    def set_https(self, enabled: Any, port: Any) -> bool:
+        """https-Adresse: ein/aus und Port (1024-65535, anders als der http-Port). Gilt sofort (die Listener werden neu eingerichtet)."""
+        try:
+            port = int(port)
+        except (TypeError, ValueError):
+            return False
+        if not (MIN_SERVER_PORT <= port <= MAX_SERVER_PORT) or port == self.server_port:
+            return False
+        self.https_enabled = bool(enabled) and bool(self.remote_password)
+        self.https_port = port
+        self.save_app_config()
+        return True
+
+    def set_mdns_enabled(self, enabled: Any) -> bool:
+        """Netzwerk-Name (mDNS) ein/aus. Gilt sofort."""
+        self.mdns_enabled = bool(enabled)
+        self.save_app_config()
+        return self.mdns_enabled
+
     def set_remote_password(self, password: str) -> bool:
-        """Setzt das Remote-Passwort (mind. 4 Zeichen, max. 64). False bei ungueltigem Wert."""
+        """Setzt das Passwort (Fernzugriff und Sichermodus; frei waehlbar, mind. 4 Zeichen, max. 64). False bei ungueltigem Wert."""
         password = str(password)
-        if not (4 <= len(password) <= 64):
+        if not (MIN_PASSWORD_LENGTH <= len(password) <= MAX_PASSWORD_LENGTH):
             return False
         self.remote_password = password
+        self.save_app_config()
+        return True
+
+    def set_lock_config(self, enabled: Any, auto_minutes: Any) -> bool:
+        """Sichermodus ein/aus und automatische Sperre. Einschalten geht nur mit gesetztem Passwort. Gibt zurueck, ob die Angabe uebernommen wurde."""
+        want = bool(enabled)
+        if want and not self.remote_password:
+            return False
+        try:
+            minutes = int(auto_minutes)
+        except (TypeError, ValueError):
+            minutes = 0
+        self.lock_enabled = want
+        self.lock_auto_minutes = minutes if minutes in LOCK_AUTO_CHOICES else 0
+        if not want:
+            self.locked = False
         self.save_app_config()
         return True
 
@@ -1837,10 +2507,13 @@ class StateManager:
         return self.artnet_enabled
 
     def set_artnet_ip(self, ip: str) -> str:
-        """Setzt die Art-Net "Target IP" (Ziel-/Broadcast-Adresse)."""
+        """Setzt die Art-Net "Target IP" (Ziel-/Broadcast-Adresse) - oder "auto": gefundene Geraete direkt bedienen (app/artnet_discovery.py)."""
         try:
-            ipaddress.ip_address(ip)
-            self.artnet_ip = ip
+            if str(ip).strip().lower() == "auto":
+                self.artnet_ip = "auto"
+            else:
+                ipaddress.ip_address(ip)
+                self.artnet_ip = ip
         except (ValueError, TypeError):
             pass  # ungueltige Eingabe - vorherigen Wert beibehalten
         self.save_app_config()
@@ -1898,6 +2571,19 @@ class StateManager:
     # ------------------------------------------------------------------
     def theme_payload(self) -> Dict[str, Any]:
         return {"base": self.theme["base"], "tokens": dict(self.theme["tokens"]), "radius": self.theme["radius"]}
+
+    @staticmethod
+    def settings_defaults() -> Dict[str, Any]:
+        """Werkseinstellungen der Felder im Einstellungsdialog (fuer "Kategorie zuruecksetzen" - die Oberflaeche setzt sie als Entwurf, gespeichert wird erst mit "Speichern").
+        Dieselben Werte wie reset_settings_to_defaults(); das Fernzugriff-Passwort gehoert bewusst nicht dazu."""
+        return {
+            "gui_scale": 1.0, "language": DEFAULT_LANGUAGE, "update_check_enabled": True,
+            "artnet_enabled": False, "artnet_ip": DEFAULT_ARTNET_IP, "artnet_bind_ip": DEFAULT_ARTNET_BIND_IP, "sacn_enabled": False, "default_universe": MIN_UNIVERSE,
+            "enttec_enabled": False, "enttec_port": "", "enttec_universe": MIN_UNIVERSE,
+            "theme": default_theme(), "panel_defaults": dict(DEFAULT_PANEL_DEFAULTS),
+            "remote": {"enabled": False, "port": DEFAULT_SERVER_PORT, "https_enabled": False, "https_port": DEFAULT_HTTPS_PORT, "mdns_enabled": True},
+            "backup": dict(_backups.DEFAULTS),
+        }
 
     def theme_profiles_payload(self) -> Dict[str, Dict[str, Any]]:
         return {name: {"base": t["base"], "tokens": dict(t["tokens"]), "radius": t["radius"]}
@@ -2063,7 +2749,7 @@ class StateManager:
         App-Einstellungen, kein Zuruecksetzen des kompletten Arbeitsplatzes."""
         self.gui_scale = 1.0
         self.language = DEFAULT_LANGUAGE
-        self.artnet_enabled = True
+        self.artnet_enabled = False
         self.artnet_ip = DEFAULT_ARTNET_IP
         self.artnet_bind_ip = DEFAULT_ARTNET_BIND_IP
         self.sacn_enabled = False
@@ -2134,8 +2820,28 @@ class StateManager:
 
         try:
             data = json.loads(APP_CONFIG_PATH.read_text(encoding="utf-8-sig"))
-        except (json.JSONDecodeError, OSError):
-            return
+            if not isinstance(data, dict):
+                raise ValueError("not an object")
+        except (ValueError, OSError):
+            # Beschaedigt oder gerade halb geschrieben: NICHT stillschweigend mit Werkseinstellungen weitermachen (das naechste Speichern wuerde die echte Datei ueberschreiben).
+            # Erst die Sicherung der letzten guten Fassung (.bak) versuchen; die kaputte Datei bleibt als .corrupt liegen.
+            data = None
+            backup = APP_CONFIG_PATH.with_name(APP_CONFIG_PATH.name + ".bak")
+            try:
+                shutil.copy2(APP_CONFIG_PATH, APP_CONFIG_PATH.with_name(APP_CONFIG_PATH.name + ".corrupt"))
+            except OSError:
+                pass
+            try:
+                data = json.loads(backup.read_text(encoding="utf-8-sig"))
+                if not isinstance(data, dict):
+                    data = None
+                else:
+                    logger.warning("OC-3001 app_config.json war unlesbar - die Sicherung (.bak) wird verwendet (die kaputte Datei liegt als .corrupt daneben)")
+            except (ValueError, OSError):
+                data = None
+            if data is None:
+                logger.warning("OC-3001 app_config.json und Sicherung waren unlesbar - OpenCue startet mit den Standardeinstellungen (die kaputte Datei liegt als .corrupt daneben)")
+                return
 
         self.gui_scale = max(MIN_GUI_SCALE, min(MAX_GUI_SCALE, float(data.get("gui_scale", self.gui_scale))))
 
@@ -2144,13 +2850,36 @@ class StateManager:
 
         self.artnet_enabled = bool(data.get("artnet_enabled", self.artnet_enabled))
 
-        self.remote_enabled = bool(data.get("remote_enabled", self.remote_enabled))
+        if "http_enabled" in data:
+            self.http_enabled = bool(data.get("http_enabled"))
+            self.https_enabled = bool(data.get("https_enabled", False))
+        else:                                                      # aeltere Konfiguration: ein gemeinsamer Schalter "Remote" (https folgte ihm)
+            old = bool(data.get("remote_enabled", False))
+            self.http_enabled = old
+            self.https_enabled = old and bool(data.get("https_enabled", False))
+        self.mdns_enabled = bool(data.get("mdns_enabled", True))
         password = data.get("remote_password", self.remote_password)
-        self.remote_password = password if isinstance(password, str) and password else DEFAULT_REMOTE_PASSWORD
+        self.remote_password = password if isinstance(password, str) else ""             # das gespeicherte Passwort bleibt, wie es ist (auch ein fruehere Voreinstellung wird nicht angetastet)
+        if not self.remote_password and (self.http_enabled or self.https_enabled):       # Netzwerk-Zugriff ohne jedes Passwort gibt es nicht: er bleibt aus, bis eins gesetzt ist
+            self.http_enabled = False
+            self.https_enabled = False
+        lock = data.get("lock") if isinstance(data.get("lock"), dict) else {}
+        self.lock_enabled = bool(lock.get("enabled", False)) and bool(self.remote_password)
+        try:
+            minutes = int(lock.get("auto_minutes", 0))
+        except (TypeError, ValueError):
+            minutes = 0
+        self.lock_auto_minutes = minutes if minutes in LOCK_AUTO_CHOICES else 0
         try:
             port = int(data.get("server_port", self.server_port))
             if MIN_SERVER_PORT <= port <= MAX_SERVER_PORT:
                 self.server_port = port
+        except (TypeError, ValueError):
+            pass
+        try:
+            port = int(data.get("https_port", self.https_port))
+            if MIN_SERVER_PORT <= port <= MAX_SERVER_PORT and port != self.server_port:
+                self.https_port = port
         except (TypeError, ValueError):
             pass
 
@@ -2227,6 +2956,7 @@ class StateManager:
         self.example_layouts_seeded = bool(data.get("example_layouts_seeded", data.get("remote_layouts_seeded", False)))
         self.first_start_done = bool(data.get("first_start_done", True))
         self.update_check_enabled = bool(data.get("update_check_enabled", True))
+        self.fetch_voice_model = bool(data.get("fetch_voice_model", False))
         self.update_skipped_version = str(data.get("update_skipped_version", "") or "")[:40]
 
         # Zuletzt geladenes Layout der Konsole laden (Name in der Config, Panels aus der Layout-Datei). Fehlt die Datei, waehlt
@@ -2262,6 +2992,13 @@ class StateManager:
                 if candidate.exists():
                     self.last_showfile_path = str(candidate)
 
+        self.seen_version = str(data.get("seen_version") or APP_VERSION)          # eine Konfiguration ohne den Schluessel: gilt als aktuell (kein "Was ist neu?" beim ersten Lesen)
+        recent = data.get("recent_shows")
+        self.recent_shows = []
+        for item in (recent if isinstance(recent, list) else []):
+            if isinstance(item, str) and item.strip() and item not in self.recent_shows and len(self.recent_shows) < MAX_RECENT_SHOWS:
+                self.recent_shows.append(item)
+
         cdp = data.get("custom_data_path", "")
         self.custom_data_path = str(cdp).strip() if cdp else ""
 
@@ -2269,6 +3006,36 @@ class StateManager:
         if isinstance(raw_room, dict):
             self.sim_room = raw_room
         self.cmd_suggestions = bool(data.get("cmd_suggestions", True))
+        from app import hotkeys as _hotkeys
+        self.hotkeys = _hotkeys.normalize(data.get("hotkeys"))
+        self.shortcut_overrides = _hotkeys.normalize_overrides(data.get("shortcut_overrides"))
+        from app import osc as _osc
+        self.osc_config = _osc.normalize(data.get("osc"))
+        from app import dmx_in as _dmx_in
+        self.dmx_in_config = _dmx_in.normalize(data.get("dmx_in"))
+        from app import midi_engine as _midi
+        self.midi = _midi.normalize_config(data.get("midi"))
+        raw_ltc = data.get("ltc") if isinstance(data.get("ltc"), dict) else {}
+        from app import ltc_routes as _ltc_routes
+        self.ltc_config = _ltc_routes.clean(raw_ltc)
+        self.undo_playback = data.get("undo_playback") is True
+        self.keep_awake = data.get("keep_awake") is not False                     # neu: ohne gespeicherten Wert an (eine Lichtshow soll nicht einschlafen)
+        raw_audio = data.get("audio")
+        if isinstance(raw_audio, dict):
+            self.audio_config = raw_audio
+        raw_ai = data.get("ai")
+        if isinstance(raw_ai, dict):
+            self.ai_config = raw_ai
+        raw_voice = data.get("voice")
+        if isinstance(raw_voice, dict):
+            self.voice_config = raw_voice
+        self.console_defaults = _console_defaults.normalize(data.get("console_defaults"))
+        self.backup_config = _backups.normalize(data.get("backup"))
+        self.ui_store = _ui_store.clean(data.get("ui_store"))
+        raw_selection = data.get("selection")
+        if isinstance(raw_selection, dict) and isinstance(raw_selection.get("ids"), list):
+            self.selection_memory = {"show": str(raw_selection.get("show") or ""), "ids": [i for i in raw_selection["ids"] if isinstance(i, str)][:2000]}
+            self._startup_selection = dict(self.selection_memory)
         raw_favorites = data.get("fx_favorites")
         if isinstance(raw_favorites, list):
             self.fx_favorites = list(dict.fromkeys(str(x) for x in raw_favorites if isinstance(x, str)))
@@ -2277,6 +3044,51 @@ class StateManager:
         self.cmd_suggestions = enabled is True or str(enabled).lower() in ("1", "true", "on")
         self.save_app_config()
         return self.cmd_suggestions
+
+    def set_schedule(self, raw: Any) -> List[Dict[str, Any]]:
+        """Zeitplan der Show speichern (bereinigt: app/schedule.py); die Show gilt danach als ungespeichert."""
+        self.schedule = _schedule.normalize(raw)
+        self.mark_dirty()
+        return [dict(entry) for entry in self.schedule]
+
+    def set_undo_playback(self, enabled: Any) -> bool:
+        """Rueckgaengig mit Go / Back ein / aus (App-Config)."""
+        self.undo_playback = bool(enabled)
+        self.save_app_config()
+        return self.undo_playback
+
+    def set_keep_awake(self, enabled: Any) -> bool:
+        """Bildschirm wach halten ein / aus (App-Config)."""
+        self.keep_awake = bool(enabled)
+        self.save_app_config()
+        return self.keep_awake
+
+    def set_timeline_tracks(self, raw: Any) -> List[Dict[str, Any]]:
+        """Befehlsspuren der Timeline speichern (bereinigt: app/timeline_tracks.py); die Show gilt danach als ungespeichert."""
+        self.timeline_tracks = _timeline_tracks.normalize(raw)
+        self.mark_dirty()
+        return copy.deepcopy(self.timeline_tracks)
+
+    def set_shortcut_overrides(self, raw: Any) -> Dict[str, str]:
+        """Umbelegte eingebaute Tastenkuerzel speichern (bereinigt: app/hotkeys.py)."""
+        from app import hotkeys as _hotkeys
+        self.shortcut_overrides = _hotkeys.normalize_overrides(raw)
+        self.save_app_config()
+        return dict(self.shortcut_overrides)
+
+    def set_hotkeys(self, raw: Any) -> List[Dict[str, Any]]:
+        """Eigene Tastaturbelegung speichern (bereinigt: app/hotkeys.py). Gibt die gespeicherte Liste zurueck."""
+        from app import hotkeys as _hotkeys
+        self.hotkeys = _hotkeys.normalize(raw)
+        self.save_app_config()
+        return list(self.hotkeys)
+
+    def set_midi(self, raw: Any) -> Dict[str, Any]:
+        """MIDI-Belegung speichern (bereinigt: app/midi_engine.py). Gibt die gespeicherte Belegung zurueck."""
+        from app import midi_engine as _midi
+        self.midi = _midi.normalize_config(raw)
+        self.save_app_config()
+        return dict(self.midi)
 
     def toggle_fx_favorite(self, name: str) -> bool:
         """Effekt-Skript als Liebling markieren/entmarkieren. Gibt zurueck, ob er jetzt ein Liebling ist."""
@@ -2315,8 +3127,13 @@ class StateManager:
             "enttec_port": self.enttec_port,
             "enttec_universe": self.enttec_universe,
             "remote_enabled": self.remote_enabled,
+            "http_enabled": self.http_enabled,
             "remote_password": self.remote_password,
+            "lock": {"enabled": self.lock_enabled, "auto_minutes": self.lock_auto_minutes},
             "server_port": self.server_port,
+            "https_enabled": self.https_enabled,
+            "https_port": self.https_port,
+            "mdns_enabled": self.mdns_enabled,
             "theme_schema": THEME_SCHEMA,
             "theme": self.theme_payload(),
             "panel_defaults": dict(self.panel_defaults),
@@ -2326,18 +3143,44 @@ class StateManager:
             "window_height": self.window_height,
             "window_maximized": self.window_maximized,
             "last_showfile_path": self.last_showfile_path,
+            "recent_shows": list(self.recent_shows),
+            "seen_version": self.seen_version,
             "last_active_layout": self.last_active_layout,
             "example_layouts_seeded": self.example_layouts_seeded,
             "first_start_done": self.first_start_done,
             "update_check_enabled": self.update_check_enabled,
+            "fetch_voice_model": self.fetch_voice_model,
             "update_skipped_version": self.update_skipped_version,
             "custom_data_path": self.custom_data_path,
             "sim_room": self.sim_room,
             "fx_favorites": list(self.fx_favorites),
             "cmd_suggestions": self.cmd_suggestions,
+            "hotkeys": list(self.hotkeys),
+            "shortcut_overrides": dict(self.shortcut_overrides),
+            "osc": self.osc_config,
+            "dmx_in": self.dmx_in_config,
+            "midi": dict(self.midi),
+            "ltc": dict(self.ltc_config),
+            "keep_awake": self.keep_awake,
+            "undo_playback": self.undo_playback,
+            "audio": self.audio_config,
+            "ai": self.ai_config,
+            "voice": self.voice_config,
+            "console_defaults": dict(self.console_defaults),
+            "backup": dict(self.backup_config),
+            "selection": dict(self.selection_memory),
+            "ui_store": dict(self.ui_store),
         }
         with self._config_lock:
-            APP_CONFIG_PATH.write_text(json.dumps(data, indent=2), encoding="utf-8")
+            # Atomar: erst in eine Nebendatei, dann ersetzen - ein Absturz oder gleichzeitiges Lesen sieht nie eine halbe Datei. Die letzte gute Fassung bleibt als .bak liegen.
+            temp = APP_CONFIG_PATH.with_name(APP_CONFIG_PATH.name + ".tmp")
+            temp.write_text(json.dumps(data, indent=2), encoding="utf-8")
+            try:
+                if APP_CONFIG_PATH.exists() and APP_CONFIG_PATH.stat().st_size > 2:
+                    shutil.copy2(APP_CONFIG_PATH, APP_CONFIG_PATH.with_name(APP_CONFIG_PATH.name + ".bak"))
+            except OSError:
+                pass
+            os.replace(temp, APP_CONFIG_PATH)
 
     # ------------------------------------------------------------------
     # Showfile-Persistenz (JSON auf Disk unter /showfiles)
@@ -2347,22 +3190,20 @@ class StateManager:
         return {
             "showfile_name": self.showfile_name,
             "saved_at": datetime.now().isoformat(timespec="seconds"),
-            "fixtures": {fx_id: asdict(fx) for fx_id, fx in self.fixtures.items()},
+            "fixtures": self.fixtures_as_dicts(),
+            "fixture_layout": dict(self.fixture_layout),
             # Die Show enthaelt nur ihre eigenen Daten (Scheinwerfer, Cues, Presets, Effekt-Definitionen ...). Dateien (GDTF, Effekt-Skripte, Buehnen, Medien) liegen in den
             # lokalen Ordnern; beim Weitergeben packt der Export (ZIP, app/file_manager.py) sie dazu.
             "fx_effects": {fx_id: dict(fx) for fx_id, fx in self.fx_effects.items()},
             "sim_stage": sim_stages.store.reference(),     # aktive Buehne der 3D-Simulation: Verweis auf die Buehnen-Datei, Raum-Einstellungen, Scheinwerfer-Positionen
-#3D-AUS#             # Raum und Rig der 3D-Buehne immer als vollstaendige Kopie (Export/Import ohne die lokalen Bibliotheksdateien); *_source = Herkunft in der Bibliothek
-#3D-AUS#             "room3d": self.room,
-#3D-AUS#             "room3d_source": self.room_source,
-#3D-AUS#             "rig3d": self._rig_for_file(),
-#3D-AUS#             "rig3d_source": self.rig_source,
             "groups": self.groups,
             "cues": [asdict(cue) for cue in self.cues],
             "presets": {pid: asdict(p) for pid, p in self.presets.items()},
             "preset_groups": list(self.preset_groups),
             "fx_groups": list(self.fx_groups),
-            "cuelists": self.cuelists_as_dicts(),
+            "cuelists": self.cuelists_as_dicts(full=True),
+            "schedule": [dict(entry) for entry in self.schedule],
+            "timeline_tracks": copy.deepcopy(self.timeline_tracks),
             "active_cuelist_id": self.active_cuelist_id,
             "media": {mid: media_store.public_meta(meta) for mid, meta in self.media.items()},
             "runtime_state": {
@@ -2381,10 +3222,6 @@ class StateManager:
             },
         }
 
-#3D-AUS#     def _rig_for_file(self) -> Dict[str, Any]:
-#3D-AUS#         stage3d.stamp_fixture_info(self.rig, self.fixtures)           # FID/Name zu den Positionen: Grundlage zum Wiederverwenden in anderen Shows
-#3D-AUS#         stage3d.refresh_world(self.rig, self.room)                    # Weltstand: das Rig findet auch ohne seine Traverse zurueck
-#3D-AUS#         return self.rig
 
     def owned_dmx_channels(self) -> Dict[int, set]:
         """Universum -> Menge der DMX-Kanaele (ab 1), die Scheinwerfer DIESER Show belegen. Alles andere im Ausgabepuffer ist Ueberbleibsel einer frueheren Show
@@ -2411,9 +3248,6 @@ class StateManager:
         if name:
             self.showfile_name = name
 
-        sim_stages.store.persist()                      # die Buehne gehoert zur Show: ungespeicherte Aenderungen kommen mit in ihre Datei
-        data = self._showfile_dict()
-
         if save_dir is not None:
             directory = save_dir
         elif self.showfile_path and not name:
@@ -2421,21 +3255,46 @@ class StateManager:
             directory = Path(self.showfile_path).parent
         else:
             directory = _paths.SHOWFILES_DIR
-        directory.mkdir(parents=True, exist_ok=True)
         path = directory / f"{self.showfile_name}.json"
-        path.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
+        if show_safety.is_locked(path):                  # gesperrte Show: nie ueberschreiben (vor allem nichts schreiben, auch nicht die Buehne)
+            raise show_safety.ShowLocked(path)
+        sim_stages.store.persist()                      # die Buehne gehoert zur Show: ungespeicherte Aenderungen kommen mit in ihre Datei
+        data = self._showfile_dict()
+        directory.mkdir(parents=True, exist_ok=True)
+        show_safety._atomic_write(path, json.dumps(data, indent=2, ensure_ascii=False))          # erst in eine Nachbardatei, dann ersetzen: ein Absturz mittendrin laesst die alte Show heil
         self.showfile_path = str(path)
         self.last_showfile_path = str(path)
+        self.note_recent_show(path)
         self.is_dirty = False
         self.save_app_config()
         return path
 
+    def note_recent_show(self, path: str | Path) -> None:
+        """Eine Show an den Anfang der Liste "Zuletzt benutzt" setzen (Sicherungen und doppelte Eintraege kommen nicht hinein)."""
+        try:
+            resolved = Path(path).resolve()
+            if _paths.backups_dir().resolve() in resolved.parents:
+                return
+        except (OSError, ValueError):
+            return
+        text = str(path)
+        key = os.path.normcase(os.path.abspath(text))
+        self.recent_shows = [text] + [p for p in self.recent_shows if os.path.normcase(os.path.abspath(p)) != key]
+        del self.recent_shows[MAX_RECENT_SHOWS:]
+
+    def forget_recent_show(self, path: str) -> None:
+        key = os.path.normcase(os.path.abspath(path))
+        self.recent_shows = [p for p in self.recent_shows if os.path.normcase(os.path.abspath(p)) != key]
+
     def load_showfile(self, path: str | Path) -> None:
+        self.show_epoch += 1
         path = Path(path)
         data = json.loads(path.read_text(encoding="utf-8"))
         legacy_show.unpack(data)                                      # Altformat (Dateien in der Showfile): einmalig in die lokalen Ordner legen
 
         self.showfile_name = data.get("showfile_name", "Untitled")
+        self.schedule = _schedule.normalize(data.get("schedule"))
+        self.timeline_tracks = _timeline_tracks.normalize(data.get("timeline_tracks"))
 
         known_fx_fields = set(Fixture.__dataclass_fields__)
         loaded_fixtures: Dict[str, Fixture] = {}
@@ -2470,6 +3329,7 @@ class StateManager:
             }
         self.groups = {str(g): [str(i) for i in ids] for g, ids in raw_groups.items() if isinstance(ids, list)}
         self.prune_groups()
+        self.fixture_layout = self._clean_fixture_layout(data.get("fixture_layout"))
 
         self.cues = [_normalize_cue_trigger(Cue(**{k: v for k, v in cue.items() if k in Cue.__dataclass_fields__})) for cue in data.get("cues", [])]
 
@@ -2536,15 +3396,6 @@ class StateManager:
 
         sim_stages.store.restore(data.get("sim_stage"))          # 3D-Simulation: die eingebettete Buehne gilt; Show ohne Buehne = leere Buehne
 
-#3D-AUS#         # 3D-Buehne: die eingebettete gilt (nicht eine gleichnamige lokale Datei); alte Shows ohne 3D-Daten = Standard-Buehne
-#3D-AUS#         legacy_room, legacy_rig = stage3d.split_legacy(data["stage3d"]) if isinstance(data.get("stage3d"), dict) else (None, None)     # erste, kombinierte Fassung
-#3D-AUS#         self.room = stage3d.normalize_room(data["room3d"]) if isinstance(data.get("room3d"), dict) else (legacy_room or stage3d.default_room())
-#3D-AUS#         self.rig = stage3d.normalize_rig(data["rig3d"]) if isinstance(data.get("rig3d"), dict) else (legacy_rig or stage3d.default_rig())
-#3D-AUS#         room_source, rig_source = data.get("room3d_source"), data.get("rig3d_source")
-#3D-AUS#         if room_source is None and legacy_room is not None:
-#3D-AUS#             room_source = data.get("stage3d_source")
-#3D-AUS#         self.room_source = room_source if isinstance(room_source, str) and stage3d.valid_filename(room_source) else None
-#3D-AUS#         self.rig_source = rig_source if isinstance(rig_source, str) and stage3d.valid_filename(rig_source) else None
 
         # Medien: nur Metadaten; fehlt die Datei im Medien-Ordner, bleibt der Eintrag als 'fehlt' sichtbar
         self.media = {}
@@ -2606,6 +3457,7 @@ class StateManager:
 
         self.showfile_path = str(path)
         self.last_showfile_path = str(path)
+        self.note_recent_show(path)
         self.is_dirty = False
 
         # Migrierte Showfiles werden NICHT automatisch zurueckgeschrieben - die
@@ -2619,7 +3471,7 @@ def panels_from_dicts(items: List[Dict[str, Any]]) -> List[Panel]:
     known = set(Panel.__dataclass_fields__)
     panels: List[Panel] = []
     for item in items:
-        if item.get("type") == "stage3d":                   # 3D-Buehne ist (vorerst) entfernt: alte Layouts mit diesem Panel laden ohne es (siehe _old/3d_buehne/)
+        if item.get("type") == "stage3d":                   # 3D-Buehne ist entfernt: alte Layouts mit diesem Panel laden ohne es
             continue
         filtered = {k: v for k, v in item.items() if k in known}
         if "module_config" in filtered and not isinstance(filtered["module_config"], dict):

@@ -1,3 +1,5 @@
+// Copyright (C) 2026 Samuel Zenker
+// SPDX-License-Identifier: GPL-3.0-or-later
 /* 3D-Simulation: RAUM & LICHT. Beleuchtung des Raums und Anzeige-Einstellungen in einem kleinen Fenster (Knopf oben rechts; bleibt offen, damit man beim Einstellen zusehen kann).
  *
  * Licht im Raum (alles aus den Lichtquellen berechnet, die sich in sim.lightSources melden: () => ({lumens, candela, color, angle, position, axis, hit})):
@@ -57,8 +59,9 @@ export function createRoom(sim, host, tools) {
   const hemi = new THREE.HemisphereLight(0xffffff, 0x2c2c2e, 0);        // Arbeitslicht + Grundlicht (gleichmaessig)
   const sun = new THREE.DirectionalLight(0xffffff, 0);                  // Arbeitslicht: eine "Sonne" fuer Plastizitaet
   sun.position.set(-6, -8, 12);
+  const fills = [[8, 6, 10], [-8, 6, 7], [8, -8, 7]].map((p) => { const l = new THREE.DirectionalLight(0xffffff, 0); l.position.set(...p); return l; });      // Arbeitslicht: weitere Richtungen, damit die Buehne von allen Seiten gleich hell ist
   const bounce = new THREE.HemisphereLight(0xffffff, 0xffffff, 1);      // mehrfach zurueckgeworfenes Licht (gleichmaessig)
-  sim.scene.add(hemi, sun, bounce);
+  sim.scene.add(hemi, sun, bounce, ...fills);
   const pool = [];                                                       // je Quelle: ein spiegelnder Strahl (mit Schatten) fuer Metall/Spiegel
   const makeVirtual = () => {
     const light = new THREE.SpotLight(0xffffff, 0, 0, Math.PI / 2 * 0.98, 1, 2);
@@ -134,10 +137,12 @@ export function createRoom(sim, host, tools) {
     for (const source of sim.lightSources) { const s = source(); if (s && s.lumens > 0) sources.push(s); }
     const work = mode !== "view" ? state.work / 100 : 0;
     const house = state.house / 100 * 0.6;
-    hemi.intensity = work + house;
-    sun.intensity = 1.4 * work;
+    hemi.groundColor.set(work > 0 ? 0xffffff : 0x2c2c2e);                  // Arbeitslicht: oben wie unten gleich hell (kein dunkler Boden-Anteil)
+    hemi.intensity = work * 0.7 + house;
+    sun.intensity = 0.55 * work;
+    fills.forEach((l) => { l.intensity = 0.55 * work; });
     sim.renderer.toneMappingExposure = state.exposure / 100;
-    sim.setHaze(state.haze / 100);                                        // Dunst: Dichte und Sichtbarkeit der Lichtkegel
+    sim.setHaze(state.haze / 100, mode !== "view");                                        // Dunst: Dichte und Sichtbarkeit der Lichtkegel
     const boost = INDIRECT_BOOST * state.bounce / 100;
     // Spiegel-Strahlen (Metall/Spiegel) nur fuer Quellen, die so eine Flaeche treffen - die staerksten zuerst, begrenzt durch limits.maxSpecular (0 = unbegrenzt); der Vorrat waechst nur
     const specOf = (s) => { const h = s.hits[0]; return h.valid && boost > 0 ? (h.metalness > 0.5 ? h.metalness * (1 - 0.5 * h.roughness) : 0.04 * (1 - h.roughness)) : 0; };
@@ -428,8 +433,10 @@ export function createRoom(sim, host, tools) {
     panel.hidden = !open;
     button.setAttribute("aria-pressed", String(open));
     button.classList.toggle("sim3d__btn--on", open);
-    if (open) { paint(); fit(); }
+    if (open) { host.dispatchEvent(new CustomEvent("sim3d-popover", { detail: "room" })); paint(); fit(); }        // ein anderes Fenster der Leiste schliesst sich
   };
+  const onOtherPopover = (e) => { if (e.detail !== "room" && !panel.hidden) toggle(false); };
+  host.addEventListener("sim3d-popover", onOtherPopover);
   /** Hoehe des Fensters an das Panel anpassen (es endet am unteren Rand des Panels; was nicht passt, scrollt). */
   function fit() {
     if (panel.hidden) return;
@@ -462,13 +469,14 @@ export function createRoom(sim, host, tools) {
       document.removeEventListener("sim-stage", onStage);
       fitObserver.disconnect();
       host.removeEventListener("keydown", onKey);
+      host.removeEventListener("sim3d-popover", onOtherPopover);
       clearTimeout(pushTimer);
       const i = sim.frameHooks.indexOf(update);
       if (i >= 0) sim.frameHooks.splice(i, 1);
       const q = sim.quality.listeners.indexOf(onQuality);
       if (q >= 0) sim.quality.listeners.splice(q, 1);
       resizePool(0);
-      sim.scene.remove(hemi, sun, bounce);
+      sim.scene.remove(hemi, sun, bounce, ...fills);
       wrap.remove();
     },
   };

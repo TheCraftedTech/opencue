@@ -1,3 +1,5 @@
+# Copyright (C) 2026 Samuel Zenker
+# SPDX-License-Identifier: GPL-3.0-or-later
 """
 remote.py
 Remote-Zugriff auf OpenCue aus dem lokalen Netzwerk (z.B. Safari auf dem iPad).
@@ -15,6 +17,8 @@ Der Server lauscht immer auf 127.0.0.1; fuer den Netzwerk-Zugriff kommen zur Lau
 from __future__ import annotations
 
 import hmac
+import ipaddress
+import re
 import secrets
 import socket
 import time
@@ -40,13 +44,17 @@ MAX_FAILURES = 5
 LOCK_SECONDS = 60
 
 # Remote-Geraete sind nach dem Login vollstaendig gleichberechtigt: es gibt keine Rechte-Trennung zwischen
-# Konsole und Remote. Die einzige Ausnahme ist rein physisch: "toggle_fullscreen" schaltet das FENSTER der
-# Konsole um - jedes Geraet hat sein eigenes Vollbild (Browser-API im Frontend), die Nachricht wird von
-# Remote-Geraeten nie gesendet.
-LOCAL_ONLY_MESSAGES = {"toggle_fullscreen"}
+# Konsole und Remote - auch alle Einstellungen gelten fuer den Server und lassen sich vom iPad aendern (Server-Betrieb ohne Fenster!).
+# Ausnahmen sind rein physisch und haengen am Hauptrechner: sein Fenster ("toggle_fullscreen"), Ordner im Explorer oeffnen, die Windows-
+# Rueckfrage der Firewall (UAC), MIDI einlernen / mithoeren und die Taste einer bestimmten Tastatur aufnehmen, das Mikrofon beim Diktieren.
+LOCAL_ONLY_MESSAGES = {"toggle_fullscreen"}      # nur das Fenster des Hauptrechners; Einstellungen (auch Passwort, Sichermodus) duerfen Fernzugriffs-Geraete nach dem Login genauso aendern
 # Server -> Client Nachrichten, die nur an Konsolen-Fenster gehen: das Layout des Hauptrechners (panels_changed;
 # jedes Remote-Geraet bekommt sein eigenes) und die Abfrage des Schliessen-X.
-LOCAL_ONLY_EVENTS = {"panels_changed", "close_requested"}
+LOCAL_ONLY_EVENTS = {"panels_changed", "close_requested", "open_show_request"}
+# Gesperrte Konsole: nur diese Nachrichten des Konsolen-Fensters werden noch angenommen (Zustand abholen); alles andere wird verworfen (siehe server.py)
+LOCKED_ALLOWED_MESSAGES = {"get_state_snapshot", "request_full_state", "ping", "pong"}
+# ... und diese Adressen (HTTP) bleiben bei gesperrter Konsole schreibend erreichbar: Entsperren, Abmelden, Start-Signal, REST-API (eigene Token)
+LOCKED_ALLOWED_PATHS = ("/api/lock/", "/auth/", "/api/ui-ready", "/api/v1/")
 
 # Beim Start gesetzt (main.py): an welche Adresse der Server tatsaechlich gebunden ist.
 bound_host = "127.0.0.1"
@@ -60,6 +68,38 @@ def is_local(host: Optional[str]) -> bool:
     if host.startswith("::ffff:"):
         host = host[7:]
     return host in ("127.0.0.1", "::1", "localhost") or host.startswith("127.")
+
+
+def _host_name(value: str) -> str:
+    """Rechnername aus einem Host-Kopf ("127.0.0.1:8080", "localhost:8080", "[::1]:8080") oder einem Origin ("http://localhost:8080")."""
+    value = value.strip().lower()
+    if "://" in value:
+        value = value.split("://", 1)[1]
+    value = value.split("/", 1)[0]
+    if value.startswith("["):
+        return value[1:].split("]", 1)[0]
+    return value.rsplit(":", 1)[0] if value.count(":") == 1 else value
+
+
+def _is_loopback_name(name: str) -> bool:
+    """Nur echte Loopback-Namen: "localhost" oder eine Loopback-IP-Adresse (nie "127.0.0.1.fremd.de")."""
+    if name == "localhost":
+        return True
+    try:
+        return ipaddress.ip_address(name).is_loopback
+    except ValueError:
+        return False
+
+
+def local_request_allowed(host_header: Optional[str], origin_header: Optional[str]) -> bool:
+    """Schutz der lokalen (passwortlosen) Verbindung vor fremden Webseiten im Browser desselben Rechners.
+    Eine Webseite darf localhost-Adressen ansprechen (auch WebSocket: dafuer gibt es kein CORS) - deshalb gilt fuer lokale Verbindungen:
+    der Host-Kopf muss eine Loopback-Adresse sein (sonst DNS-Rebinding: ein fremder Name, der auf 127.0.0.1 zeigt) und ein Origin-Kopf,
+    falls vorhanden, ebenfalls (sonst eine fremde Seite, "null" eingeschlossen). Ohne Origin (curl, Skripte, Tests) bleibt alles wie bisher."""
+    for value in (host_header, origin_header):
+        if value is not None and not _is_loopback_name(_host_name(value)):
+            return False
+    return True
 
 
 def lan_addresses() -> List[str]:
@@ -94,28 +134,158 @@ def qr_svg(text: str) -> str:
     return buf.getvalue().decode("utf-8")
 
 
+def _cert_info(urls: List[str], https_urls: List[str]) -> Dict[str, Any]:
+    """Zertifikat der eigenen Stelle (app/https_cert.py) zum Installieren auf iPad / Browser: Adressen des Profils und des Zertifikats (bevorzugt ueber http - noch ohne Vertrauen
+    laesst sich nur so ohne Warnung laden), Fingerabdruck, QR-Code des Profils."""
+    from app import https_cert
+    fingerprint = https_cert.ca_fingerprint()
+    if not fingerprint:
+        return {"available": False}
+    def by_ip(items: List[str]) -> str:
+        return next((u for u in items if not re.match(r"^https?://[^/:]*[A-Za-z][^/:]*\.local(?::|/|$)", u)), items[0] if items else "")
+    base = by_ip(urls) or by_ip(https_urls)           # immer die Adresse mit IP (der Name opencue.local ist nur fuer das Abtippen)
+    page = base + "/remote/zertifikat"
+    return {"available": bool(base), "page_url": page if base else "", "via_http": bool(urls), "fingerprint": fingerprint, "qr": qr_svg(page) if base else ""}
+
+
 def remote_info(include_password: bool) -> Dict[str, Any]:
     """Zustand der Remote-Einstellungen fuer das Settings-Panel."""
     from app.lan_listener import lan
     active = lan.addresses                                   # Adressen, auf denen die Konsole gerade wirklich im Netzwerk lauscht
     candidates = [ip for ip in lan_addresses() if ip not in active]
     urls = [f"http://{ip}:{bound_port}" for ip in active]
+    https_urls = [f"https://{ip}:{lan.https_port}" for ip in lan.https_addresses]      # https: sicherer Kontext (WebXR / VR-Brille), eigener Schalter
+    errors = dict(lan.errors)
+    if lan.https_error and state.https_enabled:
+        errors["https"] = lan.https_error
+    from app.mdns import mdns
+    name_http, name_https = mdns.urls(bound_port, lan.https_port, bool(lan.addresses), bool(lan.https_addresses))    # Adressen unter dem Netzwerk-Namen (opencue.local)
+    urls = name_http + urls
+    https_urls = name_https + https_urls
     info: Dict[str, Any] = {
-        "enabled": state.remote_enabled,
+        "enabled": state.http_enabled,            # der http-Schalter
+        "any_enabled": state.remote_enabled,      # Netzwerk-Zugriff insgesamt (http oder https)
         "port": bound_port,                       # Port, auf dem der Server gerade laeuft
         "configured_port": state.server_port,     # gespeicherter Port (gilt nach dem Neustart)
         "local_url": f"http://127.0.0.1:{bound_port}",
         "urls": urls,                             # unter diesen Adressen ist die Konsole JETZT im Netzwerk erreichbar
         "candidate_urls": [f"http://{ip}:{bound_port}" for ip in candidates],   # erkannte Adressen, auf denen sie (noch) nicht lauscht
-        "qr": {url: qr_svg(url) for url in urls},
-        "listen_errors": dict(lan.errors),        # Adresse -> Fehlertext (z. B. Port belegt)
-        "listening_on_network": bool(active),
+        "https_urls": https_urls,
+        "cert": _cert_info(urls, https_urls),
+        "candidate_https_urls": [f"https://{ip}:{state.https_port}" for ip in candidates],
+        "qr": {url: qr_svg(url) for url in urls + https_urls},
+        "listen_errors": errors,
+        "mdns_enabled": state.mdns_enabled,
+        "mdns_name": mdns.host,                   # beanspruchter Name ("" = keiner), z. B. opencue.local oder opencue-2.local
+        "mdns_error": mdns.error,
+        "https_enabled": state.https_enabled,
+        "https_port": state.https_port,        # Adresse -> Fehlertext (z. B. Port belegt)
+        "listening_on_network": bool(active or lan.https_addresses),
         # Netzwerk-Zugriff ein-/ausschalten wirkt sofort; nur ein geaenderter Port braucht einen Neustart.
         "restart_required": state.server_port != bound_port,
     }
+    info["password_set"] = bool(state.remote_password)
     if include_password:
-        info["password"] = state.remote_password
+        info["password"] = "" if state.locked else state.remote_password        # bei gesperrter Konsole verlaesst das Passwort den Server nicht
     return info
+
+
+def lock_info() -> Dict[str, Any]:
+    """Sichermodus fuer die Oberflaeche: ein/aus, gerade gesperrt, automatische Sperre (Minuten), ist ein Passwort gesetzt."""
+    return {"enabled": state.lock_enabled, "locked": bool(state.locked and state.lock_enabled), "auto_minutes": state.lock_auto_minutes, "password_set": bool(state.remote_password)}
+
+
+# ---- Bedienmodus (Kiosk): das Geraet darf nur noch bedienen; Verlassen nur mit dem Passwort. Erlaubt sind NUR die hier genannten Nachrichten (alles Neue ist standardmaessig gesperrt).
+KIOSK_ALLOWED_MESSAGES = {
+    "get_state_snapshot", "request_full_state", "ping", "pong", "kiosk_enter",
+    "set_fixture_values", "set_fixture_raw_channel", "set_selection", "set_blackout", "set_active_cuelist", "set_cuelist_master", "jump_to_cue",
+    "preset_apply", "preset_release", "run_command", "simple_look", "autocomplete", "command_value_updated", "schedule_run", "audio_subscribe",
+}
+KIOSK_ALLOWED_PREFIXES = ("cue_", "timecode_", "sim_cam")          # cue_go / cue_back / cue_stop ..., Timecode bedienen, Kamera der 3D-Simulation
+KIOSK_ALLOWED_PATHS = ("/api/kiosk/", "/api/lock/", "/auth/", "/api/ui-ready", "/api/v1/", "/api/simple/")
+
+
+def kiosk_allows(message_type: Any) -> bool:
+    kind = str(message_type or "")
+    return kind in KIOSK_ALLOWED_MESSAGES or kind.startswith(KIOSK_ALLOWED_PREFIXES)
+
+
+# ---- Bedienmodus: Befehle aus der Befehlszeile / von Tasten
+# "run_command" darf im Bedienmodus nur BEDIENEN (waehlen, Werte, Farben, Cues abspielen, Effekte, Timecode ...), nie etwas an der Show aendern:
+# Speichern / Aktualisieren / Loeschen / Verschieben / Umbenennen / Cue-Zeiten und Cue-Listen anlegen oder umbauen sind gesperrt (auch in einer Befehlskette).
+_KIOSK_BLOCKED_FIRST = {"store", "update", "delete", "move", "label", "set", "cue"}
+_KIOSK_CUELIST_WORDS = {"cuelist", "qlist", "q-list", "list", "cl", "exec", "executor"}
+_KIOSK_BLOCKED_ANYWHERE = {"overwrite", "merge", "new", "create", "add", "rename", "duplicate", "delete", "store", "update", "move", "label", "set",
+                           "fade", "delay", "follow", "trigger", "name", "cmd", "mib"}
+
+
+def kiosk_command_allowed(raw: Any) -> bool:
+    """True, wenn der Befehl (auch eine Kette mit , oder ;) nur bedient. Namen in Anfuehrungszeichen zaehlen nicht als Woerter."""
+    parts: list = []
+    current: list = []
+    quoted = False
+    for ch in str(raw or ""):
+        if ch == '"':
+            quoted = not quoted
+            current.append(" ")
+        elif ch in ",;" and not quoted:
+            parts.append("".join(current))
+            current = []
+        else:
+            current.append(" " if quoted else ch)                  # Text in Anfuehrungszeichen (Namen) wird ausgeblendet
+    parts.append("".join(current))
+    for part in parts:
+        words = part.lower().split()
+        if not words:
+            continue
+        if words[0] in _KIOSK_BLOCKED_FIRST or "overwrite" in words:
+            return False
+        if words[0] in _KIOSK_CUELIST_WORDS and any(w in _KIOSK_BLOCKED_ANYWHERE for w in words[1:]):
+            return False
+    return True
+
+
+def verify_password(key: str, password: str) -> Dict[str, Any]:
+    """Passwort pruefen (Bedienmodus verlassen): {"ok": True} oder {"ok": False, "locked": Sekunden Pause}; Fehlversuche je Geraet (key) werden gebremst wie beim Sperrbildschirm."""
+    now = time.monotonic()
+    k = "kiosk:" + key
+    record = _failures.get(k)
+    if record and record.get("locked_until", 0) > now:
+        return {"ok": False, "locked": int(record["locked_until"] - now) + 1}
+    expected = state.remote_password.encode("utf-8")
+    if expected and hmac.compare_digest(str(password).encode("utf-8"), expected):
+        _failures.pop(k, None)
+        return {"ok": True}
+    record = _failures.setdefault(k, {"count": 0, "locked_until": 0})
+    record["count"] += 1
+    if record["count"] >= MAX_FAILURES:
+        record["count"] = 0
+        record["locked_until"] = now + LOCK_SECONDS
+        return {"ok": False, "locked": LOCK_SECONDS}
+    return {"ok": False, "locked": 0}
+
+
+_CONSOLE_KEY = "console"                                  # Fehlversuche am Sperrbildschirm zaehlen wie die einer Fremd-Adresse (5 Fehlversuche = 60 s Pause)
+
+
+def console_unlock(password: str) -> Dict[str, Any]:
+    """Prueft das Passwort am Sperrbildschirm. Liefert {"ok": True} oder {"ok": False, "locked": Sekunden Pause}. Entsperrt bei Erfolg."""
+    now = time.monotonic()
+    record = _failures.get(_CONSOLE_KEY)
+    if record and record.get("locked_until", 0) > now:
+        return {"ok": False, "locked": int(record["locked_until"] - now) + 1}
+    expected = state.remote_password.encode("utf-8")
+    if expected and hmac.compare_digest(str(password).encode("utf-8"), expected):
+        _failures.pop(_CONSOLE_KEY, None)
+        state.locked = False
+        return {"ok": True}
+    record = _failures.setdefault(_CONSOLE_KEY, {"count": 0, "locked_until": 0})
+    record["count"] += 1
+    if record["count"] >= MAX_FAILURES:
+        record["count"] = 0
+        record["locked_until"] = now + LOCK_SECONDS
+        return {"ok": False, "locked": LOCK_SECONDS}
+    return {"ok": False, "locked": 0}
 
 
 def device_label(user_agent: str) -> str:
@@ -148,7 +318,7 @@ def login(ip: str, password: str, cid: Optional[str]) -> Dict[str, Any]:
     if record and record.get("locked_until", 0) > now:
         return {"ok": False, "locked": int(record["locked_until"] - now) + 1}
     expected = state.remote_password.encode("utf-8")
-    if state.remote_enabled and hmac.compare_digest(str(password).encode("utf-8"), expected):
+    if expected and state.remote_enabled and hmac.compare_digest(str(password).encode("utf-8"), expected):
         _failures.pop(ip, None)
         cid = cid if cid and len(cid) == 36 else str(uuid.uuid4())
         return {"ok": True, "token": create_session(cid), "cid": cid}
@@ -198,6 +368,9 @@ class ClientSession:
         self.layout: Optional[Dict[str, Any]] = None
         # Panel-Stand (ohne ui_state) beim Laden/Speichern dieses Layouts: Abweichung = ungespeicherte Aenderungen.
         self.baseline: Optional[List[Dict[str, Any]]] = None
+        # Neu angelegt und noch nicht bearbeitet: das Geraet startet mit einer Kopie des Host-Layouts und uebernimmt beim ersten Abfragen auch dessen Namen
+        # (sonst stuende dort "Kein Layout", obwohl die Anordnung die des Hosts ist).
+        self.fresh = True
 
     def panels_as_dicts(self) -> List[Dict[str, Any]]:
         return [asdict(p) for p in self.panels]
@@ -286,12 +459,10 @@ def apply_panels_ui(sess: ClientSession, panels_ui: Any) -> None:
 
 # ---- Login-Seite -------------------------------------------------------------------
 
-_LOGIN_TEXT = {
-    "de": ("Anmelden", "Passwort", "Anmelden", "Falsches Passwort.", "Zu viele Versuche. Bitte {s} s warten.",
-           "Remote-Zugriff ist deaktiviert.", "Passwort speichern"),
-    "en": ("Sign in", "Password", "Sign in", "Wrong password.", "Too many attempts. Wait {s} s.",
-           "Remote access is disabled.", "Save password"),
-}
+def _login_text(language: str):
+    """Texte der Anmeldeseite aus den Sprachdateien (app/languages.py): Titel, Feld, Knopf, falsches Passwort, gesperrt, deaktiviert, merken."""
+    from app.languages import tr
+    return tuple(tr(key, language) for key in ("SRV_LOGIN_TITLE", "SRV_LOGIN_PASSWORD", "SRV_LOGIN_BUTTON", "SRV_LOGIN_WRONG", "SRV_LOGIN_LOCKED", "SRV_LOGIN_DISABLED", "SRV_LOGIN_REMEMBER"))
 
 
 def _login_theme_css() -> str:
@@ -328,7 +499,7 @@ def _accent_ink(hex_color: str) -> str:
 
 
 def login_page() -> str:
-    title, label, button, wrong, locked, disabled, remember = _LOGIN_TEXT.get(state.language, _LOGIN_TEXT["en"])
+    title, label, button, wrong, locked, disabled, remember = _login_text(state.language)
     base = state.theme["base"]
     return f"""<!doctype html>
 <html lang="{state.language}" data-theme="{base}" style="{_login_theme_vars()}"><head><meta charset="utf-8">
@@ -366,7 +537,7 @@ def login_page() -> str:
 <form id="f" autocomplete="off">
   <h1>OpenCue · {title}</h1>
   <label for="p">{label}</label>
-  <input id="p" type="password" autofocus autocapitalize="off" autocorrect="off" autocomplete="off">
+  <input id="p" type="password" autofocus autocapitalize="off" autocorrect="off" autocomplete="new-password">
   <label class="remember"><input id="rem" type="checkbox"><span>{remember}</span></label>
   <div id="msg"></div>
   <button type="submit">{button}</button>

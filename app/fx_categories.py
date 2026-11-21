@@ -1,3 +1,5 @@
+# Copyright (C) 2026 Samuel Zenker
+# SPDX-License-Identifier: GPL-3.0-or-later
 """
 fx_categories.py
 Die Kategorien der Effekte: WAS ein Effekt steuert. Jede Kategorie nennt ihre Ausgabe-Variablen im Skript (z. B. r, g, b), deren Wertebereich und Neutralwert und

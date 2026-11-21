@@ -1,7 +1,10 @@
+# Copyright (C) 2026 Samuel Zenker
+# SPDX-License-Identifier: GPL-3.0-or-later
 """
 file_manager.py
 Schnittstelle des Dateimanagers (Dialog "Dateimanager" in der Oberflaeche): ein gemeinsamer Blick auf alle Dateiarten des Datenordners
-(Shows, Layouts, 3D-Buehnen, Effekte, Farbprofile, Scheinwerfer-Dateien), dazu Download, Upload, Import/Export als ZIP und das Export-Paket einer Show.
+(Shows, Layouts, 3D-Buehnen, 3D-Modelle, Effekte, Farbprofile, Scheinwerfer-Dateien), dazu Download, Upload, Import/Export als ZIP und das Export-Paket einer Show.
+3D-Modelle (app/sim_models.py): Upload nimmt STL und OBJ an und legt beide als binaere STL ab; Umbenennen/Duplizieren/Loeschen ueber /api/sim-models/*.
 
 Aufgaben-Teilung: Oeffnen, Umbenennen, Duplizieren und Loeschen bleiben bei den bestehenden Schnittstellen der Dateiarten (/api/layouts*, /api/sim-stage*,
 /api/showfiles*, /api/effects, /api/library/installed) - sie kennen die Besonderheiten (geladene Show, aktives Layout, aktive Buehne). Neu ist hier:
@@ -12,11 +15,11 @@ Aufgaben-Teilung: Oeffnen, Umbenennen, Duplizieren und Loeschen bleiben bei den 
                                          Inhalt = uebersprungen, gleicher Name + anderer Inhalt = Kopie unter freiem Namen "Name (2)"
   POST /api/files/import                 ZIP: Sicherung oder Export-Paket einer Show (siehe unten); gleiche Regel; die Show zeigt auf ihre Kopien
   GET  /api/files/export-show/info       was das Export-Paket der geladenen Show enthalten koennte (je Eintrag einzeln waehlbar)
-  GET  /api/files/export-show            das Export-Paket als ZIP (?fixture=<id>&effect=<name>&media=<id>&layout=<datei>&stream=<id>&stage=1, je Eintrag wiederholbar)
+  GET  /api/files/export-show            das Export-Paket als ZIP (?fixture=<id>&effect=<name>&media=<id>&layout=<datei>&stream=<id>&model=<datei>&stage=1, je Eintrag wiederholbar)
   POST /api/files/effects/rename|duplicate|favorite
   POST /api/files/effects/restore-defaults   fehlende mitgelieferte Effekte wieder anlegen (nie ueberschreiben)
 Export-Paket (ZIP): manifest.json, show.json (nur die Show selbst: Scheinwerfer, Cues, Presets, Effekt-Definitionen ...), fixtures/*.gdtf (benutzte Typen), effects/*.fx (benutzte
-Skripte), stages/<Name>.json (die aktive Buehne), media/<sha256> (die Medien der Show), layouts/*.json, streams.json (Quellen OHNE Passwoerter). In der Show selbst steht nichts
+Skripte), stages/<Name>.json (die aktive Buehne), models/<Name>.stl (die 3D-Modelle dieser Buehne), media/<sha256> (die Medien der Show), layouts/*.json, streams.json (Quellen OHNE Passwoerter). In der Show selbst steht nichts
 davon; jeder Punkt ist im Export-Dialog abwaehlbar. Beim Import wird alles geprueft wie beim Einzel-Upload; vorhandene lokale Dateien bleiben (sie gewinnen).
 Alle Download-Adressen sind gewoehnliche GET-Adressen: lokale Verbindungen brauchen keine Anmeldung, entfernte Geraete haben ihre Sitzung im Cookie.
 """
@@ -39,16 +42,21 @@ from typing import Any, Dict, List, Optional, Tuple
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse, Response
 
-from app import fixture_library, media_store, remote, sim_stages, stream_sources
+from app import fixture_library, media_store, remote, sim_models, sim_stages, stream_sources
+from app import languages
 from app import paths as _paths
+from app import show_safety
 from app.fx_script import FxScriptError, compile_script, registry, restore_default_effects, valid_script_name
 from app.state_manager import state
 from app.window_signals import file_dialog
 
 router = APIRouter()
 
-KINDS = ("shows", "layouts", "stages", "effects", "themes", "fixtures")
-EXTENSIONS = {"shows": ".json", "layouts": ".json", "stages": ".json", "effects": ".fx", "themes": ".json", "fixtures": ".gdtf"}
+KINDS = ("shows", "layouts", "stages", "models", "effects", "themes", "fixtures")          # Dateiarten mit eigenem Ordner und Endung (Sicherung, ZIP-Pakete)
+LIST_KINDS = KINDS + ("media",)                                      # im Dateimanager sichtbar: dazu die Medien der Show (Bilder, Videos, Audio; Dateien im Medien-Ordner heissen wie ihre Pruefsumme)
+EXTENSIONS = {"shows": ".json", "layouts": ".json", "stages": ".json", "models": ".stl", "effects": ".fx", "themes": ".json", "fixtures": ".gdtf"}
+MEDIA_UPLOAD_EXTENSIONS = (".mp4", ".m4v", ".mov", ".webm", ".ogg", ".ogv", ".oga", ".opus", ".wav", ".mp3", ".flac", ".aac", ".m4a", ".png", ".jpg", ".jpeg", ".gif", ".webp")
+UPLOAD_EXTENSIONS = {"models": sim_models.IMPORT_EXTENSIONS, "media": MEDIA_UPLOAD_EXTENSIONS}          # Arten, die beim Einlesen mehr als ihre eigene Endung annehmen (OBJ wird zu STL)
 MAX_UPLOAD_BYTES = 400 * 1024 * 1024         # eine Datei bzw. ein ZIP
 MAX_ZIP_UNPACKED = 2 * 1024 * 1024 * 1024    # Summe aller Eintraege eines ZIP
 MAX_ZIP_ENTRIES = 5000
@@ -83,6 +91,10 @@ def kind_dir(kind: str) -> Path:
         return _paths.LAYOUTS_DIR
     if kind == "stages":
         return sim_stages.library_dir()
+    if kind == "models":
+        return sim_models.models_dir()
+    if kind == "media":
+        return media_store.store_dir()
     if kind == "effects":
         return _paths.effects_dir()
     if kind == "themes":
@@ -93,7 +105,7 @@ def kind_dir(kind: str) -> Path:
 
 
 def _check_kind(kind: str) -> str:
-    if kind not in KINDS:
+    if kind not in LIST_KINDS:
         raise FileError("unknown_kind", "Unbekannte Dateiart", 404)
     return kind
 
@@ -101,13 +113,18 @@ def _check_kind(kind: str) -> str:
 def resolve(kind: str, file_id: str) -> Path:
     """Datei zu einer Zeilen-Id (= Dateiname); nur einfache Dateinamen mit der Endung der Art, die direkt im Ordner der Art liegen."""
     _check_kind(kind)
+    if kind == "media":                                                  # Medien liegen unter ihrer Pruefsumme (ohne Endung)
+        path = media_store.path_for(file_id)
+        if path is None or not path.is_file():
+            raise FileError("not_found", "File not found", 404)
+        return path
     if not isinstance(file_id, str) or not file_id or file_id != Path(file_id).name or file_id.startswith(".") or "\x00" in file_id:
         raise FileError("invalid_name", "Ungueltiger Dateiname", 400)
     if not file_id.lower().endswith(EXTENSIONS[kind]):
         raise FileError("invalid_name", "Falsche Dateiendung", 400)
     path = kind_dir(kind) / file_id
     if not path.is_file():
-        raise FileError("not_found", "Datei nicht gefunden", 404)
+        raise FileError("not_found", "File not found", 404)
     return path
 
 
@@ -163,6 +180,19 @@ def _same(a: Optional[str], b: Path) -> bool:
         return False
 
 
+def _media_usage() -> Dict[str, int]:
+    """Wie oft ein Medium gerade benutzt wird: Medien-Player-Panels und Bildschirme der 3D-Buehne."""
+    usage: Dict[str, int] = {}
+    for panel in state.panels:
+        media_id = (getattr(panel, "module_config", None) or {}).get("media_id") if getattr(panel, "type", "") == "media_player" else None
+        if media_id:
+            usage[media_id] = usage.get(media_id, 0) + 1
+    for obj in sim_stages.store.objects:
+        if obj.get("type") == "screen" and obj.get("media"):
+            usage[obj["media"]] = usage.get(obj["media"], 0) + 1
+    return usage
+
+
 def rows(kind: str) -> List[Dict[str, Any]]:
     _check_kind(kind)
     out: List[Dict[str, Any]] = []
@@ -173,7 +203,8 @@ def rows(kind: str) -> List[Dict[str, Any]]:
             stat = path.stat()
             active = _same(state.showfile_path, path)
             out.append({"id": path.name, "name": head.get("showfile_name", path.stem), "size": stat.st_size, "modified": int(stat.st_mtime),
-                        "detail": str(head.get("saved_at", "")).replace("T", " "), "active": active, "dirty": bool(active and state.is_dirty), "path": str(path)})
+                        "detail": str(head.get("saved_at", "")).replace("T", " "), "active": active, "dirty": bool(active and state.is_dirty), "path": str(path),
+                        "locked": show_safety.is_locked(path)})
     elif kind == "layouts":
         for path in sorted(directory.glob("*.json"), key=lambda p: p.name.lower()):
             stat = path.stat()
@@ -190,6 +221,18 @@ def rows(kind: str) -> List[Dict[str, Any]]:
             path = directory / item["filename"]
             out.append({"id": item["filename"], "name": item["name"], "size": path.stat().st_size if path.is_file() else 0, "modified": item["modified"],
                         "detail": str(item["objects"]), "active": item["filename"] == sim_stages.store.filename})
+    elif kind == "models":
+        for item in sim_models.list_models():
+            out.append({"id": item["id"], "name": item["name"], "size": item["bytes"], "modified": item["modified"], "detail": str(item["triangles"]),
+                        "dimensions": item["size"], "active": bool(item["in_use"]), "in_use": int(item["in_use"]), "ok": item["ok"], "message": item.get("message", "")})
+    elif kind == "media":
+        usage = _media_usage()
+        for media_id, meta in state.media.items():
+            path = media_store.file_path(meta)
+            present = bool(path and path.is_file())
+            out.append({"id": media_id, "name": str(meta.get("name", media_id[:8])), "size": int(meta.get("size", 0) or 0), "modified": int(path.stat().st_mtime) if present else 0,
+                        "detail": str(meta.get("kind", "video")), "kind": meta.get("kind", "video"), "mime": meta.get("mime", ""), "duration_ms": meta.get("duration_ms"),
+                        "missing": not present, "in_use": usage.get(media_id, 0), "active": bool(usage.get(media_id))})
     elif kind == "effects":
         from app import server as S
         registry.load(S._effect_sources())
@@ -239,12 +282,13 @@ async def export_info() -> JSONResponse:
 @router.get("/api/files/export-show")
 async def export_show(request: Request) -> Response:
     """Das Paket der geladenen Show. Was hinein soll, steht in wiederholten Abfrage-Parametern: fixture=<Typ-Id>, effect=<Skriptname>, media=<Id>, layout=<Dateiname>,
-    stream=<Id>, stage=1. Nicht Genanntes kommt nicht ins Paket."""
+    stream=<Id>, model=<Datei>, stage=1. Nicht Genanntes kommt nicht ins Paket."""
     q = request.query_params
     options = {"fixtures": q.getlist("fixture"), "effects": q.getlist("effect"), "media": q.getlist("media"), "layouts": q.getlist("layout"), "streams": q.getlist("stream"),
+               "models": q.getlist("model"),
                "stage": q.get("stage", "0") in ("1", "true")}
     data, name = await asyncio.to_thread(build_show_package, options)
-    return _download(data, f"{name}.zip", "application/zip")
+    return _download(data, f"{name}.ocshow", "application/zip")          # ein ZIP mit eigener Endung: Doppelklick oeffnet es in OpenCue (app/file_assoc.py)
 
 
 @router.get("/api/files/download")
@@ -258,6 +302,15 @@ async def download(request: Request) -> Response:
             data = await asyncio.to_thread(_zip_files, [(k, p) for k in kinds for p in _all_files(k)])
             return _download(data, f"opencue-sicherung-{time.strftime('%Y%m%d-%H%M')}.zip", "application/zip")
         _check_kind(kind)
+        if kind == "media":                                              # mit dem Anzeigenamen statt der Pruefsumme
+            wanted = ids or [m for m in state.media if (p := media_store.path_for(m)) is not None and p.is_file()]
+            named = [(state.media[i], resolve("media", i)) for i in wanted if i in state.media]
+            if not named:
+                raise FileError("not_found", "Nichts zum Herunterladen", 404)
+            if len(named) == 1:
+                meta, path = named[0]
+                return _download(await asyncio.to_thread(path.read_bytes), str(meta.get("name", "medium")), str(meta.get("mime", "application/octet-stream")))
+            return _download(await asyncio.to_thread(_zip_media, named), "opencue-medien.zip", "application/zip")
         files = [resolve(kind, i) for i in ids] if ids else _all_files(kind)
         if not files:
             raise FileError("not_found", "Nichts zum Herunterladen", 404)
@@ -275,6 +328,21 @@ def _all_files(kind: str) -> List[Path]:
     if not directory.is_dir():
         return []
     return [p for p in sorted(directory.glob("*" + EXTENSIONS[kind])) if p.is_file() and not p.name.startswith(".")]
+
+
+def _zip_media(named: List[Tuple[Dict[str, Any], Path]]) -> bytes:
+    buffer = io.BytesIO()
+    taken: set = set()
+    with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as archive:
+        for meta, path in named:
+            name = media_store.clean_name(str(meta.get("name", "medium")))
+            base, n = name, 2
+            while name in taken:
+                name = f"{Path(base).stem} ({n}){Path(base).suffix}"
+                n += 1
+            taken.add(name)
+            archive.write(path, f"media/{name}")
+    return buffer.getvalue()
 
 
 def _zip_files(entries: List[Tuple[str, Path]]) -> bytes:
@@ -298,7 +366,7 @@ async def open_download(request: Request) -> JSONResponse:
     Entfernte Geraete (und Tests) bekommen opened=false und laden die Adresse selbst herunter."""
     body = await request.json()
     url = str(body.get("url", ""))
-    if not (url.startswith("/api/files/download?") or url.startswith("/api/files/export-show?")):
+    if not (url.startswith("/api/files/download?") or url.startswith("/api/files/export-show?") or url.startswith("/api/transfer/get?") or url.startswith("/api/report/pdf?") or url == "/api/fixtures/export.csv"):
         return JSONResponse({"ok": False, "error": "invalid_url"}, status_code=400)
     host = request.client.host if request.client else None
     if not (remote.is_local(host) and file_dialog.available):
@@ -356,24 +424,24 @@ def import_one(kind: str, filename: str, data: bytes) -> Dict[str, Any]:
     """Prueft eine Datei der Art 'kind' und legt sie im Ordner der Art ab (Regel siehe oben). Rueckgabe: {ok, id, name, status, original}. Wirft FileError."""
     _check_kind(kind)
     if len(data) > MAX_UPLOAD_BYTES:
-        raise FileError("too_large", "Die Datei ist zu gross", 413)
+        raise FileError("too_large", "The file is too large", 413)
     stem = safe_stem(Path(filename).stem, "datei")
     if kind in ("shows", "layouts"):
         try:
             content = json.loads(data.decode("utf-8-sig"))
         except (UnicodeDecodeError, ValueError):
-            raise FileError("invalid_file", "Keine gueltige JSON-Datei", 400) from None
+            raise FileError("invalid_file", "Not a valid JSON file", 400) from None
         if not isinstance(content, dict):
-            raise FileError("invalid_file", "Keine OpenCue-Datei", 400)
+            raise FileError("invalid_file", "Not an OpenCue file", 400)
         directory = kind_dir(kind)
         if kind == "shows":
             if not (isinstance(content.get("fixtures"), dict) or isinstance(content.get("cuelists"), dict) or isinstance(content.get("cues"), list)):
-                raise FileError("invalid_file", "Das ist keine OpenCue-Show", 400)
+                raise FileError("invalid_file", "This is not an OpenCue show", 400)
             original, key, ignore = str(content.get("showfile_name") or stem), "showfile_name", ("saved_at", "showfile_name")
         else:
             panels = content.get("panels")
             if not isinstance(panels, list) or not all(isinstance(p, dict) and p.get("type") for p in panels):
-                raise FileError("invalid_file", "Das ist kein OpenCue-Layout", 400)
+                raise FileError("invalid_file", "This is not an OpenCue layout", 400)
             original, key, ignore = str(content.get("name") or stem), "name", ("name", "created_at", "is_favorite")
 
         def same(path: Path) -> bool:
@@ -392,9 +460,9 @@ def import_one(kind: str, filename: str, data: bytes) -> Dict[str, Any]:
         try:
             unit = sim_stages._read_text(data.decode("utf-8-sig"))
         except sim_stages.StageError as exc:
-            raise FileError("invalid_file", "Das ist keine OpenCue-Buehne", 400, detail=str(exc)) from None
+            raise FileError("invalid_file", "This is not an OpenCue stage", 400, detail=str(exc)) from None
         except UnicodeDecodeError:
-            raise FileError("invalid_file", "Keine gueltige Datei", 400) from None
+            raise FileError("invalid_file", "Not a valid file", 400) from None
         original = sim_stages.clean_name(unit.get("name"), stem)
         objects = sim_stages.normalize_objects(unit.get("objects"))
         digest = sim_stages.digest(objects)
@@ -410,22 +478,44 @@ def import_one(kind: str, filename: str, data: bytes) -> Dict[str, Any]:
             try:
                 filename = sim_stages.write_file(name, objects, overwrite=False)
             except sim_stages.StageError as exc:
-                raise FileError("invalid_file", "Die Buehne ist ungueltig", 400, detail=str(exc)) from None
+                raise FileError("invalid_file", "The stage is invalid", 400, detail=str(exc)) from None
         return _status(filename, name, identical, original)
     if kind == "themes":
         try:
             content = json.loads(data.decode("utf-8-sig"))
         except (UnicodeDecodeError, ValueError):
-            raise FileError("invalid_file", "Keine gueltige JSON-Datei", 400) from None
+            raise FileError("invalid_file", "Not a valid JSON file", 400) from None
         raw = content.get("theme") if isinstance(content, dict) and isinstance(content.get("theme"), dict) else content
         if not isinstance(raw, dict) or not ("tokens" in raw or "base" in raw):
-            raise FileError("invalid_file", "Das ist kein OpenCue-Farbprofil", 400)
+            raise FileError("invalid_file", "This is not an OpenCue colour profile", 400)
         name = (content.get("name") if isinstance(content, dict) else None) or stem
         try:
             result = state.import_theme_profile(str(name), raw)
         except ValueError:
             raise FileError("too_many", "Zu viele Farbprofile", 400) from None
         return {"ok": True, "id": result["file"], "name": result["name"], "status": result["status"], "original": result["original"], "replaced": False}
+    if kind == "models":
+        try:
+            return sim_models.import_bytes(filename, data)
+        except sim_models.ModelError as exc:
+            raise FileError(exc.code, exc.message, exc.status) from None
+    if kind == "media":                                                  # Bild/Video/Audio in die Medienbibliothek der Show (wie /api/media/upload; der Browser nimmt dafuer das Streaming)
+        digest = hashlib.sha256(data).hexdigest()
+        temp_path, handle = media_store.temp_file()
+        try:
+            handle.write(data)
+            handle.close()
+            try:
+                meta = media_store.ingest(temp_path, filename, len(data), digest, None)
+            except media_store.MediaError as exc:
+                raise FileError(exc.code, exc.message, exc.status) from None
+        finally:
+            if not handle.closed:
+                handle.close()
+            temp_path.unlink(missing_ok=True)
+        existed = digest in state.media
+        meta = state.add_media(meta)
+        return {"ok": True, "id": meta["id"], "name": meta["name"], "status": "identical" if existed else "created", "original": None, "replaced": False}
     if kind == "effects":
         original = filename[:-3] if filename.lower().endswith(".fx") else Path(filename).stem
         if not valid_script_name(original):
@@ -434,7 +524,7 @@ def import_one(kind: str, filename: str, data: bytes) -> Dict[str, Any]:
             text = data.decode("utf-8-sig")
             compile_script(original, text)
         except UnicodeDecodeError:
-            raise FileError("invalid_file", "Keine Textdatei", 400) from None
+            raise FileError("invalid_file", "Not a text file", 400) from None
         except FxScriptError as exc:
             raise FileError("invalid_file", f"Das Skript ist fehlerhaft: {exc.message}", 400, line=exc.line) from None
         directory = _paths.effects_dir()
@@ -465,6 +555,34 @@ def import_one(kind: str, filename: str, data: bytes) -> Dict[str, Any]:
     return {"ok": True, "id": result["id"] + ".gdtf", "name": label, "status": status, "original": original, "replaced": False}
 
 
+SHOW_FILE_EXTENSIONS = (".ocshow", ".json", ".zip")           # was sich per Doppelklick / "OpenCue.exe Datei" als Show oeffnen laesst
+
+
+def prepare_show_file(raw_path: str) -> Tuple[Path, Dict[str, Any]]:
+    """Eine Show-Datei von irgendwo (Doppelklick auf .ocshow, Startparameter) zum Laden bereitmachen: ein Paket (ZIP, .ocshow) wird eingelesen, eine einzelne Show-Datei ausserhalb
+    des Show-Ordners kopiert (nie ueberschreiben, siehe import_one). Gibt (Pfad der ladbaren Show im Show-Ordner, Ergebnis des Einlesens) zurueck."""
+    path = Path(raw_path.strip().strip('"')).expanduser()
+    if not path.is_file() or path.suffix.lower() not in SHOW_FILE_EXTENSIONS:
+        raise FileError("not_found", "The file does not exist or is not an OpenCue show", 404)
+    if path.stat().st_size > MAX_UPLOAD_BYTES * 5:
+        raise FileError("too_large", "The file is too large", 413)
+    data = path.read_bytes()
+    shows = _paths.SHOWFILES_DIR
+    if data[:2] == b"PK":                                              # Paket: Show + Dateien, die sie braucht
+        result = import_package(data)
+        if not result.get("show"):
+            raise FileError("invalid_file", "The package contains no show", 400)
+        return shows / result["show"], result
+    try:
+        if path.parent.resolve() == shows.resolve() and path.suffix.lower() == ".json":
+            json.loads(data.decode("utf-8-sig"))                       # liegt schon im Show-Ordner: direkt laden
+            return path, {"ok": True, "status": "existing"}
+    except (OSError, ValueError, UnicodeDecodeError):
+        raise FileError("invalid_file", "Not a valid show file", 400) from None
+    result = import_one("shows", safe_stem(path.stem, "show") + ".json", data)      # Kopie in den Show-Ordner (gleiche Show = nichts Neues)
+    return shows / result["id"], result
+
+
 @router.post("/api/files/import")
 async def import_zip(request: Request) -> JSONResponse:
     body = await request.body()
@@ -484,14 +602,15 @@ async def upload(kind: str, request: Request) -> JSONResponse:
     try:
         _check_kind(kind)
         if not filename:
-            raise FileError("invalid_name", "Dateiname fehlt", 400)
-        if filename.lower().endswith(".zip"):
+            raise FileError("invalid_name", "File name missing", 400)
+        if filename.lower().endswith((".zip", ".ocshow")):
             result = await asyncio.to_thread(import_package, body)
             for each in KINDS:
                 await _announce(each)
             return JSONResponse(result)
-        if not filename.lower().endswith(EXTENSIONS[kind]):
-            raise FileError("invalid_name", f"Erwartet wird eine {EXTENSIONS[kind]}-Datei", 400)
+        allowed = UPLOAD_EXTENSIONS.get(kind, (EXTENSIONS[kind],))
+        if not filename.lower().endswith(tuple(allowed)):
+            raise FileError("invalid_name", f"A {' / '.join(allowed)} file is expected", 400)
         result = await asyncio.to_thread(import_one, kind, filename, body)
     except FileError as exc:
         return exc.response()
@@ -517,13 +636,17 @@ async def _announce(kind: str) -> None:
         await S.event_bus.broadcast({"type": "layout_status_changed", "payload": {}})
     elif kind == "stages":
         await S.event_bus.broadcast({"type": "sim_stage_library_changed", "payload": {}})
+    elif kind == "models":
+        await S.event_bus.broadcast({"type": "sim_models_changed", "payload": {}})
+    elif kind == "media":
+        await S._broadcast_media_changed()
 
 
 # ------------------------------------------------------------------------------------------------ Import eines ZIP (Sicherung / Export-Paket)
 def _zip_entries(archive: zipfile.ZipFile) -> List[zipfile.ZipInfo]:
     infos = [i for i in archive.infolist() if not i.is_dir()]
     if len(infos) > MAX_ZIP_ENTRIES or sum(i.file_size for i in infos) > MAX_ZIP_UNPACKED:
-        raise FileError("too_large", "Das ZIP ist zu gross", 413)
+        raise FileError("too_large", "The ZIP is too large", 413)
     return infos
 
 
@@ -552,7 +675,7 @@ def import_package(data: bytes) -> Dict[str, Any]:
     """ZIP einlesen (Export-Paket einer Show oder Sicherung). Regel: nie ueberschreiben, nie doppelte Namen (siehe import_one): Gleiches wird uebersprungen, Abweichendes kommt als
     Kopie "Name (2)" dazu, und die Show zeigt dann auf die Kopie. Rueckgabe: {ok, imported: {art: n}, skipped: {art: n}, copies: [{kind, from, to}], errors: [..], show: Dateiname | None}."""
     if len(data) > MAX_UPLOAD_BYTES * 5:
-        raise FileError("too_large", "Das ZIP ist zu gross", 413)
+        raise FileError("too_large", "The ZIP is too large", 413)
     try:
         archive = zipfile.ZipFile(io.BytesIO(data))
     except zipfile.BadZipFile:
@@ -600,7 +723,7 @@ def import_package(data: bytes) -> Dict[str, Any]:
                     take(folder, import_one(folder, name, raw), name)
                 elif folder == "media" and media_store.ID_RE.match(name):
                     if hashlib.sha256(raw).hexdigest() != name:
-                        raise FileError("invalid_file", "Pruefsumme stimmt nicht", 400)
+                        raise FileError("invalid_file", "Checksum does not match", 400)
                     target = media_store.path_for(name)
                     if target is not None and target.is_file():
                         count(skipped, "media")
@@ -619,7 +742,7 @@ def import_package(data: bytes) -> Dict[str, Any]:
             try:
                 content = json.loads(archive.read(show_info).decode("utf-8-sig"))
                 if not isinstance(content, dict):
-                    raise FileError("invalid_file", "Keine OpenCue-Show", 400)
+                    raise FileError("invalid_file", "Not an OpenCue show", 400)
                 _remap_show(content, maps)
                 result = import_one("shows", safe_stem(content.get("showfile_name") or "Show", "show") + ".json", json.dumps(content, indent=2, ensure_ascii=False).encode("utf-8"))
                 show_file = result["id"]
@@ -627,7 +750,7 @@ def import_package(data: bytes) -> Dict[str, Any]:
             except FileError as exc:
                 errors.append({"entry": "show.json", "message": exc.message})
             except (ValueError, UnicodeDecodeError):
-                errors.append({"entry": "show.json", "message": "Keine gueltige JSON-Datei"})
+                errors.append({"entry": "show.json", "message": "Not a valid JSON file"})
     return {"ok": True, "imported": imported, "skipped": skipped, "copies": copies, "errors": errors, "show": show_file}
 
 
@@ -650,7 +773,7 @@ def _import_streams(raw: bytes) -> int:
     try:
         sources = json.loads(raw.decode("utf-8-sig")).get("sources")
     except (ValueError, AttributeError, UnicodeDecodeError):
-        raise FileError("invalid_file", "streams.json ist ungueltig", 400) from None
+        raise FileError("invalid_file", "streams.json is invalid", 400) from None
     existing = {r["id"] for r in stream_sources._load()}
     added = 0
     rows_now = stream_sources._load()
@@ -705,7 +828,21 @@ def show_package_info() -> Dict[str, Any]:
             layouts.append({"id": path.name, "name": path.stem})
     streams = [{"id": r["id"], "name": r["name"], "url": r["url"]} for r in stream_sources._load()]
     stage = {"name": sim_stages.store.name, "objects": len(sim_stages.store.objects)} if sim_stages.store.ready and sim_stages.store.objects else None
-    return {"show": state.showfile_name, "fixtures": fixtures, "effects": effects, "stage": stage, "media": media, "layouts": layouts, "streams": streams, "dirty": bool(state.is_dirty)}
+    models = []
+    for model in _used_models():
+        path = sim_models.models_dir() / model
+        info = sim_models.meta(path) if path.is_file() else {"triangles": 0}
+        models.append({"id": model, "name": Path(model).stem, "size": path.stat().st_size if path.is_file() else 0, "triangles": info.get("triangles", 0), "present": path.is_file(),
+                       "count": sum(1 for o in sim_stages.store.objects if o.get("type") == "model" and o.get("model") == model)})
+    return {"show": state.showfile_name, "fixtures": fixtures, "effects": effects, "stage": stage, "models": models, "media": media, "layouts": layouts, "streams": streams,
+            "dirty": bool(state.is_dirty)}
+
+
+def _used_models() -> List[str]:
+    """3D-Modelle, die auf der aktiven Buehne stehen (Dateinamen der Modell-Bibliothek)."""
+    if not sim_stages.store.ready:
+        return []
+    return sorted({o.get("model") for o in sim_stages.store.objects if o.get("type") == "model" and sim_models.valid_filename(o.get("model"))})
 
 
 def build_show_package(options: Dict[str, Any]) -> Tuple[bytes, str]:
@@ -713,7 +850,7 @@ def build_show_package(options: Dict[str, Any]) -> Tuple[bytes, str]:
     gewaehlten Eintraege (Typ-Ids, Skriptnamen, Medien-Ids, Layout-Dateinamen, Stream-Ids), stage = True/False. Es kommt nur hinein, was gewaehlt UND vorhanden ist
     (Scheinwerfertypen und Skripte nur, wenn die Show sie benutzt)."""
     data = state._showfile_dict()
-    want = {k: set(options.get(k) or []) for k in ("fixtures", "effects", "media", "layouts", "streams")}
+    want = {k: set(options.get(k) or []) for k in ("fixtures", "effects", "media", "layouts", "streams", "models")}
     stage_entry: Optional[Tuple[str, bytes]] = None
     if isinstance(data.get("sim_stage"), dict):
         stage_ref = data["sim_stage"]
@@ -739,6 +876,13 @@ def build_show_package(options: Dict[str, Any]) -> Tuple[bytes, str]:
         contents["effects"] = len(files)
         if stage_entry:
             archive.writestr(f"stages/{stage_entry[0]}", stage_entry[1])
+        included_models = 0
+        for model in _used_models():                                # gewaehlte 3D-Modelle der Buehne (die Buehne selbst verweist nur auf den Dateinamen)
+            path = sim_models.models_dir() / model
+            if model in want["models"] and path.is_file():
+                archive.write(path, f"models/{model}")
+                included_models += 1
+        contents["models"] = included_models
         contents["stage"] = 1 if stage_entry else 0
         included = 0
         for media_id, meta in state.media.items():
@@ -775,7 +919,7 @@ async def effect_duplicate(request: Request) -> JSONResponse:
     body = await request.json()
     try:
         source = resolve("effects", str(body.get("id", "")))
-        base = f"{source.stem} ({'Kopie' if state.language == 'de' else 'copy'})"
+        base = f"{source.stem} ({languages.tr('SRV_COPY_WORD', state.language)})"
         name = _unique_name(base, lambda n: (_paths.effects_dir() / f"{n}.fx").exists())
         if not valid_script_name(name):
             raise FileError("invalid_name", "Ungueltiger Effektname", 400)
@@ -805,7 +949,7 @@ async def effect_restore_defaults() -> JSONResponse:
     try:
         result = await asyncio.to_thread(restore_default_effects, _paths.default_effects_dir(), _paths.effects_dir())
     except OSError as exc:
-        return JSONResponse({"error": "write_failed", "message": f"Wiederherstellen fehlgeschlagen: {exc}"}, status_code=500)
+        return JSONResponse({"error": "write_failed", "message": f"Restoring failed: {exc}"}, status_code=500)
     if result["restored"]:
         await _announce("effects")
     return JSONResponse({"ok": True, **result})
@@ -827,7 +971,7 @@ async def effect_rename(request: Request) -> JSONResponse:
         if fx_engine.count_active(old_name):
             raise FileError("in_use", "Der Effekt laeuft gerade", 409, name=old_name)
         if target.exists() and not same_file:                            # nie derselbe Name zweimal
-            raise FileError("exists", "Den Namen gibt es schon", 409, name=new_name)
+            raise FileError("exists", "That name already exists", 409, name=new_name)
         if same_file:                                                   # nur Gross-/Kleinschreibung: ueber einen Zwischennamen
             temp = source.with_name(f".{source.name}.rename")
             source.rename(temp)

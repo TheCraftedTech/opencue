@@ -1,3 +1,5 @@
+// Copyright (C) 2026 Samuel Zenker
+// SPDX-License-Identifier: GPL-3.0-or-later
 /* 3D-Simulation: ANLEUCHTEN. Die im Programmer (Scheinwerfersteuerung) gewaehlten Moving Heads richten sich auf einen Punkt der Buehne aus. Ausgeloest wird es in der Scheinwerfer-
  * steuerung (Position: "Punkt in 3D-Simulation setzen", Registratur window.OCSimAim aus sim3d_boot.js); die Simulation bleibt in der Ansicht: ein Banner zeigt den Zielmodus,
  * ein Antippen einer Flaeche (Koerper oder Boden) setzt den Punkt. Fuer jeden Kopf wird Pan/Tilt aus dem echten 3D-Modell gerechnet (die Achsen des Modells werden durchprobiert: grobes Raster, dann

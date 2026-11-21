@@ -1,0 +1,91 @@
+[
+ {
+  "id": "show-safety-001",
+  "page": "show-safety",
+  "path": [
+   "Backup, blocchi e chiusura sicura"
+  ],
+  "title": "Backup, blocchi e chiusura sicura",
+  "keywords": [],
+  "text": "Hai programmato lo show prima dell'evento e ora **non salvi di proposito** mentre è in corso – niente deve essere sovrascritto per sbaglio. OpenCue ti protegge in quattro modi: **backup in background**, **ripristino** dopo un arresto anomalo, un **blocco** per gli show finiti e una **finestra di chiusura prudente**. Questa guida spiega tutti e quattro, e come segnalare un problema."
+ },
+ {
+  "id": "show-safety-002",
+  "page": "show-safety",
+  "path": [
+   "Backup, blocchi e chiusura sicura",
+   "1. Backup in background"
+  ],
+  "title": "1. Backup in background",
+  "keywords": [],
+  "text": "OpenCue scrive regolarmente lo **stato attuale del tuo show** – comprese le modifiche che *non* hai salvato – in una cartella nascosta. Non la vedi finché non ti serve. Un backup **non sostituisce mai il tuo file show**.\n\n- **Quando:** ogni **15 minuti** per impostazione predefinita, ma **solo se** lo show ha modifiche non salvate e qualcosa è cambiato dall'ultimo backup. Nulla cambiato = nulla scritto.\n- **Anche:** quando esci senza salvare, quando il salvataggio è fallito (per esempio perché lo show è bloccato), e subito prima di aprire o avviare un altro show mentre questo ha ancora modifiche non salvate.\n- **Quanti:** vengono tenuti i **10** più recenti per show, al massimo 100 in totale; quelli più vecchi vengono eliminati automaticamente.\n- **Dove:** la cartella `backups` dentro la cartella dei dati (`%LOCALAPPDATA%\\OpenCue\\backups`). Un backup è un normale file show."
+ },
+ {
+  "id": "show-safety-003",
+  "page": "show-safety",
+  "path": [
+   "Backup, blocchi e chiusura sicura",
+   "1. Backup in background",
+   "Impostazioni"
+  ],
+  "title": "Impostazioni",
+  "keywords": [],
+  "text": "**Impostazioni → Generale → Backup degli show**:\n\n| Impostazione | Significato |\n|---|---|\n| **Esegui il backup dello show in background** | Attiva o disattiva l'intera funzione (predefinito: attiva). |\n| **Ogni (minuti)** | L'intervallo, da 1 a 240 (predefinito 15). |\n| **Conserva per show** | Quanti backup di uno show vengono conservati, da 1 a 50 (predefinito 10). |\n| **Ripristina backup...** / **Apri cartella** | Apre la finestra di ripristino (sezione 2) o la cartella in Esplora risorse. |\n\nLe impostazioni valgono per l'intero programma e si possono cambiare da qualsiasi dispositivo, anche da un dispositivo remoto."
+ },
+ {
+  "id": "show-safety-004",
+  "page": "show-safety",
+  "path": [
+   "Backup, blocchi e chiusura sicura",
+   "2. Ripristinare un backup"
+  ],
+  "title": "2. Ripristinare un backup",
+  "keywords": [],
+  "text": "**File → Ripristina backup...** (o il pulsante nelle impostazioni) elenca tutti i backup, dal più recente: nome dello show, ora, motivo (automatico, alla chiusura, manuale, prima di un ripristino, salvataggio fallito) e dimensione.\n\n- **Ripristina** carica il backup come **show non salvato**. Il file show su disco resta esattamente com'è, anche se è bloccato. Poi **Salva** (o **Salva file show con nome...**) quando sei soddisfatto.\n- Lo stato che avevi prima viene prima salvato in backup – anche un ripristino non può far perdere nulla.\n- **Esegui backup ora** fa subito un backup; **Elimina** ne rimuove uno. Tutto questo funziona anche da un dispositivo remoto (*Apri cartella* vi mostra l'Esplora risorse di OpenCue).\n- Show, layout, palchi e impostazioni vengono scritti **in sicurezza**: prima in un file accanto, poi scambiati – un arresto anomalo o un'interruzione di corrente a metà del salvataggio non può distruggere il file esistente."
+ },
+ {
+  "id": "show-safety-005",
+  "page": "show-safety",
+  "path": [
+   "Backup, blocchi e chiusura sicura",
+   "2. Ripristinare un backup",
+   "Dopo un arresto anomalo"
+  ],
+  "title": "Dopo un arresto anomalo",
+  "keywords": [],
+  "text": "Se OpenCue non è stato chiuso correttamente (arresto anomalo, interruzione di corrente, processo terminato), al prossimo avvio **propone l'ultimo backup di quella sessione**: *“OpenCue non è stato chiuso correttamente … Ripristinarlo?”* – **Ripristina**, **Mostra tutti i backup** oppure **Non ora** (i backup restano disponibili in *File → Ripristina backup...*)."
+ },
+ {
+  "id": "show-safety-006",
+  "page": "show-safety",
+  "path": [
+   "Backup, blocchi e chiusura sicura",
+   "3. Bloccare uno show"
+  ],
+  "title": "3. Bloccare uno show",
+  "keywords": [],
+  "text": "Uno show finito può essere **bloccato** perché nessuno lo modifichi per sbaglio. Nel **gestore file** (*File → Gestore file...*, tipo *Show*) clicca sul **simbolo del lucchetto** nella riga dello show; clicca di nuovo per sbloccare.\n\nUno show bloccato:\n\n- è contrassegnato **Bloccato** nell'elenco e mostra un piccolo **lucchetto** accanto al nome dello show nella barra in alto finché è caricato,\n- **non può essere sovrascritto, rinominato né eliminato** – il salvataggio mostra *“Non salvato: … è bloccato”*,\n- può ancora essere **caricato**, **duplicato** (la copia non è bloccata) e salvato con **un altro nome** con *Salva file show con nome...*.\n\nIl blocco protegge dalle distrazioni, non dalla copia: il file stesso può ancora essere modificato con qualsiasi altro programma."
+ },
+ {
+  "id": "show-safety-007",
+  "page": "show-safety",
+  "path": [
+   "Backup, blocchi e chiusura sicura",
+   "4. Chiudere in sicurezza"
+  ],
+  "title": "4. Chiudere in sicurezza",
+  "keywords": [],
+  "text": "**File → Esci** (o il pulsante di chiusura) chiede: **Salva ed esci**, **Esci senza salvare** oppure **Annulla**.\n\nSe lo show **non può essere salvato** ma ha modifiche – è bloccato, il file è protetto da scrittura, la cartella non è scrivibile o l'ultimo salvataggio è fallito – la finestra cambia:\n\n- Un **riquadro arancione** in alto dice *“Questo show non può essere salvato”* e indica i motivi. Dice anche se viene conservata una copia di backup delle tue modifiche.\n- **Salva come copia ed esci...** sostituisce *Salva ed esci*: scegli un nuovo nome, lo show viene salvato lì, poi OpenCue si chiude.\n- **Esci senza salvare** richiede **due clic**: il primo rende il pulsante rosso (*“Clicca di nuovo: esci e perdi le modifiche”*), solo il secondo esce.\n\nAnche allora alla chiusura viene scritto un backup delle tue modifiche (se i backup sono attivi), così *File → Ripristina backup...* può ancora riportarle indietro."
+ },
+ {
+  "id": "show-safety-008",
+  "page": "show-safety",
+  "path": [
+   "Backup, blocchi e chiusura sicura",
+   "5. Segnalare un problema"
+  ],
+  "title": "5. Segnalare un problema",
+  "keywords": [],
+  "text": "- **Aiuto → Apri cartella dei registri** apre la cartella con `opencue.log`.\n- **Aiuto → Segnala un problema...** copia la **diagnostica** (versione, sistema, le ultime righe del registro – senza token di accesso né password) negli appunti e apre la pagina di segnalazione del progetto nel browser. Descrivi cosa hai fatto, incolla la diagnostica.\n- Gli errori dell'interfaccia utente vengono scritti nel registro come **OC-3601**; un backup che non è stato possibile scrivere come **OC-3701** (vedi la guida *Codici di errore*)."
+ }
+]

@@ -1,5 +1,7 @@
 #NAME Focus Sweep
-#DESCRIPTION Der Fokus fährt gleichmäßig zwischen low und high hin und her.
+#DESCRIPTION en The focus sweeps back and forth between low and high.
+#DESCRIPTION de Der Fokus fährt zwischen low und high hin und her.
+#TAGS basic, sweep
 #CATEGORY focus
 #RATE 40
 #VAR speed Slider 1 0.05 8 0.05

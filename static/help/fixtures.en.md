@@ -35,8 +35,9 @@ GDTF Share (gdtf-share.com) is the official, free collection of GDTF files from 
 
 1. Open the tab **Online (GDTF Share)**.
 2. **Sign in** with your GDTF Share account. A free account is required to download; there is a *Create a free account* link in the dialog. Your password is kept in memory for this session only – unless you tick *Stay signed in*, which stores it **encrypted on this computer**.
-3. Search, sort (name, newest, best rated), filter by verified / rating, and click **Install**.
-4. The card then shows *Installed*. If a newer revision appears later, an **Update** button is offered.
+3. Search, sort (name, newest, best rated), filter by **manufacturer files** / rating. Each card shows whether the file was uploaded **by the manufacturer** or **by a user**, how many modes it has (with channel counts) and how large it is.
+4. Click **Details** to **look at a fixture before installing it**: the file is only loaded temporarily (not installed) and opens in the same detail view as installed types – with all channels, wheels and the 3D model. **Install** and **Back to search** are at the top. Or click **Install** right away.
+5. The card then shows *Installed*. If a newer revision appears later, an **Update** button is offered.
 
 This is the only place where OpenCue uses the internet for fixtures; everything else works offline. OpenCue does not ship GDTF files from GDTF Share, because their terms do not allow redistribution – you download them yourself.
 
@@ -72,12 +73,21 @@ The dialog warns you if the last fixture would end beyond channel **512** of a u
 
 Each fixture gets a stable **FID** (fixture number) used by the command line (`Fixture 1 Thru 5`).
 
+### Many fixtures at once: a list from CSV or Excel
+
+The *Add fixtures* dialog has **Advanced import ...** at the bottom (also in the menu **Library → Import fixture list**). With it you create a whole rig from a table:
+
+1. **Choose file ...** - a `.csv` or Excel file (`.xlsx`). The **first row** holds the column titles. Only the **type** is needed; *name*, *mode*, *universe*, *address*, *number* (FID) and *count* are optional. **Download the current patch as CSV** gives you a template.
+2. OpenCue **guesses the columns** (titles like *Name*, *Type*, *Device*, *Universe*, *Address*, *Count* ...); you can change every assignment. An address may also be `2.045` or `2/45` (universe 2, address 45). If the address is missing it continues behind the previous device of the same universe.
+3. The **preview** shows every row - red with the reason when something is wrong (type unknown or ambiguous, mode unknown, does not fit the universe, number already used). **Type when the cell is empty** and **Universe when missing** fill gaps.
+4. **Import** creates the fixtures. With problems, tick **Skip rows with problems** first. Nothing is created before that.
+
 ### The fixture list and the Fixtures tab
 
 Two places show your fixtures:
 
 - The **Fixture List** panel is the patch table: one row per fixture with FID, name, type, universe, address and channel count, plus the **Add Fixtures** button.
-- The **Fixtures** tab of the **Fixture Control** panel shows the same fixtures as a grid of tiles (like dot2) for quick selecting.
+- The **Fixtures** tab of the **Fixture Control** panel shows the same fixtures as a grid of tiles (like on a lighting console) for quick selecting.
 
 | Action | How |
 |---|---|
@@ -111,11 +121,11 @@ Groups are purely organisational: sorting and selecting several fixtures with on
 
 ## 5. Controlling fixtures: the Fixture Control panel
 
-Select fixtures, then use the **Fixture Control** panel (called “Programmer” in dot2 terms). A panel can show everything (a sidebar with all categories) or one category only (*Panel Properties → View*).
+Select fixtures, then use the **Fixture Control** panel (often called “Programmer” on consoles). A panel can show everything (a sidebar with all categories) or one category only (*Panel Properties → View*).
 
 | Category | Controls |
 |---|---|
-| **Fixtures** | The tile grid for selecting |
+| **Fixtures** | The tile grid for selecting; switch **List / Layout** (see below) |
 | **Dimmer** | Fader and quick buttons |
 | **Position** | Switch **Coarse / Fine**. *Coarse*: pan/tilt faders, **Center / Home / Flip**, number fields in degrees. *Fine*: the fine channels (16-bit) as number fields; swipe a number field up or down to change it finely. Fixtures without fine channels act as 8-bit. |
 | **Color** | **Fader** (HSV, CMY or RGB) or **Color Picker** (colour wheel) |
@@ -129,9 +139,28 @@ Every channel the GDTF file describes gets a control, so you can reach even unus
 
 ### What the colour of the controls tells you
 
-The controls always show what is currently being output (the same values as the DMX monitor) – also while a cue or effect runs. A thin coloured line next to a fixture or a category tab appears **only after you operated that category by hand**: those are your *programmer values* that are not yet stored. They disappear after *Store Cue* or *Clear*.
+The controls always show what is currently being output (the same values as the DMX monitor) – also while a cue or effect runs. A thin coloured line next to a fixture or a category tab shows what **changed compared with the active cue** – operated by hand or by a *Clear* that made everything dark. *Store Cue* always stores the change compared with the cue that would play before it (also when inserting with `2.5`). After storing, the new cue is the active one and the lines disappear. With several cue lists the active cue of the most recently used list counts.
 
 ---
+
+### Fixtures: list or layout
+
+At the top of the **Fixtures** tab you switch between two views (like *Colour* between Fader / Picker / Wheel):
+
+- **List:** the tiles ordered by groups and numbers.
+- **Layout:** every fixture is a **square tile** on a grid. Arrange the fixtures the way they hang on stage and hit them faster. The tiles show the same as in the list (number, brightness, colour and beam preview).
+
+In the layout:
+
+- **Select** like in the list: click or a **swipe** (lasso) across the empty area.
+- **Unlimited area:** it goes on in **every direction** (also left and up; positions may be negative). Move the view with the mouse wheel / scroll bars / swiping, **drag with the middle button**, or move to the edge while dragging a tile. **Ctrl + mouse wheel** zooms.
+- **Show all:** the button at the top right zooms and centres so that **all fixtures** are in the middle.
+- **Views (areas):** *Save view…* (right-click) stores the current centre and zoom under a name, for example "Stage left". A button appears at the top; a click jumps there, right-click on the button: overwrite, rename, delete. With many fixtures you do not have to keep everything in view at once.
+- **Right-click** (touch: long press) on the free area or on a tile opens the menu: *Build mode*, *Show all*, *Save view…*, *Grid* (whole, half or quarter tile), *Tiles may overlap*, *Reset zoom*, *Rearrange all fixtures…*.
+- **Build mode:** dragging moves a tile; with several selected they move together. Tiles snap to the grid; without *Overlap* they never cover each other, with *Overlap* you can put them into each other (the last moved lies on top) and stagger them closely with the fine grid (1/4). The empty area still selects by swipe. **Done** or **Esc** ends build mode.
+- **Stored in the show:** the positions, the grid resolution, *Overlap* and the saved views. **On your device** (not in the show): the zoom, the last shown centre and the last used sub-view.
+
+**Remembered views:** wherever a panel switches between views, your device remembers the last one and restores it next time: in Fixture Control (List / Layout, Fader / Picker / Wheel, Strobe / Gobo / Prism, Coarse / Fine), in *Variables and Effects* (variables or effects, type filter, sorting), in the *Effect Studio* (preview on / off), in the *3D Simulation* (View / Build / Fixtures) and in the effect picker (category and tags such as *Basic*).
 
 ## 6. Variables and effects (presets)
 
@@ -143,6 +172,9 @@ The panel **Variables / Effects** holds reusable values: a colour “Warm White�
 
 - A showfile stores the fixtures **with** their type, mode, address and group, plus the cues, effects, variables and presets.
 - The GDTF files are **not** inside the show – but when you **export a show** (file manager → export), the GDTF files and effect scripts the show uses are packed into the ZIP, so you can open the show on another computer without installing anything. On import, a local file of the same name is never replaced.
+- **Print / PDF** (File menu): documentation of the show for technicians - **patch list**, **DMX channel map** (which fixture occupies which channels of each universe, overlaps in red), **groups**, **plan (top view)** of the fixtures (from the 3D stage, otherwise from the layout view) and **cue lists**. The dialog shows a **preview** of the PDF next to the choices (it follows every change of the choices and the paper size; on small screens the preview is left out). Long names are **wrapped** in the tables and in the plan (an unbroken very long name is split). In the plan every fixture carries its number, and a list under the plan tells which number is which fixture; names of stage objects stand inside their shape. *Save as PDF* downloads the file, *Open to print* shows it in the PDF viewer (print there with Ctrl+P).
+- **Show file `.ocshow`:** *File → Export show* writes an `.ocshow` file (a ZIP with the show and its files). A **double-click** opens it in OpenCue (the installer sets this up; for the unpacked version use *Settings → General → Open .ocshow files with OpenCue*). If OpenCue is already running it takes the file over and asks first about unsaved changes. **File → Open Recent** lists the latest shows.
+- **3D stage as JSON:** in the 3D panel (*Build* or *Fixtures* mode) switch the side bar from **Tools** to **JSON** (toggle below the Save button; the *Edit as JSON* button at the very end of the tools does the same). The tools (add bodies, list, properties) are replaced by the text of the stage (room, objects, fixture positions; metres, degrees, Z up; fixtures by their number); stage name, undo and **Save** stay the same, **Tools** brings the normal view back. **The width of the side bar can be changed:** drag its left edge (double-click = standard width); the width is remembered as a share of the panel (at most three quarters), so it stays proportional in full screen. Changes are checked and **applied live** (a syntax error names the line and changes nothing); what you move in the 3D view shows up in the text. *Save* saves the stage, *Close JSON* brings the side bar back. The same text is available as a dialog under *Library → Edit 3D stage as JSON* (with *Check* and *Apply*).
 - If a show uses a fixture type whose file is missing, OpenCue uses a built-in substitute so the show still works; the tab *In this show* shows this as *Built-in substitute* or *File missing*.
 
 ---

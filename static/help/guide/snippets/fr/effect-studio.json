@@ -1,0 +1,486 @@
+[
+ {
+  "id": "effect-studio-001",
+  "page": "effect-studio",
+  "path": [
+   "Atelier d'effets – Guide"
+  ],
+  "title": "Atelier d'effets – Guide",
+  "keywords": [],
+  "text": "Un **effet** est un petit programme qui modifie la lumière au fil du temps : un gradateur qui pulse, une couleur qui parcourt l'arc-en-ciel, un projecteur asservi qui décrit un cercle. Vous écrivez les effets dans l'**Atelier d'effets** (panneau *Atelier d'effets*) dans un langage qui ressemble à du C++ ou à Arduino : avec des variables, `if`, `for`, `while` et vos propres fonctions. Pas besoin d'être programmeur – les modèles sous **Nouveau...** fonctionnent tout de suite et sont faits pour être lus et modifiés.\n\nCe guide est aussi disponible dans l'atelier avec le bouton **Aide**."
+ },
+ {
+  "id": "effect-studio-002",
+  "page": "effect-studio",
+  "path": [
+   "Atelier d'effets – Guide",
+   "1. L'idée en une minute"
+  ],
+  "title": "1. L'idée en une minute",
+  "keywords": [],
+  "text": "- Un **script** est un fichier texte (`.fx`). Il décrit ce qui se passe en **un seul passage**. Ce passage s'appelle `loop()` et s'exécute **`#RATE` fois par seconde** (1 à 40, par défaut 40).\n- À chaque passage, le script calcule de nouvelles **valeurs de sortie** : `dimmer`, ou `r`/`g`/`b`, ou `pan`/`tilt`. Lesquelles, c'est la **catégorie** (`#CATEGORY`) qui le décide.\n- Entre deux passages, la **sortie reste où elle est**. À 10 passages par seconde, la valeur change donc dix fois par seconde – exprès, c'est ainsi qu'on construit des effets par paliers.\n- Le script s'exécute **pour chaque projecteur séparément**. Chacun connaît son numéro (`index`) et le total (`count`) ; utilisez-les pour répartir des vagues et des chenillards sur plusieurs projecteurs.\n- Les variables que vous créez en dehors de `loop()` **gardent leur valeur d'un passage à l'autre** : compteurs, états, minuteries.\n\n```\n#NAME Sine\n#CATEGORY dimmer\n#RATE 40\n#VAR speed Slider 1 0.05 8 0.05\n\nloop() {\n  dimmer = 50 + 50 * sin(2 * PI * speed * elapsed);\n}\n```\n\nC'est un effet complet : le gradateur oscille entre 0 et 100 % avec `speed` vagues par seconde."
+ },
+ {
+  "id": "effect-studio-003",
+  "page": "effect-studio",
+  "path": [
+   "Atelier d'effets – Guide",
+   "2. Aperçu des commandes (aide-mémoire)"
+  ],
+  "title": "2. Aperçu des commandes (aide-mémoire)",
+  "keywords": [],
+  "text": "Toutes les commandes en un coup d'œil. Les chapitres suivants les expliquent avec des exemples."
+ },
+ {
+  "id": "effect-studio-004",
+  "page": "effect-studio",
+  "path": [
+   "Atelier d'effets – Guide",
+   "2. Aperçu des commandes (aide-mémoire)"
+  ],
+  "title": "2. Aperçu des commandes (aide-mémoire) (2)",
+  "keywords": [],
+  "text": "| Domaine | Commandes |\n|---|---|\n| Lignes d'en-tête | `#NAME`, `#DESCRIPTION`, `#CATEGORY dimmer` / `color` / `position`, `#RATE 1` à `40`, `#VAR name Slider` / `NumberInput` / `ColorPicker` / `Internal ...` |\n| Structure | `setup() { }` (une fois au début), `loop() { }` (`#RATE` fois par seconde) |\n| Types | `float` (`double`), `int` (`long`, `short`, `byte`), `bool` (`boolean`), `void`, `const` |\n| Affectation | `x = 1;`, `x += 1;` (aussi `-=` `*=` `/=` `%=`), `x++;`, `x--;` |\n| Branchement | `if (...) { } else if (...) { } else { }`, `condition ? a : b` |\n| Boucles | `for (int i = 0; i < n; i++) { }`, `while (...) { }`, `do { } while (...);`, `break;`, `continue;` |\n| Fonctions | `float name(float x) { return x * 2; }`, `void name() { }`, `return value;` |\n| Calcul | `+ - * / %`, `== != < <= > >=`, `&& \\|\\| !` |\n| Commentaires | `// jusqu'à la fin de la ligne`, `/* sur plusieurs lignes */` |\n| Sorties | Gradateur : `dimmer` · Couleur : `r`, `g`, `b` ou `hsv(h, s, v);` · Position : `pan`, `tilt` · Zoom : `zoom` · Focus : `focus` · Gobo : `gobo`, `gobo_spin`, `gobo2`, `gobo2_spin` |\n| Temps | `t` (temps système partagé), `elapsed` (depuis le début de l'effet), `dt`, `tick` (`loop_count`), `rate` |\n| Projecteurs | `index`, `count`, `phase` (= `index / count`), `slots`, `slots2` (nombre de gobos sur la roue 1 et la roue 2) |\n| Constantes | `PI`, `TWO_PI`, `HALF_PI`, `E`, `true`, `false` |\n| Maths | `sin` `cos` `tan` `asin` `acos` `atan` `atan2` `sqrt` `pow` `exp` `log` `abs` `sign` `min` `max` `floor` `ceil` `round` `fract` `mod` |\n| Utilitaires | `constrain(x, lo, hi)` `map(x, inMin, inMax, outMin, outMax)` `lerp(a, b, k)` `smoothstep(e0, e1, x)` `radians(d)` `degrees(r)` |\n| Formes d'onde | `saw(x)` `tri(x)` `square(x)` `square(x, duty)` – chacune de 0 à 1 par période |\n| Aléatoire, couleur, gobo | `random()` `random(max)` `random(min, max)` · `hsv(h, s, v)` · `slot(n)` `slot(n, wheel)` |"
+ },
+ {
+  "id": "effect-studio-005",
+  "page": "effect-studio",
+  "path": [
+   "Atelier d'effets – Guide",
+   "3. Utiliser l'atelier"
+  ],
+  "title": "3. Utiliser l'atelier",
+  "keywords": [],
+  "text": "| Zone | Ce qu'elle fait |\n|---|---|\n| **Ouvrir...** | Boîte de dialogue avec tous les effets, **favoris en premier** (recherche, catégorie, boucles par seconde, origine ; les effets fournis portent l'insigne **Par défaut**). La liste défile. Cliquez sur une ligne pour l'ouvrir, l'**étoile** fait d'un effet un favori (valable pour tous les appareils), la corbeille le supprime du dossier utilisateur. En bas : **Restaurer les effets par défaut**. |\n| **Nouveau...** | Boîte de dialogue : d'abord la **catégorie** (gradateur, couleur, position, zoom, focus, gobo) ou **Fichier vide**, puis un **modèle** (*Vide* est présélectionné), puis les **boucles par seconde**. *Fichier vide* crée un éditeur entièrement vide sans lignes d'en-tête. **Créer** charge le résultat dans l'éditeur – rien n'est enregistré tant que vous ne le dites pas. |\n| **Enregistrer** | Enregistre dans le fichier de l'effet. Un nouvel effet demande un nom de fichier. Un point à côté du nom indique des modifications non enregistrées. Clavier : **Ctrl+S** dans le texte (enregistre l'effet, pas le show). |\n| **Enregistrer sous...** | Un nouveau nom de fichier. S'il existe déjà, l'atelier demande s'il faut l'écraser. |\n| **Supprimer** | Supprime l'effet chargé (dossier utilisateur seulement ; on vous demande d'abord). Ensuite l'éditeur est vide. Si le bouton est gris, une indication dit pourquoi (pas encore enregistré, ou pas dans le dossier utilisateur). |\n| **Aide** | Ouvre ce guide. L'aide-mémoire (chapitre 2) liste toutes les commandes. |\n| **Aperçu** | Affiche ou masque l'aperçu à droite. |\n| **Barre d'état** | Vert = tout va bien. Rouge = erreur avec numéro de ligne. À droite : ligne et colonne du curseur. |"
+ },
+ {
+  "id": "effect-studio-006",
+  "page": "effect-studio",
+  "path": [
+   "Atelier d'effets – Guide",
+   "3. Utiliser l'atelier"
+  ],
+  "title": "3. Utiliser l'atelier (2)",
+  "keywords": [],
+  "text": "L'éditeur **colorie** les mots-clés, types, nombres, commentaires, fonctions, variables système, sorties et vos curseurs (`#VAR`). **Entrée** conserve l'indentation de la ligne (deux espaces de plus après `{`), **Tab** insère deux espaces."
+ },
+ {
+  "id": "effect-studio-007",
+  "page": "effect-studio",
+  "path": [
+   "Atelier d'effets – Guide",
+   "3. Utiliser l'atelier",
+   "L'aperçu"
+  ],
+  "title": "L'aperçu",
+  "keywords": [],
+  "text": "L'aperçu exécute votre script **sans aucun projecteur** pendant que vous tapez – exactement avec les boucles par seconde choisies par `#RATE` – et dessine le résultat :\n\n- **Gradateur :** une courbe par projecteur, de 0 à 100 %.\n- **Couleur :** R/V/B en courbes et une **bande de couleur** par projecteur en dessous.\n- **Position :** pan et tilt en courbes et le **tracé** dans le champ pan/tilt.\n\nPar défaut : **1 projecteur, 2 secondes**. En haut, vous réglez le nombre de projecteurs (1 à 16) et la durée (1 à 20 s) ; plusieurs projecteurs montrent comment `index`, `count` et `phase` décalent les vagues. En dessous se trouvent des **curseurs pour vos paramètres `#VAR`** – faites-en glisser un et la courbe suit aussitôt. À une cadence basse (jusqu'à 20 boucles par seconde), l'aperçu dessine des paliers, jusqu'à 10 en plus les points individuels.\n\nSi le script contient une erreur, l'aperçu reste sur le **dernier bon état, estompé**, la ligne d'erreur est marquée en rouge et la barre d'état nomme la ligne et le message."
+ },
+ {
+  "id": "effect-studio-008",
+  "page": "effect-studio",
+  "path": [
+   "Atelier d'effets – Guide",
+   "4. Votre premier effet"
+  ],
+  "title": "4. Votre premier effet",
+  "keywords": [],
+  "text": "1. **Nouveau...** → catégorie **Gradateur** → modèle **Sine** → **Créer**.\n2. L'aperçu montre deux vagues en deux secondes (`speed` vaut 1).\n3. Passez `speed` à 2 : deux fois plus vite. Réglez 3 projecteurs dans l'aperçu et passez `spread` à 0,33 : les vagues sont décalées les unes par rapport aux autres.\n4. Changez `0.5 + 0.5 * sin(...)` dans le texte et observez la courbe.\n5. **Enregistrer** (Ctrl+S), saisissez un nom de fichier. L'effet apparaît maintenant dans la liste d'effets du programmeur."
+ },
+ {
+  "id": "effect-studio-009",
+  "page": "effect-studio",
+  "path": [
+   "Atelier d'effets – Guide",
+   "5. Structure d'un script"
+  ],
+  "title": "5. Structure d'un script",
+  "keywords": [],
+  "text": "Un script comporte trois parties :\n\n```\n#NAME My effect                            // 1. Header lines (start with #)\n#CATEGORY dimmer\n#RATE 25\n#VAR speed Slider 1 0.1 8 0.1\n\nfloat level = 0;                           // 2. Variables and functions (optional)\n\nsetup() {                                  //    setup(): once when the effect starts (optional)\n  level = 50;\n}\n\nloop() {                                   // 3. loop(): required, runs #RATE times per second\n  dimmer = level;\n}\n```"
+ },
+ {
+  "id": "effect-studio-010",
+  "page": "effect-studio",
+  "path": [
+   "Atelier d'effets – Guide",
+   "5. Structure d'un script",
+   "Lignes d'en-tête"
+  ],
+  "title": "Lignes d'en-tête",
+  "keywords": [],
+  "text": "| Ligne | Signification |\n|---|---|\n| `#NAME text` | Nom affiché dans le programme. Sans elle, le nom du fichier est utilisé. |\n| `#CATEGORY dimmer` / `color` / `position` | **Obligatoire.** Ce que l'effet pilote. |\n| `#RATE n` | Combien de fois `loop()` s'exécute par seconde : un nombre entier de **1 à 40**. Par défaut 40 – la cadence de la sortie DMX. |\n| `#DESCRIPTION text` | Une courte description (aussi `#DESCRIPTION en ...` et `#DESCRIPTION de ...` pour un texte par langue ; le programme affiche celui de la langue de l'interface). |\n| `#INFO name en Label \\| Hint` | Donne au curseur `name` une **étiquette** et une **info-bulle** dans une langue (`en` ou `de`), par exemple `#INFO speed de Tempo \\| Wie schnell der Effekt läuft`. Sans `#INFO`, le programme utilise son glossaire intégré des noms usuels (`speed`, `size`, `low`, `high`, `strobe` ...) et enfin le nom de la variable elle-même. |\n| `#TAGS a, b, c` | Mots-clés pour chercher et filtrer dans la boîte de dialogue du type d'effet (par exemple `strobe, flash, toggle` ; jusqu'à 8, en minuscules). Un script qui lit des variables audio reçoit automatiquement l'étiquette `audio` – vous ne l'écrivez pas. Les effets fournis portent `basic` (pour débutants, 19 d'entre eux) ou `advanced` (tous les autres) comme première étiquette ; la boîte de dialogue les affiche comme « Basique » / « Avancé » – utilisez-les aussi pour vos propres effets. |\n| `#VAR ...` | Un **curseur** (voir la section 9) ou une variable interne. |"
+ },
+ {
+  "id": "effect-studio-011",
+  "page": "effect-studio",
+  "path": [
+   "Atelier d'effets – Guide",
+   "6. Temps et cadence"
+  ],
+  "title": "6. Temps et cadence",
+  "keywords": [],
+  "text": "**La règle la plus importante :** `loop()` s'exécute exactement `#RATE` fois par seconde – quelle que soit la vitesse de l'ordinateur. Vous pouvez donc **penser en secondes exactes**.\n\n| Nom | Signification |\n|---|---|\n| `elapsed` | **Secondes depuis le début de l'effet** sur ce projecteur. Commence à 0. Exactement `tick / rate`. C'est ainsi que vous programmez « à la seconde 3, ceci doit se produire ». |\n| `t` | Temps système partagé en secondes. Le même pour **tous** les effets – les effets qui calculent avec `t` restent **synchronisés** entre eux même s'ils ont été démarrés à des moments différents. |\n| `tick` | Numéro du passage, commence à 0. |\n| `rate` | Passages par seconde (la valeur de `#RATE`). |\n| `dt` | Temps entre deux passages en secondes (`1 / rate`). |\n\nQuelle cadence choisir ?\n\n- **40** (par défaut) : les courbes les plus fluides – pour les vagues, cercles, fondus enchaînés.\n- **10 à 25** : suffisant pour les changements de couleur et les effets qui sont de toute façon par paliers.\n- **1 à 5** : effets par pas (un pas par seconde, chenillards « clic-clic »), peu coûteux à calculer.\n\n**La convention « speed » :** les effets fournis et tous les modèles ont un curseur `speed` avec la valeur par défaut **1** : c'est **une période par seconde**. `sin(2 * PI * speed * elapsed)` est une vague par seconde avec `speed = 1`."
+ },
+ {
+  "id": "effect-studio-012",
+  "page": "effect-studio",
+  "path": [
+   "Atelier d'effets – Guide",
+   "6. Temps et cadence",
+   "À la seconde X ..."
+  ],
+  "title": "À la seconde X ...",
+  "keywords": [],
+  "text": "```\n#NAME Sequence\n#CATEGORY dimmer\n#RATE 20\n#VAR length Slider 8 2 30 1       // length of the sequence in seconds\n\nloop() {\n  float s = elapsed % length;     // time within the sequence; jumps back to 0 after \"length\" seconds\n  if (s < 2) {\n    dimmer = map(s, 0, 2, 0, 100);                 // seconds 0 to 2: fade in\n  } else if (s < 5) {\n    dimmer = 100;                                  // seconds 2 to 5: full\n  } else {\n    dimmer = 100 * (1 - (s - 5) / (length - 5));   // then fade out\n  }\n}\n```"
+ },
+ {
+  "id": "effect-studio-013",
+  "page": "effect-studio",
+  "path": [
+   "Atelier d'effets – Guide",
+   "7. Le langage"
+  ],
+  "title": "7. Le langage",
+  "keywords": [],
+  "text": "Tout est un **nombre**. Les types sont `float` (décimal, aussi `double`), `int` (entier, aussi `long`, `short`, `byte`) et `bool` (0 ou 1, aussi `boolean`). `true` et `false` valent 1 et 0."
+ },
+ {
+  "id": "effect-studio-014",
+  "page": "effect-studio",
+  "path": [
+   "Atelier d'effets – Guide",
+   "7. Le langage",
+   "Variables"
+  ],
+  "title": "Variables",
+  "keywords": [],
+  "text": "```\nfloat x = 1.5;          // decimal number (dot, not comma)\nint n = 3;              // whole number: assigning truncates (7.9 becomes 7)\nbool on = true;         // 0 or 1: any value other than 0 becomes 1\nconst float K = 0.25;   // constant, cannot be changed\nfloat a = 1, b2 = 2;    // several in one line\n```\n\n- Les variables créées **en dehors** des fonctions sont **globales** et **gardent leur valeur** d'un passage à l'autre. Leur valeur initiale s'applique au démarrage de l'effet (pour les réinitialiser plus tard, écrivez `setup()`).\n- Les variables créées **à l'intérieur** de `{ }` sont **locales** : elles durent jusqu'à l'accolade fermante et repartent à neuf à chaque passage.\n- Affecter une variable **non déclarée** (`counter = counter + 1;`) crée automatiquement un `float` global – c'est ainsi que fonctionnaient les anciens scripts. Mieux vaut la déclarer.\n- Les noms `t`, `elapsed`, `dt`, `tick`, `rate`, `index`, `count`, `phase`, `dimmer`, `r`, `g`, `b`, `pan`, `tilt`, `PI` ainsi que tous les mots-clés et noms de fonctions sont pris."
+ },
+ {
+  "id": "effect-studio-015",
+  "page": "effect-studio",
+  "path": [
+   "Atelier d'effets – Guide",
+   "7. Le langage",
+   "Calculer et comparer"
+  ],
+  "title": "Calculer et comparer",
+  "keywords": [],
+  "text": "| Symbole | Signification |\n|---|---|\n| `+ - * /` | Arithmétique de base. La division par 0 donne 0. |\n| `%` | Reste (aussi pour les décimaux) : `5.5 % 2` vaut 1,5. |\n| `== != < <= > >=` | Comparaisons ; résultat 1 (vrai) ou 0 (faux). |\n| `&& \\|\\| !` | Et, ou, non. Les conditions sont vraies quand elles ne valent pas 0. |\n| `condition ? a : b` | Choix : `a` si la condition est vraie, sinon `b`. |\n| `= += -= *= /= %=` | Affectation ; `x += 2;` équivaut à `x = x + 2;`. |\n| `x++;` `x--;` | Augmenter / diminuer de 1. |"
+ },
+ {
+  "id": "effect-studio-016",
+  "page": "effect-studio",
+  "path": [
+   "Atelier d'effets – Guide",
+   "7. Le langage",
+   "Branchement et répétition"
+  ],
+  "title": "Branchement et répétition",
+  "keywords": [],
+  "text": "```\nif (x > 10) {                 // if ...\n  dimmer = 100;\n} else if (x > 5) {           // else if ...\n  dimmer = 50;\n} else {                      // else\n  dimmer = 0;\n}\n\nfor (int i = 0; i < 5; i++) { // count i from 0 to 4\n  total += i;\n}\n\nwhile (n > 0) { n--; }        // as long as n is greater than 0\n\ndo { n++; } while (n < 3);    // run at least once\n\nbreak;                        // leave the loop at once\ncontinue;                     // jump to the next loop pass\n```\n\nLes accolades `{ }` sont facultatives pour une seule instruction (`if (a) b = 1;`), mais plus claires avec. Il n'y a pas de `switch` – utilisez `if` / `else if`."
+ },
+ {
+  "id": "effect-studio-017",
+  "page": "effect-studio",
+  "path": [
+   "Atelier d'effets – Guide",
+   "7. Le langage",
+   "Vos propres fonctions"
+  ],
+  "title": "Vos propres fonctions",
+  "keywords": [],
+  "text": "```\nfloat wave(float x) {                     // return type, name, parameters\n  return 0.5 + 0.5 * sin(2 * PI * x);     // return hands the value back\n}\n\nvoid setBright(float v) {                 // void: returns nothing\n  dimmer = v;\n}\n\nloop() {\n  setBright(100 * wave(speed * elapsed));\n}\n```\n\nLes fonctions peuvent se trouver avant ou après l'endroit où elles sont appelées, et peuvent s'appeler elles-mêmes (récursivité, limitée). Les paramètres sont locaux ; les variables globales et les sorties (`dimmer` ...) sont accessibles partout."
+ },
+ {
+  "id": "effect-studio-018",
+  "page": "effect-studio",
+  "path": [
+   "Atelier d'effets – Guide",
+   "7. Le langage",
+   "Commentaires"
+  ],
+  "title": "Commentaires",
+  "keywords": [],
+  "text": "```\n// rest of the line is a comment\n/* several\n   lines */\n```"
+ },
+ {
+  "id": "effect-studio-019",
+  "page": "effect-studio",
+  "path": [
+   "Atelier d'effets – Guide",
+   "7. Le langage",
+   "Limites"
+  ],
+  "title": "Limites",
+  "keywords": [],
+  "text": "- Un passage peut faire au plus **60 000 itérations de boucle et appels de fonction** ; une boucle infinie s'arrête avec le message « endless loop? ».\n- Un effet qui **provoque une erreur ou a besoin de plus de 50 ms par passage** est désactivé (« mis au repos ») pour ne pas retarder les autres. Enregistrez de nouveau le script et il tourne de nouveau.\n- Il n'y a que des nombres : pas de texte, de listes (tableaux) ni de pointeurs."
+ },
+ {
+  "id": "effect-studio-020",
+  "page": "effect-studio",
+  "path": [
+   "Atelier d'effets – Guide",
+   "8. Sorties par catégorie"
+  ],
+  "title": "8. Sorties par catégorie",
+  "keywords": [],
+  "text": "Le script écrit son résultat dans des variables adaptées à la catégorie :\n\n| `#CATEGORY` | Sorties | Plage |\n|---|---|---|\n| `dimmer` | `dimmer` | 0 à 100 (%) |\n| `color` | `r`, `g`, `b` | 0 à 255 |\n| `position` | `pan`, `tilt` | 0 à 100 (%), 50 est le centre. Si le projecteur a des canaux fins (16 bits), les décimales sont utilisées : `pan = 33.3333;` est plus précis que `pan = 33;` |\n| `zoom` | `zoom` | 0 à 100 (%) – les extrémités du canal de zoom (large/étroit, selon le projecteur) |\n| `focus` | `focus` | 0 à 100 (%) – les extrémités du canal de focus (près/loin) |\n| `gobo` | `gobo` | 0 à 100 (%) – la position du canal de gobo de la roue 1 ; choisissez les gobos de préférence avec `slot(n)` (voir plus bas) |\n| `gobo` | `gobo_spin` | 0 à 100 (%) – rotation ou secousse de la roue 1 (la plage fixe le sens et la vitesse, selon le projecteur) |\n| `gobo` | `gobo2` | 0 à 100 (%) – roue de gobos 2 (projecteurs avec une seconde roue seulement), choisissez les gobos avec `slot(n, 2)` |\n| `gobo` | `gobo2_spin` | 0 à 100 (%) – rotation de la roue 2 |"
+ },
+ {
+  "id": "effect-studio-021",
+  "page": "effect-studio",
+  "path": [
+   "Atelier d'effets – Guide",
+   "8. Sorties par catégorie"
+  ],
+  "title": "8. Sorties par catégorie (2)",
+  "keywords": [],
+  "text": "Les valeurs hors plage sont ramenées dans la plage. **Un effet ne pilote que les sorties que son script affecte quelque part** (`hsv()` compte comme `r`, `g`, `b` ; pour la couleur toujours les trois). Si un script n'écrit que `pan`, `tilt` est laissé tranquille : le canal ne suit pas l'effet, et dans le programmeur seul le fader Pan est verrouillé – vous pouvez continuer à régler Tilt à la main. Si une sortie n'est pas atteinte pendant un passage (p. ex. l'affectation est dans un `if`), elle vaut 0 pour ce passage (`pan`/`tilt` : centre, 50). Si le projecteur n'a pas le canal, la sortie est ignorée sans bruit. Les sorties d'une autre catégorie sont ignorées. Avec `hsv(h, s, v);`, vous réglez `r`, `g`, `b` à partir de la teinte, de la saturation et de la valeur (chacune de 0 à 1) en une seule étape.\n\nRemarque : les sorties ne s'appliquent qu'au **passage en cours** – pour mémoriser une valeur, créez votre propre variable (`float level = 0;` ... `dimmer = level;`)."
+ },
+ {
+  "id": "effect-studio-022",
+  "page": "effect-studio",
+  "path": [
+   "Atelier d'effets – Guide",
+   "9. Curseurs : #VAR"
+  ],
+  "title": "9. Curseurs : #VAR",
+  "keywords": [],
+  "text": "```\n#VAR <name> <type> <default> [min max step]\n```\n\n| Type | Valeur par défaut | Commande |\n|---|---|---|\n| `Slider` | nombre, plus `min max step` | curseur |\n| `NumberInput` | nombre, plus `min max step` | champ numérique |\n| `ColorPicker` | couleur hexadécimale, p. ex. `#ff8800` | sélecteur de couleur ; dans le script sous la forme `name_r`, `name_g`, `name_b` (0 à 255) |\n| `Internal` | nombre | pas de commande – une variable globale avec une valeur initiale (comme `float name = 0;`) |\n\n```\n#VAR speed Slider 1 0.05 8 0.05          // periods per second\n#VAR size Slider 100 0 100 1             // strength in %\n#VAR color ColorPicker #00aaff           // color_r, color_g, color_b\n```\n\nLes curseurs apparaissent dans la boîte de dialogue **Créer / Modifier un effet** et dans l'aperçu de l'atelier. Dans le script, ils sont en **lecture seule**."
+ },
+ {
+  "id": "effect-studio-023",
+  "page": "effect-studio",
+  "path": [
+   "Atelier d'effets – Guide",
+   "10. Variables système"
+  ],
+  "title": "10. Variables système",
+  "keywords": [],
+  "text": "| Nom | Signification |\n|---|---|\n| `t` | Temps système partagé en secondes (garde les effets synchronisés). |\n| `elapsed` | Secondes depuis le début de cet effet sur ce projecteur. |\n| `dt` | Secondes entre deux passages (`1 / rate`). |\n| `tick` | Numéro du passage (0, 1, 2 ...). Aussi `loop_count`. |\n| `rate` | Passages par seconde. |\n| `index` | Numéro de ce projecteur dans l'ordre de sélection du programmeur (0, 1, 2 ...). |\n| `count` | Nombre de projecteurs sur lesquels l'effet tourne. |\n| `phase` | `index / count` : décalage régulier sur la sélection (0 à presque 1). |\n| `slots` | Nombre de gobos fixes sur la roue 1 (seulement dans la catégorie `gobo`, sinon 0). L'aperçu utilise 8 gobos. |\n| `slots2` | Pareil pour la roue 2 (0 si le projecteur n'a qu'une roue). |\n\nL'ordre de sélection est l'ordre dans lequel vous avez choisi les projecteurs."
+ },
+ {
+  "id": "effect-studio-024",
+  "page": "effect-studio",
+  "path": [
+   "Atelier d'effets – Guide",
+   "10. Variables système",
+   "Variables audio (a...)"
+  ],
+  "title": "Variables audio (a...)",
+  "keywords": [],
+  "text": "Les effets peuvent réagir à la musique. Le panneau **Audio** analyse le son (voir le guide *Audio*) ; ces variables contiennent le résultat. Toutes commencent par `a_`, elles n'entrent donc jamais en conflit avec vos propres noms. Sans source audio en cours, elles valent toutes `0`. Un script qui en lit une est un **effet audio** (signalé dans la liste et dans l'atelier ; l'aperçu fait alors tourner un battement d'exemple à 120 BPM)."
+ },
+ {
+  "id": "effect-studio-025",
+  "page": "effect-studio",
+  "path": [
+   "Atelier d'effets – Guide",
+   "10. Variables système",
+   "Variables audio (a...)"
+  ],
+  "title": "Variables audio (a...) (2)",
+  "keywords": [],
+  "text": "| Nom | Signification |\n|---|---|\n| `a_active` | `1` tant que du son arrive, sinon `0`. |\n| `a_level` | Volume global de 0 à 1 (relatif aux parties les plus fortes des dernières secondes). |\n| `a_bass`, `a_mid`, `a_high` | Basses (jusqu'à 150 Hz), médiums (150 Hz à 2,5 kHz) et aigus (au-dessus de 2,5 kHz), de 0 à 1. |\n| `a_b1` ... `a_b8` | Les huit bandes une par une (20-60, 60-150, 150-400, 400-1k, 1k-2,5k, 2,5k-5k, 5k-10k, 10k-20k Hz), de 0 à 1. |\n| `a_kick`, `a_snare`, `a_hat` | Coups de grosse caisse, de caisse claire (ou clap) et de charleston : saute à 0,45 - 1 à chaque coup et s'estompe en 0,15 s environ (charleston 0,07 s). |\n| `a_beat` | Le même genre d'impulsion à chaque temps du tempo détecté. |\n| `a_beat_phase` | Position dans le temps, de 0 à 1, croissant régulièrement d'un temps au suivant : idéal pour des vagues synchrones avec le tempo. |\n| `a_beat_count` | Numéro du temps ; augmente de 1 à chaque temps. |\n| `a_bpm` | Tempo détecté (ou réglé) en battements par minute ; `0` tant qu'il est inconnu. |\n| `a_conf` | Fiabilité de la détection du tempo, de 0 à 1. |\n\n```\n#CATEGORY dimmer\n#RATE 40\nloop() {\n  dimmer = lerp(5, 100, a_kick);                              // flash on every bass drum\n}\n```"
+ },
+ {
+  "id": "effect-studio-026",
+  "page": "effect-studio",
+  "path": [
+   "Atelier d'effets – Guide",
+   "10. Variables système",
+   "Variables audio (a...)"
+  ],
+  "title": "Variables audio (a...) (3)",
+  "keywords": [],
+  "text": "Astuce : un passage ne voit que l'état à son propre instant. Lire une impulsion (`a_kick`) est toujours sûr parce qu'elle s'estompe ; pour réagir à l'*instant* d'un coup, mémorisez la dernière valeur dans une variable globale et comparez (voir l'effet *Audio : Hi-Hat Sparkle*). Utilisez `#RATE 40` pour les effets audio afin qu'ils restent nerveux."
+ },
+ {
+  "id": "effect-studio-027",
+  "page": "effect-studio",
+  "path": [
+   "Atelier d'effets – Guide",
+   "11. Fonctions"
+  ],
+  "title": "11. Fonctions",
+  "keywords": [],
+  "text": "| Fonction | Signification |\n|---|---|\n| `sin(x)`, `cos(x)`, `tan(x)` | Angle en radians (tour complet = `2 * PI`). |\n| `asin(x)`, `acos(x)`, `atan(x)`, `atan2(y, x)` | Fonctions inverses. |\n| `sqrt(x)`, `pow(x, y)`, `exp(x)`, `log(x)` | Racine, puissance, fonction exponentielle, logarithme népérien. Une entrée invalide donne 0. |\n| `abs(x)`, `sign(x)` | Valeur absolue ; signe (-1, 0, 1). |\n| `min(a, b)`, `max(a, b)` | Valeur la plus petite / la plus grande. |\n| `floor(x)`, `ceil(x)`, `round(x)` | Arrondir vers le bas, vers le haut, arrondir. |\n| `fract(x)` | Partie fractionnaire : `fract(2.25)` vaut 0,25. Utile pour « position dans la période ». |\n| `mod(a, b)` | Reste jamais négatif (contrairement à `%` pour les nombres négatifs). |\n| `constrain(x, low, high)` | Limite `x` à la plage. |\n| `map(x, inMin, inMax, outMin, outMax)` | Convertit `x` d'une plage à une autre (comme dans Arduino). |\n| `lerp(a, b, k)` | Linéaire de `a` à `b` : `a + (b - a) * k`. |\n| `smoothstep(e0, e1, x)` | Transition douce de 0 à 1 entre `e0` et `e1`. |\n| `saw(x)`, `tri(x)`, `square(x)`, `square(x, duty)` | Formes d'onde de 0 à 1 par période de `x` : dent de scie, triangle, carré (`duty` = part « allumée », par défaut 0,5). |\n| `radians(d)`, `degrees(r)` | Degrés ↔ radians. |\n| `random()`, `random(max)`, `random(min, max)` | Nombre aléatoire (0 à 1, 0 à `max`, `min` à `max`). Chaque projecteur a sa propre séquence **reproductible**. |\n| `hsv(h, s, v)` | Règle `r`, `g`, `b` à partir de la teinte `h` (0 à 1, cyclique), de la saturation `s` et de la valeur `v` (0 à 1). |\n| `slot(n)` | La valeur (en %) du n-ième gobo de la roue 1 ; `slot(0)` est le premier (généralement ouvert). Seulement dans la catégorie `gobo` ; la liste vient du fichier du projecteur, sans données `slot()` renvoie 0. |\n| `slot(n, wheel)` | Comme `slot(n)`, mais pour la roue `wheel` (1 ou 2) : `gobo2 = slot(3, 2);` |"
+ },
+ {
+  "id": "effect-studio-028",
+  "page": "effect-studio",
+  "path": [
+   "Atelier d'effets – Guide",
+   "11. Fonctions"
+  ],
+  "title": "11. Fonctions (2)",
+  "keywords": [],
+  "text": "Constantes : `PI`, `TWO_PI`, `HALF_PI`, `E`, `true`, `false`."
+ },
+ {
+  "id": "effect-studio-029",
+  "page": "effect-studio",
+  "path": [
+   "Atelier d'effets – Guide",
+   "12. Exemples",
+   "Pulse (gradateur)"
+  ],
+  "title": "Pulse (gradateur)",
+  "keywords": [],
+  "text": "Allumé et éteint net ; `duty` est la part de la période pendant laquelle la lumière est allumée.\n\n```\n#NAME Pulse\n#CATEGORY dimmer\n#RATE 40\n#VAR speed Slider 1 0.05 8 0.05\n#VAR duty Slider 0.25 0.05 1 0.05\n#VAR spread Slider 0 0 1 0.05\n\nloop() {\n  float p = fract(speed * elapsed + index * spread);\n  dimmer = p < duty ? 100 : 0;\n}\n```"
+ },
+ {
+  "id": "effect-studio-030",
+  "page": "effect-studio",
+  "path": [
+   "Atelier d'effets – Guide",
+   "12. Exemples",
+   "Chase (gradateur)"
+  ],
+  "title": "Chase (gradateur)",
+  "keywords": [],
+  "text": "Une lumière parcourt tous les projecteurs sélectionnés.\n\n```\n#NAME Chase\n#CATEGORY dimmer\n#RATE 40\n#VAR speed Slider 1 0.1 8 0.1\n#VAR width Slider 1 0.5 8 0.5\n\nloop() {\n  float pos = fract(speed * elapsed) * count;   // current step (decimal)\n  float d = abs(index - pos);\n  if (d > count / 2) d = count - d;             // distance on the circle\n  dimmer = d < width ? 100 : 0;\n}\n```"
+ },
+ {
+  "id": "effect-studio-031",
+  "page": "effect-studio",
+  "path": [
+   "Atelier d'effets – Guide",
+   "12. Exemples",
+   "Couleur aléatoire (couleur)"
+  ],
+  "title": "Couleur aléatoire (couleur)",
+  "keywords": [],
+  "text": "Change `speed` fois par seconde vers une teinte aléatoire. La variable globale `hue` s'en souvient.\n\n```\n#NAME Random color\n#CATEGORY color\n#RATE 40\n#VAR speed Slider 1 0.1 8 0.1\n\nfloat hue = 0;\n\nloop() {\n  if (tick % max(1, round(rate / speed)) == 0) {\n    hue = random();\n  }\n  hsv(hue, 1, 1);\n}\n```"
+ },
+ {
+  "id": "effect-studio-032",
+  "page": "effect-studio",
+  "path": [
+   "Atelier d'effets – Guide",
+   "12. Exemples",
+   "Quatre positions (position, machine à états)"
+  ],
+  "title": "Quatre positions (position, machine à états)",
+  "keywords": [],
+  "text": "La tête saute au coin suivant parmi quatre toutes les `interval` secondes. L'état est dans `step`.\n\n```\n#NAME Four positions\n#CATEGORY position\n#RATE 10\n#VAR interval Slider 1 0.2 10 0.1\n\nint step = 0;\nfloat start = 0;\n\nloop() {\n  if (elapsed - start >= interval) {\n    step = (step + 1) % 4;\n    start = elapsed;\n  }\n  pan = (step == 0 || step == 3) ? 20 : 80;\n  tilt = (step < 2) ? 20 : 80;\n}\n```"
+ },
+ {
+  "id": "effect-studio-033",
+  "page": "effect-studio",
+  "path": [
+   "Atelier d'effets – Guide",
+   "12. Exemples",
+   "Harmoniques (gradateur, boucle)"
+  ],
+  "title": "Harmoniques (gradateur, boucle)",
+  "keywords": [],
+  "text": "Additionne plusieurs vagues avec une boucle `for` (plus l'harmonique est haute, plus elle est faible).\n\n```\n#NAME Harmonics\n#CATEGORY dimmer\n#RATE 40\n#VAR speed Slider 1 0.1 4 0.1\n#VAR harmonics Slider 3 1 8 1\n\nloop() {\n  float sum = 0;\n  float norm = 0;\n  for (int k = 1; k <= harmonics; k++) {\n    sum += sin(2 * PI * k * speed * elapsed) / k;\n    norm += 1.0 / k;\n  }\n  dimmer = 50 + 50 * sum / norm;\n}\n```"
+ },
+ {
+  "id": "effect-studio-034",
+  "page": "effect-studio",
+  "path": [
+   "Atelier d'effets – Guide",
+   "12. Exemples",
+   "Zoom qui respire (zoom)"
+  ],
+  "title": "Zoom qui respire (zoom)",
+  "keywords": [],
+  "text": "Le zoom oscille entre `low` et `high` (0 et 100 sont les extrémités du canal de zoom).\n\n```\n#NAME Zoom breathing\n#CATEGORY zoom\n#RATE 40\n#VAR speed Slider 1 0.05 8 0.05\n#VAR low Slider 20 0 100 1\n#VAR high Slider 80 0 100 1\n\nloop() {\n  float k = 0.5 + 0.5 * sin(2 * PI * speed * elapsed);\n  zoom = lerp(low, high, k);\n}\n```"
+ },
+ {
+  "id": "effect-studio-035",
+  "page": "effect-studio",
+  "path": [
+   "Atelier d'effets – Guide",
+   "12. Exemples",
+   "Changement de gobo (gobo)"
+  ],
+  "title": "Changement de gobo (gobo)",
+  "keywords": [],
+  "text": "Parcourt tour à tour les gobos du projecteur. `slots` est leur nombre, `slot(n)` la valeur du n-ième (0 = le premier, généralement ouvert). Chaque projecteur a des gobos différents – l'effet interroge donc le projecteur au lieu de deviner des pourcentages.\n\n```\n#NAME Gobo change\n#CATEGORY gobo\n#RATE 20\n#VAR speed Slider 0.5 0.05 8 0.05\n#VAR first Slider 0 0 20 1\n\nloop() {\n  float n = max(1, slots - first);\n  gobo = slot(first + mod(floor(speed * elapsed), n));\n}\n```"
+ },
+ {
+  "id": "effect-studio-036",
+  "page": "effect-studio",
+  "path": [
+   "Atelier d'effets – Guide",
+   "12. Exemples",
+   "Gobo avec rotation et seconde roue (gobo)"
+  ],
+  "title": "Gobo avec rotation et seconde roue (gobo)",
+  "keywords": [],
+  "text": "Les sorties `gobo`, `gobo_spin`, `gobo2` et `gobo2_spin` peuvent être utilisées séparément. Cet exemple parcourt la roue 1, laisse la roue 2 suivre avec un décalage et fait tourner le gobo choisi :\n\n```\n#NAME Two wheels\n#CATEGORY gobo\n#RATE 20\n#VAR speed Slider 0.5 0.05 8 0.05\n\nloop() {\n  float n  = max(1, slots);\n  float n2 = max(1, slots2);\n  gobo  = slot(mod(floor(speed * elapsed), n));\n  gobo2 = slot(mod(floor(speed * elapsed) + 1, n2), 2);\n  gobo_spin = 70;                    // rotation of wheel 1 (set only if wanted)\n}\n```"
+ },
+ {
+  "id": "effect-studio-037",
+  "page": "effect-studio",
+  "path": [
+   "Atelier d'effets – Guide",
+   "12. Exemples",
+   "Coureur bicolore (couleur)"
+  ],
+  "title": "Coureur bicolore (couleur)",
+  "keywords": [],
+  "text": "Tous les projecteurs montrent la couleur A, un ou deux parcourent la rangée en couleur B (ordre de sélection). `direction` fixe le sens – c'est le *Color Runner* fourni en version courte :\n\n```\n#NAME Color runner\n#CATEGORY color\n#RATE 40\n#VAR speed Slider 0.5 0.05 4 0.05\n#VAR width Slider 1.5 0.5 8 0.5\n#VAR direction Slider 1 0 1 1\n#VAR color_a ColorPicker #ffcc00\n#VAR color_b ColorPicker #ff0000\n\nloop() {\n  float run = fract(speed * t);\n  if (direction < 0.5) run = 1 - run;\n  float d = abs(index - run * count);\n  if (d > count / 2) d = count - d;\n  float k = d < width ? 1 : 0;\n  r = lerp(color_a_r, color_b_r, k);\n  g = lerp(color_a_g, color_b_g, k);\n  b = lerp(color_a_b, color_b_b, k);\n}\n```"
+ },
+ {
+  "id": "effect-studio-038",
+  "page": "effect-studio",
+  "path": [
+   "Atelier d'effets – Guide",
+   "12. Exemples",
+   "Votre propre fonction (gradateur)"
+  ],
+  "title": "Votre propre fonction (gradateur)",
+  "keywords": [],
+  "text": "```\n#NAME Triangle with function\n#CATEGORY dimmer\n#RATE 40\n#VAR speed Slider 1 0.1 8 0.1\n\nfloat triangle(float x) {\n  return 1 - abs(2 * fract(x) - 1);\n}\n\nloop() {\n  dimmer = 100 * triangle(speed * elapsed + phase);\n}\n```"
+ },
+ {
+  "id": "effect-studio-039",
+  "page": "effect-studio",
+  "path": [
+   "Atelier d'effets – Guide",
+   "13. Erreurs et vérification"
+  ],
+  "title": "13. Erreurs et vérification",
+  "keywords": [],
+  "text": "L'atelier vérifie pendant que vous tapez. Messages typiques (toujours avec un numéro de ligne) :\n\n| Message | Cause |\n|---|---|\n| `Unbekannte Variable 'x'` | Nom jamais déclaré ni affecté (faute de frappe ?). |\n| `Unbekannte Funktion 'foo()'` | La fonction n'existe pas. |\n| `sin() erwartet 1 Argument(e)` | Mauvais nombre d'arguments. |\n| `';' erwartet, gefunden '}'` | Il manque un point-virgule (le message pointe souvent la ligne suivante). |\n| `Ausdruck erwartet, gefunden ';'` | Il manque une valeur, p. ex. `dimmer = 1 +;`. |\n| `'speed' ist ein Regler (#VAR) ...` | Les curseurs sont en lecture seule ; créez votre propre variable. |\n| `'b' ist eine Ausgabe des Effekts ...` | `dimmer`, `r`, `g`, `b`, `pan`, `tilt` et les noms système sont pris. |\n| `'break' ist nur in einer Schleife erlaubt` | `break` / `continue` en dehors de `for` / `while`. |\n| `#RATE erwartet eine ganze Zahl von 1 bis 40` | Cadence invalide. |\n| `#CATEGORY fehlt` | L'en-tête n'a pas de catégorie. |\n| `loop() erwartet` | Le script n'a pas de fonction `loop()`. |\n| `Zu viele Schritte in einem Durchlauf ... Endlosschleife?` | Une boucle ne se termine jamais (erreur d'exécution, apparaît dans l'aperçu). |\n\n(Les messages sont affichés en allemand quelle que soit la langue de l'interface.)"
+ },
+ {
+  "id": "effect-studio-040",
+  "page": "effect-studio",
+  "path": [
+   "Atelier d'effets – Guide",
+   "13. Erreurs et vérification"
+  ],
+  "title": "13. Erreurs et vérification (2)",
+  "keywords": [],
+  "text": "**Enregistrer** enregistre aussi les scripts avec erreurs pour que vous puissiez continuer à travailler. Un script défectueux n'est pas exécuté ; les effets en cours gardent la **dernière bonne version**.\n\nSi un script est enregistré pendant que des effets tournent, ils prennent le nouveau code au passage suivant. Leur **mémoire** (variables globales, compteurs, état) est conservée ; les variables nouvellement ajoutées démarrent avec leur valeur initiale."
+ },
+ {
+  "id": "effect-studio-041",
+  "page": "effect-studio",
+  "path": [
+   "Atelier d'effets – Guide",
+   "14. Comment les effets fonctionnent dans le programme"
+  ],
+  "title": "14. Comment les effets fonctionnent dans le programme",
+  "keywords": [],
+  "text": "- **Script et effet :** le script (`.fx`) est le fichier. Un **effet** (dans la liste d'effets du programmeur) est une **définition** : un nom, un script et des valeurs pour ses curseurs. Plusieurs effets peuvent utiliser le même script avec des valeurs de curseurs différentes. Quand vous en créez un, la boîte de dialogue montre la description du script et ses boucles par seconde.\n- **Application :** dans le programmeur, vous assignez un effet par **catégorie** (gradateur, couleur, position, zoom, focus, gobo) aux projecteurs sélectionnés : la ligne **Variable:/Effet** dans la vue du programmeur correspondante (focus et zoom dans la vue focus, gobo dans l'onglet gobo de la zone faisceau ; pendant qu'un effet tourne, le fader correspondant est verrouillé). L'ordre de sélection détermine `index` et donc la répartition sur les projecteurs. Un effet ne pilote que les canaux de sa catégorie.\n- **Dans les cues :** un cue enregistre les assignations d'effets (avec l'ordre de sélection) et les démarre à la lecture ; les durées d'**entrée en fondu** et de **sortie en fondu de l'effet** du cue enchaînent l'amplitude depuis / vers la valeur précédente. Si un cue fixe une valeur pour une catégorie, l'effet en cours s'arrête là et le cue fait un fondu depuis la dernière sortie de l'effet.\n- **Synchronisation :** les effets qui utilisent `t` (ou `phase`/`index` avec `t`) tournent en phase entre eux. Avec `elapsed`, chaque effet repart du début quand il démarre – juste pour des séquences « à partir de maintenant ».\n- **État :** chaque effet a sa **propre mémoire** par projecteur et catégorie. Elle repart à neuf quand l'effet est de nouveau assigné.\n- **Fichiers :** les scripts se trouvent dans le dossier `effects/` du dossier de données. L'atelier, le **gestionnaire de fichiers** (genre *Effets* : renommer, dupliquer, télécharger, téléverser) et l'**export** du show (les scripts utilisés vont dans le paquet) travaillent avec les mêmes fichiers. Les effets fournis sont copiés au premier démarrage ; **Restaurer les effets par défaut** (dans la boîte de dialogue Ouvrir ou le gestionnaire de fichiers) recrée ceux qui manquent et n'écrase **jamais** rien.\n- **Le show enregistre les définitions** (nom, nom du script, valeurs des curseurs), pas le texte du script. Si le script manque, les définitions perdent leur effet et refonctionnent à son retour ; un cue avec un effet manquant laisse le canal inchangé."
+ },
+ {
+  "id": "effect-studio-042",
+  "page": "effect-studio",
+  "path": [
+   "Atelier d'effets – Guide",
+   "14. Comment les effets fonctionnent dans le programme",
+   "Limites actuelles"
+  ],
+  "title": "Limites actuelles",
+  "keywords": [],
+  "text": "- Il y a six catégories (gradateur, couleur, position, zoom, focus, gobo). D'autres (prisme, stroboscope, valeurs DMX brutes) sont préparées mais pas encore intégrées.\n- Le zoom et le focus utilisent le canal propre du projecteur et celui-ci doit exister ; les gobos dépendent du fichier du projecteur. L'aperçu ne montre que les valeurs des gobos, pas l'image.\n- Un effet pilote une catégorie par projecteur ; deux catégories à la fois demandent deux effets.\n- La cadence est au plus de 40 par seconde car la sortie DMX n'envoie pas plus vite."
+ }
+]

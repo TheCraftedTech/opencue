@@ -1,0 +1,185 @@
+[
+ {
+  "id": "error-codes-001",
+  "page": "error-codes",
+  "path": [
+   "Foutcodes en probleemoplossing"
+  ],
+  "title": "Foutcodes en probleemoplossing",
+  "keywords": [],
+  "text": "Als er iets misgaat, verdwijnt OpenCue niet zomaar: het toont een klein **foutvenster** met een korte uitleg en een **foutcode** zoals `OC-1002`. Dezelfde code wordt in het **logbestand** geschreven. Deze pagina legt elke code uit: wat hij betekent en hoe u het oplost.\n\nKunt u een probleem niet oplossen, kopieer dan de details (zie paragraaf 1) en stuur ze mee met uw vraag – de code vertelt ons meteen waar we moeten zoeken."
+ },
+ {
+  "id": "error-codes-002",
+  "page": "error-codes",
+  "path": [
+   "Foutcodes en probleemoplossing",
+   "1. Het foutvenster"
+  ],
+  "title": "1. Het foutvenster",
+  "keywords": [],
+  "text": "Het venster heeft een kop, een korte uitleg, de **FOUTCODE**, soms een vak met technische details en deze knoppen:\n\n| Knop | Wat hij doet |\n|---|---|\n| **Details kopiëren** | Zet alles wat nodig is voor een foutrapport op het klembord: foutcode, OpenCue-versie, Windows- en Python-versie, de fouttekst en de **laatste 40 regels van het logboek**. Plak het in een e-mail, een GitHub-issue of een chat met een assistent. (Sneltoets: **Ctrl+C**) |\n| **Logmap openen** | Opent de map met de logbestanden in Verkenner. |\n| **Logbestand openen** | Opent het huidige logboek (`opencue.log`) in uw teksteditor. |\n| **Sluiten** | Sluit het venster (ook **Esc** of de **×**). Heeft de fout OpenCue gestopt, dan eindigt het programma nadat u het venster hebt gesloten. |\n\nU kunt het venster verplaatsen aan de titelbalk. Het foutvenster verschijnt in de taal van OpenCue (in het Engels als die niet kan worden bepaald); de tekst die met *Details kopiëren* wordt gekopieerd is altijd Engels, zodat een rapport door iedereen kan worden gelezen."
+ },
+ {
+  "id": "error-codes-003",
+  "page": "error-codes",
+  "path": [
+   "Foutcodes en probleemoplossing",
+   "2. Waar de logbestanden staan"
+  ],
+  "title": "2. Waar de logbestanden staan",
+  "keywords": [],
+  "text": "Elke start van OpenCue schrijft een logboek:\n\n| Bestand | Inhoud |\n|---|---|\n| `opencue.log` | De **huidige** start: alles wat OpenCue meldt – berichten, waarschuwingen, fouten met hun codes en crashsporen. |\n| `opencue.previous.log` | Het logboek van de **vorige** start. Na een crash en een herstart staat de oorzaak er nog in. |\n\nZe staan in de map `logs` in de gegevensmap van OpenCue – normaal `%LOCALAPPDATA%\\OpenCue\\logs` (typ dit in de adresbalk van Verkenner). Het foutvenster opent haar voor u.\n\n**Zoeken in het logboek:** codes worden geschreven als `OC-1234`. Zoek op `OC-` om ze allemaal te vinden, of op `OC-3` voor de kleine problemen van één functie (paragraaf 5)."
+ },
+ {
+  "id": "error-codes-004",
+  "page": "error-codes",
+  "path": [
+   "Foutcodes en probleemoplossing",
+   "3. Startproblemen (OC-1xxx)"
+  ],
+  "title": "3. Startproblemen (OC-1xxx)",
+  "keywords": [],
+  "text": "OpenCue controleert deze dingen **voordat** er iets anders start. Het venster vertelt wat er mis is; OpenCue sluit daarna."
+ },
+ {
+  "id": "error-codes-005",
+  "page": "error-codes",
+  "path": [
+   "Foutcodes en probleemoplossing",
+   "3. Startproblemen (OC-1xxx)",
+   "OC-1001 – OpenCue draait al"
+  ],
+  "title": "OC-1001 – OpenCue draait al",
+  "keywords": [],
+  "text": "**Betekenis:** Per gegevensmap kan er maar één OpenCue tegelijk draaien. Een tweede zou vechten om dezelfde instellingen, poort en DMX-uitgang.\n\n**Wat er gebeurt:** Het venster van de draaiende OpenCue wordt naar voren gehaald en dit venster verschijnt. (Is de draaiende OpenCue een **server zonder venster**, zie dan de handleiding *Startopties en servermodus*: er verschijnt geen fout, uw browser opent in plaats daarvan op de draaiende console.)\n\n**Wat te doen:**\n- Gebruik het venster dat naar voren is gekomen. Ziet u het niet, kijk dan op uw **andere schermen** en in de **taakbalk**.\n- Net OpenCue gesloten en toch deze melding? Het kan een paar seconden nodig hebben om af te sluiten. Wacht even en start opnieuw.\n- Helemaal niets zichtbaar? Open **Taakbeheer**, zoek `OpenCue` (of `python`/`pythonw` bij starten vanuit de broncode) en beëindig het achtergebleven proces.\n- Geavanceerd: voor een tweede, aparte OpenCue (bijvoorbeeld om te testen) zet u de omgevingsvariabele `OPENCUE_DATA_DIR` op een andere map **en** geeft u hem een andere poort in zijn `app_config.json` (zie OC-1002)."
+ },
+ {
+  "id": "error-codes-006",
+  "page": "error-codes",
+  "path": [
+   "Foutcodes en probleemoplossing",
+   "3. Startproblemen (OC-1xxx)",
+   "OC-1002 – Netwerkpoort is al in gebruik"
+  ],
+  "title": "OC-1002 – Netwerkpoort is al in gebruik",
+  "keywords": [],
+  "text": "**Betekenis:** OpenCue heeft een kleine ingebouwde server waarmee zijn venster praat. Daarvoor is een vrije netwerkpoort nodig (standaard **8000**). Een ander programma gebruikt die poort. Zonder deze controle zou het OpenCue-venster de pagina van het *andere* programma tonen.\n\n**Wat te doen:**\n1. Sluit het andere programma. Veelvoorkomende oorzaken: een andere webserver of ontwikkeltool, of een achtergebleven OpenCue-proces (zie OC-1001, Taakbeheer).\n2. Om te achterhalen wie de poort gebruikt, opent u een opdrachtprompt en typt u `netstat -ano | findstr :8000` (met uw poortnummer). De laatste kolom is de proces-ID; zoek die op in Taakbeheer (tabblad *Details*).\n3. Of laat OpenCue een andere poort gebruiken: sluit OpenCue, open het in het venster genoemde instellingenbestand (normaal `%LOCALAPPDATA%\\OpenCue\\config\\app_config.json`) in een teksteditor en wijzig `\"server_port\": 8000` in een vrij getal tussen **1024 en 65535**, bijvoorbeeld `8010`. Ontbreekt de regel, voeg haar dan toe. Sla op en start OpenCue opnieuw. (Als OpenCue draait, kunt u het in plaats daarvan wijzigen in **Instellingen → Toegang op afstand → HTTP-poort**.)"
+ },
+ {
+  "id": "error-codes-007",
+  "page": "error-codes",
+  "path": [
+   "Foutcodes en probleemoplossing",
+   "3. Startproblemen (OC-1xxx)",
+   "OC-1003 – Microsoft Edge WebView2 Runtime niet gevonden"
+  ],
+  "title": "OC-1003 – Microsoft Edge WebView2 Runtime niet gevonden",
+  "keywords": [],
+  "text": "**Betekenis:** OpenCue toont zijn venster met de gratis **Microsoft Edge WebView2 Runtime**. Windows 11 heeft die; Windows 10 heeft die meestal via Edge of Office, maar niet altijd.\n\n**Wat te doen:** Klik op **Downloadpagina openen**, installeer de *Evergreen*-runtime van Microsoft en start OpenCue opnieuw. Weet u zeker dat de runtime is geïnstalleerd, klik dan op **Toch starten**. Het installatieprogramma van OpenCue downloadt de runtime automatisch als die ontbreekt en er internet is."
+ },
+ {
+  "id": "error-codes-008",
+  "page": "error-codes",
+  "path": [
+   "Foutcodes en probleemoplossing",
+   "3. Startproblemen (OC-1xxx)",
+   "OC-1004 – De gegevensmap kan niet worden gebruikt"
+  ],
+  "title": "OC-1004 – De gegevensmap kan niet worden gebruikt",
+  "keywords": [],
+  "text": "**Betekenis:** OpenCue slaat instellingen, shows, indelingen en logboeken op in zijn **gegevensmap** (normaal `%LOCALAPPDATA%\\OpenCue`) en kan die niet aanmaken of er niet naar schrijven. De regel onder de uitleg toont de technische reden.\n\n**Wat te doen:** Controleer of de map bestaat en of uw Windows-account er mag schrijven; of de schijf niet vol of alleen-lezen is en (bij een netwerk- of USB-schijf) is aangesloten; of geen antivirus of \"gecontroleerde maptoegang\" OpenCue blokkeert. Is bij de installatie een eigen gegevensmap gekozen, zorg dan dat die schijf beschikbaar is. Een mapnaam die in werkelijkheid een bestaand **bestand** is, veroorzaakt dit ook."
+ },
+ {
+  "id": "error-codes-009",
+  "page": "error-codes",
+  "path": [
+   "Foutcodes en probleemoplossing",
+   "4. Onverwachte fouten (OC-2xxx)"
+  ],
+  "title": "4. Onverwachte fouten (OC-2xxx)",
+  "keywords": [],
+  "text": "Dit zijn fouten die OpenCue niet verwachtte – meestal een bug. **Kopieer de details en meld ze.** De fouttekst en het logboek tonen waar het gebeurde."
+ },
+ {
+  "id": "error-codes-010",
+  "page": "error-codes",
+  "path": [
+   "Foutcodes en probleemoplossing",
+   "4. Onverwachte fouten (OC-2xxx)",
+   "OC-2001 – OpenCue kon niet starten"
+  ],
+  "title": "OC-2001 – OpenCue kon niet starten",
+  "keywords": [],
+  "text": "Een onverwachte fout stopte OpenCue tijdens het starten. Start één keer opnieuw. Komt het terug: kopieer de details en meld het. Als noodoplossing kan een beschadigd instellingenbestand de oorzaak zijn: sluit OpenCue, hernoem `config\\app_config.json` in de gegevensmap naar `app_config.old.json` en start opnieuw (OpenCue start dan met standaardinstellingen; uw shows en indelingen zijn aparte bestanden en blijven bestaan)."
+ },
+ {
+  "id": "error-codes-011",
+  "page": "error-codes",
+  "path": [
+   "Foutcodes en probleemoplossing",
+   "4. Onverwachte fouten (OC-2xxx)",
+   "OC-2002 – Een achtergrondtaak is mislukt"
+  ],
+  "title": "OC-2002 – Een achtergrondtaak is mislukt",
+  "keywords": [],
+  "text": "Er ging iets mis in een achtergrondtaak, bijvoorbeeld audio-analyse, MIDI of netwerk. **OpenCue blijft draaien.** Het venster verschijnt alleen bij de *eerste* zo'n fout per start (alle staan in het logboek). Gedraagt iets zich vreemd, sla dan uw show op en start OpenCue opnieuw. Meld het met de gekopieerde details."
+ },
+ {
+  "id": "error-codes-012",
+  "page": "error-codes",
+  "path": [
+   "Foutcodes en probleemoplossing",
+   "4. Onverwachte fouten (OC-2xxx)",
+   "OC-2003 – De OpenCue-server is gestopt"
+  ],
+  "title": "OC-2003 – De OpenCue-server is gestopt",
+  "keywords": [],
+  "text": "De ingebouwde server is onverwacht gestopt of kon niet starten, dus het venster kan niet werken. OpenCue sluit na het venster en geeft eerst de DMX-uitvoer en camera's vrij. Start OpenCue opnieuw. Gebeurt het weer, meld het dan; controleer ook OC-1002 (een poortprobleem kan hier ook toe leiden)."
+ },
+ {
+  "id": "error-codes-013",
+  "page": "error-codes",
+  "path": [
+   "Foutcodes en probleemoplossing",
+   "4. Onverwachte fouten (OC-2xxx)",
+   "OC-2004 – OpenCue is onverwacht gestopt"
+  ],
+  "title": "OC-2004 – OpenCue is onverwacht gestopt",
+  "keywords": [],
+  "text": "Er is een onverwachte fout opgetreden terwijl OpenCue draaide en het programma moet sluiten. **Niet-opgeslagen wijzigingen kunnen verloren gaan.** Start OpenCue opnieuw en meld de fout met de gekopieerde details. Tip: sla uw show bij lange sessies regelmatig op (**Ctrl+S**)."
+ },
+ {
+  "id": "error-codes-014",
+  "page": "error-codes",
+  "path": [
+   "Foutcodes en probleemoplossing",
+   "5. Problemen van één functie (OC-3xxx, alleen logboek)"
+  ],
+  "title": "5. Problemen van één functie (OC-3xxx, alleen logboek)",
+  "keywords": [],
+  "text": "Deze openen **geen** venster en OpenCue blijft draaien. Ze staan helemaal vooraan in een **logregel** (bijvoorbeeld `... [DMX] OC-3103 USB DMX: COM3 ...`) en vaak als bericht op de bijbehorende instellingenpagina. Zoek in het logboek op `OC-3`."
+ },
+ {
+  "id": "error-codes-015",
+  "page": "error-codes",
+  "path": [
+   "Foutcodes en probleemoplossing",
+   "5. Problemen van één functie (OC-3xxx, alleen logboek)"
+  ],
+  "title": "5. Problemen van één functie (OC-3xxx, alleen logboek) (2)",
+  "keywords": [],
+  "text": "| Code | Betekenis | Wat te doen |\n|---|---|---|\n| **OC-3001** | Het instellingenbestand `app_config.json` kon niet worden gelezen. OpenCue gebruikte de automatische back-up (`.bak`) of, als die ook beschadigd was, de standaardinstellingen. Het beschadigde bestand blijft ernaast bewaard als `.corrupt`. | Controleer uw instellingen. Wilt u oudere instellingen behouden, kopieer dan waarden uit het `.corrupt`-bestand naar het nieuwe `app_config.json` (sluit eerst OpenCue). |\n| **OC-3101** | Er is een fout opgetreden in de DMX-uitvoerthread. | Controleer de DMX-instellingen (Instellingen → DMX-uitgang) en de netwerk- of USB-verbinding. Meld het als het zich herhaalt. |\n| **OC-3102** | De Art-Net-uitvoer kon niet (opnieuw) worden ingesteld met de huidige instellingen. | Controleer het doel en het bind-IP-adres in de DMX-instellingen. De netwerkadapter moet bestaan en verbonden zijn. |\n| **OC-3103** | De USB-DMX-interface is losgekoppeld of meldde een zendfout. | Sluit hem opnieuw aan en druk op *Poorten vernieuwen* in de DMX-instellingen. Probeer een andere USB-poort of kabel; controleer dat geen ander programma de poort gebruikt. |\n| **OC-3104** | Er is een fout opgetreden in de klok van de DMX-uitvoer (die de frames naar Art-Net, sACN en USB stuurt). | OpenCue blijft draaien en de klok gaat verder met het volgende frame. Meld het als het zich herhaalt (Help → Een probleem melden). |\n| **OC-3105** | Het **aparte DMX-uitvoerproces** (een tweede OpenCue-proces in Taakbeheer) is beëindigd of kon niet starten. | OpenCue start het automatisch opnieuw (de uitvoer is binnen een seconde terug). Sterft het vijf keer in een minuut of start het helemaal niet, dan gaat de uitvoer verder binnen het hoofdprogramma – zonder de scheiding, maar zonder onderbreking. Controleer uw antivirus (die moet `OpenCue.exe` toestaan een tweede proces te starten); meld het als het zich herhaalt. |\n| **OC-3201** | De audio-analyse kon zijn ingang of bron niet openen (apparaat bezet, verwijderd of geblokkeerd door de privacy-instellingen van Windows). | Kies een andere bron in het Audio-paneel. Sluit programma's die het apparaat exclusief gebruiken. Sta voor een microfoon toegang toe in *Windows-instellingen → Privacy → Microfoon*. |\n| **OC-3202** | De spraakbesturing kon de gekozen microfoon niet openen (OpenCue probeert het meerdere keren). | Kies de microfoon opnieuw in Instellingen → Triggerwoord; sluit andere programma's die hem vasthouden; controleer de privacy-instelling voor de microfoon van Windows. |\n| **OC-3301** | Een MIDI-apparaat kon niet worden geopend. Onder Windows kunnen de meeste apparaten door **één programma** tegelijk worden gebruikt. | Sluit het andere programma (muzieksoftware, DAW) of schakel het apparaat daar uit. Koppel het apparaat los en sluit het opnieuw aan. |\n| **OC-3401** | De naam `opencue.local` kon niet op het netwerk worden aangekondigd (mDNS). Apparaten op afstand kunnen nog steeds het IP-adres gebruiken. | Gebruik het adres met het IP-nummer dat in de instellingen voor Toegang op afstand staat. Controleer of het netwerk multicast toestaat en of de Windows Firewall OpenCue op privénetwerken toestaat. |\n| **OC-3402** | OpenCue kon niet luisteren op een netwerkadres voor apparaten op afstand. | Een ander programma gebruikt misschien die poort, of het adres is verdwenen (andere wifi). Zet toegang op afstand uit en weer aan in Instellingen → Toegang op afstand, of kies een andere poort. |\n| **OC-3501** | De update kon niet worden gedownload of de controlesom kwam niet overeen. | Controleer de internetverbinding en probeer het later opnieuw, of download het installatieprogramma van de releasepagina. |\n| **OC-3502** | Het gedownloade updateprogramma kon niet worden gestart. | Download het installatieprogramma van de releasepagina en voer het zelf uit. |\n| **OC-3601** | De gebruikersinterface meldde een JavaScript-fout. De logregel toont het bericht, het bestand en de regel en op welk apparaat het gebeurde (de console of een apparaat op afstand). Vaak is niets zichtbaar; soms blijft een paneel leeg. | Laad het venster opnieuw (of de pagina op het apparaat op afstand). Gebeurt het weer, meld het dan met *Help → Een probleem melden* – de regel maakt deel uit van de details. |\n| **OC-3701** | Een back-up van de show op de achtergrond kon niet worden geschreven (schijf vol, map niet beschrijfbaar of beschermd door een virusscanner). De show zelf wordt er niet door beïnvloed. | Maak schijfruimte vrij of kies een andere gegevensmap (*Instellingen → Algemeen → Gegevensmap en bestandsbeheer*). *Bestand → Back-up herstellen* toont welke back-ups er zijn; de map is `backups` in de gegevensmap. |\n| **OC-3801** | OSC kon niet luisteren op zijn UDP-poort (een ander programma gebruikt die). | Kies een andere poort in **Bedieningen → OSC ...** of sluit het andere programma. |"
+ },
+ {
+  "id": "error-codes-016",
+  "page": "error-codes",
+  "path": [
+   "Foutcodes en probleemoplossing",
+   "6. Een probleem melden"
+  ],
+  "title": "6. Een probleem melden",
+  "keywords": [],
+  "text": "1. Het eenvoudigst: **Help → Een probleem melden...** kopieert de details naar het klembord en opent de meldingspagina. (In het foutvenster: **Details kopiëren**.) **Help → Logmap openen** opent de map met `opencue.log`.\n2. Beschrijf op de pagina **Issues** van het OpenCue-project op GitHub wat u deed vóór de fout.\n3. Plak de gekopieerde tekst. Die bevat geen showgegevens, alleen de technische informatie die in paragraaf 1 is beschreven.\n\nStuur geen wachtwoorden of toegangssleutels mee; hebt u logregels van een instellingenscherm geplakt, verwijder die dan eerst."
+ }
+]

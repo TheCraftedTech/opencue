@@ -1,3 +1,5 @@
+# Copyright (C) 2026 Samuel Zenker
+# SPDX-License-Identifier: GPL-3.0-or-later
 """
 panel_registry.py
 Zentrale Registry aller Panel-Typen von OpenCue.
@@ -28,10 +30,9 @@ PANEL_META = {
     "presets": ("programming", "presets"), "fx_studio": ("programming", "fx"),
     "cuelist": ("cues", "cuelist"), "executor": ("cues", "executor"),
     "command_line": ("input", "terminal"), "command_numpad": ("input", "keypad"), "command_buttons": ("input", "keys"),
-    "button": ("input", "button"), "fader": ("input", "fader"),
-    "sim3d": ("other", "cube"),
-    "timecode": ("media", "clock"), "media_player": ("media", "film"), "stream": ("media", "camera"),
-#3D-AUS#     "stage3d": ("stage", "stage"),
+    "button": ("input", "button"), "fader": ("input", "fader"), "toggle": ("input", "toggle"),
+    "sim3d": ("other", "cube"), "simple": ("input", "joystick"),
+    "timecode": ("media", "clock"), "timeline": ("media", "timeline"), "media_player": ("media", "film"), "stream": ("media", "camera"), "audio": ("media", "audio"), "assistant": ("other", "chat"),
 }
 
 
@@ -68,6 +69,7 @@ class BasePanel:
             "default_width": self.default_width,
             "default_height": self.default_height,
             "default_show_header": self.default_show_header,
+            "default_module_config": self.default_module_config,          # "Panel als Fenster" (static/js/panel_window.js) baut das Panel ohne Layout-Eintrag
         }
 
     def get_module_properties_schema(self) -> List[Dict[str, Any]]:
@@ -417,7 +419,7 @@ class FxStudioPanel(BasePanel):
 
 
 class ExecutorPanel(BasePanel):
-    """Executor (dot2-Stil): Fader (Gesamthelligkeit der zugeordneten Cue-Liste) plus Go / Pause / Zurueck / Stopp.
+    """Executor (Lichtpult-Stil): Fader (Gesamthelligkeit der zugeordneten Cue-Liste) plus Go / Pause / Zurueck / Stopp.
     Die Cue-Liste dient nur der Verwaltung der Cues, die Wiedergabe laeuft ueber den Executor. Welche Cue-Liste, steht in
     module_config["cuelist_id"] (leer = die im Cue-Listen-Panel gewaehlte, aktive Liste)."""
     panel_type = "executor"
@@ -485,6 +487,46 @@ class TimecodePanel(BasePanel):
         return []
 
 
+class TimelinePanel(BasePanel):
+    """Timeline-Editor (static/js/timeline_panel.js): Cues mit Ausloeser "Timecode" als Marken auf einer Zeitachse (eine Spur je Cue-Liste), darunter die Wellenform eines Mediums.
+    Der Abspielkopf ist der globale Timecode; Marken lassen sich ziehen, Cues ohne Zeit auf die Spur legen oder waehrend der Musik per "Cue hier setzen" aufnehmen.
+    Die Tonspuren kommen von selbst aus den Medien-Playern (Modus "Timecode"); module_config.tracks sind zusaetzliche eigene Toene [{id, media_id, start_ms}], dazu audio_on, volume, snap_ms, follow."""
+    panel_type = "timeline"
+    panel_name = "PANEL_TIMELINE"
+    default_width = 80.0
+    default_height = 50.0
+
+    @property
+    def default_module_config(self) -> Dict[str, Any]:
+        return {"tracks": [], "audio_on": True, "volume": 100, "snap_ms": 10, "follow": True}
+
+
+class AudioPanel(BasePanel):
+    """Audio-Live-Analyse (app/audio_engine.py): Quelle waehlen, Spektrum, Pegel, Beat und Tempo; die Einstellungen gelten fuer die ganze Konsole (nicht je Panel),
+    jedes Audio-Panel auf jedem Geraet zeigt und bedient dieselbe Analyse."""
+    panel_type = "audio"
+    panel_name = "PANEL_AUDIO"
+    default_width = 42.0
+    default_height = 56.0
+
+    @property
+    def default_module_config(self) -> Dict[str, Any]:
+        return {"show_settings": True}
+
+
+class AssistantPanel(BasePanel):
+    """KI-Assistent (app/ai/): Chat mit einem lokalen Sprachmodell. Die Gespraeche liegen als Dateien im Datenordner und gehoeren nicht zum Panel;
+    jedes Assistent-Panel auf jedem Geraet zeigt dieselben Chats."""
+    panel_type = "assistant"
+    panel_name = "PANEL_ASSISTANT"
+    default_width = 40.0
+    default_height = 62.0
+
+    @property
+    def default_module_config(self) -> Dict[str, Any]:
+        return {}
+
+
 class MediaPlayerPanel(BasePanel):
     """Video-/Audio-Player. Das Medium gehoert zur Show (siehe app/media_store.py), das Panel verweist nur darauf.
     sync "timecode": laeuft synchron zum globalen Timecode (ab tc_start_ms); sync "free": normaler Player mit eigenen Bedienelementen."""
@@ -519,25 +561,8 @@ class StreamPanel(BasePanel):
         return []
 
 
-#3D-AUS# class Stage3DPanel(BasePanel):
-#3D-AUS#     """3D-Buehne: Raum, Traversen und Scheinwerfer in 3D mit Live-Beleuchtung (Farbe, Helligkeit, Pan/Tilt aus dem DMX-Stand), frei bewegliche
-#3D-AUS#     Kamera mit gespeicherten Ansichten und ein Editor ("Raum bauen" / "Scheinwerfer positionieren"). Die Buehne selbst gehoert zur Show
-#3D-AUS#     (siehe app/stage3d.py); das Panel speichert nur seine Darstellung: quality (auto | low | medium | high), beams (Lichtkegel zeigen)."""
-#3D-AUS#     panel_type = "stage3d"
-#3D-AUS#     panel_name = "PANEL_STAGE3D"
-#3D-AUS#     default_width = 52.0
-#3D-AUS#     default_height = 56.0
-
-#3D-AUS#     @property
-#3D-AUS#     def default_module_config(self) -> Dict[str, Any]:
-#3D-AUS#         return {"quality": "auto", "beams": True}
-
-#3D-AUS#     def get_module_properties_schema(self) -> List[Dict[str, Any]]:
-#3D-AUS#         return []
-
-
 class Sim3DPanel(BasePanel):
-    """3D-Simulation: Buehne in 3D (Schritt 1: leere Buehne mit Boden, Raster und Koordinatensystem, bewegliche Kamera per Maus und Touch).
+    """3D-Simulation: Buehne in 3D (leere Buehne mit Boden, Raster und Koordinatensystem, bewegliche Kamera per Maus und Touch).
     Die Darstellung steckt komplett im Client (static/js/sim3d.js); das Panel speichert noch keine Einstellungen."""
     panel_type = "sim3d"
     panel_name = "PANEL_SIM3D"
@@ -550,6 +575,19 @@ class Sim3DPanel(BasePanel):
 
     def get_module_properties_schema(self) -> List[Dict[str, Any]]:
         return []
+
+
+class SimplePanel(BasePanel):
+    """Einfache Steuerung (static/js/simple_panel.js): eine schlichte Bedienflaeche fuer Scheinwerfer - Auswahl per Kachel, Joystick, Helligkeit, Farbfeld, Zoom, Gobos.
+    Gedacht zum Weitergeben an jemanden, der nur das bedienen soll (zusammen mit dem Bedienmodus, der alles andere sperrt). Die Auswahl und die Werte sind die des Programmers."""
+    panel_type = "simple"
+    panel_name = "PANEL_SIMPLE"
+    default_width = 60.0
+    default_height = 80.0
+
+    @property
+    def default_module_config(self) -> Dict[str, Any]:
+        return {"show_groups": True, "show_fixtures": True}
 
 
 class ButtonPanel(BasePanel):
@@ -568,6 +606,15 @@ class FaderPanel(BasePanel):
     default_show_header = False
 
 
+class TogglePanel(BasePanel):
+    """Schalter mit zwei Zustaenden (an/aus) und je einem Befehl (siehe static/js/app.js, Toggle-Plugin)."""
+    panel_type = "toggle"
+    panel_name = "PANEL_TOGGLE"
+    default_width = 8.0
+    default_height = 8.0
+    default_show_header = False
+
+
 # Alle eingebauten Panel-Typen direkt beim Import registrieren
 PanelRegistry.register(DmxMonitorPanel)
 PanelRegistry.register(FixturesPanel)
@@ -580,9 +627,13 @@ PanelRegistry.register(CommandNumpadPanel)
 PanelRegistry.register(CommandButtonsPanel)
 PanelRegistry.register(FxStudioPanel)
 PanelRegistry.register(ButtonPanel)
+PanelRegistry.register(TogglePanel)
 PanelRegistry.register(TimecodePanel)
+PanelRegistry.register(AudioPanel)
+PanelRegistry.register(AssistantPanel)
 PanelRegistry.register(MediaPlayerPanel)
 PanelRegistry.register(StreamPanel)
-#3D-AUS# PanelRegistry.register(Stage3DPanel)
 PanelRegistry.register(Sim3DPanel)
+PanelRegistry.register(SimplePanel)
+PanelRegistry.register(TimelinePanel)
 PanelRegistry.register(FaderPanel)

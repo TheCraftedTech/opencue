@@ -1,3 +1,5 @@
+# Copyright (C) 2026 Samuel Zenker
+# SPDX-License-Identifier: GPL-3.0-or-later
 """
 host_cameras.py
 Kameras am Hauptgeraet: der Computer, auf dem dieses Programm laeuft (Konsole/Laptop). Die Kameras (Webcam, angeschlossene Kamera) werden
@@ -197,9 +199,9 @@ def _error_from(tail: str) -> Tuple[str, str]:
     if any(x in low for x in ("could not run graph", "device or resource busy", "already in use")):
         return "in_use", "Die Kamera ist belegt (ein anderes Programm nutzt sie)"
     if any(x in low for x in ("could not find video device", "no such file", "cannot find")):
-        return "no_camera", "Diese Kamera ist am Hauptgeraet nicht (mehr) angeschlossen"
+        return "no_camera", "This camera is no longer connected to the main device"
     last = [line for line in tail.strip().splitlines() if line.strip()]
-    return "camera_failed", (last[-1][:200] if last else "Die Kamera liefert kein Bild")
+    return "camera_failed", (last[-1][:200] if last else "The camera delivers no image")
 
 
 class Capture:
@@ -245,7 +247,7 @@ class Capture:
                     self._launch()
                 return
             if self.state == "failed":
-                raise StreamError(self.error[0] or "camera_failed", self.error[1] or "Die Kamera liefert kein Bild", 502)
+                raise StreamError(self.error[0] or "camera_failed", self.error[1] or "The camera delivers no image", 502)
             self.profile = profile
             self._launch()
             self.started_at = time.monotonic()
@@ -379,12 +381,12 @@ def acquire(dev_id: str, profile: str = DEFAULT_PROFILE) -> Capture:
     profile = normalize_profile(profile)
     ffmpeg = find_ffmpeg()
     if not supported():
-        raise StreamError("unsupported_os", "Kameras am Hauptgeraet gibt es unter Windows und Linux", 501)
+        raise StreamError("unsupported_os", "Cameras on the main device exist on Windows and Linux", 501)
     if not ffmpeg:
-        raise StreamError("no_ffmpeg", "ffmpeg fehlt: ffmpeg.exe in den Ordner ffmpeg im Programmordner legen oder in den PATH aufnehmen", 503)
+        raise StreamError("no_ffmpeg", "ffmpeg is missing: put ffmpeg.exe in the ffmpeg folder of the program folder or add it to the PATH", 503)
     device = get_device(dev_id)
     if device is None:
-        raise StreamError("no_camera", "Diese Kamera ist am Hauptgeraet nicht (mehr) angeschlossen", 404)
+        raise StreamError("no_camera", "This camera is no longer connected to the main device", 404)
     with _lock:
         cap = _captures.get(dev_id)
         if cap is not None and cap.state in ("failed", "stopped") and cap.viewers == 0:

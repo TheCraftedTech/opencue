@@ -1,3 +1,5 @@
+// Copyright (C) 2026 Samuel Zenker
+// SPDX-License-Identifier: GPL-3.0-or-later
 /* Dateimanager: ein grosser Dialog fuer alle Dateiarten (Shows, Layouts, 3D-Buehnen, Effekte, Scheinwerfer-Dateien) mit Seitenleiste, Suche, Mehrfachauswahl,
  * Oeffnen/Umbenennen/Duplizieren/Loeschen, Download (ein Eintrag, Auswahl oder alles als ZIP), Upload (Dateien, Ordner, ZIP-Pakete) und dem Export-Dialog fuer die geladene Show.
  * Schnittstelle: app/file_manager.py (/api/files/...). Oeffnen/Umbenennen/Duplizieren/Loeschen rufen die bestehenden Schnittstellen der Dateiarten auf (/api/layouts*,
@@ -6,7 +8,9 @@
  * Namens-, Rueckfrage- und Toast-Dialoge sind die der Layouts (app.js). Klassisches Skript, laeuft nach app.js.
  * Er ersetzt die frueheren Einzel-Dialoge (Showfiles/Layouts/Buehnen verwalten, Show oeffnen): Menues, Toolbar-Chips und Strg+O oeffnen ihn mit der passenden Art
  * (data-action="file-manager" + data-fm-kind). Oben zeigt er den geladenen Stand der Art (Name, ungespeichert) mit Neu/Speichern/Speichern unter; bei Scheinwerfern fuehrt
- * ein Knopf in die Scheinwerferbibliothek. app.js/sim3d_stages.js melden Aenderungen ueber OCFileManager.changed(kind). */
+ * ein Knopf in die Scheinwerferbibliothek. app.js/sim3d_stages.js melden Aenderungen ueber OCFileManager.changed(kind).
+ * Medien (Bilder, Videos, Audio der Show): eigene Art "media"; OCFileManager.pick({only}) oeffnet den Dialog als AUSWAHL (Medien-Player, Bildschirme der 3D-Simulation):
+ * vorhandene Datei anklicken (Doppelklick = nehmen) oder direkt hochladen (eine hochgeladene Datei wird gleich genommen); loest mit der Zeile oder null (abgebrochen). */
 (function () {
   "use strict";
   const t = (key, vars) => {
@@ -17,16 +21,20 @@
   const el = (tag, cls, text) => { const n = document.createElement(tag); if (cls) n.className = cls; if (text !== undefined) n.textContent = text; return n; };
   const MODAL = "file-manager";
   const EXPORT_MODAL = "file-export";
-  const KINDS = ["shows", "layouts", "stages", "effects", "themes", "fixtures"];
+  const KINDS = ["shows", "layouts", "stages", "models", "media", "effects", "themes", "fixtures"];
+  const BACKUP_KINDS = KINDS.filter((k) => k !== "media");                  // die Sicherung enthaelt Dateien mit Endung; Medien liegen unter ihrer Pruefsumme (Export-Paket der Show nimmt sie mit)
   const KIND_UI = {
-    shows: { icon: "cuelist", label: "FM_KIND_SHOWS", hint: "FM_HINT_SHOWS", detail: "FM_DETAIL_SHOWS", accept: ".json,.zip" },
+    shows: { icon: "cuelist", label: "FM_KIND_SHOWS", hint: "FM_HINT_SHOWS", detail: "FM_DETAIL_SHOWS", accept: ".json,.zip,.ocshow" },
     layouts: { icon: "panel", label: "FM_KIND_LAYOUTS", hint: "FM_HINT_LAYOUTS", detail: "FM_DETAIL_LAYOUTS", accept: ".json,.zip" },
     stages: { icon: "stage", label: "FM_KIND_STAGES", hint: "FM_HINT_STAGES", detail: "FM_DETAIL_STAGES", accept: ".json,.zip" },
+    models: { icon: "model", label: "FM_KIND_MODELS", hint: "FM_HINT_MODELS", detail: "FM_DETAIL_MODELS", accept: ".stl,.obj,.zip" },
+    media: { icon: "film", label: "FM_KIND_MEDIA", hint: "FM_HINT_MEDIA", detail: "FM_DETAIL_MEDIA", accept: "video/*,audio/*,image/*,.mp4,.m4v,.mov,.webm,.ogg,.ogv,.wav,.mp3,.flac,.aac,.m4a,.png,.jpg,.jpeg,.gif,.webp" },
     effects: { icon: "fx", label: "FM_KIND_EFFECTS", hint: "FM_HINT_EFFECTS", detail: "FM_DETAIL_EFFECTS", accept: ".fx,.zip" },
     themes: { icon: "palette", label: "FM_KIND_THEMES", hint: "FM_HINT_THEMES", detail: "FM_DETAIL_THEMES", accept: ".json,.zip" },
     fixtures: { icon: "fixture", label: "FM_KIND_FIXTURES", hint: "FM_HINT_FIXTURES", detail: "FM_DETAIL_FIXTURES", accept: ".gdtf,.zip" },
   };
-  const EXT = { shows: ".json", layouts: ".json", stages: ".json", effects: ".fx", themes: ".json", fixtures: ".gdtf" };
+  const EXT = { shows: ".json", layouts: ".json", stages: ".json", models: ".stl", media: "", effects: ".fx", themes: ".json", fixtures: ".gdtf" };
+  const UPLOAD_EXT = { models: [".stl", ".obj"], media: [".mp4", ".m4v", ".mov", ".webm", ".ogg", ".ogv", ".oga", ".opus", ".wav", ".mp3", ".flac", ".aac", ".m4a", ".png", ".jpg", ".jpeg", ".gif", ".webp"] };                            // 3D-Modelle: OBJ wird beim Einlesen zu STL
   /** Anzeigename einer Zeile: die eingebauten Farbprofile (Dunkel/Hell) sind uebersetzt. */
   const rowName = (row) => (row.name_key ? t(row.name_key) : row.name);
   /** Vorschau-Farben eines Farbprofils (Hintergrund, Panel, Text, Akzent): geaenderte Werte des Profils, sonst die der Basis (theme.css). */
@@ -36,7 +44,7 @@
     const tokens = (theme && theme.tokens) || {};
     return ["bg", "surface-1", "text-1", "accent"].map((key) => tokens[key] || base[key]);
   }
-  const state = { kind: "shows", rows: [], path: "", counts: {}, selected: new Set(), query: "", sort: { key: "name", dir: 1 }, loading: false };
+  const state = { kind: "shows", rows: [], path: "", counts: {}, selected: new Set(), query: "", sort: { key: "name", dir: 1 }, loading: false, pick: null };          // pick: {resolve, only} waehrend der Auswahl
   let seq = 0;
   let built = false;
 
@@ -93,6 +101,10 @@
     .fm__badge--warn { color: var(--warn, #f0b429); border-color: var(--warn, #f0b429); }
     .fm__badge--error { color: var(--error, #e5484d); border-color: var(--error, #e5484d); }
     .fm__acts { display: flex; justify-content: flex-end; gap: 0.1rem; }
+    .fm__thumb, .fm__thumb-ico { flex: 0 0 auto; width: 2.6rem; height: 1.7rem; border-radius: 3px; border: 1px solid var(--border-color); background: #000; object-fit: cover; }
+    .fm__thumb-ico { display: inline-flex; align-items: center; justify-content: center; background: var(--dialog-header-bg); color: var(--secondary-text); }
+    .fm__thumb-ico .ico { width: 1.1em; height: 1.1em; }
+    .fm--pick .fm__row { cursor: pointer; }
     .fm__act { display: inline-flex; align-items: center; justify-content: center; width: 2.3rem; height: 2.3rem; background: transparent; border: 1px solid transparent; border-radius: var(--base-radius, 3px); color: var(--secondary-text); cursor: pointer; }
     .fm__act:hover { border-color: var(--border-color); color: var(--text-main); }
     .fm__act--danger:hover { color: var(--error, #e5484d); }
@@ -159,7 +171,7 @@
   const toast = (text, type) => _showToast(text, type || "success", type === "error" ? 5000 : 3000);
   function failToast(result, fallbackKey) {
     const data = result && result.data ? result.data : {};
-    toast(data.message || t(fallbackKey || "FM_ERR_GENERIC"), "error");
+    toast(data.message || t(data.error === "locked" ? "FM_ERR_LOCKED" : (fallbackKey || "FM_ERR_GENERIC")), "error");
   }
   const confirmBox = (title, body, confirmKey) => _askLayoutConfirm({ title, body, confirmKey });
 
@@ -188,6 +200,7 @@
   }
   function reload() { return load(state.kind, true).then(loadCounts); }
   function selectKind(kind) {
+    if (state.pick && kind !== "media") return;                                  // waehrend einer Auswahl bleibt der Dialog bei den Medien
     state.kind = kind;
     state.query = "";
     state.selected.clear();
@@ -250,6 +263,8 @@
         if (state.kind === "shows") result = await call("POST", "/api/showfiles/rename", { path: row.path, new_name: name });
         else if (state.kind === "layouts") result = await call("POST", "/api/layouts/rename", { filename: row.id, new_name: name });
         else if (state.kind === "stages") result = await call("POST", "/api/sim-stage/rename", { filename: row.id, new_name: name });
+        else if (state.kind === "models") result = await call("POST", "/api/sim-models/rename", { filename: row.id, new_name: name });
+        else if (state.kind === "media") result = await call("PATCH", "/api/media/" + encodeURIComponent(row.id), { name });
         else if (state.kind === "themes") { client.send("rename_theme_profile", { name: row.name, new_name: name }); result = { ok: true, data: {} }; }
         else result = await call("POST", "/api/files/effects/rename", { id: row.id, new_name: name });
       }
@@ -266,7 +281,7 @@
         reload();
         return;
       }
-      if (taken || (result.status === 409 && result.data.error !== "in_use")) { value = name; note = t("FM_NAME_TAKEN", { name }); continue; }
+      if (taken || (result.status === 409 && result.data.error !== "in_use" && result.data.error !== "locked")) { value = name; note = t("FM_NAME_TAKEN", { name }); continue; }
       failToast(result, result.data && result.data.error === "in_use" ? "FM_ERR_IN_USE" : "FM_ERR_GENERIC");
       return;
     }
@@ -276,6 +291,7 @@
     if (state.kind === "shows") result = await call("POST", "/api/showfiles/duplicate", { path: row.path });
     else if (state.kind === "layouts") result = await call("POST", "/api/layouts/duplicate", { filename: row.id });
     else if (state.kind === "stages") result = await call("POST", "/api/sim-stage/duplicate", { filename: row.id });
+    else if (state.kind === "models") result = await call("POST", "/api/sim-models/duplicate", { filename: row.id });
     else if (state.kind === "themes") {
       if (row.builtin) {                                                     // eingebaut: als eigenes Profil anlegen (freier Name "<Name> 2", "<Name> 3" ...)
         let copy = `${rowName(row)} 2`;
@@ -298,6 +314,8 @@
     if (state.kind === "shows") return call("POST", "/api/showfiles/delete", { path: row.path });
     if (state.kind === "layouts") return { ok: await _deleteLayoutAndSwitch(row.id), data: {} };         // war es das geladene, wechselt die Oberflaeche auf ein anderes
     if (state.kind === "stages") return call("POST", "/api/sim-stage/delete", { filename: row.id });
+    if (state.kind === "models") return call("POST", "/api/sim-models/delete", { filename: row.id });
+    if (state.kind === "media") return call("DELETE", "/api/media/" + encodeURIComponent(row.id));
     if (state.kind === "themes") { client.send("delete_theme_profile", { name: row.name }); return { ok: true, data: {} }; }
     if (state.kind === "effects") return call("DELETE", "/api/effects/" + encodeURIComponent(stem(row.id)));
     return call("DELETE", "/api/library/installed/" + encodeURIComponent(stem(row.id)));
@@ -309,7 +327,7 @@
       ? t(state.kind === "fixtures" ? "FM_DELETE_FIXTURE_BODY" : "FM_DELETE_BODY", { name: rows[0].name })
       : t("FM_DELETE_MANY_BODY", { n: rows.length });
     if (state.kind === "shows" && rows.some((r) => r.active)) body += " " + t("SHOWFILE_DELETE_LOADED_NOTE");
-    if (!(await confirmBox(t("FM_DELETE_TITLE"), body, "FM_DELETE_CONFIRM"))) return;
+    if (!(await _askDelete("files", { title: t("FM_DELETE_TITLE"), body, confirmKey: "FM_DELETE_CONFIRM" }))) return;
     let failed = 0;
     let freedMedia = 0;
     for (const row of rows) {
@@ -321,6 +339,14 @@
     if (state.kind === "shows") _refreshShowfileStatus(true);
     if (failed < rows.length) toast(t("FM_DELETED", { n: rows.length - failed }));
     state.selected.clear();
+    reload();
+  }
+  /** Schloss einer Show: gesperrt wird sie nicht mehr gespeichert, umbenannt oder geloescht (Speichern unter und Duplizieren gehen). */
+  async function toggleLock(row) {
+    const result = await call("POST", "/api/showfiles/lock", { path: row.path, locked: !row.locked });
+    if (!result.ok) { failToast(result); return; }
+    toast(t(result.data.locked ? "FM_LOCKED_TOAST" : "FM_UNLOCKED_TOAST", { name: row.name }));
+    _refreshShowfileStatus(true);
     reload();
   }
   async function toggleFavorite(row) {
@@ -354,12 +380,41 @@
   function kindLabel(kind) {
     return KIND_UI[kind] ? t(KIND_UI[kind].label) : kind === "media" ? t("FM_KIND_MEDIA") : kind === "streams" ? t("FM_KIND_STREAMS") : kind;
   }
+  /** Medien (Bild, Video, Audio) hochladen: ueber OCMedia.upload (Streaming, Fortschritt, bis 1 GB). In einer Auswahl wird eine einzelne hochgeladene Datei gleich genommen. */
+  async function uploadMedia(files) {
+    const exts = UPLOAD_EXT.media;
+    const wanted = [...files].filter((f) => exts.some((ext) => f.name.toLowerCase().endsWith(ext)));
+    if (!wanted.length) { toast(t("FM_UPLOAD_NONE_MEDIA"), "error"); return; }
+    if (!window.OCMedia) return;
+    const info = document.getElementById("fm-foot-info");
+    let ok = 0, failed = 0, last = null;
+    for (const file of wanted) {
+      try {
+        last = await OCMedia.upload(file, (p) => { if (info) info.textContent = t("FM_MEDIA_UPLOADING", { name: file.name, p: Math.round(p * 100) }); });
+        ok++;
+      } catch (err) {
+        failed++;
+        toast(t("FM_UPLOAD_FAILED", { name: file.name, message: t(OCMedia.errorKey(err && err.code)) }), "error");
+      }
+    }
+    if (wanted.length === 1 && ok) toast(t("FM_UPLOADED", { name: last.name }));
+    else toast(t("FM_UPLOAD_DONE", { ok, skipped: 0, failed }), failed ? "error" : "success");
+    await load("media", true);
+    renderFoot();
+    if (state.pick && last) {
+      const row = state.rows.find((r) => r.id === last.id);
+      if (row && ok === 1 && wanted.length === 1 && (!state.pick.only || state.pick.only.includes(row.kind))) { finishPick(row); return; }     // hochgeladen = gewaehlt
+      if (row) { state.selected = new Set([row.id]); renderList(); renderFoot(); }
+    }
+    loadCounts();
+  }
   async function uploadFiles(files, fromFolder) {
+    if (state.kind === "media") { uploadMedia(files); return; }
     const wanted = [...files].filter((f) => {
       const lower = f.name.toLowerCase();
-      return lower.endsWith(".zip") || lower.endsWith(EXT[state.kind]);
+      return lower.endsWith(".zip") || lower.endsWith(".ocshow") || (UPLOAD_EXT[state.kind] || [EXT[state.kind]]).some((ext) => lower.endsWith(ext));
     });
-    if (!wanted.length) { toast(t("FM_UPLOAD_NONE", { ext: EXT[state.kind] }), "error"); return; }
+    if (!wanted.length) { toast(t("FM_UPLOAD_NONE", { ext: (UPLOAD_EXT[state.kind] || [EXT[state.kind]]).join(" / ") }), "error"); return; }
     let ok = 0, skipped = 0, failed = 0;
     for (const file of wanted) {
       const result = await uploadOne(state.kind, file, fromFolder && file.webkitRelativePath ? file.webkitRelativePath : file.name);
@@ -381,7 +436,7 @@
       input = el("input");
       input.type = "file";
       input.id = "fm-import-input";
-      input.accept = ".json,.zip,application/json,application/zip";
+      input.accept = ".json,.zip,.ocshow,application/json,application/zip";
       input.hidden = true;
       document.body.appendChild(input);
     }
@@ -468,6 +523,36 @@
     if (!box) return;
     box.textContent = "";
     const kind = state.kind;
+    if (state.pick) {                                                        // Auswahl: Hinweis und Knoepfe Nehmen / Abbrechen
+      box.hidden = false;
+      box.classList.remove("fm__current--dirty");
+      const take = el("button", "modal__button modal__button--primary");
+      take.type = "button";
+      take.id = "fm-pick-confirm";
+      take.disabled = state.selected.size !== 1;
+      take.append(Icons.svg("check"), el("span", "", t("FM_PICK_CONFIRM")));
+      take.addEventListener("click", () => { const row = state.rows.find((r) => state.selected.has(r.id)); if (row) finishPick(row); });
+      const cancel = el("button", "modal__button");
+      cancel.type = "button";
+      cancel.id = "fm-pick-cancel";
+      cancel.append(el("span", "", t("CANCEL")));
+      cancel.addEventListener("click", () => Modal.close(MODAL));
+      const acts = el("div", "fm__current-acts");
+      acts.append(take, cancel);
+      const only = state.pick.only;
+      const what = only ? only.map((k) => t(k === "image" ? "MEDIA_KIND_IMAGE" : k === "audio" ? "MEDIA_KIND_AUDIO" : "MEDIA_KIND_VIDEO")).join(" / ") : "";
+      box.append(el("span", "fm__current-label", t("FM_PICK_TITLE")), el("span", "fm__current-info", t("FM_PICK_INFO", { what })), acts);
+      const hidden = state.rows.filter((r) => !matchesPick(r)).length;                   // ausgeblendete Medien (andere Art) bleiben nicht unsichtbar: Hinweis + Umschalter
+      if (hidden || state.pick.showAll) {
+        const toggle = el("button", "modal__button");
+        toggle.type = "button";
+        toggle.id = "fm-pick-all";
+        toggle.append(el("span", "", state.pick.showAll ? t("FM_PICK_ONLY", { what }) : t("FM_PICK_SHOW_ALL", { n: hidden })));
+        toggle.addEventListener("click", () => { state.pick.showAll = !state.pick.showAll; render(); });
+        acts.prepend(toggle);
+      }
+      return;
+    }
     if (kind === "fixtures") {
       box.hidden = false;
       box.classList.remove("fm__current--dirty");
@@ -537,10 +622,35 @@
     changeTimer = setTimeout(() => { if (Modal.isOpen(MODAL)) load(state.kind, true).then(loadCounts); }, 200);
   }
 
+  // ------------------------------------------------------------------------------------------ Auswahl (pick)
+  /** Eine Zeile wurde gewaehlt: Dialog schliessen und die Auswahl-Anfrage beantworten. */
+  function finishPick(row) {
+    const job = state.pick;
+    if (!job) return;
+    state.pick = null;
+    delete Modal._hooks[MODAL];
+    Modal.close(MODAL);
+    job.resolve(row);
+  }
+  /** Oeffnet den Dateimanager als Auswahl der Medien. options.only: erlaubte Arten (["image", "video"] ...). Loest mit der Zeile {id, name, kind, mime, size, duration_ms} oder null (abgebrochen). */
+  function pick(options) {
+    return new Promise((resolve) => {
+      if (state.pick) { const old = state.pick; state.pick = null; old.resolve(null); }
+      build();
+      state.pick = { resolve, only: options && options.only ? options.only.slice() : null, showAll: false };
+      state.selected.clear();
+      state.sort = { key: "name", dir: 1 };
+      Modal._hooks[MODAL] = () => { const job = state.pick; state.pick = null; if (job) job.resolve(null); render(); };         // X, Abbrechen, Escape
+      open("media");
+    });
+  }
+
   // ------------------------------------------------------------------------------------------ Darstellung
+  /** Gehoert die Zeile zu den Arten, die die Auswahl erlaubt? (ohne Auswahl: alle) */
+  const matchesPick = (row) => !state.pick || !state.pick.only || state.pick.only.includes(row.kind);
   function visibleRows() {
     const q = state.query.trim().toLowerCase();
-    let rows = state.rows.filter((r) => !q || r.name.toLowerCase().includes(q) || r.id.toLowerCase().includes(q));
+    let rows = state.rows.filter((r) => (!q || r.name.toLowerCase().includes(q) || (state.kind !== "media" && r.id.toLowerCase().includes(q))) && (state.pick && state.pick.showAll || matchesPick(r)));
     const { key, dir } = state.sort;
     rows = rows.slice().sort((a, b) => {
       if (!!a.builtin !== !!b.builtin) return a.builtin ? -1 : 1;           // eingebaute Farbprofile bleiben oben
@@ -552,8 +662,10 @@
   }
   function detailText(row) {
     const kind = state.kind;
+    if (kind === "media") return t(row.kind === "image" ? "MEDIA_KIND_IMAGE" : row.kind === "audio" ? "MEDIA_KIND_AUDIO" : "MEDIA_KIND_VIDEO") + (row.duration_ms && window.OCTimecode ? " · " + OCTimecode.fmt(row.duration_ms, false) : "");
     if (kind === "layouts") return t("FM_PANELS", { n: row.detail });
     if (kind === "stages") return t("FM_OBJECTS", { n: row.detail });
+    if (kind === "models") return row.ok === false ? t("FM_MODEL_BROKEN") : t("FM_TRIANGLES", { n: Number(row.detail).toLocaleString() });
     if (kind === "themes") return t(row.detail === "light" ? "THEME_BASE_LIGHT" : "THEME_BASE_DARK");
     if (kind === "fixtures") { const [category, modes] = String(row.detail).split(" · "); return `${category} · ${t("FM_MODES", { n: modes })}`; }
     return row.detail || "";
@@ -563,6 +675,12 @@
     const add = (text, cls) => out.push(el("span", "fm__badge" + (cls ? " fm__badge--" + cls : ""), text));
     if (state.kind === "shows" && row.active) add(row.dirty ? t("FM_BADGE_DIRTY") : t("FM_BADGE_LOADED"), row.dirty ? "warn" : "active");
     else if ((state.kind === "layouts" || state.kind === "stages") && row.active) add(t("FM_BADGE_ACTIVE"), "active");
+    if (state.kind === "shows" && row.locked) {                           // Schloss: nicht mehr speichern, umbenennen, loeschen
+      const lockBadge = el("span", "fm__badge fm__badge--warn");
+      lockBadge.append(Icons.svg("lock"), document.createTextNode(" " + t("FM_BADGE_LOCKED")));
+      out.push(lockBadge);
+    }
+    else if (state.kind === "models" && row.active) add(t("FM_BADGE_ON_STAGE"), "active");
     if (state.kind === "themes") {
       const swatches = el("span", "fm__swatches");
       swatches.title = rowName(row);
@@ -571,6 +689,8 @@
       if (row.builtin) add(t("THEME_PROFILE_BUILTIN"));
       if (row.active) add(t("FM_BADGE_ACTIVE"), "active");
     }
+    if (state.kind === "media" && row.missing) add(t("FM_BADGE_MISSING"), "error");
+    if (state.kind === "media" && row.in_use) add(t("FM_BADGE_IN_USE", { n: row.in_use }), "active");
     if (state.kind === "effects" && row.default) add(t("FXS_BADGE_DEFAULT"));
     if (state.kind === "effects" && row.in_use) add(t("FM_BADGE_IN_USE", { n: row.in_use }), "active");
     if (state.kind === "fixtures" && row.in_use) add(t("FM_BADGE_IN_USE", { n: row.in_use }), "active");
@@ -591,6 +711,7 @@
     if (!side) return;
     side.textContent = "";
     for (const kind of KINDS) {
+      if (state.pick && kind !== "media") continue;                          // Auswahl: nur die Medien
       const ui = KIND_UI[kind];
       const button = el("button", "fm__kind" + (kind === state.kind ? " fm__kind--active" : ""));
       button.type = "button";
@@ -600,6 +721,7 @@
       button.addEventListener("click", () => selectKind(kind));
       side.appendChild(button);
     }
+    if (state.pick) return;
     side.appendChild(el("div", "fm__side-sep"));
     const exportButton = el("button", "modal__button fm__side-btn");
     exportButton.type = "button";
@@ -618,7 +740,7 @@
     backup.id = "fm-backup";
     backup.append(Icons.svg("download"), el("span", "", t("FM_BACKUP")));
     backup.title = t("FM_BACKUP_TIP");
-    backup.addEventListener("click", () => startDownload("/api/files/download?kinds=" + KINDS.join(",")));
+    backup.addEventListener("click", () => startDownload("/api/files/download?kinds=" + BACKUP_KINDS.join(",")));
     side.append(importButton, exportButton, backup);
   }
   function renderHead() {
@@ -659,28 +781,46 @@
       const titleBox = el("div", "", "");
       titleBox.style.cssText = "display:flex;flex-direction:column;min-width:0;";
       titleBox.append(text);
-      if (!row.builtin && stem(row.id) !== row.name) titleBox.append(el("span", "fm__file", row.id));
+      if (!row.builtin && state.kind !== "media" && stem(row.id) !== row.name) titleBox.append(el("span", "fm__file", row.id));
+      if (state.kind === "media") {                                          // Vorschau: Bild als Miniatur, sonst das Symbol der Art
+        if (row.kind === "image" && !row.missing) { const thumb = el("img", "fm__thumb"); thumb.src = "/api/media/" + encodeURIComponent(row.id); thumb.loading = "lazy"; thumb.alt = ""; name.prepend(thumb); }
+        else { const holder = el("span", "fm__thumb-ico"); holder.appendChild(Icons.svg(row.kind === "audio" ? "music" : row.kind === "image" ? "image" : "film")); name.prepend(holder); }
+      }
       name.append(titleBox, ...badges(row));
       const acts = el("div", "fm__acts");
       if (state.kind === "layouts") acts.appendChild(actionButton("star", row.favorite ? "LAYOUT_UNFAVORITE" : "LAYOUT_FAVORITE", () => toggleFavorite(row), row.favorite ? "fm__act--on" : ""));
       if (state.kind === "effects") acts.appendChild(actionButton("star", row.favorite ? "FXS_UNFAVORITE" : "FXS_FAVORITE", () => toggleFavorite(row), row.favorite ? "fm__act--on" : ""));
       if (["shows", "layouts", "stages", "themes"].includes(state.kind)) acts.appendChild(actionButton("play", "FM_OPEN", () => openRow(row)));
+      if (state.kind === "shows") acts.appendChild(actionButton(row.locked ? "lock" : "unlock", row.locked ? "FM_UNLOCK" : "FM_LOCK", () => toggleLock(row), row.locked ? "fm__act--on" : ""));
       if (state.kind !== "fixtures" && !row.builtin) acts.appendChild(actionButton("edit", "FM_RENAME", () => renameRow(row)));
-      if (state.kind !== "fixtures") acts.appendChild(actionButton("copy", "FM_DUPLICATE", () => duplicateRow(row)));
+      if (state.kind !== "fixtures" && state.kind !== "media") acts.appendChild(actionButton("copy", "FM_DUPLICATE", () => duplicateRow(row)));
+      if (state.pick) acts.appendChild(actionButton("check", "FM_PICK_CONFIRM", () => finishPick(row)));
+      if (state.pick && !matchesPick(row)) node.style.opacity = "0.55";                 // andere Art: sichtbar, aber der Nutzer (z. B. der Bildschirm) wird es ablehnen
       if (!row.builtin) acts.appendChild(actionButton("download", "FM_DOWNLOAD_ONE", () => startDownload(downloadUrl(state.kind, [row.id]))));
       if (!row.builtin) acts.appendChild(actionButton("trash", "FM_DELETE", () => deleteRows([row]), "fm__act--danger"));
       node.append(check, name, el("div", "fm__cell", detailText(row)), el("div", "fm__cell", fmtSize(row.size)), el("div", "fm__cell", fmtDate(row.modified)), acts);
       if (["shows", "layouts", "stages", "themes"].includes(state.kind)) node.addEventListener("dblclick", () => openRow(row));
+      if (state.pick) {                                                      // Auswahl: anklicken = markieren, Doppelklick = nehmen
+        node.addEventListener("click", (e) => {
+          if (e.target.closest("button, input")) return;
+          state.selected = new Set([row.id]);
+          list.querySelectorAll(".fm__row").forEach((n) => { const on = n.dataset.id === row.id; n.classList.toggle("fm__row--selected", on); const box = n.querySelector('input[type="checkbox"]'); if (box) box.checked = on; });
+          renderFoot();
+        });
+        node.addEventListener("dblclick", (e) => { if (!e.target.closest("button, input")) finishPick(row); });
+      }
       list.appendChild(node);
     }
   }
   function renderFoot() {
     const info = document.getElementById("fm-foot-info");
     const n = state.selected.size;
-    info.textContent = n ? t("FM_SELECTED", { n }) : t("FM_COUNT", { n: state.rows.length });
+    info.textContent = n ? t("FM_SELECTED", { n }) : t("FM_COUNT", { n: state.pick ? visibleRows().length : state.rows.length });
     const dl = document.getElementById("fm-dl-selected");
     const del = document.getElementById("fm-del-selected");
     dl.disabled = del.disabled = n === 0;
+    const take = document.getElementById("fm-pick-confirm");
+    if (take) take.disabled = n !== 1;
   }
   function render() {
     if (!built) return;
@@ -692,6 +832,11 @@
     search.placeholder = t("FM_SEARCH");
     if (search.value !== state.query) search.value = state.query;
     document.getElementById("fm-file-input").accept = KIND_UI[state.kind].accept;
+    const root = document.getElementById("fm-root");
+    if (root) root.classList.toggle("fm--pick", !!state.pick);
+    const folderButton = document.getElementById("fm-upload-folder");
+    if (folderButton) folderButton.style.display = state.kind === "media" ? "none" : "";            // Medien: keine Ordner
+    for (const id of ["fm-dl-all", "fm-dl-selected", "fm-del-selected"]) { const control = document.getElementById(id); if (control) control.style.display = state.pick ? "none" : ""; }          // Auswahl: nur waehlen und hochladen
     renderSide();
     renderCurrent();
     renderHead();
@@ -788,6 +933,7 @@
       { key: "fixtures", label: "FM_EXPORT_FIXTURES", param: "fixture", on: true, items: info.fixtures.map((f) => ({ id: f.id, name: f.name, detail: t("FM_EXPORT_FIXTURE_D", { n: f.count, size: fmtSize(f.size) }), present: f.present })) },
       { key: "effects", label: "FM_EXPORT_EFFECTS", param: "effect", on: true, items: info.effects.map((e) => ({ id: e.name, name: e.name, detail: "", present: e.present })) },
       { key: "stage", label: "FM_EXPORT_STAGE", param: "stage", on: true, single: info.stage ? { detail: t("FM_EXPORT_STAGE_D", { n: info.stage.objects }) } : null },
+      { key: "models", label: "FM_EXPORT_MODELS", param: "model", on: true, items: (info.models || []).map((m) => ({ id: m.id, name: m.name, detail: t("FM_EXPORT_MODEL_D", { n: m.count, tri: Number(m.triangles).toLocaleString(), size: fmtSize(m.size) }), present: m.present })) },
       { key: "media", label: "FM_EXPORT_MEDIA", param: "media", on: true, items: media },
       { key: "layouts", label: "FM_EXPORT_LAYOUTS", param: "layout", on: false, items: info.layouts.map((l) => ({ id: l.id, name: l.name, detail: "", present: true })) },
       { key: "streams", label: "FM_EXPORT_STREAMS", param: "stream", on: false, items: info.streams.map((x) => ({ id: x.id, name: x.name, detail: x.url, present: true })) },
@@ -886,5 +1032,5 @@
     for (const b of document.querySelectorAll("#fm-root .modal__button[data-i18n-key]")) { if (b.lastChild.textContent) b.lastChild.textContent = t(b.dataset.i18nKey); else b.title = t(b.dataset.i18nKey); }
     if (Modal.isOpen(MODAL)) render();
   });
-  window.OCFileManager = { open, openExport, importShow, reload, changed, get state() { return state; } };
+  window.OCFileManager = { open, openExport, importShow, reload, changed, pick, get state() { return state; } };
 })();

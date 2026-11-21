@@ -1,5 +1,7 @@
 #NAME Zoom Ramp
-#DESCRIPTION Fährt langsam von low nach high und springt zurück.
+#DESCRIPTION en The zoom runs from low to high and jumps back.
+#DESCRIPTION de Der Zoom läuft von low nach high und springt zurück.
+#TAGS advanced, ramp
 #CATEGORY zoom
 #RATE 40
 #VAR speed Slider 1 0.05 8 0.05

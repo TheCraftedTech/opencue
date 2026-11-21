@@ -1,5 +1,7 @@
 #NAME Gobo Random
-#DESCRIPTION Wechselt zu zufälligen Gobos. speed = Wechsel pro Sekunde.
+#DESCRIPTION en A new random gobo at every step.
+#DESCRIPTION de Bei jedem Schritt ein neues zufälliges Gobo.
+#TAGS advanced, random
 #CATEGORY gobo
 #RATE 40
 #VAR speed Slider 0.5 0.05 8 0.05

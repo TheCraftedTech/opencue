@@ -1,5 +1,7 @@
 #NAME Brightness Wave
-#DESCRIPTION Eine weiche Helligkeitswelle läuft über alle Scheinwerfer (in Auswahl-Reihenfolge). speed = Wellen pro Sekunde, waves = Wellenlängen über die Auswahl, low/high = dunkelster und hellster Wert, direction: 1 = vorwärts, 0 = rückwärts.
+#DESCRIPTION en A soft brightness wave runs across the fixtures. waves = wavelengths across the selection.
+#DESCRIPTION de Eine weiche Helligkeitswelle läuft über alle Scheinwerfer. waves = Wellenlängen über die Auswahl.
+#TAGS advanced, wave
 #CATEGORY dimmer
 #RATE 40
 #VAR speed Slider 0.5 0.05 4 0.05

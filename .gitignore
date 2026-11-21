@@ -15,6 +15,9 @@
 !/requirements.txt
 !/run.bat
 
+# GitHub Actions: baut den Installer und legt das Release an (.github/workflows/release.yml)
+!/.github/
+
 # Website (GitHub Pages: Ordner /docs)
 !/docs/
 

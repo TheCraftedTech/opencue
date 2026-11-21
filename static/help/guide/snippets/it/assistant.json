@@ -1,0 +1,223 @@
+[
+ {
+  "id": "assistant-001",
+  "page": "assistant",
+  "path": [
+   "Assistente IA"
+  ],
+  "title": "Assistente IA",
+  "keywords": [],
+  "text": "L'**assistente IA** è una chat con un modello linguistico che gira sul **vostro computer** (o su un altro della vostra rete) tramite **Ollama**. Nulla viene inviato a internet: OpenCue parla solo con l'indirizzo del server che inserite. L'IA scrive ogni risposta **da sola** – OpenCue non inventa testi di risposta.\n\n> **Stato attuale:** la modalità **Chat** e la modalità **Lavoro** funzionano. Lavoro può **leggere** lo show (apparecchi con tutti i dettagli, gruppi, liste di cue, effetti, variabili), **modificare apparecchi** (luminosità, colore, pan / tilt, zoom ... – dopo avervelo chiesto) e dispone di una calcolatrice, numeri casuali e dell'ora. La **Guida** spiega il programma dai manuali (senza inventare nulla) e offre pulsanti che aprono finestre (vedi la sezione 7)."
+ },
+ {
+  "id": "assistant-002",
+  "page": "assistant",
+  "path": [
+   "Assistente IA",
+   "1. Configurazione"
+  ],
+  "title": "1. Configurazione",
+  "keywords": [],
+  "text": "1. Installate **Ollama** (ollama.com) su questo o su un altro computer e scaricate una volta un modello, ad es. `ollama pull qwen2.5-coder:3b`. Dopo non serve più internet.\n2. In OpenCue aprite **Impostazioni -> Assistente IA** e attivate in alto l'**interruttore principale *Attiva l'assistente IA*** – finché è spento, il resto della pagina è bloccato.\n3. Sotto **Connessione** inserite l'**indirizzo del server** (predefinito `http://127.0.0.1:11434`) e fate clic su **Testa connessione**.\n4. Scegliete il **modello predefinito** e fate clic su **Salva** in basso a destra (la finestra resta aperta).\n5. Con **Aggiungi pannello** aggiungete il pannello **Assistente IA**.\n\nLa pagina è organizzata in **Connessione**, **Comportamento** (modalità delle nuove chat, nomi delle chat, elenco delle funzioni), **Permessi** e **Avanzate**. In **Avanzate** (compresso) trovate dimensione del contesto, temperatura e tempo di attesa. La prima risposta dopo il caricamento di un modello richiede più tempo – il tempo di attesa è generoso.\nIn **Avanzate** ogni valore mostra un **«Consigliato: ...»**; il pulsante **Imposta valori consigliati** (in fondo alle impostazioni) ripristina contesto (16384), temperatura, risposta più lunga, tempo di attesa, nomi delle chat ed elenco delle funzioni. Indirizzo del server, modello e permessi restano intatti."
+ },
+ {
+  "id": "assistant-003",
+  "page": "assistant",
+  "path": [
+   "Assistente IA",
+   "2. Scrivere"
+  ],
+  "title": "2. Scrivere",
+  "keywords": [],
+  "text": "In basso c'è la riga di input: **[pulsante modalità] [campo di testo] [microfono] [invia]**. Il pulsante microfono (dettatura, solo sulla console) è descritto più sotto in *Dettare*."
+ },
+ {
+  "id": "assistant-004",
+  "page": "assistant",
+  "path": [
+   "Assistente IA",
+   "2. Scrivere"
+  ],
+  "title": "2. Scrivere (2)",
+  "keywords": [],
+  "text": "- **Invio** invia, **Maiusc + Invio** va a capo.\n- Mentre l'IA lavora vedete dei puntini che saltellano, poi il testo parola per parola. Il pulsante **invia** diventa un pulsante rosso **interrompi**.\n- Sotto ogni risposta c'è una riga compatta: la **modalità**, il tempo totale della domanda, i token al secondo e il modello.\n- **Passi di ragionamento:** modelli come `qwen3` o `deepseek-r1` pensano prima e rispondono dopo. I pensieri stanno in un blocco comprimibile **sopra** la risposta: mentre il modello pensa è aperto e cresce; quando inizia la risposta si richiude («Ha pensato per 12 s»), un clic lo riapre. Se un modello pensi o no dipende dal modello stesso (non c'è un interruttore). Il pensiero conta nella *Risposta più lunga* – OpenCue aggiunge 2500 token di margine.\n- **Scorrimento:** quando la cronologia è in fondo, segue mentre l'IA scrive. Se scorrete verso l'alto, **la vostra posizione resta** – anche mentre si scrive ancora più sotto. Il pulsante rotondo con la freccia in giù in basso a destra nella cronologia vi riporta alla fine (si illumina finché qualcosa è ancora in corso più sotto). Quando inviate un messaggio, scendete da soli.\n- Ogni messaggio ha un pulsante **copia** quando lo sfiorate; il testo si può anche selezionare.\n- In modalità Chat l'IA riceve a ogni domanda **tutta la chat finora**. Se diventa troppo lunga per la finestra di contesto, i messaggi più vecchi cadono (tutto resta salvato). In modalità Lavoro riceve la domanda attuale con tutto ciò che è successo per essa, più un **breve riassunto** delle domande precedenti. I risultati vi compaiono solo per i calcoli («e la metà di questo?»); dati dello show, ora e numeri casuali vengono recuperati ogni volta da capo (altrimenti i modelli piccoli copiano vecchie risposte e calcolano a memoria)."
+ },
+ {
+  "id": "assistant-005",
+  "page": "assistant",
+  "path": [
+   "Assistente IA",
+   "2. Scrivere",
+   "Dettare (voce in testo)"
+  ],
+  "title": "Dettare (voce in testo)",
+  "keywords": [],
+  "text": "Fate clic sul **microfono** accanto al campo di testo: il campo viene sostituito da un'animazione di **barre** in movimento che seguono la vostra voce, con il tempo di registrazione. **Spunta** = fatto, la registrazione viene trascritta e il testo messo nel campo (**non** viene inviato – leggetelo, correggetelo, premete invia); un testo già presente nel campo viene conservato e le nuove parole vengono aggiunte. **Croce** o `Esc` = scarta. Dopo 2 minuti la registrazione termina da sola."
+ },
+ {
+  "id": "assistant-006",
+  "page": "assistant",
+  "path": [
+   "Assistente IA",
+   "2. Scrivere",
+   "Dettare (voce in testo)"
+  ],
+  "title": "Dettare (voce in testo) (2)",
+  "keywords": [],
+  "text": "- La **lingua** è quella dell'interfaccia (una delle sei lingue) – non c'è un'impostazione separata. Le parole tecniche (cue, dimmer, gobo, blackout ...) sono note al riconoscitore.\n- La registrazione usa il microfono della **console** (il pulsante compare quindi solo lì). Tutto gira su questo computer con *Whisper* (faster-whisper).\n- Il **modello vocale** viene caricato una volta alla prima dettatura (serve internet, una barra di avanzamento lo mostra); poi la dettatura funziona offline. *Impostazioni -> Dettatura* offre **Veloce** (Whisper base, circa 145 MB) e **Accurato** (Whisper small, circa 484 MB, migliore per il tedesco, un po' più lento), un pulsante **Carica ora** e il **microfono per la dettatura**. La trascrizione richiede circa quanto la registrazione o meno, a seconda del computer.\n- La dettatura non ha nulla a che fare con la **parola di attivazione** (*Impostazioni -> Parola di attivazione*) – sono funzioni separate, ciascuna con il proprio microfono. Una panoramica di tutti gli ingressi e le uscite in uso si trova in *Impostazioni -> Ingressi e uscite*."
+ },
+ {
+  "id": "assistant-007",
+  "page": "assistant",
+  "path": [
+   "Assistente IA",
+   "3. Le tre modalità"
+  ],
+  "title": "3. Le tre modalità",
+  "keywords": [],
+  "text": "Il **pulsante modalità** quadrato a sinistra del campo di testo apre un piccolo menu:\n\n| Modalità | A cosa serve | Stato |\n|---|---|---|\n| **Chat** | Normale conversazione con l'IA. | pronta |\n| **Guida** | Spiega il programma e vi mostra dove sono le cose (i pulsanti aprono finestre). | pronta |\n| **Lavoro** | L'IA lavora con funzioni: calcolare, leggere lo show, impostare apparecchi ... | in corso (lettura e modifica degli apparecchi sono fatte) |\n\nLa modalità appartiene alla **chat** e si può cambiare in qualsiasi momento a metà conversazione. In quale modalità partono le **nuove chat** si imposta in *Impostazioni -> Assistente IA -> Modalità delle nuove chat*; ogni chat ricorda anche il proprio modello e la propria modalità (anche dopo un riavvio)."
+ },
+ {
+  "id": "assistant-008",
+  "page": "assistant",
+  "path": [
+   "Assistente IA",
+   "4. Lavoro: l'IA con funzioni"
+  ],
+  "title": "4. Lavoro: l'IA con funzioni",
+  "keywords": [],
+  "text": "In modalità **Lavoro** l'IA lavora come un **agente**: chiama **funzioni**, legge i risultati, prosegue con essi e scrive da sola la risposta finale. Quando deve calcolare, chiede alla **calcolatrice** invece di tirare a indovinare a mente; quando le serve qualcosa sullo show, lo **legge**; quando deve impostare qualcosa, chiama la **funzione di scrittura** corrispondente – a seconda dei vostri **permessi** (sezione 5) solo dopo avervelo chiesto. Finora esistono queste funzioni:"
+ },
+ {
+  "id": "assistant-009",
+  "page": "assistant",
+  "path": [
+   "Assistente IA",
+   "4. Lavoro: l'IA con funzioni"
+  ],
+  "title": "4. Lavoro: l'IA con funzioni (2)",
+  "keywords": [],
+  "text": "| Raccolta | Funzione | Cosa fa |\n|---|---|---|\n| Lettura (`read_functions`) | `show_overview` | Nome dello show, blackout, master e solo i **numeri** (apparecchi, gruppi, liste di cue, cue, effetti, variabili), lista di cue attiva |\n| Lettura | `list_fixtures` | Gli apparecchi: numero, nome, tipo, indirizzo DMX, gruppo, luminosità attuale (filtri: gruppo, nome) |\n| Lettura | `read_fixtures` | I **dettagli** degli apparecchi: modello, produttore, modalità, indirizzo DMX, gruppo e **tutti** i valori attuali (luminosità in %, colore, pan / tilt, zoom ... e ogni canale come valore DMX). Dite quali: `all`, un intervallo come `1-5`, numeri come `1, 3, 7` (anche `1-3, 7`) o il nome di un gruppo (anche «group Front»). Se un numero che citate non esiste (`6, 11` con 10 apparecchi), tornano quelli esistenti e una nota nomina quello mancante – così l'IA può rispondere correttamente |\n| Lettura | `list_groups` | I gruppi con i numeri dei loro apparecchi |\n| Lettura | `read_dmx` | L'**uscita DMX** di un universo: solo i canali che non sono 0 (`universe`, `first`, `last`) |\n| Lettura | `list_cuelists` | Le liste di cue con numero di cue, cue attivo e fader |\n| Libreria (`library_functions`) | `list_effects` | Gli effetti con le loro impostazioni – e se sono in esecuzione e su quali apparecchi |\n| Libreria | `list_variables` | Le variabili (nome, genere come colore o posizione, gruppo, valore) |\n| Modifica (`control_functions`) | `set_fixtures` | **Modifica** valori di apparecchi: `brightness` (0-100 %), `color` (un nome come `red`, `#FF8000` o `255 128 0`), `pan` / `tilt` (gradi o `50%`), `zoom`, `focus`, `gobo`, `prism`, `strobe` (ognuno 0-100 %) e con `channels` qualsiasi altro canale per nome in percentuale (`{\"Frost\": 50}`). Scelti come in `read_fixtures`; ciò che non nominate resta com'è. Passa gli stessi controlli della **riga di comando** (il comando compare nella sua cronologia). La **selezione** nell'interfaccia resta intatta: i valori vanno esattamente a questi apparecchi (visibili nell'elenco apparecchi, nel programmer e nei valori DMX) senza selezionarli – nel frattempo potete continuare a lavorare con altri apparecchi |\n| Modifica | `set_blackout` | **Blackout** acceso o spento (`enabled`): tutto buio, i valori vengono conservati |\n| Modifica | `set_master` | Il **master** (luminosità complessiva) in percentuale |\n| Modifica | `timecode_control` | Il clock del **timecode**: `play`, `pause`, `stop`, `seek` (con `position`), `rate` (con `rate`) |\n| Liste di cue (`cuelist_functions`) | `read_cuelist` | **Una** lista di cue con tutti i cue: numero, nome, trigger, tempi, cue attivo, se sta suonando |\n| Liste di cue | `control_cuelist` | Riproduce una lista di cue: `go` (cue successivo, o con `cue` un salto), `back`, `pause`, `resume`, `stop` |\n| Liste di cue | `set_cuelist_fader` | Il **fader** (mix) di una lista di cue in percentuale |\n| Look (`look_functions`) | `apply_variable` | Applica una **variabile** (colore salvato, posizione ...) agli apparecchi |\n| Look | `apply_effect` | Avvia un **effetto** sugli apparecchi |\n| Look | `stop_effects` | Ferma tutti gli effetti sugli apparecchi (i valori restano) |\n| Look | `release_fixtures` | Restituisce gli apparecchi al **manuale**: rilascia variabili ed effetti; eventualmente solo `dimmer`, `color`, `position`, `zoom`, `focus`, `gobo` |\n| Lettura | `read_selection` | Quali apparecchi sono **selezionati** nell'interfaccia |\n| Libreria | `list_showfiles` | I **file show** salvati e quale è caricato |\n| Selezione e gruppi (`group_functions`) | `select_fixtures` | **Seleziona** apparecchi nell'interfaccia (o `none` cancella la selezione) |\n| Selezione e gruppi | `create_group` | Crea un **gruppo** da apparecchi (`name`, `fixtures`); la selezione dell'utente resta |\n| Selezione e gruppi | `delete_group` | **Critica:** elimina un gruppo (gli apparecchi restano) |\n| Liste di cue | `store_cue` | **Memorizza** i valori del programmer come nuovo cue (`cuelist`, `cue`, `name` facoltativo, `if_exists` = `merge` / `overwrite`) |\n| Liste di cue | `delete_cue` | **Critica:** elimina un cue di una lista |\n| Patch (`patch_functions`) | `list_fixture_types` | Cerca tipi nella **libreria apparecchi** (nome, produttore, modalità con numero di canali) |\n| Patch | `add_fixtures` | **Patcha** nuovi apparecchi: tipo, quantità, universo, primo indirizzo, nome, gruppo; gli indirizzi sovrapposti vengono rifiutati |\n| Patch | `change_fixture` | Modifica **un** apparecchio: nome, indirizzo, universo, gruppo |\n| Patch | `change_group` | Rinomina un gruppo e / o ne imposta i membri |\n| Patch | `delete_fixtures` | **Critica:** elimina apparecchi dallo show |\n| File show (`showfile_functions`) | `save_show`, `save_show_as` | **Salva** lo show (con il suo nome noto / con uno nuovo; un nome esistente viene sostituito solo con `overwrite`) |\n| File show | `rename_showfile` | Rinomina un file show salvato |\n| File show | `load_show`, `new_show` | **Critica:** carica un altro show / ne avvia uno nuovo e sostituisce quello in esecuzione. Le modifiche non salvate vengono rifiutate – solo con il vostro consenso (`discard_changes`) funziona comunque |\n| File show | `delete_showfile` | **Critica:** elimina un file show salvato (quello caricato solo con `force`) |\n| Variabili (`variable_functions`) | `create_variable`, `change_variable` | Crea / modifica una **variabile**: colore (`color`), luminosità / zoom / focus / gobo (`level`), posizione (`pan`, `tilt`); tutto ciò che la usa segue subito |\n| Variabili | `delete_variable` | **Critica:** elimina una variabile |\n| Effetti (`effect_functions`) | `list_effect_types` | I **tipi di effetto** con la loro categoria e le loro impostazioni con limiti |\n| Effetti | `create_effect`, `change_effect` | Crea un **effetto** da un tipo con impostazioni (`settings`) / lo modifica |\n| Effetti | `delete_effect` | **Critica:** elimina un effetto (si ferma ovunque) |\n| Modifica cue (`cue_edit_functions`) | `set_cue` | Modifica le **proprietà** di un cue: nome, fade, delay, trigger (`go` / `follow` / `timecode` / `audio` / `midi`), timecode, comando, move-in-black, nuovo numero |\n| Modifica cue | `duplicate_cue`, `update_cue` | Copia un cue / porta i valori del programmer nel **cue attivo** (come il pulsante Update) |\n| Gestione liste di cue (`cuelist_manage_functions`) | `create_cuelist`, `rename_cuelist`, `duplicate_cuelist` | Crea una lista di cue / la rinomina / la copia con tutti i suoi cue |\n| Gestione liste di cue | `delete_cuelist` | **Critica:** elimina una lista di cue con tutti i suoi cue |\n| Comando (`command_functions`) | `command_help` | La **sintassi della riga di comando** dalla guida (promemoria o un argomento: `selection`, `values`, `color`, `channels`, `effects`, `combine`, `clear`, `cuelists`, `cues`) – l'IA la consulta prima di usare `run_command` |\n| Comando | `run_command` | **Critica:** esegue **qualsiasi comando della riga di comando** (anche eliminare e memorizzare cue) – l'IA ve lo chiede finché non scegliete «Consenti sempre» |\n| Aiuti (`helper_functions`) | `calculate` | Calcola un'espressione esattamente: `+ - * / // % ** ^`, parentesi, `sqrt`, `sin`, `cos`, `tan`, `ln`, `log`, `exp`, `abs`, `round`, `floor`, `ceil`, `min`, `max`, `pi`, `e` ... (decimali con il punto) |\n| Aiuti | `random_number` | Numeri casuali o lanci di dadi (`min`, `max`, `count`, interi o decimali) |\n| Aiuti | `current_time` | Ora, data e giorno della settimana del computer |"
+ },
+ {
+  "id": "assistant-010",
+  "page": "assistant",
+  "path": [
+   "Assistente IA",
+   "4. Lavoro: l'IA con funzioni"
+  ],
+  "title": "4. Lavoro: l'IA con funzioni (3)",
+  "keywords": [],
+  "text": "L'IA **non deve per forza usare una funzione**: per un saluto, un ringraziamento o una domanda generale risponde semplicemente a parole. Solo calcoli, numeri casuali, data e ora, dati dello show e modifiche allo show passano per una funzione – ogni volta da capo, anche per una domanda successiva.\n\nOgni chiamata compare nella chat in un **blocco di funzioni** sotto la vostra domanda: compresso vedete numero, nomi, stato e tempo; un clic mostra ogni funzione con il suo **input e risultato**. Se una chiamata non funziona (ad es. un calcolo non valido o un numero di apparecchio che non esiste), l'IA può leggere l'errore – con ciò che esiste – e riprova con valori corretti. Ogni valore che l'IA indica per `set_fixtures` viene prima controllato rigorosamente (intervalli numerici, nomi di colori, nomi di canali); il testo dell'IA non diventa mai un comando arbitrario.\n\n**Chiamare funzioni voi stessi:** potete anche attivare qualsiasi funzione **a mano** – senza che l'IA dica nulla. Digitate `/` e il nome nel campo di testo; mentre scrivete compaiono suggerimenti (frecce, **Tab** o un clic accettano, **Invio** invia):"
+ },
+ {
+  "id": "assistant-011",
+  "page": "assistant",
+  "path": [
+   "Assistente IA",
+   "4. Lavoro: l'IA con funzioni"
+  ],
+  "title": "4. Lavoro: l'IA con funzioni (4)",
+  "keywords": [],
+  "text": "- `/read_fixtures {\"fixtures\":\"6-8\"}` – i valori come JSON, come li scrive l'IA.\n- `/read_fixtures 6-8` – se la funzione ha esattamente un valore obbligatorio, basta il solo valore. `/calculate 17*23` calcola.\n- `/set_fixtures fixtures=1-3 brightness=50` – oppure come `nome=valore`.\n- `/help` elenca tutte le funzioni con il loro genere e i loro valori.\n\nIl risultato compare nella chat già espanso (input e risultato come JSON). **Non viene interrogato alcun modello** e l'IA non vede queste chiamate in seguito. Poiché agite voi stessi, i **permessi** qui non valgono – anche una funzione di scrittura viene eseguita senza domanda, anche quando per l'IA è impostata su «Non consentire mai». Un errore (funzione sconosciuta, modo sbagliato di scrivere i valori) compare come chiamata fallita con una spiegazione. Un messaggio che inizia solo con `/` senza essere un nome di funzione (ad es. `/etc/hosts show`) va all'IA come al solito.\n\n**Elenco delle funzioni** (*Impostazioni -> Assistente IA -> Modalità lavoro*):"
+ },
+ {
+  "id": "assistant-012",
+  "page": "assistant",
+  "path": [
+   "Assistente IA",
+   "4. Lavoro: l'IA con funzioni"
+  ],
+  "title": "4. Lavoro: l'IA con funzioni (5)",
+  "keywords": [],
+  "text": "- **Le funzioni comuni subito, il resto a richiesta** (predefinito, consigliato): l'IA vede subito le circa 17 funzioni comuni (leggere e impostare apparecchi, blackout, master, riprodurre una lista di cue, applicare variabili ed effetti, riga di comando, calcolatrice ...) e una **funzione raccolta** per tutto il resto (patch, file show, modifica di variabili / effetti / cue ...): chiamarne una le dà le funzioni di quella raccolta dal passo successivo. Il prompt resta piccolo – importante, perché tutte le 56 funzioni insieme sono circa il doppio di ciò che la finestra di contesto di un modello piccolo contiene.\n- **Tutte insieme**: l'IA vede subito tutte le 56 funzioni. Solo per modelli grandi con una grande finestra di contesto (aumentate *Impostazioni -> Assistente IA -> Avanzate -> Dimensione del contesto*).\n- **Tutto a richiesta**: l'IA vede solo le 14 funzioni raccolta (`read_functions`, `library_functions`, `cuelist_functions`, `look_functions`, `group_functions`, `command_functions`, `control_functions`, `helper_functions`, `patch_functions`, `showfile_functions`, `variable_functions`, `effect_functions`, `cue_edit_functions`, `cuelist_manage_functions`). Il prompt più piccolo, ma i modelli piccoli sono più lenti così e scelgono più spesso la raccolta sbagliata."
+ },
+ {
+  "id": "assistant-013",
+  "page": "assistant",
+  "path": [
+   "Assistente IA",
+   "4. Lavoro: l'IA con funzioni"
+  ],
+  "title": "4. Lavoro: l'IA con funzioni (6)",
+  "keywords": [],
+  "text": "**Protezione contro i cicli infiniti:** la stessa chiamata con gli stessi valori viene eseguita al massimo **3 volte** per domanda, al massimo **30** chiamate in totale. Dopo di che l'IA viene fermata e scrive la sua risposta da ciò che ha finora (compare una nota nella chat).\n\n**Importante per il modello:** deve poter **chiamare funzioni** (ad es. `qwen2.5-coder`, `qwen3`, `llama3.1`). I modelli piccoli (3B) ogni tanto inventano ancora qualcosa o saltano una funzione; più il modello è grande, più è affidabile – un modello come `qwen3:4b` o `llama3.1:8b` vale la pena se il vostro computer lo regge. Un semplice modello di chat in modalità Lavoro segnala che non può chiamare funzioni; in modalità Chat funziona normalmente."
+ },
+ {
+  "id": "assistant-014",
+  "page": "assistant",
+  "path": [
+   "Assistente IA",
+   "5. Permessi: cosa può fare l'IA da sola"
+  ],
+  "title": "5. Permessi: cosa può fare l'IA da sola",
+  "keywords": [],
+  "text": "Ogni funzione appartiene a un **genere**, e per ogni genere impostate cosa può fare l'IA (*Impostazioni -> Assistente IA -> Permessi*):"
+ },
+ {
+  "id": "assistant-015",
+  "page": "assistant",
+  "path": [
+   "Assistente IA",
+   "5. Permessi: cosa può fare l'IA da sola"
+  ],
+  "title": "5. Permessi: cosa può fare l'IA da sola (2)",
+  "keywords": [],
+  "text": "| Genere | Esempi | Predefinito |\n|---|---|---|\n| **Funzioni di lettura** | `show_overview`, `list_fixtures`, `read_fixtures`, `list_groups`, `read_dmx`, `list_cuelists`, `read_cuelist`, `read_selection`, `list_effects`, `list_effect_types`, `list_showfiles`, `list_fixture_types`, `list_variables` – guardano soltanto lo show | **Consenti sempre** |\n| **Funzioni di scrittura** | `set_fixtures`, `set_blackout`, `set_master`, `timecode_control`, `control_cuelist`, `set_cuelist_fader`, `apply_variable`, `apply_effect`, `stop_effects`, `release_fixtures`, `select_fixtures`, `create_group`, `store_cue` e tutto per patch, salvataggio, modifica di variabili, effetti, cue e liste di cue (`add_fixtures`, `save_show`, `create_variable`, `create_effect`, `set_cue`, `create_cuelist` ...) – modificano lo show | **Chiedi ogni volta** |\n| **Funzioni critiche** | `run_command` (qualsiasi comando della riga di comando), **tutte le funzioni di eliminazione** (`delete_cue`, `delete_group`, `delete_fixtures`, `delete_variable`, `delete_effect`, `delete_cuelist`, `delete_showfile`) e `load_show` e `new_show` (sostituiscono lo show in esecuzione) | **Chiedi ogni volta** |\n| Funzioni di aiuto | `calculate`, `random_number`, `current_time`, `command_help` – nessun effetto sullo show | sempre consentite, non regolabili |"
+ },
+ {
+  "id": "assistant-016",
+  "page": "assistant",
+  "path": [
+   "Assistente IA",
+   "5. Permessi: cosa può fare l'IA da sola"
+  ],
+  "title": "5. Permessi: cosa può fare l'IA da sola (3)",
+  "keywords": [],
+  "text": "Per ciascuno dei tre generi scegliete **Consenti sempre**, **Chiedi ogni volta** o **Non consentire mai**. Sotto ogni scelta vedete quali funzioni vi appartengono.\n\n**La domanda:** quando un genere è impostato su *Chiedi ogni volta*, l'IA si ferma prima di eseguire la funzione e nel blocco di funzioni compare una **scheda** con la funzione e i suoi valori (e il genere, ad es. «Modifica lo show»). Ha tre pulsanti:\n\n- **Consenti una volta** – la funzione viene eseguita ora; la volta successiva chiede di nuovo.\n- **Consenti sempre** – la funzione viene eseguita ora e d'ora in poi **sempre senza chiedere** (anche in altre chat). Vale per esattamente questa funzione ed è elencata in *Impostazioni -> Assistente IA -> Permessi -> Funzioni sempre consentite*; **Rimuovi** la fa chiedere di nuovo. Questo pulsante esiste solo sul **computer della console** (non su tablet / dispositivi remoti); vale per **tutti** i generi, anche per le funzioni critiche.\n- **Non consentire** – la funzione non viene eseguita. L'IA ne viene informata e vi dice che non l'ha fatto.\n\nLa domanda compare su **tutti** i dispositivi che mostrano questa chat; *Consenti una volta* e *Non consentire* funzionano da qualsiasi di essi. Resta anche dopo il ricaricamento della pagina. Se nessuno risponde, dopo 10 minuti vale come «no»; *Interrompi* termina subito la domanda."
+ },
+ {
+  "id": "assistant-017",
+  "page": "assistant",
+  "path": [
+   "Assistente IA",
+   "5. Permessi: cosa può fare l'IA da sola"
+  ],
+  "title": "5. Permessi: cosa può fare l'IA da sola (4)",
+  "keywords": [],
+  "text": "Quando un genere è impostato su **Non consentire mai**, l'IA non chiede nemmeno: la funzione non viene eseguita, l'IA riceve la nota sull'impostazione e ve lo dice."
+ },
+ {
+  "id": "assistant-018",
+  "page": "assistant",
+  "path": [
+   "Assistente IA",
+   "6. Chat"
+  ],
+  "title": "6. Chat",
+  "keywords": [],
+  "text": "- Ogni chat è un **file a sé** (cartella `chats` nella cartella dati) e viene conservata dopo l'uscita; tutti i dispositivi e i pannelli mostrano le stesse chat.\n- **+** crea una nuova chat; la prima viene creata da sola quando inviate.\n- Un **doppio clic** sul titolo lo rinomina. Finché l'IA non dà un titolo, viene mostrato l'inizio della prima domanda.\n- **Titoli automatici:** l'IA dà essa stessa alla chat un breve titolo (2-5 parole; una piccola richiesta in più al modello) – **dopo la seconda risposta**, così ha più contesto (le prime due domande e risposte entrano nella richiesta). Se entro **un minuto** non arriva una seconda domanda, la chat viene intitolata dalla prima. Fino ad allora viene mostrato l'inizio della prima domanda. Una chat che avete rinominato voi non viene mai rinominata. Per disattivarlo: *Impostazioni -> Assistente IA -> Modello -> Nomina automaticamente le chat*.\n- Nell'intestazione scegliete il **modello di questa chat** – modificabile in qualsiasi momento, la cronologia resta.\n- Ogni riga dell'**elenco delle chat** ha un **menu a tre puntini** (anche con il clic destro): **Rinomina** (direttamente nell'elenco), **Duplica** (una copia con tutta la cronologia, intitolata «... (copia)») ed **Elimina chat** (dopo una conferma). Il simbolo prima del titolo mostra la modalità della chat. **Mentre l'IA scrive** in una chat, dei piccoli punti si muovono dietro il titolo – così vedete in quale di più chat sta lavorando. Quando una risposta è **terminata e la chat non è aperta**, vi compare un **punto giallo** («nuova risposta»). Scompare non appena aprite la chat – su tutti i dispositivi.\n- L'**elenco delle chat può essere compresso ed espanso** (primo pulsante nell'intestazione); lo stato viene ricordato per ogni pannello. Nei pannelli stretti l'elenco si sovrappone alla cronologia."
+ },
+ {
+  "id": "assistant-019",
+  "page": "assistant",
+  "path": [
+   "Assistente IA",
+   "7. Guida: spiega il programma e vi mostra dove sono le cose"
+  ],
+  "title": "7. Guida: spiega il programma e vi mostra dove sono le cose",
+  "keywords": [],
+  "text": "In modalità **Guida** (icona: cartello indicatore) l'IA risponde a domande come *«Dove sono i profili colore?»*, *«Come creo un cue?»* o *«Cos'è un gruppo di apparecchi?»* – e può offrirvi **pulsanti** che aprono la finestra giusta."
+ },
+ {
+  "id": "assistant-020",
+  "page": "assistant",
+  "path": [
+   "Assistente IA",
+   "7. Guida: spiega il programma e vi mostra dove sono le cose"
+  ],
+  "title": "7. Guida: spiega il programma e vi mostra dove sono le cose (2)",
+  "keywords": [],
+  "text": "- **L'IA non inventa nulla.** Riceve nel prompt solo poco (come è strutturato il programma) e recupera ogni dettaglio con la funzione **`find_help`**: OpenCue sceglie i pezzi corrispondenti tra molti piccoli frammenti di testo e li passa all'IA con l'istruzione di **rispondere solo da essi**. Se nulla corrisponde, la funzione lo dice esplicitamente – l'IA deve allora ammettere di non saperlo invece di tirare a indovinare.\n- **Fonti:** i frammenti sono file JSON nella cartella `static/help/guide/snippets/<lingua>/` (un file per pagina di manuale, circa 400 per lingua). Il loro testo è preso **parola per parola dai manuali**. Potete modificare o accorciare i frammenti a mano o aggiungere `keywords`; `synonyms.json` collega parole (ad es. «Gestore file» <-> «file manager»).\n- **Aprire finestre:** la funzione **`show_dialog`** mette sotto la risposta un pulsante come **«Apri: Gestore file»**. L'IA non fa mai clic da sola – **decidete voi** se premerlo. Il clic equivale a quello sulla voce di menu; nulla viene salvato o eliminato. Vengono offerte le finestre importanti (Impostazioni con le loro categorie, gestore file per show / layout / palchi / effetti, libreria apparecchi, apri / salva / importa / esporta show, Aggiungi pannello, modalità modifica, scorciatoie, lingua ...); l'elenco è in `static/help/guide/targets.json`.\n- **`list_help_topics`** mostra di cosa la guida può parlarvi.\n- La guida non cambia **nulla** nel vostro show; ha solo queste tre funzioni (tutte consentite senza chiedere)."
+ }
+]

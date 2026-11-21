@@ -1,3 +1,5 @@
+# Copyright (C) 2026 Samuel Zenker
+# SPDX-License-Identifier: GPL-3.0-or-later
 """
 paths.py
 Zentrale Pfadverwaltung von OpenCue.
@@ -21,10 +23,18 @@ logger = logging.getLogger("opencue.paths")
 
 def _default_data_root() -> Path:
     """Windows: %LOCALAPPDATA%\\OpenCue  |  Fallback (Linux/macOS Dev): ~/.opencue"""
+    override = os.environ.get("OPENCUE_DATA_DIR", "").strip()       # ein Ordner fuer ALLES (Konfiguration, Shows, Layouts ...): Tests und tragbare Installationen; der echte Datenordner bleibt unberuehrt
+    if override:
+        return Path(override)
     local = os.environ.get("LOCALAPPDATA", "")
     if local:
         return Path(local) / "OpenCue"
     return Path.home() / ".opencue"
+
+
+def default_data_root() -> Path:
+    """Standard-Datenordner (oder OPENCUE_DATA_DIR): hier liegen config/ und logs/ - unabhaengig von einem benutzerdefinierten Datenpfad."""
+    return _default_data_root()
 
 
 # Config-Verzeichnis liegt IMMER am Standard-Ort (Bootstrapping-Anker).
@@ -120,6 +130,13 @@ def themes_dir() -> Path:
 def effects_dir() -> Path:
     """Ordner fuer Effekt-Skripte (.fx) - im aktuellen Datenverzeichnis."""
     directory = get_data_root() / "effects"
+    directory.mkdir(parents=True, exist_ok=True)
+    return directory
+
+
+def backups_dir() -> Path:
+    """Ordner fuer die Hintergrund-Sicherungen der Show (app/backups.py) - im aktuellen Datenverzeichnis."""
+    directory = get_data_root() / "backups"
     directory.mkdir(parents=True, exist_ok=True)
     return directory
 

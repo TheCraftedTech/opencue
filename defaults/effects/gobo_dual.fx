@@ -1,5 +1,7 @@
 #NAME Gobo Dual Wheels
-#DESCRIPTION Wechselt Rad 1 und Rad 2 gegeneinander (Rad 2 läuft versetzt). Eine Ausgabe, die das Gerät nicht hat, wird einfach ignoriert.
+#DESCRIPTION en Both gobo wheels cycle, wheel 2 one step ahead.
+#DESCRIPTION de Beide Gobo-Räder schalten durch, Rad 2 einen Schritt voraus.
+#TAGS advanced, steps
 #CATEGORY gobo
 #RATE 40
 #VAR speed Slider 0.5 0.05 8 0.05

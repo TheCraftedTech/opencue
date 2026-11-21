@@ -1,5 +1,7 @@
 #NAME Gobo Cycle
-#DESCRIPTION Schaltet der Reihe nach durch die Gobos des Geräts. speed = Wechsel pro Sekunde, first = erstes Gobo (0 = meist offen).
+#DESCRIPTION en Cycles through the gobos of wheel 1.
+#DESCRIPTION de Schaltet durch die Gobos von Rad 1.
+#TAGS basic, steps
 #CATEGORY gobo
 #RATE 40
 #VAR speed Slider 0.5 0.05 8 0.05

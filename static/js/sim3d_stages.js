@@ -1,3 +1,5 @@
+// Copyright (C) 2026 Samuel Zenker
+// SPDX-License-Identifier: GPL-3.0-or-later
 /* Buehnen der 3D-Simulation: Toolbar-Chip "Stage <Name> *" (oeffnet den Dateimanager, Art 3D-Buehnen: static/js/file_manager.js) und die gemeinsame Schnittstelle fuer das Panel (window.OCSimStages: aktueller Stand, speichern, verwerfen, Ereignis "sim-stage" bei Aenderungen).
  * Die aktive Buehne liegt auf dem Server (app/sim_stages.py); app.js meldet jede Aenderung als Ereignis "sim-stage-changed". Namens-, Rueckfrage- und Toast-Dialoge
  * sind die der Layouts (app.js). Klassisches Skript, laeuft nach app.js. */

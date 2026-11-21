@@ -27,7 +27,7 @@ for required in (ICON, VERSION_FILE, os.path.join(ROOT, "ffmpeg", "ffmpeg.exe"),
 datas = [
     (os.path.join(ROOT, "static"), "static"),
     (os.path.join(ROOT, "templates"), "templates"),
-    (os.path.join(ROOT, "defaults"), "defaults"),
+    (os.path.join(ROOT, "defaults"), "defaults"),                               # (ohne defaults/voice: das Sprachmodell laedt das Programm bei Bedarf nach, siehe unten)
     (os.path.join(ROOT, "ffmpeg"), "ffmpeg"),                                    # ffmpeg.exe (GPL-3, eigenes Programm) + LICENSE.txt + README.md
     (os.path.join(ROOT, "LICENSE"), "."),
     (os.path.join(SPEC_DIR, "third_party"), "third_party"),                      # Lizenztexte der Bibliotheken + components.json (Ueber-Dialog)
@@ -37,10 +37,19 @@ binaries = []
 hiddenimports = [
     "webview.platforms.winforms",             # pywebview laedt die Plattform ueber den Namen
     "webview.platforms.edgechromium",
+    "app.dmx_output",                         # DMX-Ausgabe als eigener Prozess (OpenCue.exe --dmx-output): wird nur innerhalb einer Funktion importiert
+    "multiprocessing.shared_memory",          # gemeinsamer Speicher zwischen Programm und Ausgabe-Prozess
+    "app.fx_runner", "app.dmx_in",                          # Rechenkern der Effekte und der Cue-Ueberblendungen: laeuft im Ausgabe-Prozess (wird nur innerhalb einer Funktion importiert)
+    "app.cue_fade",
+    "app.fx_script",
+    "app.fxlang",
+    "app.fx_categories",
+    "app.audio_vars",
+    "app.dmx_resolve",
 ]
-for package in ("uvicorn", "websockets"):     # laden Protokolle/Untermodule ueber Namen
+for package in ("uvicorn", "websockets", "zeroconf"):     # laden Protokolle/Untermodule ueber Namen (zeroconf: kompilierte Teile)
     hiddenimports += collect_submodules(package)
-for package in ("pythonnet", "clr_loader"):   # .NET-Bruecke von pywebview: Python.Runtime.dll u. a.
+for package in ("pythonnet", "clr_loader", "vosk", "faster_whisper", "ctranslate2", "onnxruntime", "tokenizers", "rtmidi"):   # .NET-Bruecke von pywebview (Python.Runtime.dll u. a.); vosk bringt libvosk.dll mit; Diktieren (faster-whisper): Modellcode, Silero-VAD (onnx) und die nativen Bibliotheken von ctranslate2 / onnxruntime / PyAV
     package_datas, package_binaries, package_hidden = collect_all(package)
     datas += package_datas
     binaries += package_binaries
@@ -55,9 +64,11 @@ a = Analysis(
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
-    excludes=["tkinter", "watchfiles", "unittest", "pytest"],
+    excludes=["tkinter", "watchfiles", "unittest", "pytest", "av", "hf_xet"],           # av = PyAV (nur zum Dekodieren von Dateien: OpenCue gibt faster-whisper fertige Audiodaten; ersetzt durch ein leeres Modul in app/dictation.py), hf_xet = optionaler Beschleuniger des Modell-Downloads
     noarchive=False,
 )
+# Das Sprachmodell (Vosk, 68 MB) wird NICHT mitgeliefert: app/voice.py laedt es bei Bedarf in den Datenordner (Einstellungen -> Triggerwort; der Installer kann es auf Wunsch gleich mitladen).
+a.datas = [d for d in a.datas if not d[0].replace("\\", "/").startswith("defaults/voice")]
 pyz = PYZ(a.pure)
 
 exe = EXE(
@@ -74,6 +85,7 @@ exe = EXE(
     disable_windowed_traceback=False,
     icon=ICON,
     version=VERSION_FILE,
+    manifest=os.path.join(SPEC_DIR, "OpenCue.manifest"),           # asInvoker, DPI, lange Pfade, Windows 10 / 11
 )
 coll = COLLECT(
     exe,

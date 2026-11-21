@@ -1,3 +1,5 @@
+# Copyright (C) 2026 Samuel Zenker
+# SPDX-License-Identifier: GPL-3.0-or-later
 """
 dmx_resolve.py
 Abstrakte Werte (dimmer/pan/tilt/color/beam-Attribute) <-> DMX-Byte-Werte.
@@ -238,11 +240,16 @@ def current_abstract_values(fx) -> Dict[str, Any]:
     return abstract
 
 
+# Kanaele, die schon als abstraktes Attribut (Dimmer, Pan/Tilt samt Fein-Byte, Farbe) erfasst werden; alles andere kommt als roher Kanal "ch<Offset>" dazu
+ABSTRACT_COVERED_CHANNELS = ("Dimmer", "Pan", "Tilt", "PanFine", "TiltFine",
+                             "ColorAdd_R", "ColorAdd_G", "ColorAdd_B", "ColorSub_C", "ColorSub_M", "ColorSub_Y")
+
 _OFFSET_CACHE: Dict[Any, Dict[str, int]] = {}
 
 
 def clear_offset_cache() -> None:
     _OFFSET_CACHE.clear()
+    _PLAN_CACHE.clear()
 
 
 def _offsets_cached(fx) -> Dict[str, int]:
@@ -254,44 +261,94 @@ def _offsets_cached(fx) -> Dict[str, int]:
     return offsets
 
 
+def absolute_from_dmx(fx, buf, grand_master: float) -> Dict[str, Any]:
+    """Der VOLLSTAENDIGE Zustand einer Fixture aus dem DMX-Puffer (fuer den absoluten Teil eines Cues): alle abstrakten Attribute
+    (dimmer, color, pan, tilt, strobe, gobo, prism, focus, zoom ...) und jeder uebrige Kanal als "ch<Offset>" (Byte). Was der Puffer wegen
+    Master 0 / Blackout nicht hergibt (Dimmer, Farbe), kommt aus dem ungedimmten Wertespeicher der Fixture (fx.values)."""
+    out = abstract_from_dmx(fx, buf, grand_master)
+    out.pop("wheels", None)
+    for key, value in current_abstract_values(fx).items():
+        out.setdefault(key, value)
+    offsets = _offsets_cached(fx)
+    covered = set(ABSTRACT_COVERED_CHANNELS) | set(beam_channels(offsets).values())
+    base = fx.start_channel - 1
+    for name, offset in offsets.items():
+        if name in covered:
+            continue
+        index = base + offset
+        if 0 <= index < len(buf):
+            out[f"ch{offset}"] = int(buf[index])
+    return out
+
+
+_PLAN_CACHE: Dict[Any, Dict[str, Any]] = {}
+
+
+def _read_plan(fx) -> Dict[str, Any]:
+    """Wo im Kanalbereich eines Geraetetyps (Offsets) welches abstrakte Attribut liegt - je Typ / Modus einmal berechnet (frueher bei JEDEM Aufruf: Kanalnamen
+    durchsucht, Beam-Kanaele und Raeder neu bestimmt; die Live-Anzeige ruft das hundertfach je Sekunde und Geraet)."""
+    key = (fx.fixture_type, getattr(fx, "mode", ""))
+    plan = _PLAN_CACHE.get(key)
+    offsets = _offsets_cached(fx)
+    if plan is not None and plan["offsets"] is offsets:
+        return plan
+    plan = {
+        "offsets": offsets,
+        "dim": offsets.get("Dimmer"),
+        "pan": (offsets.get("Pan"), offsets.get("PanFine")),
+        "tilt": (offsets.get("Tilt"), offsets.get("TiltFine")),
+        "rgb": (offsets.get("ColorAdd_R"), offsets.get("ColorAdd_G"), offsets.get("ColorAdd_B")),
+        "cmy": (offsets.get("ColorSub_C"), offsets.get("ColorSub_M"), offsets.get("ColorSub_Y")),
+        "beam": [(attr, offsets[name]) for attr, name in beam_channels(offsets).items()],
+        "wheels": [(name, off) for name, off in offsets.items() if name in WHEEL_CHANNELS or name.startswith(WHEEL_PREFIXES)],
+    }
+    _PLAN_CACHE[key] = plan
+    return plan
+
+
 def abstract_from_dmx(fx, buf, grand_master: float) -> Dict[str, Any]:
     """Umkehrung von apply_abstract_values: liest die Werte einer Fixture aus dem DMX-Puffer (die Wahrheit - das, was der
     DMX-Monitor zeigt und ausgegeben wird) und liefert sie im abstrakten Format (0-100 % / RGB 0-255). Der Grand Master
     wird herausgerechnet (die Bedienelemente zeigen den Wert VOR dem Master); bei Master 0 ist der Dimmer nicht
     rekonstruierbar und fehlt dann."""
-    offsets = _offsets_cached(fx)
+    plan = _read_plan(fx)
     base = fx.start_channel - 1
+    size = len(buf)
 
-    def byte(name: str):
-        off = offsets.get(name)
+    def byte(off):
         if off is None:
             return None
         idx = base + off
-        return buf[idx] if 0 <= idx < len(buf) else None
+        return buf[idx] if 0 <= idx < size else None
 
     out: Dict[str, Any] = {}
-    dim = byte("Dimmer")
+    dim = byte(plan["dim"])
     if dim is not None and grand_master > 0:
         out["dimmer"] = round(min(100.0, dim / 255.0 * 100.0 / (grand_master / 100.0)), 2)
-    for attr, coarse, fine in (("pan", "Pan", "PanFine"), ("tilt", "Tilt", "TiltFine")):
+    for attr in ("pan", "tilt"):
+        coarse, fine = plan[attr]
         c = byte(coarse)
         if c is None:
             continue
         f = byte(fine)
         out[attr] = round(((c * 256 + f) / 65535.0 if f is not None else c / 255.0) * 100.0, 4)       # 16 Bit = 0,0015 % Aufloesung: vier Stellen, sonst geht beim Speichern Genauigkeit verloren
-    r, g, b = byte("ColorAdd_R"), byte("ColorAdd_G"), byte("ColorAdd_B")
+    r, g, b = (byte(o) for o in plan["rgb"])
     if r is not None and g is not None and b is not None:
         if grand_master > 0 or dim is not None:             # ohne Dimmer-Kanal dunkelt der Master 0 / Blackout ueber die Farbe ab: dann nicht rekonstruierbar
             out["color"] = {"r": r, "g": g, "b": b}
     else:
-        cy, ma, ye = byte("ColorSub_C"), byte("ColorSub_M"), byte("ColorSub_Y")
+        cy, ma, ye = (byte(o) for o in plan["cmy"])
         if cy is not None and ma is not None and ye is not None:
             out["color"] = {"r": 255 - cy, "g": 255 - ma, "b": 255 - ye}
-    for attr, ch_name in beam_channels(offsets).items():
-        v = byte(ch_name)
+    for attr, off in plan["beam"]:
+        v = byte(off)
         if v is not None:
             out[attr] = round(v / 255.0 * 100.0, 2)
-    wheels = {name: byte(name) for name in offsets if (name in WHEEL_CHANNELS or name.startswith(WHEEL_PREFIXES)) and byte(name) is not None}
+    wheels = {}
+    for name, off in plan["wheels"]:
+        v = byte(off)
+        if v is not None:
+            wheels[name] = v
     if wheels:
         out["wheels"] = wheels
     return out

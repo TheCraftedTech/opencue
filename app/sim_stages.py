@@ -1,6 +1,10 @@
+# Copyright (C) 2026 Samuel Zenker
+# SPDX-License-Identifier: GPL-3.0-or-later
 """
 sim_stages.py
-Buehnen der "3D-Simulation": Quader, Zylinder, Kugeln und Keile (Name, Farbe, Position = Fusspunkt, Drehung, Groesse; Meter, Grad, Z nach oben).
+Buehnen der "3D-Simulation": Quader, Zylinder, Kugeln, Keile und eigene 3D-Modelle (Name, Farbe, Position = Fusspunkt, Drehung, Groesse; Meter, Grad, Z nach oben).
+Ein Modell (Typ "model") verweist mit "model" auf eine Datei der Modell-Bibliothek (app/sim_models.py, <Datenordner>/models/<Name>.stl) und merkt sich mit "unit"
+die Einheit der Datei (mm/cm/m/in); seine Groesse ist der Rahmen, in den das Modell gestreckt wird.
 
 - Bibliothek: eine Datei je Buehne in <Datenordner>/stages/<Name>.json  {"format": "opencue-sim-stage", "version": 1, "name", "objects": [...], "saved_at"}.
 - Aktive Buehne: genau eine, auf dem Server (alle Geraete und Panels sehen dieselbe). Die Arbeitskopie (objects) wird vom Client laufend gesendet; "dirty" heisst:
@@ -35,7 +39,12 @@ from app import paths as _paths
 
 FORMAT = "opencue-sim-stage"
 VERSION = 1
-TYPES = ("box", "cylinder", "sphere", "wedge")
+TYPES = ("box", "cylinder", "sphere", "wedge", "model", "screen")
+MODEL_UNITS = ("mm", "cm", "m", "in")
+_MODEL_RE = re.compile(r'^[^\\/:*?"<>|\x00-\x1f]{1,76}\.stl$', re.IGNORECASE)          # Dateiname einer Modell-Datei (wie sim_models.valid_filename)
+SCREEN_FITS = ("stretch", "contain", "cover")                          # wie das Bild den Bildschirm fuellt: strecken / einpassen (Raender) / fuellen (zuschneiden)
+SCREEN_LOOK = {"brightness": (100, 0, 300), "contrast": (100, 0, 300), "saturation": (100, 0, 300), "hue": (0, -180, 180)}      # Standard, Von, Bis (Prozent bzw. Grad)
+_MEDIA_ID_RE = re.compile(r"^[0-9a-f]{64}$")
 MATERIALS = ("matt", "satin", "glossy", "metal", "mirror")          # Oberflaechen: matt (Holz, Stein, Stoff) ... Spiegel (Chrom)
 MAX_OBJECTS = 200
 MAX_FILE_BYTES = 2 * 1024 * 1024
@@ -107,6 +116,28 @@ def _vec(value: Any, default, low: float = -LIMIT, high: float = LIMIT) -> List[
     return [round(_num(v, d, low, high), 4) for v, d in zip(value, default)]
 
 
+def normalize_screen(item: Dict[str, Any]) -> Dict[str, Any]:
+    """Felder eines Bildschirms (Typ "screen"): Medium aus der Medienbibliothek der Show (Bild oder Video), Darstellung, Farbanpassung, Wiedergabe (Timecode oder frei)."""
+    look_in = item.get("look") if isinstance(item.get("look"), dict) else {}
+    look: Dict[str, Any] = {key: float(round(_num(look_in.get(key), default, low, high), 2)) for key, (default, low, high) in SCREEN_LOOK.items()}      # immer float: nach dem JSON-Hin und Zurueck derselbe Typ (sonst "geaendert")
+    look["tint"] = look_in["tint"].lower() if isinstance(look_in.get("tint"), str) and _COLOR_RE.match(look_in["tint"]) else "#ffffff"
+    look["flip"] = look_in.get("flip") is True
+    try:
+        start = int(_num(item.get("tc_start_ms"), 0, 0, 86_400_000))
+    except (TypeError, ValueError):
+        start = 0
+    return {
+        "media": item["media"] if isinstance(item.get("media"), str) and _MEDIA_ID_RE.match(item["media"]) else "",
+        "fit": item["fit"] if item.get("fit") in SCREEN_FITS else "stretch",
+        "look": look,
+        "sync": "free" if item.get("sync") == "free" else "timecode",
+        "tc_start_ms": start,
+        "loop": item.get("loop") is not False,
+        "muted": item.get("muted") is not False,
+        "emissive": item.get("emissive") is not False,                       # true: leuchtet selbst (wie eine LED-Wand); false: wie eine Wand, nur Licht beleuchtet sie
+    }
+
+
 def normalize_objects(raw: Any) -> List[Dict[str, Any]]:
     """Beliebige Eingabe in eine gueltige Objektliste umwandeln (unbrauchbare Eintraege fallen weg, Grenzen werden eingehalten)."""
     objects: List[Dict[str, Any]] = []
@@ -114,15 +145,25 @@ def normalize_objects(raw: Any) -> List[Dict[str, Any]]:
     for item in (raw if isinstance(raw, list) else [])[:MAX_OBJECTS]:
         if not isinstance(item, dict) or item.get("type") not in TYPES:
             continue
+        if item["type"] == "model" and not (isinstance(item.get("model"), str) and _MODEL_RE.match(item["model"]) and not item["model"].startswith(".")):
+            continue
         oid = item.get("id") if isinstance(item.get("id"), str) and _ID_RE.match(item["id"]) and item["id"] not in taken else "o" + uuid.uuid4().hex[:10]
         taken.add(oid)
-        objects.append({
+        obj = {
             "id": oid, "type": item["type"], "name": clean_name(item.get("name"), item["type"])[:60],
             "color": item["color"].lower() if isinstance(item.get("color"), str) and _COLOR_RE.match(item["color"]) else "#9c9ca0",
             "position": _vec(item.get("position"), (0, 0, 0)), "rotation": _vec(item.get("rotation"), (0, 0, 0), -3600.0, 3600.0),
             "size": _vec(item.get("size"), (1, 1, 1), MIN_SIZE, LIMIT),
             "material": item["material"] if item.get("material") in MATERIALS else "matt",
-        })
+        }
+        if item["type"] == "model":
+            obj["model"] = item["model"]
+            obj["unit"] = item["unit"] if item.get("unit") in MODEL_UNITS else "m"
+        if item["type"] == "screen":
+            obj.update(normalize_screen(item))
+            raw_size = _vec(item.get("size"), (3.2, 0.02, 1.8), 0.001, LIMIT)                       # ein Bildschirm darf nur wenige Millimeter dick sein
+            obj["size"] = [max(raw_size[0], MIN_SIZE), raw_size[1], max(raw_size[2], MIN_SIZE)]
+        objects.append(obj)
     return objects
 
 
@@ -295,7 +336,10 @@ class Store:
 
     def remember(self) -> None:
         try:
-            (library_dir() / ".last").write_text(self.filename or "", encoding="utf-8")
+            last = library_dir() / ".last"
+            text = self.filename or ""
+            if not last.is_file() or last.read_text(encoding="utf-8") != text:        # nur bei Aenderung schreiben (der Programmstart laedt die Show und merkt sich dabei dieselbe Buehne)
+                last.write_text(text, encoding="utf-8")
         except OSError:
             pass
 
@@ -503,6 +547,91 @@ async def set_fixtures(request: Request) -> JSONResponse:
     store.set_layout(body.get("layout"))
     payload = await _broadcast(source=str(body.get("source") or "")[:40] or None)
     return JSONResponse({"ok": True, "fixture_layout": payload["fixture_layout"]})
+
+
+# ---------------------------------------------------------------------------------------------------------------- Buehne als JSON bearbeiten
+# Alles der Arbeitskopie in einem Text: {"name", "room": {...}, "objects": [...], "fixture_layout": {"<Nummer oder Id>": {"position": [x, y, z], "rotation": [rx, ry, rz]}}}.
+# Die Scheinwerfer stehen unter ihrer NUMMER (FID) statt der langen Id - beim Einlesen gilt beides. Pruefen = nichts aendern; Uebernehmen = wie eine Aenderung im Panel (Stern, Rueckgaengig im Panel).
+MAX_JSON_BYTES = 2 * 1024 * 1024
+
+
+def stage_json_text() -> str:
+    store.ensure()
+    fixtures = getattr(_state(), "fixtures", {}) or {}
+    layout: Dict[str, Any] = {}
+    for fixture_id, item in store.layout.items():
+        fx = fixtures.get(fixture_id)
+        layout[str(fx.fid) if fx is not None and getattr(fx, "fid", 0) else fixture_id] = item
+    data = {"name": store.name, "room": store.room, "objects": store.objects, "fixture_layout": layout}
+    text = json.dumps(data, indent=2, ensure_ascii=False)
+    return re.sub(r"\[\s*(-?[0-9.eE+-]+(?:,\s*-?[0-9.eE+-]+)*)\s*\]", lambda m: "[" + re.sub(r"\s+", " ", m.group(1)) + "]", text)          # Zahlenlisten (Position, Groesse ...) in einer Zeile
+
+
+def parse_stage_json(text: str) -> Dict[str, Any]:
+    """Text -> bereinigte Teile und ein Bericht. Wirft StageError("invalid_json", ...) mit Zeile/Spalte bei Syntaxfehlern."""
+    if len(text.encode("utf-8")) > MAX_JSON_BYTES:
+        raise StageError("too_big")
+    try:
+        data = json.loads(text)
+    except json.JSONDecodeError as exc:
+        error = StageError("invalid_json")
+        error.detail = {"line": exc.lineno, "column": exc.colno, "message": exc.msg}                       # type: ignore[attr-defined]
+        raise error from None
+    if isinstance(data, list):                                                                              # nur eine Objektliste eingefuegt
+        data = {"objects": data}
+    if not isinstance(data, dict):
+        error = StageError("invalid_json")
+        error.detail = {"line": 1, "column": 1, "message": "Expected an object { ... } or a list [ ... ]"}   # type: ignore[attr-defined]
+        raise error
+    store.ensure()
+    report: Dict[str, Any] = {"objects_in": 0, "objects": 0, "layout_in": 0, "layout": 0, "unknown": [], "room": "room" in data}
+    objects = store.objects
+    if "objects" in data:
+        raw = data["objects"] if isinstance(data["objects"], list) else []
+        objects = normalize_objects(raw)
+        report["objects_in"], report["objects"] = len(raw), len(objects)
+    else:
+        report["objects"] = len(objects)
+    room = normalize_room(data["room"]) if "room" in data else store.room
+    layout = store.layout
+    if "fixture_layout" in data:
+        fixtures = getattr(_state(), "fixtures", {}) or {}
+        by_fid = {str(fx.fid): fid for fid, fx in fixtures.items() if getattr(fx, "fid", 0)}
+        raw_layout = data["fixture_layout"] if isinstance(data["fixture_layout"], dict) else {}
+        mapped: Dict[str, Any] = {}
+        for key, item in raw_layout.items():
+            fixture_id = key if key in fixtures else by_fid.get(str(key))
+            if fixture_id is None:
+                report["unknown"].append(str(key)[:30])
+                continue
+            mapped[fixture_id] = item
+        layout = normalize_layout(mapped)
+        report["layout_in"], report["layout"] = len(raw_layout), len(layout)
+    else:
+        report["layout"] = len(layout)
+    report["unknown"] = report["unknown"][:10]
+    return {"objects": objects, "room": room, "layout": layout, "report": report}
+
+
+@router.get("/api/sim-stage/json")
+async def get_stage_json() -> JSONResponse:
+    return JSONResponse({"ok": True, "text": stage_json_text(), "name": store.name})
+
+
+@router.post("/api/sim-stage/json")
+async def post_stage_json(request: Request) -> JSONResponse:
+    """{text, apply}: ohne apply nur pruefen (Bericht), mit apply uebernehmen."""
+    body = await request.json()
+    try:
+        parsed = parse_stage_json(str((body or {}).get("text", "")))
+    except StageError as exc:
+        return JSONResponse({"ok": False, "error": exc.code, **getattr(exc, "detail", {})}, status_code=_STATUS.get(exc.code, 400))
+    if (body or {}).get("apply"):
+        store.set_objects(parsed["objects"])
+        store.set_room(parsed["room"])
+        store.set_layout(parsed["layout"])
+        await _broadcast(source="json-editor")
+    return JSONResponse({"ok": True, "applied": bool((body or {}).get("apply")), "report": parsed["report"]})
 
 
 @router.post("/api/sim-stage/discard")

@@ -1,0 +1,89 @@
+[
+ {
+  "id": "whatsnew-001",
+  "page": "whatsnew",
+  "path": [
+   "What's new"
+  ],
+  "title": "What's new",
+  "keywords": [],
+  "text": "The most important changes of this version at a glance. The complete list is in `CHANGELOG.md`; each topic has its own guide (Help → Guides)."
+ },
+ {
+  "id": "whatsnew-002",
+  "page": "whatsnew",
+  "path": [
+   "What's new",
+   "A new DMX core"
+  ],
+  "title": "A new DMX core",
+  "keywords": [],
+  "text": "- **DMX output runs in its own process** – together with effects and cue fades. A busy window or a slow tablet can no longer disturb a fade: a steady 40 frames per second, even under heavy load.\n- **DMX input:** receive Art-Net and sACN from another desk, forward and mix it, use channels as triggers (*Controls → DMX input…*). OpenCue also announces itself as an Art-Net device."
+ },
+ {
+  "id": "whatsnew-003",
+  "page": "whatsnew",
+  "path": [
+   "What's new",
+   "Remote control that can do everything"
+  ],
+  "title": "Remote control that can do everything",
+  "keywords": [],
+  "text": "- A tablet has the **same rights as the console, all settings included**, and its own **OpenCue Explorer** for files. **Server mode** without a window (`--no-ui`) with a tray icon and start with Windows."
+ },
+ {
+  "id": "whatsnew-004",
+  "page": "whatsnew",
+  "path": [
+   "What's new",
+   "Control from outside"
+  ],
+  "title": "Control from outside",
+  "keywords": [],
+  "text": "- **MIDI** in and out, **OSC**, a **REST API** with a WebSocket stream, **custom keyboard shortcuts**, a **schedule** and offline **voice control**."
+ },
+ {
+  "id": "whatsnew-005",
+  "page": "whatsnew",
+  "path": [
+   "What's new",
+   "Timeline and timecode"
+  ],
+  "title": "Timeline and timecode",
+  "keywords": [],
+  "text": "- A **timeline editor** with waveforms and command tracks, **LTC** in and out, **MIDI timecode**."
+ },
+ {
+  "id": "whatsnew-006",
+  "page": "whatsnew",
+  "path": [
+   "What's new",
+   "Fixtures"
+  ],
+  "title": "Fixtures",
+  "keywords": [],
+  "text": "- An **own fixture editor**, a **preview of GDTF Share fixtures** before installing, and **import of a patch list from CSV or Excel**."
+ },
+ {
+  "id": "whatsnew-007",
+  "page": "whatsnew",
+  "path": [
+   "What's new",
+   "Safe shows"
+  ],
+  "title": "Safe shows",
+  "keywords": [],
+  "text": "- **Undo / redo**, **backups** in the background with crash recovery, a **lock** for finished shows, **safe saving**, and a question before anything can be lost."
+ },
+ {
+  "id": "whatsnew-008",
+  "page": "whatsnew",
+  "path": [
+   "What's new",
+   "Look and help"
+  ],
+  "title": "Look and help",
+  "keywords": [],
+  "text": "- **Six languages**, dialogs in five consistent sizes, **settings** with a search across all categories and explanations behind a small **(i)**, colour themes where every colour can be changed, and **guides** with `F1`.\n\nEverything stays off by default; you decide what is switched on."
+ }
+]

@@ -1,5 +1,7 @@
 #NAME Gobo Alternate
-#DESCRIPTION Wechselt zwischen zwei Gobos (Nummern aus der Liste des Geräts, 0 = erstes).
+#DESCRIPTION en Alternates between two gobos.
+#DESCRIPTION de Wechselt zwischen zwei Gobos.
+#TAGS advanced, toggle
 #CATEGORY gobo
 #RATE 40
 #VAR speed Slider 0.5 0.05 8 0.05

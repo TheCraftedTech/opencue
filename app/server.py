@@ -1,3 +1,5 @@
+# Copyright (C) 2026 Samuel Zenker
+# SPDX-License-Identifier: GPL-3.0-or-later
 """
 server.py
 FastAPI-Anwendung + WebSocket Event-Bus von OpenCue.
@@ -17,6 +19,7 @@ import collections
 import copy
 import json
 import logging
+import os
 import re
 import time
 import uuid
@@ -32,13 +35,16 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 import app.panel_registry  # registriert alle Panel-Typen beim Start
+from app.startup_progress import report as _startup_report         # Fortschritt im Startbild (app/splash.py); ohne Startbild ein No-op
 from app.command_line import (
     apply_full_baseline_reset,
     apply_preset_to_fixtures,
+    current_value_for,
     delete_cuelist as delete_cuelist_command,
     execute_command,
     get_suggestions,
     restore_dmx_universes,
+    release_effects_for_manual,
     release_fixtures,
     restore_fixture_outputs,
     set_blackout,
@@ -47,6 +53,9 @@ from app.command_line import (
 )
 from app.cue_engine import FADE_FPS, cue_engine
 from app.lan_listener import lan
+from app.mdns import mdns
+from app.rawkeys import rawkeys
+from app.midi_engine import midi
 from app.fx_engine import UI_UPDATE_INTERVAL, fx_engine
 from app import fx_categories
 from app.fx_script import FxScriptError, FxScriptRuntimeError, compile_script, preview_script, registry, run_script, seed_default_effects
@@ -63,20 +72,52 @@ from app.dmx_resolve import (
 )
 from app import media_store
 from app import stream_sources
-#3D-AUS# from app import stage_api
 from app import sim_stages
+from app import sim_models
+from app import voice
+from app import dictation
+from app import io_overview
+from app import fs_browser
+from app import console_defaults
+from app import ui_store
 from app import file_manager
+from app import ltc_routes
+from app import keep_awake as keep_awake_mod
+from app import timeline_tracks as timeline_tracks_mod
+from app import media_peaks
+from app import file_assoc
+from app import reports
+from app import simple_caps
+from app import languages
+from app.version import APP_VERSION
+from app import fixture_import
+from app import transfer
 from app import about
+from app import backups
+from app import artnet_discovery
+from app import osc as osc_mod
+from app import dmx_in as dmx_in_mod
+from app import schedule as schedule_mod
+from app import timeofday
+from app import system_routes
+from app import diag
+from app import show_safety
+from app import api_v1
+from app.ai import routes as ai_routes
+from app.ai import AiError as _AiError, assistant as ai_assistant
+from app import audio_routes
+from app.audio_engine import audio_engine
 from app import defaults_seed
 from app import updater
 from app import host_cameras
 from app import paths as _paths
 from app import remote
 from app import remote_pwa
+from app.show_undo import show_undo
 from app.state_manager import Panel, panels_from_dicts, state, undo_history
 from app.timecode import timecode
 from app.window_signals import file_dialog
-from app.window_signals import exit_requested, fullscreen_toggle_requested
+from app.window_signals import exit_requested, fullscreen_toggle_requested, ui_ready
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(name)s] %(message)s")
 logger = logging.getLogger("opencue.server")
@@ -89,14 +130,17 @@ ENTTEC_WATCHDOG_INTERVAL = 5  # Sekunden zwischen Hardware-Checks
 # Live-Daten: bei einem langsamen Client werden sie NICHT verworfen, sondern zusammengefasst (der neueste Stand gewinnt: Universen komplett,
 # Werte je Scheinwerfer, Wiedergabezustand je Liste). Verwerfen waere falsch: fixtures_live sind Aenderungen gegenueber einem Server-Zwischenspeicher -
 # ein verlorenes Paket haette den Wert auf diesem Geraet dauerhaft fehlen lassen.
-_DROPPABLE_TYPES = {"dmx_universe_changed", "fixtures_changed", "fixtures_live", "programmer_live_update", "cuelist_progress"}
+_DROPPABLE_TYPES = {"dmx_universe_changed", "fixtures_changed", "fixtures_live", "programmer_live_update", "cuelist_progress", "sim_cam", "audio_frame"}
 _OUTBOX_LIMIT = 150
-_COALESCED_TYPES = {"dmx_universe_changed", "fixtures_changed", "fixtures_live", "programmer_live_update", "cuelist_progress"}
+_COALESCED_TYPES = {"dmx_universe_changed", "fixtures_changed", "fixtures_live", "programmer_live_update", "cuelist_progress", "sim_cam", "audio_frame"}
 _BACKLOG_COALESCE = 24        # ab so vielen wartenden Nachrichten fasst auch eine lokale Verbindung Live-Daten zusammen
 # Mindestabstand der Live-Daten zu einem entfernten Geraet (Tablet/Smartphone im WLAN): 25 Hz wie am Rechner, damit Fades und
 # Effekte fluessig aussehen. Was das Geraet davon verarbeiten kann, regelt es selbst (Browser: _coalesceLive, DMX-Monitor-Takt);
 # der Server fasst nur zusammen, was sich zwischen zwei Takten angestaut hat.
 REMOTE_LIVE_INTERVAL = 0.04
+# Auch die Konsole selbst bekommt Live-Daten hoechstens alle 20 ms (50 Hz) zusammengefasst: ein Fader-Strom von 160 Nachrichten/s erzeugte sonst je Nachricht einen eigenen Universums-Snapshot (512 Werte)
+# an jedes Fenster; mehr als 50 Bilder je Sekunde kann kein Bildschirm zeigen. Normale Nachrichten (Befehle, Bedienereignisse) gehen weiter sofort und holen wartende Live-Daten vor sich her.
+LOCAL_LIVE_INTERVAL = 0.02
 
 
 class _Outbox:
@@ -137,11 +181,15 @@ class _Outbox:
             key: Any = (kind, payload.get("universe"))
             self.live.pop(key, None)                # neu einsortieren: Reihenfolge = Reihenfolge des neuesten Stands
             self.live[key] = message
-        elif kind == "fixtures_changed":
+        elif kind in ("fixtures_changed", "audio_frame"):         # nur der neueste Stand zaehlt
             self.live.pop(kind, None)
             self.live[kind] = message
         elif kind == "cuelist_progress":
             key = (kind, payload.get("cuelist_id"))
+            self.live.pop(key, None)
+            self.live[key] = message
+        elif kind == "sim_cam":                     # Kamera der 3D-Simulation: je Gruppe zaehlt nur der neueste Stand
+            key = (kind, payload.get("group"))
             self.live.pop(key, None)
             self.live[key] = message
         else:                                       # Werte je Scheinwerfer zusammenfuehren
@@ -204,6 +252,11 @@ class EventBus:
 
     def __init__(self) -> None:
         self._connections: Set[WebSocket] = set()
+        self._taps: List[Any] = []                    # Abgriffe (synchron, kurz): sehen jede Nachricht, die an alle gesendet wird (Ereignis-Strom der REST-API)
+
+    def add_tap(self, callback: Any) -> None:
+        if callback not in self._taps:
+            self._taps.append(callback)
 
     async def connect(self, websocket: WebSocket) -> None:
         self._connections.add(websocket)
@@ -229,9 +282,9 @@ class EventBus:
         box = getattr(websocket.state, "outbox", None)
         if box is None:
             local = EventBus.is_local(websocket)
-            box = websocket.state.outbox = _Outbox(websocket, loop, 0.0 if local else REMOTE_LIVE_INTERVAL)
+            box = websocket.state.outbox = _Outbox(websocket, loop, LOCAL_LIVE_INTERVAL if local else REMOTE_LIVE_INTERVAL)
         if box.dead:
-            raise RuntimeError("Verbindung nicht mehr nutzbar")
+            raise RuntimeError("Connection no longer usable")
         droppable = message_type in _DROPPABLE_TYPES
         live = message if message_type in _COALESCED_TYPES else None
         if loop is box.loop:
@@ -254,10 +307,19 @@ class EventBus:
     async def broadcast(self, message: Dict[str, Any], exclude: Optional[WebSocket] = None) -> None:
         """Schickt ein JSON-Event an alle verbundenen Clients (ausser `exclude`, dem
         Absender einer Live-Bedienung - sein eigener Fader soll nicht zurueckspringen)."""
+        for tap in self._taps:
+            try:
+                tap(message)
+            except Exception:
+                logger.exception("Abgriff am Ereignisbus fehlgeschlagen")
         if not self._connections:
             return
         local_only = message.get("type") in remote.LOCAL_ONLY_EVENTS
+        t_dump = time.perf_counter()
         shared = None if message.get("type") == "state_snapshot" else json.dumps(message)
+        spent = (time.perf_counter() - t_dump) * 1000
+        if spent > 20:                                           # json.dumps haelt den Interpreter (C-Code): jede grosse Nachricht haelt auch den DMX-Takt auf - sichtbar machen
+            logger.warning("[WS] large message '%s': %d KB, %d ms to encode", message.get("type"), len(shared or "") // 1024, spent)
         stale: Set[WebSocket] = set()
         for connection in list(self._connections):
             local = self.is_local(connection)
@@ -309,8 +371,26 @@ def _remote_client_infos() -> List[Dict[str, Any]]:
     ]
 
 
+def _warm_fixture_types() -> None:
+    try:
+        from app.fixture_manager import get_fixture_types
+        get_fixture_types()
+    except Exception:                                                                # noqa: BLE001 - nur Vorwaermen
+        logger.debug("Vorwaermen der Scheinwerfer-Typen fehlgeschlagen", exc_info=True)
+
+
+async def _send_kiosk(key: str, active: bool) -> None:
+    """Dem Geraet (Konsole bzw. alle Tabs eines Fernzugriffs-Geraets) den Bedienmodus melden."""
+    message = {"type": "kiosk_changed", "payload": {"active": active}}
+    if key == "console":
+        await event_bus.send_to_local(message)
+    else:
+        await event_bus.send_to_client(key, message)
+
+
 def _decorate_snapshot(message: Dict[str, Any], local: bool, cid: Optional[str]) -> Dict[str, Any]:
     payload = dict(message["payload"])
+    payload["kiosk"] = ("console" if local else cid) in state.kiosk_keys
     clients = _remote_client_infos()
     payload["is_local"] = local
     payload["cue_progress"] = cue_engine.progress_snapshot()   # Kompatibilitaet
@@ -318,6 +398,7 @@ def _decorate_snapshot(message: Dict[str, Any], local: bool, cid: Optional[str])
     payload["remote_enabled"] = state.remote_enabled
     payload["remote_client_count"] = len(clients)
     payload["remote"] = remote.remote_info(include_password=True)   # alle Geraete verwalten Remote gleichermassen
+    payload["lock"] = remote.lock_info()
     if local:
         payload["remote_clients"] = clients
     else:
@@ -327,6 +408,67 @@ def _decorate_snapshot(message: Dict[str, Any], local: bool, cid: Optional[str])
         payload["last_active_layout"] = sess.layout["name"] if sess.layout else None
         payload["remote_clients"] = clients       # wie am Desktop: welche Geraete insgesamt verbunden sind
     return {**message, "payload": payload}
+
+
+def _cam_group_name(value: Any) -> str:
+    """Gruppenname bereinigt ("" = keine Gruppe)."""
+    return str(value or "").strip()[:MAX_CAM_GROUP_NAME]
+
+
+def _cam_vector(value: Any) -> Optional[List[float]]:
+    """Drei endliche Zahlen (Meter) oder None."""
+    if not isinstance(value, (list, tuple)) or len(value) != 3:
+        return None
+    try:
+        numbers = [round(float(v), 4) for v in value]
+    except (TypeError, ValueError):
+        return None
+    return numbers if all(abs(n) < 1e5 for n in numbers) else None       # NaN/Unendlich fallen hier heraus (Vergleich ist falsch)
+
+
+def _cam_counts() -> Dict[str, int]:
+    counts: Dict[str, int] = {}
+    for connection in event_bus._connections:
+        group = getattr(connection.state, "cam_group", "")
+        if group:
+            counts[group] = counts.get(group, 0) + 1
+    return counts
+
+
+async def _broadcast_cam_groups() -> None:
+    counts = _cam_counts()
+    for group in [g for g in _sim_cam if g != "global" and g not in counts]:          # leere Gruppen vergessen ihren Stand
+        _sim_cam.pop(group, None)
+    await event_bus.broadcast({"type": "sim_cam_groups", "payload": {"groups": counts}})
+
+
+async def _cam_join(websocket: WebSocket, group: str) -> None:
+    group = _cam_group_name(group)
+    if group and group not in _cam_counts() and len(_cam_counts()) >= MAX_CAM_GROUPS:
+        group = ""                                                  # zu viele Gruppen: das Geraet bleibt bei seiner eigenen Kamera
+    websocket.state.cam_group = group
+    if group and group in _sim_cam:                                 # vorhandener Stand der Gruppe: sofort uebernehmen
+        await event_bus.send_to(websocket, {"type": "sim_cam_state", "payload": {"group": group, "state": _sim_cam[group]}})
+    await _broadcast_cam_groups()
+
+
+async def _cam_update(websocket: WebSocket, payload: Dict[str, Any]) -> None:
+    group = getattr(websocket.state, "cam_group", "")
+    state_in = payload.get("state")
+    if not group or _cam_group_name(payload.get("group")) != group or not isinstance(state_in, dict):
+        return
+    position, target = _cam_vector(state_in.get("p")), _cam_vector(state_in.get("t"))
+    if position is None or target is None:
+        return
+    camera = {"p": position, "t": target}
+    _sim_cam[group] = camera
+    message = {"type": "sim_cam", "payload": {"group": group, "state": camera}}
+    for connection in list(event_bus._connections):
+        if connection is not websocket and getattr(connection.state, "cam_group", "") == group:
+            try:
+                await event_bus.send_to(connection, message)
+            except Exception:
+                pass
 
 
 async def _broadcast_remote_clients() -> None:
@@ -360,7 +502,10 @@ def _snapshot_for_client(local: bool, cid: Optional[str]) -> Dict[str, Any]:
     snapshot = state.get_snapshot()
     snapshot["payload"]["enttec_status"] = dmx_engine.get_enttec_status()
     snapshot["payload"]["enttec_ports"] = dmx_engine.scan_enttec_ports()
-    snapshot["payload"]["timecode"] = timecode.state()
+    snapshot["payload"]["artnet_nodes"] = artnet_discovery.registry.list()
+    snapshot["payload"]["artnet_status"] = dmx_engine.get_artnet_status()
+    snapshot["payload"]["timecode"] = _timecode_payload()
+    snapshot["payload"]["cue_changes"] = _cue_changes.payload()
     snapshot["payload"]["stream_sources"] = stream_sources.public_list()
     return _decorate_snapshot(snapshot, local, cid)
 
@@ -377,6 +522,13 @@ event_bus = EventBus()
 _command_values: Dict[str, float] = {}
 MAX_COMMAND_PATTERNS = 500
 
+# Kamera-Gruppen der 3D-Simulation: jedes Geraet gehoert zu einer Gruppe ("global" = alle, sonst ein frei gewaehlter Name; ohne Gruppe =
+# eigene Kamera). Der Server merkt sich je Gruppe den letzten Kamerastand (nur im Arbeitsspeicher) und reicht Aenderungen an die
+# anderen Mitglieder derselben Gruppe weiter - auch an Geraete, deren 3D-Panel gerade nicht offen ist (sie uebernehmen den Stand beim Oeffnen).
+_sim_cam: Dict[str, Dict[str, Any]] = {}
+MAX_CAM_GROUPS = 64
+MAX_CAM_GROUP_NAME = 48
+
 def _log_dmx_driver(name: str, enabled: bool, detail: str = "") -> None:
     """Kurzes [DMX]-Log: "[DMX] Art-Net ON → 2.255.255.255"."""
     if enabled:
@@ -389,6 +541,61 @@ def _log_dmx_driver(name: str, enabled: bool, detail: str = "") -> None:
 # UI-Takt der Live-Werte waehrend einer Ueberblendung. Die CueEngine rechnet und sendet DMX mit 40 Hz;
 # die Oberflaeche (Fader, DMX-Monitor, Scheinwerferliste) bekommt davon nur den jeweils neuesten Stand.
 CUE_UI_INTERVAL = 0.06
+
+
+class _CueChanges:
+    """Anzeige "geaendert": welche Attribute weichen JETZT vom Stand des aktiven Cues ab (Cue der zuletzt benutzten Liste, getrackt)? Das ist reine Anzeige - gespeichert wird
+    beim Speichern immer die Aenderung gegenueber dem Cue, der davor abgespielt wuerde (state.live_cue_content). Ein Clear macht alles dunkel und ist damit eine grosse Aenderung.
+    Waehrend einer Ueberblendung der Liste bleibt die Anzeige stehen, bei gemischtem Executor-Fader (< 100 %) ist sie leer (die Ausgabe ist dann absichtlich anders)."""
+
+    def __init__(self) -> None:
+        self.full = True                                    # alles neu rechnen (anderer Cue, Cue-Inhalt geaendert)
+        self.sent: Dict[str, List[str]] = {}
+        self._key: Optional[tuple] = None
+        self._base: Dict[str, Dict[str, Any]] = {}
+        self._fill: Dict[str, Dict[str, Any]] = {}
+        self._per: Dict[str, List[str]] = {}
+
+    def invalidate(self) -> None:
+        self.full = True
+
+    def update(self, universes: Optional[Set[int]] = None) -> bool:
+        """Rechnet neu (universes: nur dort, sonst alles). True, wenn sich die Anzeige geaendert hat."""
+        cl, cue = state.reference_cue()
+        result: Dict[str, List[str]]
+        if cl is None or cue is None:
+            self._key, self._per, result = None, {}, {}
+        elif cue_engine.is_fading(cl.id):
+            return False                                     # Ziel noch nicht erreicht: spaeter (das Ende der Ueberblendung loest eine neue Berechnung aus)
+        elif state.mix_level(cl.id) < 0.995:
+            self._key, self._per, result = None, {}, {}
+        else:
+            key = (cl.id, cue.id)
+            scope: Optional[Set[int]] = universes
+            if self.full or key != self._key or scope is None:
+                index = next((i for i, c in enumerate(cl.cues) if c.id == cue.id), len(cl.cues) - 1)
+                self._base = state.cue_end_state(cl, index)
+                self._fill = state.cue_absolute(cl, cue)
+                self._key, scope, self._per = key, None, {}
+            changes = state.live_changes(self._base, self._fill, fx_engine.cue_effects(), universes=scope)
+            if scope is not None:
+                for fid in [f for f in self._per if (state.fixtures.get(f) is None or state.fixtures[f].universe in scope)]:
+                    del self._per[fid]
+            self._per.update({fid: sorted(values) for fid, values in changes.items()})
+            result = dict(self._per)
+        self.full = False
+        if result == self.sent:
+            return False
+        self.sent = result
+        return True
+
+    def payload(self) -> Dict[str, Any]:
+        if self.full:
+            self.update(None)
+        return {"fixtures": self.sent}
+
+
+_cue_changes = _CueChanges()
 
 
 class _CueUiPublisher:
@@ -426,6 +633,13 @@ class _CueUiPublisher:
     def push_playback(self, payload: Dict[str, Any]) -> None:
         self._ensure_running()
         self._playback[payload["cuelist_id"]] = payload     # pro Liste zaehlt nur der neueste Zustand
+        _cue_changes.invalidate()                           # Start / Ende einer Ueberblendung, anderer Cue: "geaendert" neu bewerten
+        self._wake.set()
+
+    def push_changes(self) -> None:
+        """Der aktive Cue oder der Cue-Inhalt hat sich geaendert (auch ohne DMX-Aenderung, z. B. nach dem Speichern)."""
+        _cue_changes.invalidate()
+        self._ensure_running()
         self._wake.set()
 
     async def _flush_playback(self) -> None:
@@ -448,6 +662,9 @@ class _CueUiPublisher:
         live = _live_values_for(universes)
         if live:
             await event_bus.broadcast({"type": "fixtures_live", "payload": {"values": live}})
+        if _cue_changes.full or universes:
+            if _cue_changes.update(None if _cue_changes.full else universes):
+                await event_bus.broadcast({"type": "cue_changes", "payload": _cue_changes.payload()})
         # Kein fixtures_changed mehr im Livetakt: Die Cue-/Effektausgabe veraendert die gespeicherten Scheinwerfer-Daten nicht, die
         # ganze Liste (samt Neuaufbau von Scheinwerferliste und Programmer-Raster auf jedem Geraet) war reine Last.
 
@@ -458,7 +675,7 @@ class _CueUiPublisher:
             self._wake.clear()
             try:
                 await self._flush_playback()
-                if self._universes or self._values:
+                if self._universes or self._values or _cue_changes.full:
                     wait = last_live + CUE_UI_INTERVAL - time.monotonic()
                     if wait > 0:
                         await asyncio.sleep(wait)
@@ -477,13 +694,16 @@ _cue_ui = _CueUiPublisher()
 _live_cache: Dict[str, Dict[str, Any]] = {}      # fixture_id -> zuletzt gesendete abstrakte Werte (nur Aenderungen senden)
 
 
-def _live_values_for(universes: Optional[Set[int]], full: bool = False) -> Dict[str, Dict[str, Any]]:
+def _live_values_for(universes: Optional[Set[int]], full: bool = False, only: Optional[Set[str]] = None) -> Dict[str, Dict[str, Any]]:
     """Abstrakte Werte der Fixtures aus dem DMX-Puffer (die Wahrheit). full=True: alle Fixtures (neue Verbindung,
-    geladene Show), sonst nur die in `universes`, deren Werte sich seit dem letzten Senden geaendert haben."""
+    geladene Show), sonst nur die in `universes`, deren Werte sich seit dem letzten Senden geaendert haben.
+    `only`: nur diese Fixtures (die Bedienung weiss, welche sie angefasst hat - die anderen im Universum muessen nicht neu gelesen werden)."""
     snapshots: Dict[int, List[int]] = {}
     out: Dict[str, Dict[str, Any]] = {}
     for fx in state.fixtures.values():
         if not full and (universes is None or fx.universe not in universes):
+            continue
+        if only is not None and fx.id not in only:
             continue
         if fx.universe not in snapshots:
             snapshots[fx.universe] = dmx_engine.get_universe_snapshot(fx.universe)
@@ -508,6 +728,19 @@ def _dmx_changed(universe: int) -> None:
 
 
 dmx_engine.set_change_callback(_dmx_changed)
+
+
+def _cue_context_changed() -> None:
+    """Hook des State (beliebiger Thread): der aktive Cue oder ein Cue hat sich geaendert -> Anzeige "geaendert" neu rechnen."""
+    loop = _app_loop
+    if loop is not None:
+        try:
+            loop.call_soon_threadsafe(_cue_ui.push_changes)
+        except RuntimeError:
+            pass
+
+
+state.cue_context_hook = _cue_context_changed
 
 
 def _cue_engine_update(data: Dict[str, Any]) -> None:
@@ -538,9 +771,16 @@ async def _broadcast_cuelists_changed() -> None:
     })
 
 
+def _timecode_payload(state: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    """Zustand des globalen Timecodes fuer die Oberflaeche; "source" = "midi", solange MIDI Timecode ihn fuehrt (Anzeige im Timecode-Panel)."""
+    payload = dict(state or timecode.state())
+    payload["source"] = "ltc" if _ltc_driving else ("midi" if _mtc_driving else "")
+    return payload
+
+
 async def _broadcast_timecode(snapshot: Optional[Dict[str, Any]] = None) -> None:
     """Zustand des globalen Timecodes an alle Clients (bei jeder Bedienung und als Herzschlag waehrend des Laufs)."""
-    await event_bus.broadcast({"type": "timecode_state", "payload": snapshot or timecode.state()})
+    await event_bus.broadcast({"type": "timecode_state", "payload": _timecode_payload(snapshot)})
 
 
 async def _timecode_cross(prev_ms: float, cur_ms: float) -> None:
@@ -551,12 +791,19 @@ async def _timecode_cross(prev_ms: float, cur_ms: float) -> None:
         for cue in list(cuelist.cues):
             if cue.trigger == "timecode" and cue.timecode_ms is not None and prev_ms < cue.timecode_ms <= cur_ms:
                 due.append((cue.timecode_ms, cue.number, cuelist.id, cue.id))
-    if not due:
+    commands = timeline_tracks_mod.due(state.timeline_tracks, prev_ms, cur_ms)        # Befehle der Befehlsspuren (Timeline-Editor), ebenfalls zur Zeit
+    if not due and not commands:
         return
     due.sort()
     for _, _, cuelist_id, cue_id in due:
         await cue_engine.jump_to(cuelist_id, cue_id)
-    await _broadcast_cuelists_changed()
+    if due:
+        await _broadcast_cuelists_changed()
+    for _, _, command in commands:
+        try:
+            await _voice_run_command(command)                                         # wie ein getippter Befehl (steht im Befehlsverlauf)
+        except Exception:                                                              # noqa: BLE001 - ein kaputter Befehl darf den Timecode nicht anhalten
+            logger.exception("Befehl der Befehlsspur fehlgeschlagen: %s", command[:80])
 
 
 timecode.set_callbacks(_broadcast_timecode, _timecode_cross)
@@ -575,6 +822,162 @@ async def _broadcast_generic(message_type: str, payload: Dict[str, Any]) -> None
     der CueEngine (Cue.cmd, siehe cue_engine.set_broadcast_callback)
     verwendet - EIN Codepfad fuer beide Ausloeser."""
     await event_bus.broadcast({"type": message_type, "payload": payload})
+
+
+_rawkeys_last: Dict[str, float] = {}                 # Eintrags-Id -> Zeit des letzten Ausloesens (Entprellen)
+
+
+async def _rawkeys_fire(entry: Dict[str, Any]) -> None:
+    """Eine Taste einer bestimmten Tastatur (app/rawkeys.py) hat einen Eintrag der eigenen Tastaturbelegung ausgeloest: Befehl ausfuehren oder - bei "nur schreiben" - in die
+    Befehlszeile der Konsolen-Fenster schreiben. Die Konsolen-Fenster erfahren es immer (sie unterdruecken damit doppeltes Ausloesen derselben Taste fuer "alle Tastaturen")."""
+    command = str(entry.get("command", "")).strip()
+    run = entry.get("run", True) is not False
+    now = time.monotonic()
+    if now - _rawkeys_last.get(str(entry.get("id")), 0.0) < 0.08:       # ein Mensch drueckt nicht zweimal in 80 ms: doppelte Meldung desselben Tastendrucks
+        return
+    _rawkeys_last[str(entry.get("id"))] = now
+    await event_bus.send_to_local({"type": "hotkey_fire", "payload": {"keys": entry.get("keys", ""), "device": entry.get("device", ""), "command": command, "run": run}})
+    if run and command:
+        result = await execute_command(command, _broadcast_generic)
+        if entry.get("log", True) is not False:
+            await _broadcast_command_log(command, result)
+
+
+async def _rawkeys_record(kind: str, payload: Dict[str, Any]) -> None:
+    """Aufnahme einer Taste einer bestimmten Tastatur: Zwischenstand (live) und Ergebnis (done) an die Konsolen-Fenster."""
+    await event_bus.send_to_local({"type": "rawkeys_live" if kind == "live" else "rawkeys_recorded", "payload": payload})
+
+
+def _rawkeys_status() -> Dict[str, Any]:
+    return {"available": rawkeys.available, "error": rawkeys.error, "devices": rawkeys.devices() if rawkeys.available else [], "running": rawkeys.running}
+
+
+async def _midi_fire(binding: Dict[str, Any], command: str) -> None:
+    """Ein MIDI-Eintrag hat ausgeloest (app/midi_engine.py): Befehl ausfuehren und - wie gewaehlt - in den Befehlsverlauf schreiben, oder (Eintrag "nur schreiben") in die
+    Befehlszeile der Konsolen-Fenster schreiben."""
+    if binding.get("run", True) is False:
+        await event_bus.send_to_local({"type": "midi_fire", "payload": {"id": binding.get("id", ""), "command": command}})
+        return
+    result = await execute_command(command, _broadcast_generic)
+    if binding.get("log", True) is not False:
+        await _broadcast_command_log(command, result)
+
+
+_mtc_driving = False                                  # der globale Timecode wird gerade von MIDI Timecode gefuehrt
+_ltc_driving = False                                  # ... bzw. von LTC (Timecode als Audiosignal, app/ltc.py); wer zuerst da ist, fuehrt - der andere wird solange ignoriert
+MTC_DRIFT_MS = 100.0                                  # so weit darf die eigene Uhr von der Musiksoftware abweichen, bevor sie nachgestellt wird
+
+
+async def _midi_mtc(kind: str, payload: Dict[str, Any]) -> None:
+    """MIDI Timecode (app/midi_engine.py): solange gueltiger Timecode eintrifft, laeuft der globale Timecode im Takt der Musiksoftware (Cues mit Ausloeser "Timecode" feuern wie gewohnt);
+    bleibt er aus, wird der Timecode angehalten. Ein Sprung bei stehender Uhr (Full Frame) stellt nur die Position."""
+    global _mtc_driving
+    if _ltc_driving:
+        return
+    if kind == "fix":
+        ms = float(payload.get("ms", 0.0))
+        if not _mtc_driving or not timecode.running:
+            _mtc_driving = True
+            timecode.set_rate(1.0)
+            timecode.seek(ms)
+            await _broadcast_timecode(timecode.play(1))
+        elif abs(timecode.position_ms() - ms) > MTC_DRIFT_MS:
+            await _broadcast_timecode(timecode.seek(ms))
+    elif kind == "locate":
+        if not _mtc_driving:
+            await _broadcast_timecode(timecode.seek(float(payload.get("ms", 0.0))))
+    elif kind == "lost":
+        if _mtc_driving:
+            _mtc_driving = False
+            await _broadcast_timecode(timecode.pause())
+
+
+async def _ltc_event(kind: str, frame: Optional[Dict[str, Any]] = None) -> None:
+    """LTC (app/ltc.py): solange gueltiges Timecode-Audio eintrifft, laeuft der globale Timecode im Takt der Quelle (Cues mit Ausloeser "Timecode" feuern wie gewohnt);
+    bleibt es aus, wird der Timecode angehalten (die Position bleibt stehen). Beim Einrasten und Verlieren geht der Zustand an alle Fenster (Einstellungen, Timecode-Panel)."""
+    global _ltc_driving
+    if kind == "fix" and frame is not None:
+        if _mtc_driving:
+            return
+        ms = float(frame.get("ms", 0.0))
+        if not _ltc_driving or not timecode.running:
+            _ltc_driving = True
+            timecode.set_rate(1.0)
+            timecode.seek(ms)
+            await _broadcast_timecode(timecode.play(1))
+            await _broadcast_ltc_state()
+        elif abs(timecode.position_ms() - ms) > MTC_DRIFT_MS:
+            await _broadcast_timecode(timecode.seek(ms))
+    elif kind == "lost" and _ltc_driving:
+        _ltc_driving = False
+        await _broadcast_timecode(timecode.pause())
+        await _broadcast_ltc_state()
+
+
+async def _broadcast_ltc_state() -> None:
+    from app import ltc as ltc_module
+    await event_bus.broadcast({"type": "ltc_state", "payload": ltc_module.ltc.status()})
+
+
+def _ltc_from_thread(kind: str, frame: Optional[Dict[str, Any]] = None) -> None:
+    """Rueckrufe von LTC kommen aus dem Audio-Thread: in die Ereignisschleife wechseln."""
+    loop = ltc_routes.loop
+    if loop is None:
+        return
+    try:
+        loop.call_soon_threadsafe(lambda: asyncio.ensure_future(_ltc_event(kind, frame)))
+    except RuntimeError:
+        pass                                                                        # Schleife schon beendet
+
+
+async def _midi_msc(command: str, msc: Dict[str, Any]) -> None:
+    """MIDI Show Control (app/midi_engine.py): GO / STOP / RESUME / ALL_OFF ... wie ein getippter Befehl ausfuehren (im Befehlsverlauf)."""
+    result = await execute_command(command, _broadcast_generic)
+    await _broadcast_command_log(command, result)
+
+
+def _midi_signals() -> Dict[str, float]:
+    """Zustaende der Konsole fuer die Rueckmeldung an MIDI-Geraete (LED, Motorfader): Blackout, Master, Auswahl, Cue aktiv, Timecode laeuft, Fader der aktiven Cue-Liste."""
+    active = state.cuelists.get(state.active_cuelist_id) if state.active_cuelist_id else None
+    return {"blackout": bool(state.blackout), "master": float(state.grand_master), "selection": bool(state.selected_fixture_ids),
+            "cue_active": bool(active and state.active_cue_ids.get(active.id)), "timecode_running": bool(timecode.running),
+            "cuelist_fader": float(state.cuelist_master(active.id)) if active else 0.0}
+
+
+def _midi_bpm() -> float:
+    from app.audio_engine import audio_engine                       # deferred: numpy erst laden, wenn der MIDI-Takt gesendet wird
+    return float(audio_engine.values().get("a_bpm") or audio_engine.config.get("bpm", 120.0))
+
+
+async def _midi_feedback_loop() -> None:
+    """Alle 0,1 s die Rueckmeldung an die MIDI-Geraete (nur wenn ein Eintrag sie braucht; gesendet wird nur bei Aenderungen)."""
+    while True:
+        await asyncio.sleep(0.1)
+        try:
+            if any(b.get("feedback") for b in midi.config.get("bindings", [])):
+                midi.feedback(_midi_signals())
+        except Exception:                                           # noqa: BLE001 - die Rueckmeldung darf nie stoeren
+            logger.debug("MIDI-Rueckmeldung", exc_info=True)
+
+
+async def _midi_emit(kind: str, payload: Dict[str, Any]) -> None:
+    """Monitor, Einlernen und Status gehen an alle Fenster und Fernzugriffs-Geraete (die MIDI-Geraete haengen zwar am Hauptrechner, eingestellt wird aber von ueberall)."""
+    await event_bus.broadcast({"type": "midi_" + kind, "payload": payload})
+
+
+async def _voice_run_command(command: str) -> Dict[str, Any]:
+    """Ein Sprachbefehl (app/voice.py): wie ein getippter Befehl ausfuehren und in den Befehlsverlauf aller Fenster schreiben."""
+    result = await execute_command(command, _broadcast_generic)
+    await _broadcast_command_log(command, result)
+    return result
+
+
+async def _osc_run(command: str, log: bool) -> Dict[str, Any]:
+    """Ein per OSC empfangener Befehl (app/osc.py): wie ein getippter ausfuehren; in den Befehlsverlauf nur, wenn die Zuordnung es will (ein Fader-Strom wuerde ihn fluten)."""
+    result = await execute_command(command, _broadcast_generic)
+    if log:
+        await _broadcast_command_log(command, result)
+    return result
 
 
 async def _broadcast_command_log(command: str, result: Dict[str, Any]) -> None:
@@ -702,6 +1105,206 @@ async def _fx_monitor_pump() -> None:
         pass
 
 
+async def _audio_pump() -> None:
+    """Schickt den Audio-Stand (Pegel, Spektrum, Beat ...) mit 25 Hz an die Geraete, deren Audio-Panel offen ist (Nachricht `audio_subscribe`)."""
+    try:
+        while True:
+            await asyncio.sleep(UI_UPDATE_INTERVAL)
+            try:
+                listeners = [ws for ws in list(event_bus._connections) if getattr(ws.state, "audio_sub", False)]
+                if not listeners:
+                    continue
+                message = {"type": "audio_frame", "payload": audio_engine.snapshot()}
+                text = json.dumps(message)
+                for ws in listeners:
+                    try:
+                        await EventBus._send(ws, text, "audio_frame", message)
+                    except Exception:
+                        pass
+            except Exception:
+                logger.exception("Audio-Pumpe: Durchlauf fehlgeschlagen")
+    except asyncio.CancelledError:
+        pass
+
+
+_audio_cue_track: Dict[str, Dict[str, Any]] = {}      # je Cue-Liste: Zaehler, Schwellen-Zustand und Zeitpunkt des letzten Feuerns des Audio-Ausloesers
+AUDIO_CUE_COOLDOWN = 0.25                              # Sekunden Pause nach einem Audio-Ausloeser (ein Schlag loest nie zwei Cues aus)
+
+
+async def _audio_cue_step() -> None:
+    """Pruefung der Audio-Ausloeser (ein Durchlauf): Fuer jede Cue-Liste mit aktivem Cue ist der FOLGENDE Cue maßgeblich. Hat er den Ausloeser "audio",
+    feuert er, sobald sein Ereignis eintritt: jeder n-te Beat / Kick / Snare / Hi-Hat bzw. der Pegel eines Teils erreicht seine Schwelle von unten.
+    Ohne laufende Audioquelle feuert nichts; der Zaehler beginnt mit jedem neu aktiven Cue bei 0."""
+    from app.audio_vars import CUE_AUDIO_COUNT_SOURCES
+    events = audio_engine.pop_events()
+    if not audio_engine.running:
+        _audio_cue_track.clear()
+        return
+    now = time.monotonic()
+    values = None
+    fired = False
+    for cuelist in list(state.cuelists.values()):
+        active_id = state.active_cue_ids.get(cuelist.id)
+        cues = cuelist.cues
+        index = next((i for i, c in enumerate(cues) if c.id == active_id), None)
+        nxt = cues[index + 1] if index is not None and index + 1 < len(cues) else None
+        if nxt is None or nxt.trigger != "audio":
+            _audio_cue_track.pop(cuelist.id, None)
+            continue
+        track = _audio_cue_track.get(cuelist.id)
+        if track is None or track["armed"] != (active_id, nxt.id):
+            if values is None:
+                values = audio_engine.values()
+            above = False if nxt.audio_source in CUE_AUDIO_COUNT_SOURCES else _audio_level_of(values, nxt.audio_source) >= nxt.audio_value
+            track = _audio_cue_track[cuelist.id] = {"armed": (active_id, nxt.id), "count": 0, "above": above, "last": now}      # schon darueber: erst unterschreiten, dann ueberschreiten
+        if nxt.audio_source in CUE_AUDIO_COUNT_SOURCES:
+            track["count"] += events.count(nxt.audio_source)
+            go = track["count"] >= max(1, int(round(nxt.audio_value)))
+        else:
+            if values is None:
+                values = audio_engine.values()
+            level = _audio_level_of(values, nxt.audio_source)
+            go = level >= nxt.audio_value and not track["above"]
+            if level >= nxt.audio_value:
+                track["above"] = True
+            elif level < nxt.audio_value * 0.8:
+                track["above"] = False                  # Hysterese: erst deutlich darunter ist der Ausloeser wieder scharf
+        if go and now - track["last"] >= AUDIO_CUE_COOLDOWN:
+            _audio_cue_track.pop(cuelist.id, None)
+            await cue_engine.jump_to(cuelist.id, nxt.id)
+            fired = True
+    if fired:
+        await _broadcast_cuelists_changed()
+
+
+_midi_cue_track: Dict[str, Dict[str, Any]] = {}       # je Cue-Liste: welcher Cue gerade auf sein MIDI-Signal wartet, letzter CC-Wert je Kanal, Zeitpunkt des letzten Feuerns
+_midi_cue_ticks = 0
+
+
+async def _midi_cue_step() -> None:
+    """Pruefung der MIDI-Ausloeser (ein Durchlauf): wie bei Audio ist je Cue-Liste mit aktivem Cue der FOLGENDE Cue massgeblich. Hat er den Ausloeser "midi", feuert er,
+    sobald sein Signal eintrifft (app/midi_vars.py: Note On / CC ueber der Schwelle / Programmwechsel). Haelt die MIDI-Anschluesse offen, solange irgendein Cue den Ausloeser hat."""
+    global _midi_cue_ticks
+    from app.midi_vars import check
+    _midi_cue_ticks += 1
+    if _midi_cue_ticks % 50 == 1:                                          # etwa einmal je Sekunde: braucht irgendein Cue MIDI? (Anschluesse oeffnen / schliessen)
+        midi.set_cue_triggers(any(c.trigger == "midi" for cl in state.cuelists.values() for c in cl.cues))
+    events = midi.pop_cue_events()
+    now = time.monotonic()
+    fired = False
+    for cuelist in list(state.cuelists.values()):
+        active_id = state.active_cue_ids.get(cuelist.id)
+        cues = cuelist.cues
+        index = next((i for i, c in enumerate(cues) if c.id == active_id), None)
+        nxt = cues[index + 1] if index is not None and index + 1 < len(cues) else None
+        if nxt is None or nxt.trigger != "midi":
+            _midi_cue_track.pop(cuelist.id, None)
+            continue
+        track = _midi_cue_track.get(cuelist.id)
+        if track is None or track["armed"] != (active_id, nxt.id):
+            track = _midi_cue_track[cuelist.id] = {"armed": (active_id, nxt.id), "cc": {}, "last": now}
+        go = False
+        for event in events:
+            if check(event, nxt.midi_type, nxt.midi_number, nxt.midi_channel, nxt.midi_value, track["cc"]):
+                go = True
+        if go and now - track["last"] >= AUDIO_CUE_COOLDOWN:
+            _midi_cue_track.pop(cuelist.id, None)
+            await cue_engine.jump_to(cuelist.id, nxt.id)
+            fired = True
+    if fired:
+        await _broadcast_cuelists_changed()
+
+
+_clock_cue_track: Dict[str, Dict[str, Any]] = {}           # Cue-Liste -> {"armed": (aktiver Cue, naechster Cue), "last": Zeitpunkt der letzten Pruefung}
+
+
+async def _clock_cue_step(now: _dt) -> None:
+    """Uhrzeit-Ausloeser der Cues: ist der NAECHSTE Cue einer laufenden Liste vom Typ "clock", feuert er, sobald die Wanduhr seine Uhrzeit (an seinen Wochentagen) ueberschreitet.
+    Beim "Scharfstellen" (der Cue wird der naechste) zaehlt nur eine Uhrzeit, die DANACH kommt: ein Cue, dessen Uhrzeit schon vorbei ist, wartet auf die naechste."""
+    fired = False
+    for cuelist in list(state.cuelists.values()):
+        active_id = state.active_cue_ids.get(cuelist.id)
+        cues = cuelist.cues
+        index = next((i for i, c in enumerate(cues) if c.id == active_id), None)
+        nxt = cues[index + 1] if index is not None and index + 1 < len(cues) else None
+        if nxt is None or nxt.trigger != "clock":
+            _clock_cue_track.pop(cuelist.id, None)
+            continue
+        track = _clock_cue_track.get(cuelist.id)
+        if track is None or track["armed"] != (active_id, nxt.id):
+            _clock_cue_track[cuelist.id] = {"armed": (active_id, nxt.id), "last": now}
+            continue
+        if timeofday.crossed(nxt.clock_time, nxt.clock_days, "", track["last"], now):
+            _clock_cue_track.pop(cuelist.id, None)
+            logger.info("[CLOCK] Cue %s in list '%s' fires at %s", nxt.number, cuelist.name, nxt.clock_time)
+            await cue_engine.jump_to(cuelist.id, nxt.id)
+            fired = True
+        else:
+            track["last"] = now
+    if fired:
+        await _broadcast_cuelists_changed()
+
+
+async def _schedule_step(prev: _dt, now: _dt) -> None:
+    """Zeitplan der Show: jeder Eintrag, dessen Uhrzeit in (prev, now] liegt, fuehrt seinen Befehl aus (wie ein getippter, mit Eintrag im Befehlsverlauf)."""
+    changed = False
+    for entry in list(state.schedule):
+        if not entry.get("enabled") or not entry.get("command"):
+            continue
+        if not timeofday.crossed(entry["time"], entry["days"], entry["date"], prev, now):
+            continue
+        logger.info("[SCHEDULE] %s %s -> %s", entry["time"], entry.get("label") or "", entry["command"])
+        result = await _voice_run_command(entry["command"])
+        await event_bus.broadcast({"type": "schedule_fired", "payload": {"id": entry["id"], "label": entry.get("label", ""), "time": entry["time"], "command": entry["command"],
+                                                                         "success": bool(result.get("success")), "message": result.get("message", "")}})
+        if entry.get("date"):                                         # einmaliger Eintrag: danach aus
+            entry["enabled"] = False
+            changed = True
+    if changed:
+        state.mark_dirty()
+        await event_bus.broadcast({"type": "schedule_changed", "payload": {"schedule": [dict(e) for e in state.schedule], "is_dirty": True}})
+
+
+async def _schedule_pump() -> None:
+    """Alle 0,25 s: Zeitplan und Uhrzeit-Ausloeser pruefen. Springt die Uhr (Ruhezustand, Zeit gestellt), zaehlen nur die letzten 60 Sekunden - nie eine Flut aus Verpasstem."""
+    prev = _dt.now()
+    while True:
+        await asyncio.sleep(0.25)
+        now = _dt.now()
+        try:
+            gap = (now - prev).total_seconds()
+            start = prev if 0 <= gap <= 120 else (max(prev, now - _td(seconds=60)) if gap > 0 else now)
+            await _schedule_step(start, now)
+            await _clock_cue_step(now)
+        except asyncio.CancelledError:
+            raise
+        except Exception:                                              # noqa: BLE001 - der Zeitplan darf nie die Konsole stoeren
+            logger.exception("[SCHEDULE] step failed")
+        prev = now
+
+
+def _audio_level_of(values: Dict[str, float], source: str) -> float:
+    key = {"level": "a_level", "bass": "a_bass", "mid": "a_mid", "high": "a_high"}.get(source) or "a_" + source
+    return float(values.get(key, 0.0)) * 100.0
+
+
+async def _audio_cue_pump() -> None:
+    """Prueft die Audio-Ausloeser der Cues 50 Mal pro Sekunde (nur wenn die Audio-Analyse laeuft, sonst leert sie nur die Warteschlange)."""
+    try:
+        while True:
+            await asyncio.sleep(0.02)
+            try:
+                await _audio_cue_step()
+            except Exception:
+                logger.exception("Audio-Ausloeser: Durchlauf fehlgeschlagen")
+            try:
+                await _midi_cue_step()
+            except Exception:
+                logger.exception("MIDI-Ausloeser: Durchlauf fehlgeschlagen")
+    except asyncio.CancelledError:
+        pass
+
+
 def _live_state_messages() -> List[Dict[str, Any]]:
     """DMX-Ausgang und Programmer-Markierungen aller Universen - an jeden neu
     verbundenen Client und nach einem Wiederanlauf zu senden."""
@@ -727,6 +1330,16 @@ def _live_state_messages() -> List[Dict[str, Any]]:
     return messages
 
 
+def _apply_start_defaults() -> None:
+    """Programmstart: Grand Master und Blackout nach den Standardwerten (Einstellungen -> Standardwerte -> Programmstart), BEVOR der Zustand der Show wiederhergestellt wird.
+    Beim spaeteren Laden einer Show gilt deren eigener Stand."""
+    cfg = state.console_defaults
+    if cfg.get("start_master_mode") == "fixed":
+        state.grand_master = float(cfg.get("start_grand_master", 100.0))
+    if cfg.get("start_blackout"):
+        state.blackout = True
+
+
 async def _restore_showfile_state() -> None:
     """Wiederanlauf nach Programmstart und jedem Laden eines Showfiles: Hat das
     Showfile einen gespeicherten Live-Zustand (runtime_state), wird das DMX-
@@ -748,10 +1361,26 @@ async def _restore_showfile_state() -> None:
         await event_bus.broadcast(message)
 
 
+class _QuietPolling(logging.Filter):
+    """Die Einstellungsseite der Sprachsteuerung fragt den Pegel mehrmals pro Sekunde ab (GET /api/voice) und prueft das Weckwort beim Tippen: diese Zeilen fluten sonst das Protokoll."""
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        message = record.getMessage()
+        return not ('"GET /api/voice ' in message or '"GET /api/voice?' in message or '"POST /api/voice/check ' in message or '"GET /api/dictation ' in message or '"GET /api/io-overview ' in message)
+
+
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     global _app_loop, _host_baseline
     _app_loop = asyncio.get_running_loop()
+    if os.environ.get("OPENCUE_DEBUG_LOOP"):                         # Diagnose: jeder Schritt der Ereignisschleife, der laenger als 40 ms dauert, steht im Protokoll (asyncio-Debug)
+        _app_loop.set_debug(True)
+        _app_loop.slow_callback_duration = 0.04
+        logging.getLogger("asyncio").setLevel(logging.WARNING)
+    access_log = logging.getLogger("uvicorn.access")                 # nach dem Einrichten des Loggings durch uvicorn (dessen Konfiguration entfernt Filter davor)
+    if not any(isinstance(f, _QuietPolling) for f in access_log.filters):
+        access_log.addFilter(_QuietPolling())
+    _startup_report(46, "Loading effects")
     seed_default_effects(_paths.default_effects_dir(), _paths.effects_dir())
     registry.load(_effect_sources())
     # Zuletzt persistierte DMX/Netzwerk-Einstellungen uebernehmen, BEVOR die
@@ -766,11 +1395,22 @@ async def lifespan(_: FastAPI):
         enttec_port=state.enttec_port,
         enttec_universe=state.enttec_universe,
     )
+    _startup_report(50, "Preparing default files")
     defaults_seed.seed_all()                       # Standard-Scheinwerfer (GDTF) und Demo-Shows aus defaults/, einmalig
     try:
         open_first_start_demo()                    # frische Installation: Demo-Show gleich oeffnen (vor dem Wiederanlauf des Live-Zustands unten)
     except Exception:
         logger.exception("Erststart: Demo-Show konnte nicht geoeffnet werden")
+    if state.pending_start_file:                   # OpenCue.exe Show.ocshow (Doppelklick): Paket einlesen, Show oeffnen
+        try:
+            path, _info = file_manager.prepare_show_file(state.pending_start_file)
+            state.load_showfile(path)
+            state.save_app_config()
+            logger.info("[START] Opened %s", state.pending_start_file)
+        except Exception as exc:                   # noqa: BLE001
+            logger.warning("[START] Could not open %s: %s", state.pending_start_file, getattr(exc, "message", exc))
+        state.pending_start_file = None
+    _startup_report(54, "Loading show and layout")
     try:
         seed_example_layouts()
     except Exception:
@@ -779,6 +1419,9 @@ async def lifespan(_: FastAPI):
         _adopt_startup_layout()
     except Exception:
         logger.exception("Start-Layout konnte nicht gewaehlt werden")
+    _startup_report(58, "Starting DMX output")
+    if os.environ.get("OPENCUE_DMX_PROCESS") != "0":                 # Ausgabe als eigener Prozess (app/dmx_output.py); OPENCUE_DMX_PROCESS=0 = wie fruehere Versionen im selben Prozess
+        dmx_engine.enable_process_output(True)
     dmx_engine.start()
     _e = dmx_engine.get_enttec_status()
     _artnet_part  = f"Art-Net ({state.artnet_ip})" if state.artnet_enabled else "Art-Net OFF"
@@ -789,11 +1432,26 @@ async def lifespan(_: FastAPI):
     )
     logger.info("[DMX] %s | %s | %s", _artnet_part, _sacn_part, _enttec_part)
     lan_task = asyncio.create_task(lan.sync_when_started(state.remote_enabled))       # Netzwerk-Zugriff (Remote) einrichten, sobald der Port gebunden ist
+    asyncio.create_task(asyncio.to_thread(file_assoc.ensure))                         # .ocshow-Dateien (exportierte Shows) per Doppelklick oeffnen: Standard, nur im gebauten Programm
+    asyncio.create_task(asyncio.to_thread(_warm_fixture_types))                      # Scheinwerfer-Typen im Hintergrund einlesen: sonst wartet der erste Blackout / Fader ueber eine Sekunde auf das Einlesen aller GDTF-Dateien
+    _startup_report(62, "Starting MIDI and keyboard input")
+    rawkeys.attach(asyncio.get_running_loop())                                        # Tasten einzelner Tastaturen (nur wenn ein Eintrag es braucht)
+    rawkeys.on_fire, rawkeys.on_record = _rawkeys_fire, _rawkeys_record
+    rawkeys.configure(state.hotkeys, recording=False)
+    midi.attach(asyncio.get_running_loop())                                           # MIDI-Belegung (Anschluesse nur oeffnen, wenn ein Eintrag sie braucht)
+    midi.on_fire, midi.on_emit, midi.on_mtc, midi.on_msc = _midi_fire, _midi_emit, _midi_mtc, _midi_msc
+    midi.timecode_source = lambda: (timecode.running, timecode.position_ms())          # MIDI Timecode senden
+    midi.bpm_source = _midi_bpm                                                          # MIDI-Takt senden
+    midi_feedback_task = asyncio.create_task(_midi_feedback_loop())
+    midi.value_of = current_value_for                                                 # Zielwerte fuer das Pickup der MIDI-Regler
+    midi.configure(state.midi)
     watchdog_task     = asyncio.create_task(_enttec_watchdog())
+    artnet_task       = asyncio.create_task(_artnet_pump())            # Art-Net-Ziel "Automatisch": Geraete suchen
 
-    # Cue-Execution-Engine (Phase 2): laeuft als eigener Tick-Loop, meldet
+    # Cue-Execution-Engine: laeuft als eigener Tick-Loop, meldet
     # sich nach jedem Fade-Frame ueber diesen Callback zurueck, statt den
     # EventBus direkt zu kennen (vermeidet einen Zirkelimport).
+    _startup_report(66, "Starting cue engine")
     cue_engine.set_update_callback(_cue_engine_update)
     cue_engine.set_playback_callback(_cue_playback_update)
     cue_engine.set_cuelists_changed_callback(_broadcast_cuelists_changed)
@@ -804,9 +1462,38 @@ async def lifespan(_: FastAPI):
     cue_engine.set_command_log_callback(_broadcast_command_log)
     cue_engine.start()
     logger.info("[CUE] engine started (%d Hz)", FADE_FPS)
+    _apply_start_defaults()
     fx_engine.start()
     fx_monitor_task = asyncio.create_task(_fx_monitor_pump())
+    audio_engine.load(state.audio_config)
+    ai_assistant.load(state.ai_config)
+    audio_task = asyncio.create_task(_audio_pump())
+    audio_cue_task = asyncio.create_task(_audio_cue_pump())
+    if audio_engine.config.get("autostart") and audio_engine.config.get("device"):
+        asyncio.create_task(asyncio.to_thread(audio_engine.start))          # die Quelle vom letzten Mal wieder oeffnen (ein Fehler steht danach im Audio-Panel)
+    voice.engine.attach(asyncio.get_running_loop(), event_bus.broadcast)
+    if state.fetch_voice_model:                                                     # der Installer hat "Sprachmodell mitladen" gewaehlt: jetzt im Hintergrund laden (einmalig)
+        state.fetch_voice_model = False
+        state.save_app_config()
+        if not (voice.model_dir() / "am" / "final.mdl").exists():
+            voice.model_download.start()
+    voice.engine.command_runner = _voice_run_command    # Sprachsteuerung (Weckwort): eigenes Mikrofon, meldet "voice_wake" an alle Geraete
+    dictation.engine.attach(asyncio.get_running_loop(), event_bus.broadcast)
+    asyncio.create_task(asyncio.to_thread(voice.load_from_config))
     await _restore_showfile_state()
+    state.restore_startup_selection()                    # dieselben Scheinwerfer wie beim Beenden wieder ausgewaehlt (neue Clients bekommen sie mit dem Snapshot)
+    backups.manager.start_session()                      # war das letzte Beenden nicht sauber? Dann wird die letzte Sicherung zur Wiederherstellung angeboten
+    backup_task = asyncio.create_task(backups.manager.run())
+    osc_mod.osc.runner = _osc_run
+    dmx_in_mod.manager.attach(dmx_engine, asyncio.get_running_loop(), _osc_run)        # DMX-Eingang: Ausloeser fuehren dieselben Befehle aus wie OSC
+    keep_awake_mod.keep_awake.apply(state.keep_awake)                                 # Rechner nicht einschlafen lassen, solange OpenCue laeuft (nur Windows)
+    ltc_routes.loop = asyncio.get_running_loop()
+    ltc_routes.hooks.update(fix=lambda frame: _ltc_from_thread("fix", frame), lost=lambda: _ltc_from_thread("lost"))
+    if state.ltc_config.get("enabled") or (state.ltc_config.get("out") or {}).get("enabled"):          # Timecode-Audio nur abhoeren / senden, wenn der Nutzer es eingeschaltet hat (numpy wird erst dann geladen)
+        asyncio.create_task(asyncio.to_thread(ltc_routes.apply, state.ltc_config))
+    await osc_mod.osc.configure(state.osc_config)                         # OSC lauscht nur, wenn der Nutzer es eingeschaltet hat
+    await dmx_in_mod.manager.configure(state.dmx_in_config)               # DMX-Eingang: nur, wenn der Nutzer ihn eingeschaltet hat
+    schedule_task = asyncio.create_task(_schedule_pump())                 # Zeitplan der Show und Uhrzeit-Ausloeser der Cues
     _host_baseline = _strip_panels(state.panels) if state.last_active_layout else None
 
     async def _startup_update_check() -> None:
@@ -816,23 +1503,75 @@ async def lifespan(_: FastAPI):
             await updater.check()
 
     update_task = asyncio.create_task(_startup_update_check())
+
+    async def _mdns_changed() -> None:
+        await event_bus.broadcast({"type": "remote_changed", "payload": remote.remote_info(True)})
+
+    mdns.on_change = _mdns_changed                       # der Name ist angemeldet (oder es gibt keinen): sofort in allen Einstellungen zeigen
     yield
+    await osc_mod.osc.stop()
+    dmx_in_mod.manager.stop()
+    schedule_task.cancel()
+    backup_task.cancel()
     update_task.cancel()
     lan_task.cancel()
+    try:
+        backups.manager.take_now_blocking("exit")        # ungespeicherte Aenderungen beim Beenden festhalten (Datei -> Sicherung wiederherstellen)
+    except Exception:                                    # noqa: BLE001 - das Beenden darf daran nie haengen
+        logger.exception("Sicherung beim Beenden nicht geschrieben")
+    try:
+        state.save_app_config()                          # u. a. die zuletzt gemerkte Auswahl (sie wird sonst erst nach 2 s geschrieben)
+    except Exception:                                    # noqa: BLE001 - das Beenden darf daran nie haengen
+        logger.exception("Konfiguration beim Beenden nicht gespeichert")
+    backups.manager.end_session()                        # sauber beendet: beim naechsten Start kein Angebot "Wiederherstellen"
+    rawkeys.shutdown()
+    midi.shutdown()
+    try:
+        await asyncio.wait_for(mdns.shutdown(), 3)            # Netzwerk-Name abmelden (die anderen Geraete vergessen ihn sofort)
+    except Exception:                                          # noqa: BLE001 - das Beenden darf daran nie haengen
+        pass
     watchdog_task.cancel()
+    artnet_task.cancel()
+    midi_feedback_task.cancel()
     fx_monitor_task.cancel()
+    audio_task.cancel()
+    audio_cue_task.cancel()
+    audio_engine.stop()
+    voice.engine.stop()
+    dictation.engine.cancel()
     fx_engine.stop()
-    cue_engine.stop()
+    cue_engine.shutdown()
     dmx_engine.shutdown()
     host_cameras.stop_all()
     logger.info("[DMX] engine stopped")
 
 
 app = FastAPI(title="OpenCue", lifespan=lifespan)
-#3D-AUS# app.include_router(stage_api.router)
+app.include_router(dmx_in_mod.router)             # DMX-Eingang (/api/dmx-in)
+app.include_router(fs_browser.router)             # OpenCue-Explorer: Dateien im Datenordner, Ordner waehlen (/api/fs/*)
 app.include_router(sim_stages.router)
+app.include_router(sim_models.router)
+app.include_router(ui_store.router)               # Oberflaechenzustand der Konsole (/api/uistore)
+app.include_router(console_defaults.router)   # Standardwerte (/api/defaults)
+app.include_router(io_overview.router)            # Uebersicht aller Ein- und Ausgaenge (/api/io-overview)
+app.include_router(dictation.router)               # Diktieren (Sprache -> Text im Chat) und Uebersicht der Audio-Geraete (/api/dictation, /api/audio/io)
+app.include_router(voice.router)                  # Sprachsteuerung: Weckwort, Mikrofon (/api/voice)
 app.include_router(file_manager.router)
+app.include_router(fixture_import.router)         # Scheinwerfer-Liste aus CSV / Excel (/api/fixtures/import/*)
+app.include_router(reports.router)                # Dokumentation zum Drucken / als PDF (/api/report/*)
+app.include_router(simple_caps.router)            # Einfach-Panel: Faehigkeiten der gewaehlten Scheinwerfer (/api/simple/caps)
+app.include_router(transfer.router)               # vom Browser zusammengestellte Dateien zum Speichern (Einstellungen, Tasten- und MIDI-Belegung)
 app.include_router(about.router)
+app.include_router(diag.router)                # Hilfe-Menue: Log-Ordner, Problem melden; JavaScript-Fehler der Oberflaeche (/api/diag, /api/client-error)
+app.include_router(system_routes.router)       # Windows: Administrator-Hinweis, Firewall-Regel, Start mit Windows (/api/system)
+app.include_router(media_peaks.router)       # Wellenform eines Mediums (Timeline-Editor)
+app.include_router(ltc_routes.router)          # LTC: Timecode als Audiosignal (/api/ltc)
+app.include_router(osc_mod.router)            # OSC: Empfangen und Senden (/api/osc)
+app.include_router(artnet_discovery.router)    # Art-Net-Geraete suchen (/api/artnet/nodes)
+app.include_router(backups.router)             # Sicherungen im Hintergrund, Wiederherstellung (/api/backups)
+app.include_router(audio_routes.router)          # Audio-Panel: Geraete, Quelle, Einstellungen (/api/audio)
+app.include_router(ai_routes.router)             # KI-Assistent: Einstellungen, Modelle, Chats (/api/ai); Senden und Antwort laufen ueber den WebSocket
+api_v1.install(app)          # REST-API /api/v1 (Token-Anmeldung) und Token-Verwaltung /api/apikeys (nur Konsole)
 @app.get("/api/effects")
 async def list_effects() -> JSONResponse:
     """Alle verfuegbaren Effekt-Skripte (Benutzerordner, Skripte der geladenen Show) mit
@@ -859,7 +1598,7 @@ async def delete_effect(filename: str) -> JSONResponse:
     try:
         Path(entry["path"]).unlink()
     except OSError as exc:
-        return JSONResponse({"error": f"Loeschen fehlgeschlagen: {exc}"}, status_code=500)
+        return JSONResponse({"error": f"Deleting failed: {exc}"}, status_code=500)
     registry.load(_effect_sources())
     state.forget_fx_favorite(name)
     released = fx_engine.drop_script_assignments(name)
@@ -891,6 +1630,12 @@ async def remote_access_guard(request: Request, call_next):
     client = request.client.host if request.client else None
     if remote.is_local(client):
         request.state.cid = None
+        if not request.url.path.startswith(api_v1.API_PREFIX) and not remote.local_request_allowed(request.headers.get("host"), request.headers.get("origin")):
+            return JSONResponse({"error": "forbidden origin"}, status_code=403)     # fremde Webseite / DNS-Rebinding gegen die passwortlose lokale Verbindung (die REST-API meldet per Token an)
+        if state.locked and state.lock_enabled and request.method not in ("GET", "HEAD", "OPTIONS") and not request.url.path.startswith(remote.LOCKED_ALLOWED_PATHS):
+            return JSONResponse({"error": "locked"}, status_code=423)           # Sichermodus: die gesperrte Konsole aendert nichts mehr (auch nicht an der Oberflaeche vorbei)
+        if "console" in state.kiosk_keys and request.method not in ("GET", "HEAD", "OPTIONS") and not request.url.path.startswith(remote.KIOSK_ALLOWED_PATHS):
+            return JSONResponse({"error": "kiosk"}, status_code=423)            # Bedienmodus: nur bedienen
         return await call_next(request)
     path = request.url.path
     if remote_pwa.is_public(path) and request.method == "GET":
@@ -899,9 +1644,12 @@ async def remote_access_guard(request: Request, call_next):
         return await call_next(request)
     if not state.remote_enabled:
         if request.method == "GET" and path in ("/", "/remote/"):
-            return HTMLResponse(remote.login_page(), status_code=403)
+            return HTMLResponse(remote.login_page(), status_code=403, headers={"Cache-Control": "no-store"})
         return JSONResponse({"error": "remote access disabled"}, status_code=403)
     if path == "/auth/login" and request.method == "POST":
+        return await call_next(request)
+    if path == api_v1.API_PREFIX or path.startswith(api_v1.API_PREFIX + "/"):
+        request.state.cid = None          # die REST-API meldet per Token an (app/api_v1.py), nicht per Sitzungs-Cookie
         return await call_next(request)
     if request.method == "GET" and path in ("/", "/remote"):
         # Externe Geraete laufen immer unter /remote/ - nur dort gilt der Service Worker.
@@ -909,10 +1657,15 @@ async def remote_access_guard(request: Request, call_next):
     cid = remote.validate(request.cookies.get(remote.SESSION_COOKIE))
     if cid is None:
         if request.method == "GET" and path == "/remote/":
-            return HTMLResponse(remote.login_page())   # 200: die Start-URL der installierten App
+            return HTMLResponse(remote.login_page(), headers={"Cache-Control": "no-store"})   # 200: die Start-URL der installierten App; nie aus dem Zwischenspeicher (kein altes Passwortfeld)
         return JSONResponse({"error": "unauthorized"}, status_code=401)
     request.state.cid = cid
+    if cid in state.kiosk_keys and request.method not in ("GET", "HEAD", "OPTIONS") and not path.startswith(remote.KIOSK_ALLOWED_PATHS):
+        return JSONResponse({"error": "kiosk"}, status_code=423)                # Bedienmodus dieses Geraets
     return await call_next(request)
+
+
+app.add_middleware(api_v1.ApiCorsMiddleware)       # zuletzt eingehaengt = ganz aussen: auch Antworten der Anmeldepruefung tragen die CORS-Kopfzeilen der API
 
 
 @app.post("/auth/login")
@@ -963,6 +1716,50 @@ async def api_remote_kick(request: Request) -> JSONResponse:
     return JSONResponse({"ok": ok}, status_code=200 if ok else 404)
 
 
+@app.post("/api/kiosk/exit")
+async def api_kiosk_exit(request: Request) -> JSONResponse:
+    """Bedienmodus dieses Geraets verlassen (Passwort noetig; Fehlversuche werden gebremst)."""
+    key = request.state.cid or "console"
+    try:
+        body = await request.json()
+    except Exception:
+        return JSONResponse({"ok": False}, status_code=400)
+    result = remote.verify_password(key, str(body.get("password", "")) if isinstance(body, dict) else "")
+    if not result["ok"]:
+        logger.warning("[Bedienmodus] Falsches Passwort beim Verlassen%s", " (gesperrt)" if result["locked"] else "")
+        return JSONResponse({"ok": False, "locked": result["locked"]}, status_code=429 if result["locked"] else 401)
+    state.kiosk_keys.discard(key)
+    logger.info("[Bedienmodus] Verlassen (%s)", "Konsole" if key == "console" else "Fernzugriffs-Geraet")
+    if key == "console":
+        await asyncio.to_thread(voice.engine.suspend, False)                          # Sprachsteuerung wieder wie eingestellt
+    await _send_kiosk(key, False)
+    return JSONResponse({"ok": True})
+
+
+@app.get("/api/lock")
+async def api_lock_status() -> JSONResponse:
+    return JSONResponse({"ok": True, **remote.lock_info()}, headers={"Cache-Control": "no-store"})
+
+
+@app.post("/api/lock/unlock")
+async def api_lock_unlock(request: Request) -> JSONResponse:
+    """Sperrbildschirm der Konsole: Passwort pruefen und entsperren (nur an der Konsole selbst; Fehlversuche werden gebremst)."""
+    if not remote.is_local(request.client.host if request.client else None):
+        return JSONResponse({"ok": False, "error": "local_only"}, status_code=403)
+    try:
+        body = await request.json()
+    except Exception:
+        return JSONResponse({"ok": False}, status_code=400)
+    result = remote.console_unlock(str(body.get("password", "")) if isinstance(body, dict) else "")
+    if not result["ok"]:
+        logger.warning("[Sichermodus] Falsches Passwort am Sperrbildschirm%s", " (gesperrt)" if result["locked"] else "")
+        return JSONResponse({"ok": False, "locked": result["locked"]}, status_code=429 if result["locked"] else 401)
+    logger.info("[Sichermodus] Konsole entsperrt")
+    await event_bus.broadcast({"type": "lock_changed", "payload": remote.lock_info()})
+    await event_bus.broadcast({"type": "remote_changed", "payload": remote.remote_info(True)})
+    return JSONResponse({"ok": True})
+
+
 @app.post("/auth/logout")
 async def auth_logout(request: Request) -> JSONResponse:
     remote.logout(request.cookies.get(remote.SESSION_COOKIE))
@@ -978,10 +1775,15 @@ async def index(request: Request) -> HTMLResponse:
     # Externe Clients bekommen die Klasse "is-remote" gleich im HTML (kein Flackern):
     # sie sperrt Scrollen/Ziehen der Seite auf Tablets.
     is_remote = request.state.cid is not None
+    if not is_remote:
+        _startup_report(72, "Loading interface")                      # nur lokal wirksam (Startbild)
     response = templates.TemplateResponse(request, "index.html", {
         "is_remote": is_remote,
+        "kiosk": ("console" if not is_remote else request.state.cid) in state.kiosk_keys,
+        "locked": (not is_remote) and state.locked and state.lock_enabled,          # Sichermodus: nach einem Neuladen bleibt die Konsole gesperrt (kein Aufblitzen der Oberflaeche)
         "pwa_head": remote_pwa.head_tags() if is_remote else "",
         "asset_v": remote_pwa.build_id(),        # Version in den Datei-Adressen: neuer Stand = neue Adresse = nie ein alter Cache
+        "ui_store": None if is_remote else dict(state.ui_store),       # nur die Konsole: gemerkter Oberflaechenzustand aus der app_config.json (static/js/ui_store.js)
     })
     response.headers["Cache-Control"] = "no-cache"
     return response
@@ -1018,6 +1820,42 @@ async def favicon() -> Response:
     return FileResponse(remote_pwa.ICON_DIR / "logo-64.png", media_type="image/png", headers={"Cache-Control": "no-cache"})
 
 
+@app.get("/remote/zertifikat")
+async def remote_certificate_page(request: Request) -> Response:
+    """Anleitung "Zertifikat installieren" (Schritt fuer Schritt, in der Sprache des Browsers). Oeffentlich und ueber http erreichbar - siehe app/cert_page.py."""
+    from app import cert_page
+    html_text = await asyncio.to_thread(cert_page.page, request.headers.get("host", ""), request.headers.get("accept-language", ""), request.query_params.get("lang"), request.query_params.get("os"))
+    return HTMLResponse(html_text, headers={"Cache-Control": "no-store"})
+
+
+@app.get("/remote/opencue.mobileconfig")
+async def remote_ca_profile() -> Response:
+    """Konfigurationsprofil fuer iPad / iPhone: installiert die OpenCue-Zertifizierungsstelle (https ohne Warnung, Web-App, Service Worker). Siehe app/https_cert.py."""
+    from app import https_cert
+    data = await asyncio.to_thread(https_cert.mobileconfig)
+    if data is None:
+        return JSONResponse({"error": "no certificate yet - switch on the secure page (HTTPS) first"}, status_code=404)
+    return Response(data, media_type="application/x-apple-aspen-config", headers={"Cache-Control": "no-store"})
+
+
+@app.get("/remote/opencue-ca.crt")
+async def remote_ca_certificate() -> Response:
+    """Zertifikat der OpenCue-Zertifizierungsstelle (Android, Windows, macOS: installieren und als vertrauenswuerdige Stelle einrichten)."""
+    from app import https_cert
+    data = await asyncio.to_thread(https_cert.ca_der)
+    if data is None:
+        return JSONResponse({"error": "no certificate yet - switch on the secure page (HTTPS) first"}, status_code=404)
+    return Response(data, media_type="application/x-x509-ca-cert", headers={"Cache-Control": "no-store", "Content-Disposition": 'attachment; filename="opencue-ca.crt"'})
+
+
+@app.get("/apple-touch-icon.png")
+@app.get("/apple-touch-icon-precomposed.png")
+@app.get("/apple-touch-icon-180x180.png")
+async def apple_touch_icon_root() -> Response:
+    """Safari fragt diese Adressen von sich aus ab (ohne <link>): immer das OpenCue-Symbol, nie ein 404 / graues Buchstaben-Symbol."""
+    return FileResponse(remote_pwa.ICON_DIR / "apple-touch-icon.png", media_type="image/png", headers={"Cache-Control": "no-cache"})
+
+
 @app.get("/remote/icons/{name}")
 async def remote_icon(name: str) -> Response:
     media_type = remote_pwa.ICON_FILES.get(name)
@@ -1048,10 +1886,21 @@ async def get_data_path() -> JSONResponse:
     })
 
 
+@app.post("/api/ui-ready")
+async def ui_ready_signal(request: Request) -> JSONResponse:
+    """Das lokale Programmfenster meldet: Oberflaeche fertig aufgebaut (Startbild darf weg). Nur von diesem Rechner."""
+    if remote.is_local(request.client.host if request.client else None):
+        _startup_report(100, "Ready")
+        ui_ready.set()
+    return JSONResponse({"ok": True})
+
+
 @app.post("/api/data-path/open")
-async def open_data_folder() -> JSONResponse:
-    """Öffnet den Datenpfad im Windows Explorer."""
+async def open_data_folder(request: Request) -> JSONResponse:
+    """Öffnet den Datenpfad im Windows Explorer (am Hauptrechner; von einem Fernzugriffs-Geraet aus sieht dort niemand hin)."""
     import os
+    if not remote.is_local(request.client.host if request.client else None):
+        return JSONResponse({"ok": False, "error": "local_only"}, status_code=403)
     try:
         os.startfile(str(_paths.get_data_root()))
         return JSONResponse({"ok": True})
@@ -1071,7 +1920,7 @@ async def set_data_path(request: Request) -> JSONResponse:
         try:
             p.mkdir(parents=True, exist_ok=True)
         except Exception as exc:
-            return JSONResponse({"error": f"Ordner konnte nicht erstellt werden: {exc}"}, status_code=400)
+            return JSONResponse({"error": f"Folder could not be created: {exc}"}, status_code=400)
     state.custom_data_path = raw
     state.save_app_config()
     _paths.refresh_paths()
@@ -1084,6 +1933,12 @@ async def set_data_path(request: Request) -> JSONResponse:
 async def fixture_type_wheels(fixture_id: str) -> JSONResponse:
     from app.fixture_manager import get_fixture_wheels
     return JSONResponse(get_fixture_wheels(fixture_id))
+
+
+@app.get("/api/fixture-types/{fixture_id}/channels")
+async def fixture_type_channels(fixture_id: str) -> JSONResponse:
+    from app.fixture_manager import get_fixture_channel_info
+    return JSONResponse(get_fixture_channel_info(fixture_id))
 
 
 @app.get("/api/fixture-types/{fixture_id}/beamfx")
@@ -1140,13 +1995,17 @@ async def library_installed() -> JSONResponse:
                         headers={"Cache-Control": "no-store"})
 
 
+def _lib_scope(scope: str) -> str:
+    return scope if scope in ("show", "preview") else "library"
+
+
 @app.get("/api/library/installed/{fixture_id}/details")
 async def library_details(fixture_id: str, request: Request, scope: str = "library") -> JSONResponse:
     from app import fixture_library
     if (limited := _library_throttle(request, "details")) is not None:
         return limited
     try:
-        data = await asyncio.to_thread(fixture_library.details, fixture_id, "show" if scope == "show" else "library")
+        data = await asyncio.to_thread(fixture_library.details, fixture_id, _lib_scope(scope))
     except Exception as exc:
         return _library_error(exc)
     return JSONResponse(data, headers={"Cache-Control": "no-store"})
@@ -1156,7 +2015,7 @@ async def library_details(fixture_id: str, request: Request, scope: str = "libra
 async def library_thumbnail(fixture_id: str, scope: str = "library") -> Response:
     from app import fixture_library
     try:
-        data, media_type, mtime = await asyncio.to_thread(fixture_library.thumbnail, fixture_id, "show" if scope == "show" else "library")
+        data, media_type, mtime = await asyncio.to_thread(fixture_library.thumbnail, fixture_id, _lib_scope(scope))
     except Exception as exc:
         return _library_error(exc)
     headers = {"Cache-Control": "no-cache", "ETag": f'"{mtime}-{len(data)}"', "X-Content-Type-Options": "nosniff"}
@@ -1172,7 +2031,7 @@ async def library_model(fixture_id: str, request: Request, scope: str = "library
     if (limited := _library_throttle(request, "details")) is not None:
         return limited
     try:
-        data = await asyncio.to_thread(fixture_library.model_scene, fixture_id, "show" if scope == "show" else "library")
+        data = await asyncio.to_thread(fixture_library.model_scene, fixture_id, _lib_scope(scope))
     except Exception as exc:
         return _library_error(exc)
     return JSONResponse(data, headers={"Cache-Control": "no-store"})
@@ -1183,7 +2042,7 @@ async def library_asset(fixture_id: str, path: str = "", scope: str = "library")
     """Bilder aus dem Ordner wheels/ der GDTF (Gobo-Muster, Farbrad)."""
     from app import fixture_library
     try:
-        data, media_type, mtime = await asyncio.to_thread(fixture_library.asset, fixture_id, path, "show" if scope == "show" else "library")
+        data, media_type, mtime = await asyncio.to_thread(fixture_library.asset, fixture_id, path, _lib_scope(scope))
     except Exception as exc:
         return _library_error(exc)
     headers = {"Cache-Control": "no-cache", "ETag": f'"{mtime}-{len(data)}"', "X-Content-Type-Options": "nosniff"}
@@ -1203,6 +2062,131 @@ async def library_uninstall(fixture_id: str) -> JSONResponse:
     return JSONResponse(result)
 
 
+@app.get("/api/fixture-editor/palette")
+async def fixture_editor_palette() -> JSONResponse:
+    from app import fixture_editor
+    return JSONResponse({"palette": fixture_editor.PALETTE, "physical": {k: list(v) for k, v in fixture_editor._PHYSICAL.items()}, "categories": list(fixture_editor.CATEGORIES)})
+
+
+def _editor_error(exc: Exception) -> JSONResponse:
+    from app import fixture_editor
+    if isinstance(exc, fixture_editor.EditorError):
+        return JSONResponse({"error": exc.code, "message": exc.message, **exc.extra}, status_code=422)
+    raise exc
+
+
+@app.get("/api/fixture-editor/{fixture_id}")
+async def fixture_editor_open(fixture_id: str, copy: int = 0) -> JSONResponse:
+    """Die Beschreibung eines Typs zum Bearbeiten. Ein mit dem Editor gebauter Typ wird so geoeffnet, wie er ist (copy=0); mit copy=1 wird JEDER installierte Typ als Kopie
+    geoeffnet (Kanaele, Funktionen, Bereiche, Bild - ohne Raeder und Geometrie)."""
+    from app import fixture_editor, fixture_library
+    try:
+        path = fixture_library._path_for(fixture_id)
+    except Exception as exc:
+        return _library_error(exc)
+    if copy:
+        try:
+            spec = await asyncio.to_thread(fixture_editor.derive_spec, path)
+        except fixture_editor.EditorError as exc:
+            return _editor_error(exc)
+        except Exception:
+            return JSONResponse({"error": "invalid", "message": "The file could not be read"}, status_code=422)
+        return JSONResponse({"id": "", "spec": spec, "in_use": 0, "copy_of": fixture_id})
+    spec = await asyncio.to_thread(fixture_editor.read_spec, path)
+    if spec is None:
+        return JSONResponse({"error": "not_own", "message": "This type does not come from the editor"}, status_code=404)
+    from app import fixture_manager
+    ft = fixture_manager.get_fixture_type_by_id(fixture_id) or {}
+    used: Dict[str, int] = {}
+    for fx in state.fixtures.values():
+        if fx.fixture_type == fixture_id:
+            used[fx.mode] = used.get(fx.mode, 0) + 1
+    footprints = {m.get("name"): m.get("channel_count") for m in ft.get("modes", [])}
+    return JSONResponse({"id": fixture_id, "spec": spec, "in_use": _fixture_usage().get(fixture_id, 0), "used_modes": used, "footprints": footprints})
+
+
+@app.post("/api/fixture-editor")
+async def fixture_editor_save(request: Request) -> JSONResponse:
+    """Eigenen Typ speichern: {spec, replace_id?}. Baut die GDTF-Datei und installiert sie; ein vorhandener Name wird nur ersetzt, wenn es derselbe Typ ist (replace_id)."""
+    import tempfile
+    from pathlib import Path as _Path
+    from app import fixture_editor, fixture_library, gdtf_model
+    try:
+        body = await request.json()
+    except Exception:
+        return JSONResponse({"error": "invalid", "message": "Ungueltige Anfrage"}, status_code=400)
+    body = body if isinstance(body, dict) else {}
+    replace_id = str(body.get("replace_id") or "")
+    raw_spec = body.get("spec") if isinstance(body.get("spec"), dict) else {}
+    previous = copy_source = None
+    try:
+        if replace_id:
+            previous = fixture_library._path_for(replace_id)
+        thumb = raw_spec.get("thumbnail")
+        if isinstance(thumb, dict) and thumb.get("copy_from"):
+            copy_source = fixture_library._path_for(str(thumb["copy_from"]))
+            raw_spec = {**raw_spec, "thumbnail": {"copy_from_file": True}}
+        spec = fixture_editor.clean(raw_spec)
+        data = await asyncio.to_thread(fixture_editor.build_gdtf, spec, previous, copy_source)
+        if spec.get("model") and spec["model"].get("data"):                                       # das hochgeladene Modell muss sich wirklich lesen lassen
+            fd, tmp = tempfile.mkstemp(suffix=".gdtf")
+            os.close(fd)
+            try:
+                with open(tmp, "wb") as handle:
+                    handle.write(data)
+                scene = await asyncio.to_thread(gdtf_model.scene, _Path(tmp))
+                if not isinstance(scene, dict) or int((scene.get("stats") or {}).get("files", 0)) < 1:
+                    raise ValueError("Model not readable or too detailed")
+            except Exception:
+                raise fixture_editor.EditorError("bad_model", "The 3D model could not be read", field="model")
+            finally:
+                try:
+                    os.unlink(tmp)
+                except OSError:
+                    pass
+    except fixture_editor.EditorError as exc:
+        return _editor_error(exc)
+    except Exception as exc:
+        return _library_error(exc)
+    new_id = fixture_library.install_id(spec["manufacturer"], spec["name"], "Eigen")
+    if new_id != replace_id and (fixture_library._paths.FIXTURES_DIR / f"{new_id}.gdtf").exists():
+        return JSONResponse({"error": "exists", "message": "A type with this manufacturer and name already exists", "field": "name"}, status_code=409)
+    try:
+        result = await asyncio.to_thread(fixture_library.install_bytes, data, "", "Eigen", _fixture_usage(), "replace")
+    except Exception as exc:
+        return _library_error(exc)
+    await _broadcast_library_changed()
+    return JSONResponse(result)
+
+
+@app.get("/api/library/installed/{fixture_id}/file")
+async def library_file(fixture_id: str):
+    """Die GDTF-Datei zum Herunterladen (Weitergeben, auf einem anderen Rechner importieren)."""
+    from fastapi.responses import FileResponse
+    from app import fixture_library
+    try:
+        path = fixture_library._path_for(fixture_id)
+    except Exception as exc:
+        return _library_error(exc)
+    return FileResponse(str(path), media_type="application/octet-stream", filename=path.name)
+
+
+@app.post("/api/library/installed/{fixture_id}/reveal")
+async def library_reveal(fixture_id: str, request: Request) -> JSONResponse:
+    """Zeigt die Datei im Windows-Explorer - nur am Rechner des Programms selbst (nicht ueber das Netzwerk)."""
+    import subprocess
+    from app import fixture_library
+    host = request.client.host if request.client else ""
+    if host not in ("127.0.0.1", "::1", "localhost") or os.name != "nt":
+        return JSONResponse({"error": "not_local", "message": "Nur am Rechner des Programms"}, status_code=403)
+    try:
+        path = fixture_library._path_for(fixture_id)
+    except Exception as exc:
+        return _library_error(exc)
+    subprocess.Popen(["explorer", "/select,", str(path)])
+    return JSONResponse({"ok": True})
+
+
 @app.get("/api/library/show")
 async def library_show() -> JSONResponse:
     """Tab 'In dieser Show': die Scheinwerfertypen der geladenen Show (Version, Anzahl, Herkunft der Datei)."""
@@ -1218,13 +2202,13 @@ async def library_import(request: Request) -> JSONResponse:
     from app import fixture_library
     declared = request.headers.get("content-length")
     if declared and declared.isdigit() and int(declared) > fixture_library.MAX_GDTF_BYTES:
-        return JSONResponse({"error": "too_large", "message": "Die Datei ist zu gross (max. 30 MB)"}, status_code=413)
+        return JSONResponse({"error": "too_large", "message": "The file is too large (max. 30 MB)"}, status_code=413)
     chunks: List[bytes] = []
     size = 0
     async for chunk in request.stream():
         size += len(chunk)
         if size > fixture_library.MAX_GDTF_BYTES:
-            return JSONResponse({"error": "too_large", "message": "Die Datei ist zu gross (max. 30 MB)"}, status_code=413)
+            return JSONResponse({"error": "too_large", "message": "The file is too large (max. 30 MB)"}, status_code=413)
         chunks.append(chunk)
     filename = unquote(request.headers.get("x-filename", ""))
     try:
@@ -1256,14 +2240,14 @@ async def media_upload(request: Request) -> JSONResponse:
     from urllib.parse import unquote
     declared = request.headers.get("content-length")
     if declared and declared.isdigit() and int(declared) > media_store.MAX_FILE_BYTES:
-        return JSONResponse({"error": "too_large", "message": "Die Datei ist zu gross (max. 1 GB)"}, status_code=413)
+        return JSONResponse({"error": "too_large", "message": "The file is too large (max. 1 GB)"}, status_code=413)
     temp_path, handle = media_store.temp_file()
     sha, size = hashlib.sha256(), 0
     try:
         async for chunk in request.stream():
             size += len(chunk)
             if size > media_store.MAX_FILE_BYTES:
-                return JSONResponse({"error": "too_large", "message": "Die Datei ist zu gross (max. 1 GB)"}, status_code=413)
+                return JSONResponse({"error": "too_large", "message": "The file is too large (max. 1 GB)"}, status_code=413)
             sha.update(chunk)
             handle.write(chunk)
         handle.close()
@@ -1595,6 +2579,26 @@ async def library_online_search(request: Request, q: str = "", category: str = "
     return JSONResponse(result, headers={"Cache-Control": "no-store"})
 
 
+@app.post("/api/library/online/preview")
+async def library_online_preview(request: Request) -> JSONResponse:
+    """Datei von GDTF Share nur zur Ansicht laden (Detail-Fenster mit 'Installieren'); landet im Temp-Ordner, nicht in der Bibliothek."""
+    from app import fixture_library
+    if (limited := _library_throttle(request, "install")) is not None:
+        return limited
+    try:
+        body = await request.json()
+        rid = body.get("rid") if isinstance(body, dict) else None
+    except Exception:
+        rid = None
+    if rid in (None, ""):
+        return JSONResponse({"error": "invalid", "message": "rid is missing"}, status_code=400)
+    try:
+        result = await asyncio.to_thread(fixture_library.preview_from_share, rid)
+    except Exception as exc:
+        return _library_error(exc)
+    return JSONResponse(result, headers={"Cache-Control": "no-store"})
+
+
 @app.post("/api/library/online/install")
 async def library_online_install(request: Request) -> JSONResponse:
     from app import fixture_library
@@ -1679,7 +2683,110 @@ def _same_path(a: Optional[str], b: Optional[Path]) -> bool:
 
 def _showfile_status() -> Dict[str, Any]:
     path = state.showfile_path
-    return {"name": state.showfile_name, "path": path, "dirty": bool(state.is_dirty), "saved": bool(path and Path(path).is_file())}
+    blockers = show_safety.save_blockers(path)
+    if _last_save_error and not blockers:
+        blockers = ["save_failed"]                                   # das letzte Speichern ist an etwas anderem gescheitert (Platte voll, Zugriff verweigert ...)
+    return {"name": state.showfile_name, "path": path, "dirty": bool(state.is_dirty), "saved": bool(path and Path(path).is_file()),
+            "locked": show_safety.is_locked(path), "blockers": blockers, "save_error": _last_save_error, "backups_on": bool(state.backup_config.get("enabled", True))}
+
+
+def _recent_shows_payload() -> List[Dict[str, Any]]:
+    """Zuletzt benutzte Shows; Dateien, die es nicht mehr gibt, fallen heraus."""
+    keep: List[str] = [p for p in state.recent_shows if Path(p).is_file()]
+    if keep != state.recent_shows:
+        state.recent_shows = keep
+        state.save_app_config()
+    return [{"path": p, "name": Path(p).stem, "current": _same_path(state.showfile_path, Path(p))} for p in keep]
+
+
+@app.get("/api/showfiles/recent")
+async def recent_showfiles() -> JSONResponse:
+    return JSONResponse({"items": _recent_shows_payload()})
+
+
+@app.post("/api/showfiles/recent/clear")
+async def clear_recent_showfiles(request: Request) -> JSONResponse:
+    state.recent_shows = []
+    state.save_app_config()
+    return JSONResponse({"ok": True})
+
+
+async def open_show_from_file(raw_path: str) -> Dict[str, Any]:
+    """Eine Show-Datei oeffnen, die von aussen kommt (Doppelklick auf .ocshow, zweiter Start mit Dateiname). Die Konsole fragt bei ungespeicherten Aenderungen selbst nach;
+    ist gar keine Konsole verbunden (Server ohne Fenster), wird sofort geladen."""
+    path, info = await asyncio.to_thread(file_manager.prepare_show_file, raw_path)
+    await _announce_showfiles_changed()
+    if any(event_bus.is_local(ws) for ws in list(event_bus._connections)):
+        await event_bus.broadcast({"type": "open_show_request", "payload": {"path": str(path), "name": path.stem}})
+        return {"ok": True, "path": str(path), "name": path.stem, "loaded": False}
+    if state.is_dirty:
+        await backups.manager.take("before-switch")
+    state.load_showfile(path)
+    cue_engine.reset()
+    fx_engine.reset_runtime()
+    timecode.reset()
+    await _broadcast_timecode()
+    await event_bus.broadcast({"type": "show_loaded", "payload": {}})
+    await event_bus.broadcast(state.get_snapshot())
+    await _restore_showfile_state()
+    state.save_app_config()
+    return {"ok": True, "path": str(path), "name": path.stem, "loaded": True}
+
+
+@app.post("/api/showfiles/open-file")
+async def open_showfile_from_path(request: Request) -> JSONResponse:
+    """Nur vom Rechner selbst (zweiter Programmstart mit einer Datei): die Datei einlesen und in der Konsole zum Oeffnen anbieten."""
+    if not remote.is_local(request.client.host if request.client else None):
+        return JSONResponse({"ok": False, "error": "local_only"}, status_code=403)
+    body = await request.json()
+    try:
+        return JSONResponse(await open_show_from_file(str((body or {}).get("path", ""))))
+    except file_manager.FileError as exc:
+        return exc.response()
+
+
+@app.post("/api/showfiles/lock")
+async def lock_showfile(request: Request) -> JSONResponse:
+    """Schloss einer Show-Datei setzen oder aufheben (Dateimanager). Gesperrt: nicht mehr speichern, umbenennen, loeschen - Speichern unter und Duplizieren gehen."""
+    body = await request.json()
+    path = _managed_showfile(str(body.get("path", "")))
+    if path is None:
+        return JSONResponse({"error": "not found"}, status_code=404)
+    locked = bool(body.get("locked"))
+    try:
+        await asyncio.to_thread(show_safety.set_locked, path, locked)
+    except (OSError, ValueError) as exc:
+        return JSONResponse({"ok": False, "error": "write_failed", "message": str(exc)}, status_code=500)
+    global _last_save_error
+    if _same_path(state.showfile_path, path):
+        _last_save_error = ""                                        # der Zustand hat sich geaendert: eine alte Fehlermeldung gilt nicht mehr
+    await _announce_showfiles_changed()
+    return JSONResponse({"ok": True, "locked": locked, "path": str(path)})
+
+
+async def restore_backup_file(path: Path) -> Dict[str, Any]:
+    """Eine Sicherung als UNGESPEICHERTE Show laden: Name und Ziel-Datei der urspruenglichen Show bleiben, die Datei selbst wird nicht angefasst (auch nicht, wenn sie gesperrt ist)."""
+    meta: Dict[str, Any] = {}
+    try:
+        meta = json.loads(path.with_suffix(".meta").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        pass
+    state.load_showfile(path)
+    original = str(meta.get("original_path") or "")
+    state.showfile_path = original or None
+    state.last_showfile_path = original or None
+    state.is_dirty = True
+    state.save_app_config()
+    cue_engine.reset()
+    fx_engine.reset_runtime()
+    timecode.reset()
+    await _broadcast_timecode()
+    await event_bus.broadcast({"type": "show_loaded", "payload": {}})
+    await event_bus.broadcast(state.get_snapshot())
+    await _restore_showfile_state()
+    await _announce_showfiles_changed()
+    logger.info("[BACKUP] Restored %s (show '%s', taken %s)", path.name, state.showfile_name, meta.get("taken_at", "?"))
+    return {"name": state.showfile_name, "taken_at": str(meta.get("taken_at") or ""), "original_path": original}
 
 
 async def _announce_showfiles_changed() -> None:
@@ -1698,6 +2805,8 @@ async def rename_showfile(request: Request) -> JSONResponse:
     new_name = str(body.get("new_name", "")).strip()
     if old_path is None or old_path.parent.resolve() != _paths.SHOWFILES_DIR.resolve():
         return JSONResponse({"error": "not found"}, status_code=404)
+    if show_safety.is_locked(old_path):
+        return JSONResponse({"ok": False, "error": "locked", "name": new_name}, status_code=409)
     if not new_name:
         return JSONResponse({"error": "name required"}, status_code=400)
     new_path = old_path.with_name(_safe_layout_filename(new_name) + ".json")
@@ -1713,7 +2822,7 @@ async def rename_showfile(request: Request) -> JSONResponse:
         return JSONResponse({"error": "invalid file"}, status_code=400)
     data["showfile_name"] = new_name
     target = old_path if same_file else new_path
-    target.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
+    show_safety._atomic_write(target, json.dumps(data, indent=2, ensure_ascii=False))
     if not same_file:
         old_path.unlink()
     final = old_path if same_file else new_path
@@ -1741,9 +2850,10 @@ async def duplicate_showfile(request: Request) -> JSONResponse:
     directory = _paths.SHOWFILES_DIR
     new_name = _copy_name(str(data.get("showfile_name", src.stem)), directory)
     data["showfile_name"] = new_name
+    show_safety.strip_lock(data)                                           # eine Kopie ist nie gesperrt
     directory.mkdir(parents=True, exist_ok=True)
     new_path = directory / (_safe_layout_filename(new_name) + ".json")
-    new_path.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
+    show_safety._atomic_write(new_path, json.dumps(data, indent=2, ensure_ascii=False))
     await _announce_showfiles_changed()
     return JSONResponse({"ok": True, "path": str(new_path), "name": new_name})
 
@@ -1754,6 +2864,8 @@ async def delete_showfile(request: Request) -> JSONResponse:
     path = _managed_showfile(str(body.get("path", "")))
     if path is None:
         return JSONResponse({"error": "not found"}, status_code=404)
+    if show_safety.is_locked(path):
+        return JSONResponse({"ok": False, "error": "locked"}, status_code=409)
     was_loaded = _same_path(state.showfile_path, path)
     media_ids = await asyncio.to_thread(media_store.ids_in_showfile, path)
     path.unlink()
@@ -1806,6 +2918,12 @@ def _layout_status_for(cid: Optional[str]) -> Dict[str, Any]:
     """Aktuell geladenes Layout eines Geraets (cid; None = Konsole) und ob es ungespeicherte Aenderungen hat."""
     if cid:
         sess = remote.session_for(cid)
+        if sess.fresh:
+            sess.fresh = False
+            if sess.layout is None and state.last_active_layout:
+                sess.layout = {"filename": _host_layout_filename(), "name": state.last_active_layout}
+                host_dirty = _layout_status_for(None)["dirty"]
+                sess.baseline = None if host_dirty else _strip_panels(sess.panels)        # hat der Host ungespeicherte Aenderungen, gilt das auch hier
         layout = sess.layout or {}
         name, filename = layout.get("name"), layout.get("filename")
         dirty = bool(name) and (sess.baseline is None or _strip_panels(sess.panels) != sess.baseline)
@@ -1893,7 +3011,7 @@ def _write_active_layout() -> None:
         data["panels"] = state.panels_as_dicts()
         data.pop("remote", None)   # Rest des frueheren Remote-Geometrie-Modells
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
+        show_safety._atomic_write(path, json.dumps(data, indent=2, ensure_ascii=False))
         global _layout_written
         _layout_written = path.name
     except Exception as exc:
@@ -1961,7 +3079,7 @@ def seed_example_layouts() -> List[str]:
             panels.append(asdict(Panel(id=str(uuid.uuid4()), **fields)))
         data = {"name": name, "created_at": now, "is_favorite": False, "panels": panels}
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
+        show_safety._atomic_write(path, json.dumps(data, indent=2, ensure_ascii=False))
         created.append(path.name)
     state.example_layouts_seeded = True
     state.save_app_config()
@@ -2019,6 +3137,7 @@ def _adopt_startup_layout() -> None:
 
 _app_loop: Optional[asyncio.AbstractEventLoop] = None
 _last_save_ok = False
+_last_save_error = ""                                              # Text des letzten gescheiterten Speicherns ("" = alles gut); steht im Beenden-Dialog
 
 
 def _apply_panels_ui(panels_ui: Any, cid: Optional[str] = None) -> None:
@@ -2038,6 +3157,21 @@ def _save_workspace(name: Optional[str] = None) -> Path:
     _write_active_layout()
     state.save_app_config()
     return path
+
+
+async def _report_save_failure(what: str, exc: Exception) -> None:
+    """Speichern gescheitert: ins Protokoll und an ALLE Geraete (Hinweis; beim Beenden oeffnet sich der Dialog mit der orangen Warnung wieder). Vorher stand nur eine Zeile im Protokoll."""
+    global _last_save_error
+    locked = isinstance(exc, show_safety.ShowLocked)
+    reason = "locked" if locked else "error"
+    _last_save_error = "" if locked else (str(exc) or exc.__class__.__name__)
+    logger.error("%s failed (%s): %s", what, reason, exc)
+    try:
+        await backups.manager.take("save-failed", force=state.is_dirty)           # der ungespeicherte Stand wird sofort gesichert
+    except Exception:                                                            # noqa: BLE001
+        pass
+    await event_bus.broadcast({"type": "show_save_failed", "payload": {"reason": reason, "message": _last_save_error, "name": state.showfile_name,
+                                                                          "path": state.showfile_path or ""}})
 
 
 def request_close_prompt() -> bool:
@@ -2110,7 +3244,7 @@ async def save_layout(request: Request) -> JSONResponse:
             data["created_at"] = existing.get("created_at", now)
         except Exception:
             pass
-    path.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
+    show_safety._atomic_write(path, json.dumps(data, indent=2, ensure_ascii=False))
     global _host_baseline
     if cid:  # das gespeicherte Layout ist jetzt das Layout dieses Geraets
         sess = remote.session_for(cid)
@@ -2210,7 +3344,7 @@ async def rename_layout(request: Request) -> JSONResponse:
     data["name"] = new_name
     final_file = old_path.name if same_file else new_file
     target = old_path if same_file else new_path
-    target.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
+    show_safety._atomic_write(target, json.dumps(data, indent=2, ensure_ascii=False))
     if not same_file:
         old_path.unlink()
     # Geraete, die dieses Layout geladen haben, behalten es unter dem neuen Namen (Panels/Stand bleiben unberuehrt).
@@ -2228,7 +3362,7 @@ async def rename_layout(request: Request) -> JSONResponse:
 def _copy_name(base: str, directory: Optional[Path] = None) -> str:
     """Freier Name fuer eine Kopie: "X (Kopie)", "X (Kopie 2)" ... (bzw. "(copy)")."""
     directory = directory or _paths.LAYOUTS_DIR
-    word = "Kopie" if state.language == "de" else "copy"
+    word = languages.tr("SRV_COPY_WORD", state.language)
     n = 1
     while True:
         candidate = f"{base} ({word})" if n == 1 else f"{base} ({word} {n})"
@@ -2260,7 +3394,7 @@ async def duplicate_layout(request: Request) -> JSONResponse:
     out = {"name": new_name, "created_at": _dt.now().isoformat(timespec="seconds"), "is_favorite": False,
            "panels": [asdict(p) for p in panels]}
     (_paths.LAYOUTS_DIR / new_file).parent.mkdir(parents=True, exist_ok=True)
-    (_paths.LAYOUTS_DIR / new_file).write_text(json.dumps(out, indent=2, ensure_ascii=False), encoding="utf-8")
+    show_safety._atomic_write((_paths.LAYOUTS_DIR / new_file), json.dumps(out, indent=2, ensure_ascii=False))
     await _announce_layouts_changed()
     return JSONResponse({"ok": True, "filename": new_file, "name": new_name})
 
@@ -2277,8 +3411,8 @@ async def new_layout(request: Request) -> JSONResponse:
     if path.exists() and not body.get("overwrite"):
         return JSONResponse({"ok": False, "error": "exists", "name": name, "filename": filename}, status_code=409)
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps({"name": name, "created_at": _dt.now().isoformat(timespec="seconds"),
-                                "is_favorite": False, "panels": []}, indent=2, ensure_ascii=False), encoding="utf-8")
+    show_safety._atomic_write(path, json.dumps({"name": name, "created_at": _dt.now().isoformat(timespec="seconds"),
+                                                "is_favorite": False, "panels": []}, indent=2, ensure_ascii=False))
     cid = request.state.cid
     global _host_baseline
     if cid:
@@ -2312,7 +3446,7 @@ async def toggle_favorite_layout(request: Request) -> JSONResponse:
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
         data["is_favorite"] = not bool(data.get("is_favorite", False))
-        path.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
+        show_safety._atomic_write(path, json.dumps(data, indent=2, ensure_ascii=False))
         await _announce_layouts_changed()
         return JSONResponse({"ok": True, "is_favorite": data["is_favorite"]})
     except Exception as exc:
@@ -2331,6 +3465,10 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
     websocket.state.connected_at = time.time()
     websocket.state.token = websocket.cookies.get(remote.SESSION_COOKIE)
     websocket.state.kicked = False
+    if local and not remote.local_request_allowed(websocket.headers.get("host"), websocket.headers.get("origin")):
+        await websocket.accept()                                                  # fremde Webseite im Browser desselben Rechners (WebSocket kennt kein CORS)
+        await websocket.close(code=4403)
+        return
     if not local:
         # Ablehnung erst nach accept(), damit der Client den Close-Code (4401/4403) sieht.
         origin = websocket.headers.get("origin")
@@ -2346,6 +3484,8 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
             return
         websocket.state.cid = cid
     await websocket.accept()
+    if local:
+        _startup_report(84, "Connecting to console")
     await event_bus.connect(websocket)
     if not local:
         logger.info("[Remote] Client %s verbunden (%s)", websocket.state.ip, remote.device_label(websocket.state.ua))
@@ -2354,6 +3494,8 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
     await event_bus.send_to(websocket, _snapshot_for(websocket))
     for message in _live_state_messages():
         await event_bus.send_to(websocket, message)
+    if local:
+        _startup_report(90, "Building interface")
     if not local:
         await _broadcast_remote_clients()
 
@@ -2368,6 +3510,12 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
     finally:
         ping_task.cancel()
         event_bus.disconnect(websocket)
+        if getattr(websocket.state, "cam_group", ""):
+            websocket.state.cam_group = ""
+            try:
+                await _broadcast_cam_groups()
+            except Exception:
+                pass
         if not local:
             if not websocket.state.kicked:
                 logger.info("[Remote] Client %s getrennt", websocket.state.ip)
@@ -2383,6 +3531,26 @@ async def _keep_alive(websocket: WebSocket) -> None:
         while True:
             await asyncio.sleep(PING_INTERVAL_SECONDS)
             await event_bus.send_to(websocket, {"type": "ping"})
+    except asyncio.CancelledError:
+        pass
+
+
+async def _artnet_pump() -> None:
+    """Art-Net-Ziel "Automatisch": alle 4 s nach Geraeten fragen (ArtPoll); aendert sich die Liste (Geraet angesteckt / abgezogen), wird sofort an die neuen Adressen gesendet und allen Fenstern
+    gemeldet. Mit einem festen Ziel oder ausgeschaltetem Art-Net passiert nichts (kein Netzwerkverkehr)."""
+    try:
+        first = True
+        while True:
+            await asyncio.sleep(0.5 if first else 4.0)
+            first = False
+            if not (state.artnet_enabled and state.artnet_ip == "auto"):
+                continue
+            found = await asyncio.to_thread(artnet_discovery.poll, 1.0)
+            changed = artnet_discovery.registry.update(found)
+            dmx_engine.set_artnet_auto_targets(artnet_discovery.registry.targets())
+            if changed:
+                logger.info("[ARTNET] Devices: %s", ", ".join(f"{n['name'] or n['short_name']} ({n['ip']})" for n in artnet_discovery.registry.list()) or "none found - broadcasting")
+                await event_bus.broadcast({"type": "artnet_nodes_changed", "payload": {"nodes": artnet_discovery.registry.list(), "status": dmx_engine.get_artnet_status()}})
     except asyncio.CancelledError:
         pass
 
@@ -2420,6 +3588,88 @@ async def _apply_undo_redo(message_type: str) -> None:
     await event_bus.broadcast({"type": "panels_changed", "payload": {"panels": state.panels_as_dicts()}})
 
 
+def _presets_message() -> Dict[str, Any]:
+    return {"type": "presets_changed", "payload": {
+        "presets": {pid: asdict(p) for pid, p in state.presets.items()},
+        "preset_groups": list(state.preset_groups),
+        "is_dirty": state.is_dirty,
+    }}
+
+
+_last_undo_info: Optional[Dict[str, Any]] = None
+
+
+async def _broadcast_undo_state() -> None:
+    """Zustand des globalen Rueckgaengig an alle Geraete (Menuepunkte ein- / ausgrauen) - nur, wenn er sich geaendert hat (ein Fader-Zug soll nicht je Nachricht eine Meldung an alle senden)."""
+    global _last_undo_info
+    info = show_undo.info()
+    if info == _last_undo_info:
+        return
+    _last_undo_info = info
+    await event_bus.broadcast({"type": "show_undo_state", "payload": info})
+
+
+async def _apply_show_undo(websocket: WebSocket, direction: str) -> None:
+    """Globales Rueckgaengig / Wiederholen (Strg+Z / Strg+Y): stellt Cue-Listen, Variablen, Gruppen und die Auswahl wieder her (app/show_undo.py)."""
+    entry = show_undo.pop(direction)
+    if entry is None:
+        await event_bus.send_to(websocket, {"type": "show_undo_done", "payload": {"direction": direction, "ok": False}})
+        return
+    old_presets = {pid: asdict(p) for pid, p in state.presets.items()}
+    changed = show_undo.restore(state, entry, direction)
+    info = show_undo.last_restore
+    if "cuelists" in changed:
+        await _broadcast_cuelists_changed()
+    if "presets" in changed or "preset_groups" in changed:
+        await event_bus.broadcast(_presets_message())
+        for pid, preset in list(state.presets.items()):              # Platzhalter: Programmer und aktive Cues folgen dem wiederhergestellten Wert
+            if old_presets.get(pid) != asdict(preset):
+                await _reapply_preset(pid)
+    if "fixtures" in changed or "fixture_layout" in changed:
+        await event_bus.broadcast({"type": "fixtures_changed", "payload": {"fixtures": state.fixtures_as_dicts(), "is_dirty": state.is_dirty}})
+    if "groups" in changed or "fixtures" in changed:
+        await _broadcast_fixture_groups()
+    if "fx_effects" in changed or "fx_groups" in changed:
+        if info["released_fx"]:
+            await _release_fixtures(info["released_fx"])
+        await event_bus.broadcast(_fx_changed_message())
+    if "schedule" in changed:
+        await event_bus.broadcast({"type": "schedule_changed", "payload": {"schedule": [dict(e) for e in state.schedule], "is_dirty": True}})
+    if "timeline_tracks" in changed:
+        await event_bus.broadcast({"type": "timeline_tracks_changed", "payload": {"tracks": copy.deepcopy(state.timeline_tracks), "is_dirty": True}})
+    if "selection" in changed or "fixtures" in changed:
+        await event_bus.broadcast({"type": "selection_changed", "payload": {"selected_ids": list(state.selected_fixture_ids)}})
+    if "programmer" in changed and info["fids"]:
+        fids = list(info["fids"])
+        await event_bus.broadcast({"type": "programmer_cleared", "payload": {"fixture_ids": fids}})           # angefasst-Markierungen und Anzeige der Clients aufraeumen
+        shown = {fid: dict(state.programmer_values[fid]) for fid in fids if state.programmer_values.get(fid)}
+        if shown:
+            await event_bus.broadcast({"type": "programmer_command_update", "payload": {"values": shown}})
+        await event_bus.broadcast(_refs_message())
+        for universe in info["universes"]:
+            await event_bus.broadcast({"type": "dmx_universe_changed", "payload": {"universe": universe, "values": dmx_engine.get_universe_snapshot(universe)}})
+        live_now = _live_values_for(set(info["universes"]))
+        if live_now:
+            await event_bus.broadcast({"type": "fixtures_live", "payload": {"values": live_now}})
+    if "programmer" in changed and info["fx_changed"]:
+        if info["released_fx"]:
+            await _release_fixtures(list(dict.fromkeys(info["released_fx"])))
+        await event_bus.broadcast(_fx_changed_message())
+    if "master" in changed:
+        for cl_id, level in info["masters"].items():
+            await set_cuelist_master(cl_id, level, _broadcast_generic)
+    if "playback" in changed:
+        for cl_id, cue_id in info["playback"].items():
+            if cue_id:
+                await cue_engine.jump_to(cl_id, cue_id)
+            else:
+                cue_engine.stop(cl_id)
+                state.active_cue_ids.pop(cl_id, None)
+        await _broadcast_cuelists_changed()
+    await event_bus.send_to(websocket, {"type": "show_undo_done", "payload": {"direction": direction, "ok": True, "label": entry["label"]}})
+    await _broadcast_undo_state()
+
+
 async def _broadcast_fixture_groups() -> None:
     await event_bus.broadcast({"type": "fixture_groups_changed",
                                "payload": {"groups": state.groups, "is_dirty": state.is_dirty}})
@@ -2438,6 +3688,40 @@ async def _handle_client_message(websocket: WebSocket, raw_message: str) -> None
     payload = message.get("payload", {})
     if not isinstance(payload, dict):
         payload = {}
+
+    if state.locked and state.lock_enabled and event_bus.is_local(websocket) and message_type not in remote.LOCKED_ALLOWED_MESSAGES:
+        return          # Sichermodus: ein gesperrtes Konsolen-Fenster kann nichts mehr aendern
+
+    kiosk_key = "console" if event_bus.is_local(websocket) else websocket.state.cid
+    if message_type == "kiosk_enter":                                       # Bedienmodus einschalten: nur mit gesetztem Passwort
+        if state.remote_password:
+            state.kiosk_keys.add(kiosk_key)
+            logger.info("[Bedienmodus] Eingeschaltet (%s)", "Konsole" if kiosk_key == "console" else "Fernzugriffs-Geraet")
+            if kiosk_key == "console":
+                await asyncio.to_thread(voice.engine.suspend, True)                   # an der Konsole nur bedienen: die Sprachsteuerung (Mikrofon) ist solange aus
+        await _send_kiosk(kiosk_key, kiosk_key in state.kiosk_keys)
+        return
+    if kiosk_key in state.kiosk_keys and not remote.kiosk_allows(message_type):
+        return          # Bedienmodus: nur Bedienen (keine Layout-, Show-, Einstellungs- und Programmier-Nachrichten)
+    if kiosk_key in state.kiosk_keys and message_type == "run_command" and not remote.kiosk_command_allowed(payload.get("command", "")):
+        logger.info("[Bedienmodus] Befehl abgelehnt: %s", str(payload.get("command", ""))[:80])
+        await event_bus.send_to(websocket, {"type": "command_log", "payload": {"command": str(payload.get("command", "")), "success": False, "message": "Not available in operator mode",
+                                                                              "timestamp": _dt.now().strftime("%H:%M:%S")}})
+        return          # Bedienmodus: Befehle, die Daten der Show aendern (Store, Update, Delete, Move, Label, Cue-Zeiten, Cue-Listen anlegen / loeschen ...), werden nicht ausgefuehrt
+
+    if message_type == "set_lock_config":
+        if not state.set_lock_config(payload.get("enabled", False), payload.get("auto_minutes", 0)):
+            logger.info("[Sichermodus] Einschalten abgelehnt: noch kein Passwort gesetzt")
+        await event_bus.broadcast({"type": "lock_changed", "payload": remote.lock_info()})
+        return
+
+    if message_type == "lock_console":
+        if state.lock_enabled and state.remote_password:
+            state.locked = True
+            logger.info("[Sichermodus] Konsole gesperrt")
+        await event_bus.broadcast({"type": "lock_changed", "payload": remote.lock_info()})
+        await event_bus.broadcast({"type": "remote_changed", "payload": remote.remote_info(True)})              # ohne Passwort, solange gesperrt
+        return
 
     if not event_bus.is_local(websocket):
         if message_type in remote.LOCAL_ONLY_MESSAGES:
@@ -2460,34 +3744,85 @@ async def _handle_client_message(websocket: WebSocket, raw_message: str) -> None
         await _apply_undo_redo(message_type)
         return
 
+    if message_type in ("show_undo", "show_redo"):
+        await _apply_show_undo(websocket, "undo" if message_type == "show_undo" else "redo")
+        return
+
     before = state.panels_as_dicts() if message_type in PANEL_EDIT_MESSAGES else None
+    show_undo.begin(state, message_type, payload)
     await _process_client_message(websocket, message_type, payload)
+    if show_undo.end(state, message_type, payload):
+        await _broadcast_undo_state()
     if before is not None and before != state.panels_as_dicts():
         undo_history.record(before)
 
 
+async def _ai_emit(event: Dict[str, Any]) -> None:
+    """Ereignisse des KI-Assistenten (Wort fuer Wort gestreamte Antwort, Fehler ...) an alle Geraete; die Panels sortieren nach chat_id."""
+    await event_bus.broadcast({"type": "ai_event", "payload": event})
+
+
+async def _handle_ai_message(websocket: WebSocket, message_type: str, payload: Dict[str, Any]) -> None:
+    chat_id = str(payload.get("chat_id", ""))
+    try:
+        if message_type == "ai_send":
+            ai_assistant.language = state.language
+            ai_assistant.start(chat_id, str(payload.get("text", "")), _ai_emit, payload.get("mode"))
+        elif message_type == "ai_confirm":
+            # Antwort auf "Darf die KI das?": erlauben / ablehnen geht von jedem Geraet; "immer erlauben" speichert eine Einstellung und geht nur am Konsolenrechner
+            info = ai_assistant.confirm(str(payload.get("call_id", "")), payload.get("approve") is True)
+            if info and payload.get("approve") is True and payload.get("always") is True and ai_assistant.add_allowed_tool(info.get("name", "")):
+                state.ai_config = dict(ai_assistant.config)
+                state.save_app_config()
+                await event_bus.broadcast({"type": "ai_state", "payload": ai_assistant.state()})
+        else:
+            await ai_assistant.stop(chat_id)
+    except _AiError as exc:
+        await event_bus.send_to(websocket, {"type": "ai_event", "payload": {"type": "error", "chat_id": chat_id, "code": exc.code, "message": exc.message}})
+
+
 async def _process_client_message(websocket: WebSocket, message_type: str, payload: Dict[str, Any]) -> None:
-    global _last_save_ok
+    global _last_save_ok, _last_save_error
+    if message_type in ("ai_send", "ai_stop", "ai_confirm"):
+        await _handle_ai_message(websocket, message_type, payload)
+        return
     if message_type == "pong":
         return  # Antwort auf unser Ping, nichts weiter zu tun
 
     if message_type == "command_value_updated":
-        # Fader/Button mit zugewiesenem Befehl wurde bewegt: Wert merken und an alle
+        # Fader/Button/Toggle mit zugewiesenem Befehl wurde bewegt: Wert merken und an alle
         # anderen Clients verteilen (der Absender hat sich selbst schon aktualisiert).
-        pattern = str(payload.get("pattern", ""))[:200]
-        kind = "button" if payload.get("kind") == "button" else "fader"
+        # Toggle: Wert 1 = an, 0 = aus (Schluessel "toggle|<Befehl an>|<Befehl aus>" bzw. "toggle#<Panel-ID>").
+        pattern = str(payload.get("pattern", ""))[:400]
+        kind = payload.get("kind") if payload.get("kind") in ("button", "toggle") else "fader"
         if not pattern:
             return
         message: Dict[str, Any] = {"pattern": pattern, "kind": kind}
-        if kind == "fader":
+        if kind in ("fader", "toggle"):
             try:
                 value = float(payload.get("value"))
             except (TypeError, ValueError):
                 return
+            if kind == "toggle":
+                value = 1.0 if value else 0.0
             if pattern in _command_values or len(_command_values) < MAX_COMMAND_PATTERNS:
                 _command_values[pattern] = value
             message["value"] = value
         await event_bus.broadcast({"type": "command_value_updated", "payload": message}, exclude=websocket)
+        return
+
+    if message_type == "audio_subscribe":
+        websocket.state.audio_sub = bool(payload.get("on"))
+        if websocket.state.audio_sub:
+            await event_bus.send_to(websocket, {"type": "audio_state", "payload": audio_engine.status()})
+        return
+
+    if message_type == "sim_cam_join":
+        await _cam_join(websocket, payload.get("group"))
+        return
+
+    if message_type == "sim_cam":
+        await _cam_update(websocket, payload)
         return
 
     if message_type == "ping":
@@ -2502,9 +3837,10 @@ async def _process_client_message(websocket: WebSocket, message_type: str, paylo
             await event_bus.send_to(websocket, live_message)
         return
 
-    if message_type == "set_remote_enabled":
+    if message_type == "set_remote_enabled":                 # der http-Schalter
+        was = state.http_enabled
         enabled = state.set_remote_enabled(payload.get("enabled", False))
-        if not enabled:
+        if was and not state.http_enabled:                   # ein Zugang wurde geschlossen: bestehende Fernverbindungen enden (sie melden sich ueber den anderen neu an)
             remote.revoke_all()
             await event_bus.close_remote(4403)
         await lan.sync(enabled)             # Netzwerk-Listener sofort ein-/ausschalten (kein Neustart)
@@ -2515,7 +3851,25 @@ async def _process_client_message(websocket: WebSocket, message_type: str, paylo
     if message_type == "remote_refresh":
         # "Aktualisieren" im Remote-Bereich: die Netzwerk-Adressen neu erkennen (WLAN gewechselt, Adapter dazugekommen)
         await lan.sync(state.remote_enabled)
+        await mdns.sync(force=True)                          # den Netzwerk-Namen neu suchen (ein anderes Geraet kann ihn freigegeben haben)
         await event_bus.broadcast({"type": "remote_changed", "payload": remote.remote_info(True)})
+        return
+
+    if message_type == "set_mdns":
+        # Netzwerk-Name opencue.local (mDNS) ein/aus: gilt sofort, die Namenssuche dauert ca. 2 Sekunden
+        state.set_mdns_enabled(payload.get("enabled", False))
+        await event_bus.broadcast({"type": "remote_changed", "payload": remote.remote_info(True)})      # sofort: Schalter + "Name wird gesucht ..."
+        await mdns.sync()
+        await event_bus.broadcast({"type": "remote_changed", "payload": remote.remote_info(True)})      # dann mit dem gefundenen Namen
+        return
+
+    if message_type == "onboarding_done":                    # Willkommens-Dialog beendet (oder uebersprungen)
+        state.onboarding_pending = False
+        return
+
+    if message_type == "whats_new_seen":                     # "Was ist neu?" gesehen: bis zur naechsten Version nicht mehr zeigen
+        state.seen_version = APP_VERSION
+        state.save_app_config()
         return
 
     if message_type == "set_remote_password":
@@ -2533,6 +3887,18 @@ async def _process_client_message(websocket: WebSocket, message_type: str, paylo
 
     if message_type == "set_server_port":
         state.set_server_port(payload.get("port"))
+        await event_bus.broadcast({"type": "remote_changed", "payload": remote.remote_info(True)})
+        return
+
+    if message_type == "set_https":
+        # https-Adresse (ein/aus, Port): wirkt sofort - die Listener werden neu eingerichtet
+        was = state.https_enabled
+        if state.set_https(payload.get("enabled", False), payload.get("port")):
+            if was and not state.https_enabled:
+                remote.revoke_all()
+                await event_bus.close_remote(4403)
+            await lan.sync(state.remote_enabled)
+            await _broadcast_remote_clients()
         await event_bus.broadcast({"type": "remote_changed", "payload": remote.remote_info(True)})
         return
 
@@ -2677,7 +4043,12 @@ async def _process_client_message(websocket: WebSocket, message_type: str, paylo
     if message_type == "add_panel":
         panel_type = payload.get("panel_type")
         if panel_type:
-            state.add_panel(panel_type)
+            _x, _y = payload.get("x"), payload.get("y")
+            try:
+                at = (float(_x), float(_y)) if _x is not None and _y is not None else (None, None)
+            except (TypeError, ValueError):
+                at = (None, None)
+            state.add_panel(panel_type, at[0], at[1])
             await event_bus.broadcast({"type": "panels_changed", "payload": {"panels": state.panels_as_dicts()}})
         return
 
@@ -2770,6 +4141,14 @@ async def _process_client_message(websocket: WebSocket, message_type: str, paylo
             await event_bus.broadcast(_fx_changed_message())
         return
 
+    if message_type == "simple_look":                        # Einfach-Panel: ein Standard-Effekt ("Look") auf die Auswahl - wird bei Bedarf in der Show angelegt
+        result = await simple_caps.run_look(str(payload.get("look", "")), payload.get("on") is True, _broadcast_generic)
+        if result.get("created"):
+            await event_bus.broadcast(_fx_changed_message())
+        if not result.get("ok"):
+            await EventBus._send(websocket, json.dumps({"type": "error", "payload": {"code": "SIMPLE_LOOK", "message": result.get("message", "")}}))
+        return
+
     if message_type == "preset_apply":
         # Variable auf Fixtures anwenden UND verknuepfen (Platzhalter): Wert und Verknuepfung liegen auf dem Server, Dropdown/Fader folgen daraus
         preset = state.presets.get(str(payload.get("preset_id", "")))
@@ -2818,8 +4197,6 @@ async def _process_client_message(websocket: WebSocket, message_type: str, paylo
         await event_bus.broadcast(_fx_changed_message())
         return
 
-#3D-AUS#     if message_type == "stage_op":
-#3D-AUS#         await stage_api.handle_op(payload, websocket)
         return
 
     if message_type == "fx_script_list":
@@ -2847,7 +4224,7 @@ async def _process_client_message(websocket: WebSocket, message_type: str, paylo
         text = str(payload.get("text", ""))
         if not name:
             await event_bus.send_to(websocket, {"type": "fx_script_result", "payload": {
-                "ok": False, "name": "", "line": None, "message": "Dateiname fehlt", "active": 0}})
+                "ok": False, "name": "", "line": None, "message": "File name missing", "active": 0}})
             return
         target = _paths.effects_dir() / f"{name}.fx"
         if target.exists() and not payload.get("overwrite"):
@@ -2857,10 +4234,10 @@ async def _process_client_message(websocket: WebSocket, message_type: str, paylo
             return
         try:
             _paths.effects_dir().mkdir(parents=True, exist_ok=True)
-            target.write_text(text, encoding="utf-8")
+            show_safety._atomic_write(target, text)
         except OSError as exc:
             await event_bus.send_to(websocket, {"type": "fx_script_result", "payload": {
-                "ok": False, "name": name, "line": None, "message": f"Speichern fehlgeschlagen: {exc}",
+                "ok": False, "name": name, "line": None, "message": f"Saving failed: {exc}",
                 "active": 0}})
             return
         registry.load(_effect_sources())
@@ -2881,7 +4258,7 @@ async def _process_client_message(websocket: WebSocket, message_type: str, paylo
         try:
             reply.update(await asyncio.to_thread(
                 preview_script, name, str(payload.get("text", "")), payload.get("params"), payload.get("count", 3),
-                payload.get("duration", 4.0)))
+                payload.get("duration", 4.0), payload.get("bpm", 120.0)))
             reply["ok"] = True
         except FxScriptError as exc:
             reply.update({"line": exc.line, "message": exc.message})
@@ -2896,6 +4273,8 @@ async def _process_client_message(websocket: WebSocket, message_type: str, paylo
         # main.py das Fenster ueber den Watcher-Thread (exit_requested).
         choice = payload.get("choice")
         if choice == "discard" or (choice == "save" and _last_save_ok):
+            if choice == "discard":
+                await backups.manager.take("exit")                      # auch beim Beenden OHNE Speichern bleibt der Stand als Sicherung erhalten
             logger.info("Programm beenden (%s).", choice)
             exit_requested.set()
         return
@@ -2903,6 +4282,8 @@ async def _process_client_message(websocket: WebSocket, message_type: str, paylo
     # ---- Showfile-Management ----
 
     if message_type == "new_show":
+        if state.is_dirty:
+            await backups.manager.take("before-switch")                  # ungespeicherte Aenderungen gehen beim Wechsel der Show nicht verloren
         state.new_show()
         cue_engine.reset()
         fx_engine.reset_runtime()
@@ -2920,6 +4301,7 @@ async def _process_client_message(websocket: WebSocket, message_type: str, paylo
         try:
             path = _save_workspace()
             _last_save_ok = True
+            _last_save_error = ""
             await _flush_layout_written()
             await event_bus.broadcast({
                 "type": "show_saved",
@@ -2931,7 +4313,7 @@ async def _process_client_message(websocket: WebSocket, message_type: str, paylo
             })
         except Exception as exc:
             _last_save_ok = False
-            logger.error("save_show fehlgeschlagen: %s", exc)
+            await _report_save_failure("save_show", exc)
         return
 
     if message_type == "save_show_as":
@@ -2943,6 +4325,7 @@ async def _process_client_message(websocket: WebSocket, message_type: str, paylo
             path = _save_workspace(name=name)
             await _flush_layout_written()
             _last_save_ok = True
+            _last_save_error = ""
             await event_bus.broadcast({
                 "type": "show_saved",
                 "payload": {
@@ -2953,13 +4336,15 @@ async def _process_client_message(websocket: WebSocket, message_type: str, paylo
             })
         except Exception as exc:
             _last_save_ok = False
-            logger.error("save_show_as fehlgeschlagen: %s", exc)
+            await _report_save_failure("save_show_as", exc)
         return
 
     if message_type == "load_show":
         path = payload.get("path", "")
         if path:
             try:
+                if state.is_dirty:
+                    await backups.manager.take("before-switch")          # ungespeicherte Aenderungen gehen beim Wechsel der Show nicht verloren
                 state.load_showfile(path)
                 cue_engine.reset()
                 fx_engine.reset_runtime()
@@ -2978,7 +4363,8 @@ async def _process_client_message(websocket: WebSocket, message_type: str, paylo
 
     if message_type == "add_fixtures":
         try:
-            state.add_fixtures_batch(
+            wanted = max(1, int(payload.get("quantity", 1)))
+            created = state.add_fixtures_batch(
                 fixture_type_id=payload["fixture_type_id"],
                 fixture_type_name=payload.get("fixture_type_name", ""),
                 channel_count=int(payload["channel_count"]),
@@ -2993,6 +4379,12 @@ async def _process_client_message(websocket: WebSocket, message_type: str, paylo
                 "type": "fixtures_changed",
                 "payload": {"fixtures": state.fixtures_as_dicts(), "is_dirty": state.is_dirty},
             })
+            if len(created) < wanted:                         # auch das letzte Universum ist voll: sagen, wie viele angelegt wurden
+                await event_bus.send_to(websocket, {"type": "error", "payload": {
+                    "code": "PATCH_TRUNCATED", "created": len(created), "wanted": wanted, "universe": int(payload.get("universe", 1)), "start": int(payload.get("start_channel", 1))}})
+            elif created and created[-1].universe != int(payload.get("universe", 1)):     # es ging im naechsten Universum weiter: kurz sagen, wo es aufhoert
+                await event_bus.send_to(websocket, {"type": "error", "payload": {
+                    "code": "PATCH_SPILLED", "from": int(payload.get("universe", 1)), "to": created[-1].universe, "count": len(created)}})
         except Exception as exc:
             logger.error("add_fixtures fehlgeschlagen: %s", exc)
         return
@@ -3011,15 +4403,41 @@ async def _process_client_message(websocket: WebSocket, message_type: str, paylo
     if message_type == "update_fixture":
         fx_id = payload.get("id")
         if fx_id:
-            state.update_fixture_patch(
+            updated = state.update_fixture_patch(
                 fixture_id=fx_id,
                 universe=int(payload.get("universe", 1)),
                 start_channel=int(payload.get("start_channel", 1)),
             )
+            if updated is None and fx_id in state.fixtures:           # passt nicht ins Universum: unveraendert lassen und melden
+                await event_bus.send_to(websocket, {"type": "error", "payload": {"code": "PATCH_OUT_OF_RANGE", "channels": state.fixtures[fx_id].channel_count, "start": int(payload.get("start_channel", 1))}})
             await event_bus.broadcast({
                 "type": "fixtures_changed",
                 "payload": {"fixtures": state.fixtures_as_dicts(), "is_dirty": state.is_dirty},
             })
+        return
+
+    if message_type == "set_fixture_layout":                 # Scheinwerfer in der Ansicht "Layout" verschoben: {positions: {id: [x, y]}}
+        if state.set_fixture_positions(payload.get("positions")):
+            await event_bus.broadcast({
+                "type": "fixtures_changed",
+                "payload": {"fixtures": state.fixtures_as_dicts(), "is_dirty": state.is_dirty},
+            })
+        return
+
+    if message_type == "reset_fixture_layout":               # alle Scheinwerfer neu der Reihe nach anordnen
+        state.reset_fixture_positions()
+        await event_bus.broadcast({
+            "type": "fixtures_changed",
+            "payload": {"fixtures": state.fixtures_as_dicts(), "is_dirty": state.is_dirty},
+        })
+        return
+
+    if message_type in ("set_fixture_layout_options", "set_fixture_layout_views"):      # Ansicht "Layout": Rasterfeinheit / Ueberlappen bzw. gespeicherte Ansichten
+        if message_type == "set_fixture_layout_options":
+            layout = state.set_fixture_layout_options(payload.get("snap"), payload.get("overlap"))
+        else:
+            layout = state.set_fixture_layout_views(payload.get("views"))
+        await event_bus.broadcast({"type": "fixture_layout_changed", "payload": {"fixture_layout": dict(layout), "is_dirty": state.is_dirty}})
         return
 
     if message_type == "set_fixture_sort_index":
@@ -3102,6 +4520,7 @@ async def _process_client_message(websocket: WebSocket, message_type: str, paylo
         universe_batches: Dict[int, Dict[int, int]] = {}
 
         refs_before = {fid: dict(r) for fid, r in state.programmer_refs.items() if fid in ids}
+        await release_effects_for_manual({fid: list(pct_abstract) for fid in ids}, _broadcast_generic)       # der Fader gewinnt: Effekte auf diesen Attributen enden auf ALLEN gewaehlten Fixtures
         for fx_id in ids:
             fx = state.fixtures.get(fx_id)
             if fx is None:
@@ -3129,6 +4548,12 @@ async def _process_client_message(websocket: WebSocket, message_type: str, paylo
                 "type": "dmx_universe_changed",
                 "payload": {"universe": universe, "values": dmx_engine.get_universe_snapshot(universe)},
             })
+        # Die abstrakten Live-Werte (3D-Simulation, Kacheln) sofort im Takt der Bedienung mitschicken: ueber den 60-ms-Sammler der Live-Anzeige kamen sie nur mit ~16 Hz und
+        # ungleichmaessig (mal ein, mal zwei, mal drei Schritte) an - ein langsam gehaltener Joystick sah in der Simulation ruckelig aus. Der Sammler findet danach nichts Neues mehr.
+        if affected_universes:
+            live_now = _live_values_for(affected_universes, only=set(ids))
+            if live_now:
+                await event_bus.broadcast({"type": "fixtures_live", "payload": {"values": live_now}})
         # Fader, Kacheln und Werteanzeigen aller anderen Clients nachfuehren.
         if changed_programmer:
             await event_bus.broadcast(
@@ -3164,6 +4589,7 @@ async def _process_client_message(websocket: WebSocket, message_type: str, paylo
             dmx_engine.commit_batch(fx.universe, {fx.start_channel + int(channel_offset): out_value})
             attr = abstract_by_channel.get(channel_name)
             key = attr if attr else f"ch{int(channel_offset)}"
+            await release_effects_for_manual({fx_id: [key]}, _broadcast_generic)          # ein Effekt auf diesem Attribut endet, der Rohwert gewinnt
             state.release_layers(fx_id, [key])                  # der Programmer uebernimmt: Cue-Listen mischen diesen Wert nicht mehr
             if attr:
                 state.set_fixture_values(fx_id, {channel_name: raw_value})
@@ -3328,9 +4754,7 @@ async def _process_client_message(websocket: WebSocket, message_type: str, paylo
     if message_type == "save_cue":
         fixture_values = payload.get("fixture_values", {}) or {}
         fx_map = fx_engine.cue_effects()
-        if not fixture_values and not fx_map:
-            await _cue_result(websocket, ok=False, code="empty")
-            return
+        # live: der Cue bekommt jede Aenderung des Bildes gegenueber dem Cue davor (nicht nur die angefassten Werte); "empty" meldet der Store selbst
         status, data = state.store_cue(
             payload.get("cuelist_id", ""),
             fixture_values,
@@ -3341,13 +4765,21 @@ async def _process_client_message(websocket: WebSocket, message_type: str, paylo
             fx=fx_map,
             fx_order=fx_engine.cue_effect_order(),
             name=payload.get("name"),
-            fx_fade_in=payload.get("fx_fade_in", 0.0),
-            fx_fade_out=payload.get("fx_fade_out", 0.0),
-            fade=payload.get("fade", 0.0),
-            delay=payload.get("delay", 0.0),
-            trigger=payload.get("trigger", "go"),
+            fx_fade_in=payload.get("fx_fade_in"),
+            fx_fade_out=payload.get("fx_fade_out"),
+            fade=payload.get("fade"),
+            delay=payload.get("delay"),
+            trigger=payload.get("trigger"),
             timecode_ms=payload.get("timecode_ms"),
-            mib=payload.get("mib", "Off"),
+            audio_source=payload.get("audio_source"),
+            audio_value=payload.get("audio_value"),
+            midi_type=payload.get("midi_type"),
+            midi_number=payload.get("midi_number"),
+            midi_channel=payload.get("midi_channel"),
+            midi_value=payload.get("midi_value"),
+            clock_time=payload.get("clock_time"),
+            clock_days=payload.get("clock_days"),
+            mib=payload.get("mib"),
             cmd=payload.get("cmd", ""),
             fade_color=payload.get("fade_color"),
             delay_color=payload.get("delay_color"),
@@ -3357,6 +4789,8 @@ async def _process_client_message(websocket: WebSocket, message_type: str, paylo
             delay_beam=payload.get("delay_beam"),
             fade_zoom=payload.get("fade_zoom"),
             delay_zoom=payload.get("delay_zoom"),
+            play_mode=payload.get("play_mode"),
+            live=True, protect_next=bool(payload.get("protect_next")),
         )
         if status in ("created", "merged", "overwritten"):
             await _broadcast_cuelists_changed()
@@ -3375,7 +4809,7 @@ async def _process_client_message(websocket: WebSocket, message_type: str, paylo
         mode = "only" if payload.get("mode") == "only" else "normal"
         status, cue = state.update_active_cue(
             payload.get("cuelist_id", ""), payload.get("fixture_values", {}) or {},
-            fx=fx_engine.cue_effects(), fx_order=fx_engine.cue_effect_order(), mode=mode,
+            fx=fx_engine.cue_effects(), fx_order=fx_engine.cue_effect_order(), mode=mode, live=True,
         )
         if status == "updated":
             await _broadcast_cuelists_changed()
@@ -3395,8 +4829,25 @@ async def _process_client_message(websocket: WebSocket, message_type: str, paylo
         for item in (payload.get("updates") or [])[:500]:
             if isinstance(item, dict) and "delay" in item:
                 changed = bool(state.update_cue(payload.get("cuelist_id", ""), str(item.get("cue_id", "")), delay=item["delay"])) or changed
+        if isinstance(payload.get("fields"), dict):
+            # Mehrfach-Bearbeiten: dieselben Felder fuer alle genannten Cues (Zellen-Auswahl in der Cue-Liste)
+            ids = [str(c) for c in (payload.get("cue_ids") or [])[:500]]
+            changed = bool(state.update_cues_fields(payload.get("cuelist_id", ""), ids, payload["fields"])) or changed
         if changed:
             await _broadcast_cuelists_changed()
+        return
+
+    if message_type == "copy_cues":
+        # Cues kopieren (in dieselbe oder eine andere Liste); Nummer der ersten Kopie wahlweise vorgegeben
+        status, data = state.copy_cues(payload.get("cuelist_id", ""), payload.get("cue_ids") or [],
+                                       payload.get("number"), payload.get("target_cuelist_id") or None)
+        if status == "ok":
+            await _broadcast_cuelists_changed()
+            await _cue_result(websocket, ok=True, code="copied", count=len(data), number=data[0].number)
+        elif status == "conflict":
+            await _cue_result(websocket, ok=False, code="copy_conflict", numbers=data)
+        else:
+            await _cue_result(websocket, ok=False, code=status)
         return
 
     if message_type == "update_cue":
@@ -3434,8 +4885,8 @@ async def _process_client_message(websocket: WebSocket, message_type: str, paylo
             mib=payload.get("mib"),
             cmd=payload.get("cmd"),
             **{k: payload[k] for k in (
-                "fade_color", "delay_color", "fade_pos", "delay_pos", "fade_beam", "delay_beam", "fade_zoom", "delay_zoom",
-                "fx_fade_in", "fx_fade_out"
+                "audio_source", "audio_value", "midi_type", "midi_number", "midi_channel", "midi_value", "clock_time", "clock_days", "fade_color", "delay_color", "fade_pos", "delay_pos", "fade_beam", "delay_beam", "fade_zoom", "delay_zoom",
+                "fx_fade_in", "fx_fade_out", "play_mode"
             ) if k in payload},
         )
         if cue:
@@ -3508,7 +4959,7 @@ async def _process_client_message(websocket: WebSocket, message_type: str, paylo
         await _broadcast_timecode(snapshot)
         return
 
-    # ---- Command Line (dot2-/MA-Stil, siehe app/command_line.py) ----
+    # ---- Command Line (Lichtpult-Stil, siehe app/command_line.py) ----
 
     if message_type == "set_selection":
         # Maus-Klick-Selektion (Scheinwerferliste/Programmer-Tilegrid) wird
@@ -3540,6 +4991,79 @@ async def _process_client_message(websocket: WebSocket, message_type: str, paylo
         # Schalter "Vorschlaege" neben der Befehlszeile: wird in der App-Config gespeichert und auf allen Geraeten uebernommen
         enabled = state.set_cmd_suggestions(payload.get("enabled"))
         await event_bus.broadcast({"type": "cmd_suggestions_changed", "payload": {"enabled": enabled}})
+        return
+
+    if message_type == "set_hotkeys":
+        # Eigene Tastaturbelegung (Dialog "Eigene Tastaturbelegung"): gilt fuer alle Geraete; der Absender bekommt die bereinigte Liste ebenfalls zurueck
+        saved = state.set_hotkeys(payload.get("hotkeys"))
+        rawkeys.configure(saved)                             # Eintraege fuer bestimmte Tastaturen: Mithoeren je nach Bedarf an/aus
+        await event_bus.broadcast({"type": "hotkeys_changed", "payload": {"hotkeys": saved}})
+        return
+
+    if message_type == "set_undo_playback":
+        # Schalter in der Toolbar: das globale Rueckgaengig schliesst Go / Back / Springen ein (aus als Vorgabe: waehrend einer Auffuehrung nicht versehentlich)
+        enabled = state.set_undo_playback(payload.get("enabled"))
+        await event_bus.broadcast({"type": "undo_playback_changed", "payload": {"undo_playback": enabled}})
+        return
+
+    if message_type == "set_keep_awake":
+        # Bildschirm wach halten (Einstellungen -> Weitere Optionen): Windows-Rechner und alle Tablets (Wake Lock) folgen
+        enabled = state.set_keep_awake(payload.get("enabled"))
+        await asyncio.to_thread(keep_awake_mod.keep_awake.apply, enabled)
+        await event_bus.broadcast({"type": "keep_awake_changed", "payload": {"keep_awake": enabled}})
+        return
+
+    if message_type == "set_timeline_tracks":
+        # Befehlsspuren des Timeline-Editors (gehoeren zur Show): gelten fuer alle Geraete; die Show gilt danach als ungespeichert
+        saved = state.set_timeline_tracks(payload.get("tracks"))
+        await event_bus.broadcast({"type": "timeline_tracks_changed", "payload": {"tracks": saved, "is_dirty": True}})
+        return
+
+    if message_type == "set_schedule":
+        # Zeitplan der Show (Dialog "Zeitplan"): gilt fuer alle Geraete; die Show gilt danach als ungespeichert
+        saved = state.set_schedule(payload.get("schedule"))
+        await event_bus.broadcast({"type": "schedule_changed", "payload": {"schedule": saved, "is_dirty": True}})
+        return
+
+    if message_type == "schedule_run":
+        # "Jetzt ausfuehren" (Dialog "Zeitplan"): den Befehl eines Eintrags sofort laufen lassen (zum Ausprobieren)
+        entry = next((e for e in state.schedule if e["id"] == payload.get("id")), None)
+        if entry and entry.get("command"):
+            result = await _voice_run_command(entry["command"])
+            await event_bus.send_to(websocket, {"type": "schedule_fired", "payload": {"id": entry["id"], "label": entry.get("label", ""), "time": entry["time"], "command": entry["command"],
+                                                                                    "success": bool(result.get("success")), "message": result.get("message", ""), "manual": True}})
+        return
+
+    if message_type == "set_shortcut_overrides":
+        # Eingebaute Tastenkuerzel umbelegen (Dialog "Tastenkuerzel" -> Bearbeiten): gilt fuer alle Geraete
+        saved = state.set_shortcut_overrides(payload.get("overrides"))
+        await event_bus.broadcast({"type": "shortcuts_changed", "payload": {"overrides": saved}})
+        return
+
+    if message_type == "set_midi":
+        # MIDI-Belegung (Dialog "MIDI-Belegung"): gilt fuer alle Geraete, die Anschluesse oeffnen sich je nach Bedarf
+        saved = state.set_midi(payload.get("midi"))
+        midi.configure(saved)
+        await event_bus.broadcast({"type": "midi_changed", "payload": {"midi": saved}})
+        await event_bus.broadcast({"type": "midi_status", "payload": midi.refresh_ports()})           # Symbol der Werkzeugleiste / Einstellungen aller Fenster
+        return
+
+    if message_type in ("midi_status", "midi_watch", "midi_learn"):
+        # Monitor / Einlernen: von jedem Geraet aus (die MIDI-Geraete haengen am Hauptrechner, ihre Nachrichten kommen an alle Fenster)
+        if message_type == "midi_watch":
+            midi.set_watching(bool(payload.get("on")))
+        elif message_type == "midi_learn":
+            midi.set_learning(bool(payload.get("on")))
+        await event_bus.send_to(websocket, {"type": "midi_status", "payload": midi.refresh_ports()})
+        return
+
+    if message_type in ("rawkeys_status", "rawkeys_record"):
+        # Taste einer bestimmten Tastatur aufnehmen (Dialog "Taste einer bestimmten Tastatur"): nur an der Konsole selbst - die Tastatur haengt am Hauptrechner
+        if not EventBus.is_local(websocket):
+            return
+        if message_type == "rawkeys_record" and rawkeys.available:
+            rawkeys.configure(state.hotkeys, recording=bool(payload.get("on")))
+        await event_bus.send_to(websocket, {"type": "rawkeys_status", "payload": _rawkeys_status()})
         return
 
     if message_type == "autocomplete":

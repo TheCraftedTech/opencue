@@ -120,9 +120,11 @@ loop() {                                   // 3. loop(): Pflicht, wird #RATE-mal
 | Zeile | Bedeutung |
 |---|---|
 | `#NAME Text` | Anzeigename im Programm. Ohne ihn gilt der Dateiname. |
-| `#DESCRIPTION Text` | Kurzbeschreibung (erscheint in der Effekt-Auswahl und im Öffnen-Dialog). |
 | `#CATEGORY dimmer` / `color` / `position` | **Pflicht.** Was der Effekt steuert. |
 | `#RATE n` | Wie oft pro Sekunde `loop()` läuft: ganze Zahl von **1 bis 40**. Ohne Angabe 40 – der Takt der DMX-Ausgabe. |
+| `#DESCRIPTION text` | Eine kurze Beschreibung (auch `#DESCRIPTION en ...` und `#DESCRIPTION de ...` für je einen Text pro Sprache; das Programm zeigt den der Oberflächensprache). |
+| `#INFO name de Beschriftung \| Erklärung` | Gibt dem Regler `name` eine **Beschriftung** und einen **Mouseover-Hinweis** in einer Sprache (`en` oder `de`), zum Beispiel `#INFO speed en Speed \| How fast the effect runs`. Ohne `#INFO` nimmt das Programm sein eingebautes Glossar der üblichen Namen (`speed`, `size`, `low`, `high`, `strobe` ...) und zuletzt den Variablennamen selbst. |
+| `#TAGS a, b, c` | Schlagworte zum Suchen und Filtern im Dialog zur Effekttyp-Wahl (zum Beispiel `strobe, flash, toggle`; bis zu 8, klein geschrieben). Ein Skript, das Audio-Variablen liest, bekommt das Schlagwort `audio` automatisch – du schreibst es nicht. Die mitgelieferten Effekte tragen als erstes Schlagwort `basic` (Einsteiger, 19 Stück) oder `advanced` (alle anderen); im Dialog erscheinen sie als „Basis“ / „Erweitert“ - für eigene Effekte kannst du sie genauso verwenden. |
 | `#VAR ...` | Ein **Regler** (siehe Abschnitt 9) oder eine interne Variable. |
 
 ---
@@ -320,6 +322,33 @@ Die Regler erscheinen im Dialog **Effekt erstellen / bearbeiten** und in der Stu
 | `slots2` | Dasselbe für Rad 2 (0, wenn das Gerät nur ein Rad hat). |
 
 Die Auswahl-Reihenfolge ist die Reihenfolge, in der du die Scheinwerfer angewählt hast.
+
+### Audio-Variablen (`a_...`)
+
+Effekte können auf Musik reagieren. Das Panel **Audio** analysiert den Ton (siehe die Anleitung *Audio*); diese Variablen enthalten das Ergebnis. Alle beginnen mit `a_`, damit sie nie mit deinen eigenen Namen kollidieren. Ohne laufende Audioquelle sind sie alle `0`. Ein Skript, das eine davon liest, ist ein **Audio-Effekt** (in der Liste und im Studio gekennzeichnet; die Vorschau läuft dann mit einem Beispiel-Takt von 120 BPM).
+
+| Name | Bedeutung |
+|---|---|
+| `a_active` | `1`, solange Ton ankommt, sonst `0`. |
+| `a_level` | Gesamtlautstärke 0 bis 1 (bezogen auf die lautesten Stellen der letzten Sekunden). |
+| `a_bass`, `a_mid`, `a_high` | Bass (bis 150 Hz), Mitten (150 Hz bis 2,5 kHz) und Höhen (ab 2,5 kHz), 0 bis 1. |
+| `a_b1` ... `a_b8` | Die acht Bänder einzeln (20-60, 60-150, 150-400, 400-1k, 1k-2,5k, 2,5k-5k, 5k-10k, 10k-20k Hz), 0 bis 1. |
+| `a_kick`, `a_snare`, `a_hat` | Schläge der Bassdrum, der Snare (oder Klatscher) und der Hi-Hat: springt bei jedem Schlag auf 0,45 - 1 und klingt in etwa 0,15 s ab (Hi-Hat 0,07 s). |
+| `a_beat` | Derselbe Impuls bei jedem Beat des erkannten Tempos. |
+| `a_beat_phase` | Position im Beat, 0 bis 1, steigt gleichmäßig von einem Beat zum nächsten: ideal für tempo-synchrone Wellen. |
+| `a_beat_count` | Nummer des Beats; zählt bei jedem Beat um 1 hoch. |
+| `a_bpm` | Erkanntes (oder eingestelltes) Tempo in Schlägen pro Minute; `0`, solange unbekannt. |
+| `a_conf` | Wie sicher die Tempo-Erkennung ist, 0 bis 1. |
+
+```
+#CATEGORY dimmer
+#RATE 40
+loop() {
+  dimmer = lerp(5, 100, a_kick);                              // Blitz bei jeder Bassdrum
+}
+```
+
+Tipp: Ein Durchlauf sieht nur den Stand zu seinem Zeitpunkt. Einen Impuls (`a_kick`) zu lesen ist immer sicher, weil er abklingt; um auf den *Moment* eines Schlags zu reagieren, merke dir den letzten Wert in einer globalen Variable und vergleiche (siehe der Effekt *Audio: Hi-Hat Sparkle*). Für Audio-Effekte `#RATE 40` verwenden, damit sie knackig bleiben.
 
 ---
 

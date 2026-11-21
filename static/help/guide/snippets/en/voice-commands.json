@@ -1,0 +1,196 @@
+[
+ {
+  "id": "voice-commands-001",
+  "page": "voice-commands",
+  "path": [
+   "Voice commands"
+  ],
+  "title": "Voice commands",
+  "keywords": [],
+  "text": "With **voice commands** you control OpenCue by voice: you say the **wake word** (default \"OpenCue\") and right after it a **command-line command** – OpenCue writes it down, turns it into the command-line notation and **runs it at once**, exactly like a typed command (it also appears in the command history, all windows follow). Everything runs **offline** on the console computer (after the one-time download of the models), no AI is needed.\n\nYou speak **English**: the commands of the command line (`Fixture`, `At`, `Color`, `Blackout`, `Go` …) are English, and the speech recognition is set to write English words."
+ },
+ {
+  "id": "voice-commands-002",
+  "page": "voice-commands",
+  "path": [
+   "Voice commands",
+   "1. Switching it on"
+  ],
+  "title": "1. Switching it on",
+  "keywords": [],
+  "text": "1. The **microphone symbol** at the top right of the toolbar is an **on/off switch**:\n   - **green** = voice control listens for the wake word,\n   - **red and crossed out** = off,\n   - **yellow** = error (microphone unreachable, model missing …; the hint is in the tooltip).\n2. Once, two models are downloaded (each only a single time, then everything works without internet): the small **wake word model** (41 MB: *Settings → Wake word → Download voice model*, or already in the installer) and the **speech model** for the commands (*Settings → Dictation → Load now*; it is the same as for dictation). The speech model *Accurate* (small) understands much better than *Fast* (base).\n3. Microphone, wake word and sensitivity are set under *Settings → Wake word*.\n\nThe symbol exists at the console computer and also at remote devices (iPad): the switch turns the server's voice control on or off; the microphone itself always hangs on the main computer."
+ },
+ {
+  "id": "voice-commands-003",
+  "page": "voice-commands",
+  "path": [
+   "Voice commands",
+   "2. How to speak"
+  ],
+  "title": "2. How to speak",
+  "keywords": [],
+  "text": "```\n\"OpenCue … Blackout on.\"\n\"OpenCue … Fixture five at seventy nine, color green.\"\n\"OpenCue … Fixtures one through five at full.\"\n```\n\n- First the **wake word**, then – in the same breath or after a short pause (up to about 2 seconds) – the **command**.\n- When the command is finished, **wait about a second**: a short pause ends the recording (at most 10 seconds).\n- At the bottom centre of the screen a bubble shows the progress: **Listening …** → **Understanding …** → **the command** with its result (green = done, red = error or nothing understood). If OpenCue corrected a word it is shown behind it (\"corrected: add → At\").\n- Speak short, clear commands. Filler words (\"uh\", \"please\", \"now\", \"set\") and stuttering are removed."
+ },
+ {
+  "id": "voice-commands-004",
+  "page": "voice-commands",
+  "path": [
+   "Voice commands",
+   "3. What you can say"
+  ],
+  "title": "3. What you can say",
+  "keywords": [],
+  "text": "You say the commands as they are written in the command line (see the guide *Command line*). Numbers can be said as words (\"seventy nine\") or as digits. Several commands in one breath are separated by **\"then\"**."
+ },
+ {
+  "id": "voice-commands-005",
+  "page": "voice-commands",
+  "path": [
+   "Voice commands",
+   "3. What you can say",
+   "Selecting fixtures and brightness"
+  ],
+  "title": "Selecting fixtures and brightness",
+  "keywords": [],
+  "text": "| You say | What runs |\n|---|---|\n| Fixture five | `Fixture 5` |\n| Fixtures one through ten | `Fixture 1 Thru 10` |\n| Fixture three and seven | `Fixture 3 + 7` |\n| Fixture five at seventy nine | `Fixture 5 At 79` |\n| Fixture five brightness fifty percent | `Fixture 5 At 50%` (also *dimmer, intensity, level*) |\n| Fixtures one through five at full / at half | `Fixture 1 Thru 5 At Full` / `… At Half` |\n| Fixture five on / full | `Fixture 5 At Full` |\n| Fixture five off / out | `Fixture 5 At 0` |\n| Fixture five at seventy nine point five | `Fixture 5 At 79.5` |\n| At at / Everything on / All lights on | `At At` – **everything on** (100 % + white): without a selection all fixtures, with a selection only that selection. Say \"Clear\" first to be sure it is all. |\n| Fixtures one through ten minus five (also *except / without*) | `Fixture 1 Thru 10 - 5` (without no. 5) |\n| Next fixture / Previous fixture | `Next` / `Previous` (select the next / previous fixture) |\n| Group front at full | `Group front At Full` |\n| Group front truss at forty | `Group \"front truss\" At 40` (several name words go together in quotes) |\n| Light / lamp / spot five | `Fixture 5` |"
+ },
+ {
+  "id": "voice-commands-006",
+  "page": "voice-commands",
+  "path": [
+   "Voice commands",
+   "3. What you can say",
+   "Colours"
+  ],
+  "title": "Colours",
+  "keywords": [],
+  "text": "| You say | What runs |\n|---|---|\n| Fixture five color green | `Fixture 5 Color Green` |\n| Fixture five green | `Fixture 5 Color Green` (the word \"color\" is added) |\n| Fixture five warm white / cool white / light blue | `Fixture 5 Color Warm` / `Cool` / `Lightblue` |\n| RGB two fifty five zero zero | `RGB 255 0 0` |\n| Color two fifty five one twenty eight zero | `Color 255 128 0` (\"one twenty eight\" = 128 after *color / rgb / bpm*) |\n\nColours as in the command line: red, green, blue, white, black, yellow, cyan, magenta, orange, pink, purple, amber, lime, teal, violet, light blue, warm, cool."
+ },
+ {
+  "id": "voice-commands-007",
+  "page": "voice-commands",
+  "path": [
+   "Voice commands",
+   "3. What you can say",
+   "Position and beam"
+  ],
+  "title": "Position and beam",
+  "keywords": [],
+  "text": "| You say | What runs |\n|---|---|\n| Pan ninety / Pan fifty percent | `Pan 90` / `Pan 50%` |\n| Tilt minus forty five / Pan plus fifteen | `Tilt -45` / `Pan +15` (a sign = relative) |\n| Fixture five home / center | `Fixture 5 Pan 50% Tilt 50%` |\n| Zoom half / full / minimum / fifty | `Zoom Half` / `Zoom Full` / `Zoom Min` / `Zoom 50` |\n| Focus twenty five | `Focus 25` |\n| Gobo forty / gobo spin thirty | `Gobo 40` / `GoboSpin 30` |\n| Prism one hundred | `Prism 100` |\n| Strobe zero / shutter ten | `Strobe 0` / `Strobe 10` |\n| Channel six one hundred twenty eight | `Channel 6 128` (channel 6 of the fixture to DMX 128) |"
+ },
+ {
+  "id": "voice-commands-008",
+  "page": "voice-commands",
+  "path": [
+   "Voice commands",
+   "3. What you can say",
+   "Master and blackout"
+  ],
+  "title": "Master and blackout",
+  "keywords": [],
+  "text": "| You say | What runs |\n|---|---|\n| Blackout | `Blackout` (toggle) |\n| Blackout on / Blackout off | `Blackout On` / `Blackout Off` |\n| Master eighty / Master full / Master minus ten | `Master 80` / `Master Full` / `Master -10` |"
+ },
+ {
+  "id": "voice-commands-009",
+  "page": "voice-commands",
+  "path": [
+   "Voice commands",
+   "3. What you can say",
+   "Cue lists"
+  ],
+  "title": "Cue lists",
+  "keywords": [],
+  "text": "| You say | What runs |\n|---|---|\n| Go / Next cue | `Go` |\n| Back / Go back / Previous cue | `Back` |\n| Pause / Resume / Stop | `Pause` / `Resume` / `Stop` |\n| Go to cue five | `Go Cue 5` (also *goto cue five*) |\n| Cue list main go | `Cuelist main Go` |\n| Cue list front of house back | `Cuelist \"front of house\" Back` |\n| Cuelist two go | `Cuelist 2 Go` |\n| Cuelist main fader eighty / Fader fifty | `Cuelist main Fader 80` / `Fader 50` |\n| Cue five fade three / Cue five delay one point five | `Cue 5 Fade 3` / `Cue 5 Delay 1.5` |\n| Store cue five (merge) | `Store Cue 5` (`Merge`) |\n| Update / Clear | `Update` / `Clear` |"
+ },
+ {
+  "id": "voice-commands-010",
+  "page": "voice-commands",
+  "path": [
+   "Voice commands",
+   "3. What you can say",
+   "Timecode and audio"
+  ],
+  "title": "Timecode and audio",
+  "keywords": [],
+  "text": "| You say | What runs |\n|---|---|\n| Timecode play / pause / stop / reset / reverse | `Timecode Play` / `Pause` / `Stop` / `Reset` / `Reverse` |\n| Timecode rate two | `Timecode Rate 2` |\n| Tap | `Tap` (tap the tempo) |\n| BPM one twenty eight / BPM auto / BPM half | `BPM 128` / `BPM Auto` / `BPM Half` (also *beats per minute*) |\n| Audio start / stop / demo | `Audio Start` / `Stop` / `Demo` |"
+ },
+ {
+  "id": "voice-commands-011",
+  "page": "voice-commands",
+  "path": [
+   "Voice commands",
+   "3. What you can say",
+   "Effects, variables, programmer"
+  ],
+  "title": "Effects, variables, programmer",
+  "keywords": [],
+  "text": "| You say | What runs |\n|---|---|\n| Effect rainbow / Effect off | `Effect rainbow` / `Effect Off` |\n| Variable warm white | `Variable \"warm white\"` |\n| Manual / Manual color | `Manual` / `Manual Color` |"
+ },
+ {
+  "id": "voice-commands-012",
+  "page": "voice-commands",
+  "path": [
+   "Voice commands",
+   "3. What you can say",
+   "Several commands"
+  ],
+  "title": "Several commands",
+  "keywords": [],
+  "text": "\"Fixture one at full **then** fixture two at zero\" → `Fixture 1 At Full; Fixture 2 At 0`."
+ },
+ {
+  "id": "voice-commands-013",
+  "page": "voice-commands",
+  "path": [
+   "Voice commands",
+   "4. What is corrected automatically"
+  ],
+  "title": "4. What is corrected automatically",
+  "keywords": [],
+  "text": "Whisper sometimes writes words that sound the same but make no sense in the command (\"add\" instead of \"at\", \"true\" instead of \"thru\"). OpenCue checks **where in the command** the word stands and puts in the fitting command word – only where it fits:"
+ },
+ {
+  "id": "voice-commands-014",
+  "page": "voice-commands",
+  "path": [
+   "Voice commands",
+   "4. What is corrected automatically"
+  ],
+  "title": "4. What is corrected automatically (2)",
+  "keywords": [],
+  "text": "| Heard / written | Becomes | When |\n|---|---|---|\n| add, ad, it, app | At | after a number, before a number (\"fixture 5 **add** 70\") |\n| true, threw, till, through, until, to, too, drew, grew, crew, throw … | Thru | between two numbers (\"fixtures 1 **true** 5\") |\n| **2** (Whisper hears \"thru\" as the number *two*) | Thru | in a selection exactly between two numbers (\"fixtures one **two** five\" = `Fixture 1 Thru 5`; also \"fixture 1-5\" and \"1, 2, 5\") |\n| eight (8) | At | in a selection between two numbers (\"fixture 5 **eight** 70\") |\n| halve, calf | Half | always; \"fixture 3 half\" = `Fixture 3 At Half` |\n| chanel, clair, stroke, pawn, tell, fate, delight … | Channel, Clear, Strobe, Pan, Tilt, Fade, Delay | depending on position (before a number, or always) |\n| oh | 0 | where a number must stand (\"at oh\", \"master oh\") |\n| picture, pitcher, fix sure, fixer | Fixture | always (\"**picture** one to four\") |\n| for, to, too, won, ate, tree | 4, 2, 2, 1, 8, 3 | only where a number must stand (\"fixture **for** at fifty\" → Fixture 4 At 50) |\n| collar, caller | Color | always |\n| pen, ban, pun | Pan | before a number |\n| till, tilted | Tilt | before a number (\"**till** minus ten\") |\n| queue, q, cute, cube, key | Cue | before a number (\"go **key** five\") |\n| fool | Full | always |\n| of, own | Off, On | after Blackout |\n| prison, prisms | Prism | always |\n| strove | Strobe | always |\n| paws, pours | Pause | always |\n| affect, effects | Effect | always |\n| tab | Tap | always |\n| read, grin, grain, blew, wait … | Red, Green, Blue, White | after \"color\" or as a colour name |\n| black out, black art, blackouts | Blackout | always |\n| time code, cue list, grand master, go bo, b p m | Timecode, Cuelist, Master, Gobo, BPM | multi-word expressions |"
+ },
+ {
+  "id": "voice-commands-015",
+  "page": "voice-commands",
+  "path": [
+   "Voice commands",
+   "4. What is corrected automatically"
+  ],
+  "title": "4. What is corrected automatically (3)",
+  "keywords": [],
+  "text": "Also:\n\n- **Number words** → digits (\"twenty one\", \"one hundred and five\", \"two point five\", \"minus ten percent\").\n- **Sound comparison:** an unknown word that stands where a particular command word must stand and sounds the same becomes that word.\n- **Small misspellings** of keywords → the closest command word (\"blakout\" → Blackout).\n- **Wake word variants** (\"open queue\", \"open Q\", \"OpenCue\") are removed at the start, also anything said before the wake word.\n- **Names** (after *group, cuelist, effect, variable*) stay as spoken.\n- **Percent** after Master, Fader, BPM and cue numbers is dropped (\"master eighty percent\" → `Master 80`) because the command line knows no percent there.\n- Introductory chatter before the command (\"set\", \"please\", anything not understood) is dropped; the command must start with a command word."
+ },
+ {
+  "id": "voice-commands-016",
+  "page": "voice-commands",
+  "path": [
+   "Voice commands",
+   "5. What does not work by voice"
+  ],
+  "title": "5. What does not work by voice",
+  "keywords": [],
+  "text": "In **operator mode** at the console (*View → Operator mode ...*) voice control is **switched off**, so that at this PC only what the control surface offers is possible; after leaving it runs again if it was switched on.\n\nFor safety voice control **never runs anything that deletes or overwrites**: `Delete …`, `Clear Clear`, `Overwrite`. The bubble then says \"Not by voice\". Type these commands or use the interface."
+ },
+ {
+  "id": "voice-commands-017",
+  "page": "voice-commands",
+  "path": [
+   "Voice commands",
+   "6. When it does not work"
+  ],
+  "title": "6. When it does not work",
+  "keywords": [],
+  "text": "| Display | What to do |\n|---|---|\n| Microphone yellow | Read the tooltip; *Settings → Wake word* (right microphone?) |\n| \"Speech model missing\" | *Settings → Dictation → Load now* (and for the wake word: *Settings → Wake word → Download voice model*) |\n| \"Nothing understood\" | Closer to the microphone, speak more clearly, say the command right after the wake word |\n| \"No command recognised\" | The text does not start with a command word – the bubble shows what was understood; speak exactly as in the command line |\n| Command red (✗) | The command line says what does not fit (for example the fixture does not exist, \"this cue list has no cues\") |\n| The wake word is not recognised | Raise *Settings → Wake word → Sensitivity* |\n| A word is always written wrong | Note what Whisper writes (the text is in the log) – the table of corrections is easy to extend |\n\nThe wake word is recognised by a small offline model, the command after it is written down by Whisper (about 1–3 seconds on a normal computer). Loud music or noise in the room makes recognition worse – a microphone close to the mouth helps more than anything else."
+ }
+]

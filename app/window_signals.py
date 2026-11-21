@@ -1,3 +1,5 @@
+# Copyright (C) 2026 Samuel Zenker
+# SPDX-License-Identifier: GPL-3.0-or-later
 """
 window_signals.py
 Duenne Kopplung zwischen Frontend-Requests, die das native pywebview-Fenster
@@ -26,6 +28,9 @@ fullscreen_toggle_requested = threading.Event()
 # Gesetzt, sobald der Nutzer im Beenden-Dialog entschieden hat - der native
 # closing-Handler laesst das Schliessen dann durch, statt erneut zu fragen.
 close_allowed = threading.Event()
+# Gesetzt, sobald die Oberflaeche im lokalen Fenster fertig aufgebaut ist (POST /api/ui-ready, vom Frontend nach dem ersten Snapshot):
+# main.py schliesst daraufhin das Startbild und zeigt das Programmfenster.
+ui_ready = threading.Event()
 
 
 class FileDialogBridge:

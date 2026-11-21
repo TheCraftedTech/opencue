@@ -1,3 +1,5 @@
+# Copyright (C) 2026 Samuel Zenker
+# SPDX-License-Identifier: GPL-3.0-or-later
 """
 legacy_show.py
 EINMALIGE Umwandlung alter Showfiles. Fruehere Fassungen schrieben Dateien direkt in die Show: Scheinwerfer-GDTF (Base64, "fixture_files"), Effekt-Skripte ("fx_scripts"),

@@ -1,5 +1,7 @@
 #NAME Ocean Blues
-#DESCRIPTION Wogen in Blau und Türkis. spread verschiebt die Wellen zwischen den Scheinwerfern.
+#DESCRIPTION en Slow waves in blue and turquoise.
+#DESCRIPTION de Langsame Wellen in Blau und Türkis.
+#TAGS advanced, wave
 #CATEGORY color
 #RATE 40
 #VAR speed Slider 1 0.05 8 0.05

@@ -1,0 +1,90 @@
+[
+ {
+  "id": "fixture-editor-001",
+  "page": "fixture-editor",
+  "path": [
+   "Proyectores propios (editor)"
+  ],
+  "title": "Proyectores propios (editor)",
+  "keywords": [],
+  "text": "El editor crea dispositivos para los que no existe un archivo GDTF adecuado: una máquina de humo, un simple dimmer, un par RGB, una cabeza móvil. El resultado es un **archivo GDTF real** (formato GDTF 1.2, construido como los archivos de GDTF Share). Para esto **no** necesita una cuenta de GDTF Share."
+ },
+ {
+  "id": "fixture-editor-002",
+  "page": "fixture-editor",
+  "path": [
+   "Proyectores propios (editor)",
+   "1. Abrirlo"
+  ],
+  "title": "1. Abrirlo",
+  "keywords": [],
+  "text": "**Biblioteca → Biblioteca de proyectores… → «Foco propio…».** La ventana tiene el tamaño de la biblioteca y tres pestañas: **General**, **Modos y canales**, **Imagen y 3D**.\n\n- Cambiar más tarde un tipo propio: haga clic en **Editar** en la lista de tipos instalados (solo para tipos creados con el editor, marcados «Propio · sin verificar»).\n- Usar un tipo existente como punto de partida (**cargar desde otro proyector**): en el editor, en la pestaña *General*, arriba del todo, la opción **«Partir de un foco existente»**, o en la tarjeta de la biblioteca **Más → Editar una copia**. Se conservan: datos básicos, modos, canales, nombres de funciones, rangos y la imagen de perfil. **No** se conservan: las ruedas (gobos, ruedas de color), la geometría y las piezas 3D; el editor le indica lo que se ha omitido."
+ },
+ {
+  "id": "fixture-editor-003",
+  "page": "fixture-editor",
+  "path": [
+   "Proyectores propios (editor)",
+   "2. General"
+  ],
+  "title": "2. General",
+  "keywords": [],
+  "text": "| Campo | Significado |\n|---|---|\n| Fabricante, Nombre | Obligatorios. El nombre de archivo será `Fabricante@Nombre@Eigen.gdtf`. Si el tipo ya existe, el editor se lo indica. |\n| Nombre corto | Opcional, 8 caracteres como máximo. |\n| Categoría | Cabeza móvil, barra LED, par, dimmer, estroboscopio, efecto, otro – o «Automática» (detectada a partir de los canales). Puede filtrar la biblioteca por categoría. |\n| Peso, Descripción | Opcionales. |\n| Etiquetas | Escriba y pulse **Intro**. La biblioteca también las busca (p. ej. «humo», «exterior», «12 V»). |\n| Plantilla | Solo para tipos nuevos: máquina de humo, dimmer, RGB, RGB + dimmer, cabeza móvil. |"
+ },
+ {
+  "id": "fixture-editor-004",
+  "page": "fixture-editor",
+  "path": [
+   "Proyectores propios (editor)",
+   "3. Modos y canales"
+  ],
+  "title": "3. Modos y canales",
+  "keywords": [],
+  "text": "Un **modo** es una disposición de canales (muchos dispositivos tienen varios, p. ej. «3 canales» y «8 canales»). **+ Modo (copia)** añade otro como copia del modo seleccionado; cambie su nombre arriba a la derecha.\n\nPara cada **canal**:\n\n- **Atributo** – lo que hace el canal. La lista está ordenada en intensidad, color, posición, haz, efectos (humo, neblina, ventilador) y control. Al final del todo, aparte: **Nombre propio …** para todo lo que no está en la lista (p. ej. «Burbujas»).\n- **Etiqueta** – texto libre, p. ej. «Salida de humo». Aparece en el panel de detalle de DMX directo.\n- **8 / 16 bits** – un canal de 16 bits usa dos direcciones DMX (grueso + fino).\n- **Valor por defecto** (0–255) – el valor que tiene el dispositivo cuando no se le controla.\n- **Rangos** – pasos con nombre, p. ej. desde 0 «Apagado», desde 10 «Humo». El primer rango empieza siempre en 0; cada uno de los demás termina justo antes del comienzo del siguiente. Para pan, tilt y zoom se introduce además el rango de ángulo en grados.\n\nLas flechas cambian el orden; las direcciones DMX se calculan a partir de él (a la izquierda de cada fila)."
+ },
+ {
+  "id": "fixture-editor-005",
+  "page": "fixture-editor",
+  "path": [
+   "Proyectores propios (editor)",
+   "3. Modos y canales",
+   "Importación CSV"
+  ],
+  "title": "Importación CSV",
+  "keywords": [],
+  "text": "**Importar CSV…** lee una lista de canales: una línea por canal, con una línea de encabezado. Columnas (en cualquier orden, separadas por `;`, `,` o tabulador): `Attribute`, `Label`, `Bit`, `Default`, `Ranges`. Escriba los rangos como `0 Off; 10 Fog` o `0-9 Off; 10-255 Fog` – si la celda contiene el separador, póngala entre comillas:\n\n```\nAttribute;Label;Bit;Default;Ranges\nFog1;Fog output;8;0;\"0 Off; 10 Fog\"\nControl1;Fan;8;0;\"0-9 Off; 10-255 On\"\n```"
+ },
+ {
+  "id": "fixture-editor-006",
+  "page": "fixture-editor",
+  "path": [
+   "Proyectores propios (editor)",
+   "4. Imagen y 3D"
+  ],
+  "title": "4. Imagen y 3D",
+  "keywords": [],
+  "text": "- **Imagen de perfil** – cualquier imagen; se escribe en el archivo como PNG (512 píxeles como máximo) y aparece en la biblioteca.\n- **Modelo 3D** – opcionalmente un archivo `.glb`, `.3ds`, `.stl` u `.obj` (25 MB y 250 000 triángulos como máximo; STL y OBJ se convierten a GLB) para dispositivos **fijos**; el tamaño en metros determina lo grande que aparece en el escenario 3D. Las cabezas móviles (pan/tilt) reciben base, horquilla y cabeza como piezas estándar."
+ },
+ {
+  "id": "fixture-editor-007",
+  "page": "fixture-editor",
+  "path": [
+   "Proyectores propios (editor)",
+   "5. Pasar el archivo a otros"
+  ],
+  "title": "5. Pasar el archivo a otros",
+  "keywords": [],
+  "text": "Cada tarjeta de la biblioteca tiene **Más → Exportar archivo (.gdtf)** y **Mostrar en la carpeta** (solo en el ordenador donde se ejecuta el programa). El archivo se puede copiar y añadir en otro ordenador con **Importar archivo GDTF…** – o abrir en cualquier otro software GDTF. La descripción del editor se guarda en él como archivo adicional; otros programas la ignoran."
+ },
+ {
+  "id": "fixture-editor-008",
+  "page": "fixture-editor",
+  "path": [
+   "Proyectores propios (editor)",
+   "6. Conviene saber"
+  ],
+  "title": "6. Conviene saber",
+  "keywords": [],
+  "text": "- Los tipos propios están **sin verificar**: compruebe la disposición de canales en el dispositivo real.\n- Si cambia un tipo que usa el show, los cambios se aplican de inmediato. Si cambia el **número de canales de un modo en uso** (o se elimina o renombra ese modo), el editor muestra una **nota**: no impide nada; compruebe después las direcciones DMX.\n- **Cancelar pregunta primero:** si ha cambiado algo, *Cancelar*, la × y Esc abren el cuadro «Cambios sin guardar» (*Seguir editando*, *Descartar cambios* o *Guardar*). Sin cambios, el editor se cierra al instante.\n- **Eliminar pregunta primero:** un modo, canal, rango, imagen de perfil o modelo 3D solo se elimina tras una confirmación.\n- El grand master y el blackout solo actúan sobre el **dimmer** (o sobre el color si no hay canal de dimmer): un canal de humo sigue funcionando sin verse afectado.\n- El humo, la neblina y similares se manejan en el control de proyectores, en la pestaña **DMX directo**. Pasar el ratón por la etiqueta, hacer clic en ella o hacer clic derecho en un fader muestra los nombres de función y los rangos del canal."
+ }
+]

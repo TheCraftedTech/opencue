@@ -1,0 +1,223 @@
+[
+ {
+  "id": "assistant-001",
+  "page": "assistant",
+  "path": [
+   "KI-Assistent"
+  ],
+  "title": "KI-Assistent",
+  "keywords": [],
+  "text": "Der **KI-Assistent** ist ein Chat mit einem Sprachmodell, das auf **deinem eigenen Rechner** (oder einem anderen in deinem Netzwerk) über **Ollama** läuft. Es wird nichts ins Internet gesendet: OpenCue spricht nur mit der Serveradresse, die du einträgst. Die KI schreibt jede Antwort **selbst** – OpenCue erfindet keine Antworttexte.\n\n> **Stand heute:** Der **Chat** und der Modus **Arbeiten** funktionieren. Arbeiten kann die Show **lesen** (Scheinwerfer mit allen Details, Gruppen, Cue-Listen, Effekte, Variablen), **Scheinwerfer verändern** (Helligkeit, Farbe, Pan / Tilt, Zoom … – auf Rückfrage) und hat Taschenrechner, Zufallszahlen und Uhrzeit. Der **Wegweiser** erklärt das Programm aus den Anleitungen (ohne etwas zu erfinden) und bietet Schaltflächen an, die Dialoge öffnen (siehe Abschnitt 7)."
+ },
+ {
+  "id": "assistant-002",
+  "page": "assistant",
+  "path": [
+   "KI-Assistent",
+   "1. Einrichten"
+  ],
+  "title": "1. Einrichten",
+  "keywords": [],
+  "text": "1. Installiere **Ollama** (ollama.com) auf diesem oder einem anderen Rechner und lade einmal ein Modell herunter, z. B. `ollama pull qwen2.5-coder:3b`. Danach braucht es kein Internet mehr.\n2. Öffne in OpenCue **Einstellungen → KI-Assistent** und schalte oben den **Hauptschalter *KI-Assistent aktivieren*** ein – solange er aus ist, ist der Rest der Seite gesperrt.\n3. Trage unter **Verbindung** die **Serveradresse** ein (Standard `http://127.0.0.1:11434`) und klicke **Verbindung testen**.\n4. Wähle das **Standardmodell** und klicke unten rechts **Speichern** (der Dialog bleibt offen).\n5. Füge über **Panel hinzufügen** das Panel **KI-Assistent** hinzu.\n\nDie Seite ist in **Verbindung**, **Verhalten** (Modus neuer Chats, Chat-Namen, Funktionsliste), **Berechtigungen** und **Erweitert** gegliedert. Unter **Erweitert** (eingeklappt) stehen Kontextgröße, Temperatur und Wartezeit. Das erste Antworten nach dem Laden eines Modells dauert länger – die Wartezeit ist großzügig eingestellt.\nUnter **Erweitert** steht bei jedem Wert ein **„Empfohlen: …“**; der Knopf **Empfohlene Werte setzen** (unten in den Einstellungen) stellt Kontext (16384), Temperatur, Antwortgrenze, Wartezeit, Chat-Namen und die Funktionsliste zurück. Serveradresse, Modell und Berechtigungen bleiben unberührt."
+ },
+ {
+  "id": "assistant-003",
+  "page": "assistant",
+  "path": [
+   "KI-Assistent",
+   "2. Schreiben"
+  ],
+  "title": "2. Schreiben",
+  "keywords": [],
+  "text": "Unten steht die Eingabezeile: **[Modus-Knopf] [Textfeld] [Mikrofon] [Senden]**."
+ },
+ {
+  "id": "assistant-004",
+  "page": "assistant",
+  "path": [
+   "KI-Assistent",
+   "2. Schreiben"
+  ],
+  "title": "2. Schreiben (2)",
+  "keywords": [],
+  "text": "- **Enter** sendet, **Umschalt + Enter** macht eine neue Zeile.\n- Während die KI antwortet, erscheinen springende Punkte, danach der Text Wort für Wort. Der **Senden**-Knopf wird zum roten **Stopp**-Knopf.\n- Unter jeder Antwort steht eine kompakte Zeile: **Modus**, Gesamtzeit der Frage, Tokens pro Sekunde und das Modell.\n- **Denkschritte:** Modelle wie `qwen3` oder `deepseek-r1` denken erst nach und antworten dann. Die Gedanken stehen in einem ausklappbaren Block **über** der Antwort: Während das Modell denkt, ist er offen und wächst mit; sobald die Antwort beginnt, klappt er zu („Nachgedacht: 12 s“), ein Klick öffnet ihn wieder. Ob ein Modell denkt, entscheidet das Modell selbst (einen Schalter dafür gibt es nicht). Das Denken zählt zur *Längsten Antwort* – OpenCue gibt dafür 2500 Tokens Spielraum dazu.\n- **Scrollen:** Steht der Verlauf ganz unten, läuft er mit, während die KI schreibt. Scrollst du nach oben, **bleibt deine Position** – auch wenn unten weitergeschrieben wird. Der runde Pfeil-nach-unten-Knopf unten rechts im Verlauf bringt dich zurück ans Ende (er leuchtet, solange unten noch etwas läuft). Wer eine Nachricht sendet, springt von selbst nach unten.\n- Neben jeder Nachricht erscheint beim Darüberfahren ein **Kopieren**-Knopf; der Text lässt sich auch markieren.\n- Im Chat-Modus bekommt die KI bei jeder Frage den **ganzen bisherigen Chat**. Wird er für das Kontextfenster zu lang, fallen die ältesten Nachrichten weg (gespeichert bleibt alles). Im Modus Arbeiten bekommt sie die aktuelle Frage mit allem, was dabei geschah, und eine **kurze Zusammenfassung** der früheren Fragen. Ergebnisse stehen darin nur bei Rechnungen („und davon die Hälfte?“); Show-Daten, Uhrzeit und Zufallszahlen holt die KI jedes Mal neu (kleine Modelle ahmen sonst alte Textantworten nach und rechnen aus dem Gedächtnis)."
+ },
+ {
+  "id": "assistant-005",
+  "page": "assistant",
+  "path": [
+   "KI-Assistent",
+   "2. Schreiben",
+   "Diktieren (Sprache zu Text)"
+  ],
+  "title": "Diktieren (Sprache zu Text)",
+  "keywords": [],
+  "text": "Klick auf das **Mikrofon** neben dem Textfeld: Das Feld wird durch **Balken** ersetzt, die deiner Stimme folgen, dazu die Aufnahmezeit. **Haken** = fertig, die Aufnahme wird aufgeschrieben und der Text kommt in das Feld (er wird **nicht** abgeschickt – lesen, korrigieren, dann senden); steht schon Text im Feld, bleibt er und die neuen Wörter werden angehängt. **Kreuz** oder `Esc` = verwerfen. Nach 2 Minuten endet die Aufnahme von selbst."
+ },
+ {
+  "id": "assistant-006",
+  "page": "assistant",
+  "path": [
+   "KI-Assistent",
+   "2. Schreiben",
+   "Diktieren (Sprache zu Text)"
+  ],
+  "title": "Diktieren (Sprache zu Text) (2)",
+  "keywords": [],
+  "text": "- Die **Sprache** ist die der Oberfläche (Deutsch, Englisch, Französisch, Niederländisch, Italienisch oder Spanisch) – dafür gibt es keine eigene Einstellung. Fachwörter (Cue, Dimmer, Gobo, Blackout …) kennt der Erkenner.\n- Aufgenommen wird am Mikrofon der **Konsole** (der Knopf erscheint deshalb nur dort). Alles läuft auf diesem Rechner mit *Whisper* (faster-whisper).\n- Das **Sprachmodell** wird beim ersten Diktat einmal geladen (Internet nötig, ein Fortschrittsbalken zeigt es); danach geht Diktieren offline. Unter *Einstellungen → Diktieren* gibt es **Schnell** (Whisper base, ca. 145 MB) und **Genau** (Whisper small, ca. 484 MB, besser bei Deutsch, braucht etwas länger), einen Knopf **Jetzt laden** und das **Mikrofon zum Diktieren**. Das Aufschreiben dauert etwa so lang wie die Aufnahme oder weniger, je nach Rechner.\n- Das Diktieren hat mit dem **Triggerwort** (*Einstellungen → Triggerwort*) nichts zu tun – beides sind getrennte Funktionen mit eigenem Mikrofon. Eine Übersicht aller benutzten Ein- und Ausgänge steht unter *Einstellungen → Ein- & Ausgänge*."
+ },
+ {
+  "id": "assistant-007",
+  "page": "assistant",
+  "path": [
+   "KI-Assistent",
+   "3. Die drei Modi"
+  ],
+  "title": "3. Die drei Modi",
+  "keywords": [],
+  "text": "Der quadratische **Modus-Knopf** links neben dem Textfeld öffnet ein kleines Menü:\n\n| Modus | Wozu | Stand |\n|---|---|---|\n| **Chat** | Normales Gespräch mit der KI. | fertig |\n| **Wegweiser** | Erklärt das Programm und zeigt dir, wo etwas ist (Schaltflächen öffnen Dialoge). | fertig |\n| **Arbeiten** | Die KI arbeitet mit Funktionen: rechnen, die Show lesen, Scheinwerfer einstellen … | im Aufbau (Lesen und Scheinwerfer ändern fertig) |\n\nDer Modus gehört zum **Chat** und lässt sich jederzeit mitten im Gespräch wechseln. Welcher Modus für **neue Chats** gilt, stellst du unter *Einstellungen → KI-Assistent → Modus neuer Chats* ein; jeder Chat merkt sich außerdem sein eigenes Modell und seinen eigenen Modus (auch nach einem Neustart)."
+ },
+ {
+  "id": "assistant-008",
+  "page": "assistant",
+  "path": [
+   "KI-Assistent",
+   "4. Arbeiten: die KI mit Funktionen"
+  ],
+  "title": "4. Arbeiten: die KI mit Funktionen",
+  "keywords": [],
+  "text": "Im Modus **Arbeiten** arbeitet die KI wie ein **Agent**: Sie ruft **Funktionen** auf, liest die Ergebnisse, macht damit weiter und antwortet am Ende selbst. Rechnet sie etwas, fragt sie den **Taschenrechner**, statt im Kopf zu raten; soll sie etwas von der Show wissen, **liest** sie es nach; soll sie etwas einstellen, ruft sie die passende **Schreibfunktion** auf – je nach deinen **Berechtigungen** (Abschnitt 5) erst nach deiner Rückfrage. Bisher gibt es diese Funktionen:"
+ },
+ {
+  "id": "assistant-009",
+  "page": "assistant",
+  "path": [
+   "KI-Assistent",
+   "4. Arbeiten: die KI mit Funktionen"
+  ],
+  "title": "4. Arbeiten: die KI mit Funktionen (2)",
+  "keywords": [],
+  "text": "| Sammlung | Funktion | Was sie tut |\n|---|---|---|\n| Lesen (`read_functions`) | `show_overview` | Name der Show, Blackout, Master und nur die **Anzahlen** (Scheinwerfer, Gruppen, Cue-Listen, Cues, Effekte, Variablen), aktive Cue-Liste |\n| Lesen | `list_fixtures` | Die Scheinwerfer: Nummer, Name, Typ, DMX-Adresse, Gruppe, aktuelle Helligkeit (Filter: Gruppe, Name) |\n| Lesen | `read_fixtures` | Die **Details** von Scheinwerfern: Modell, Hersteller, Modus, DMX-Adresse, Gruppe und **alle** aktuellen Werte (Helligkeit in %, Farbe, Pan / Tilt, Zoom … und jeder Kanal als DMX-Wert). Du gibst an, welche: `all`, einen Bereich wie `1-5`, Nummern wie `1, 3, 7` (auch `1-3, 7`) oder den Namen einer Gruppe (auch „Gruppe Front“). Gibt es eine genannte Nummer nicht (`6, 11` bei 10 Scheinwerfern), kommen die vorhandenen zurück und ein Hinweis nennt die fehlende – die KI kann das dann richtig beantworten |\n| Lesen | `list_groups` | Die Gruppen mit den Nummern ihrer Scheinwerfer |\n| Lesen | `read_dmx` | Die **DMX-Ausgabe** eines Universums: nur die Kanäle ungleich 0 (`universe`, `first`, `last`) |\n| Lesen | `list_cuelists` | Die Cue-Listen mit Cue-Anzahl, aktivem Cue und Fader |\n| Bibliothek (`library_functions`) | `list_effects` | Die Effekte mit Einstellungen – und ob sie gerade laufen und auf welchen Scheinwerfern |\n| Bibliothek | `list_variables` | Die Variablen (Name, Art wie Farbe oder Position, Gruppe, Wert) |\n| Ändern (`control_functions`) | `set_fixtures` | **Verändert** Werte von Scheinwerfern: `brightness` (0–100 %), `color` (Name wie `red`, `#FF8000` oder `255 128 0`), `pan` / `tilt` (Grad oder `50%`), `zoom`, `focus`, `gobo`, `prism`, `strobe` (je 0–100 %) und mit `channels` jeden anderen Kanal nach seinem Namen in Prozent (`{\"Frost\": 50}`). Gewählt wie bei `read_fixtures`; was du nicht nennst, bleibt unverändert. Läuft über dieselbe Prüfung wie die **Befehlszeile** (der Befehl steht dort im Verlauf). Die **Auswahl** in der Oberfläche bleibt dabei unberührt: Die Werte gehen an genau diese Scheinwerfer (sichtbar in der Scheinwerferliste, im Programmer und in den DMX-Werten), ohne dass sie ausgewählt werden – du kannst nebenher ungestört mit anderen Scheinwerfern weiterarbeiten |\n| Ändern | `set_blackout` | **Blackout** an oder aus (`enabled`): alles dunkel, die Werte bleiben erhalten |\n| Ändern | `set_master` | Den **Master** (Gesamthelligkeit) in Prozent |\n| Ändern | `timecode_control` | Die **Timecode**-Uhr: `play`, `pause`, `stop`, `seek` (mit `position`), `rate` (mit `rate`) |\n| Cue-Listen (`cuelist_functions`) | `read_cuelist` | **Eine** Cue-Liste mit allen Cues: Nummer, Name, Auslöser, Zeiten, aktiver Cue, spielt sie |\n| Cue-Listen | `control_cuelist` | Spielt eine Cue-Liste: `go` (nächster Cue, oder mit `cue` ein Sprung), `back`, `pause`, `resume`, `stop` |\n| Cue-Listen | `set_cuelist_fader` | Den **Fader** (Mix) einer Cue-Liste in Prozent |\n| Looks (`look_functions`) | `apply_variable` | Legt eine **Variable** (gespeicherte Farbe, Position …) auf Scheinwerfer |\n| Looks | `apply_effect` | Startet einen **Effekt** auf Scheinwerfern |\n| Looks | `stop_effects` | Beendet alle Effekte auf Scheinwerfern (die Werte bleiben) |\n| Looks | `release_fixtures` | Gibt Scheinwerfer wieder frei (**Manuell**): löst Variablen und Effekte; optional nur `dimmer`, `color`, `position`, `zoom`, `focus`, `gobo` |\n| Lesen | `read_selection` | Welche Scheinwerfer in der Oberfläche **ausgewählt** sind |\n| Bibliothek | `list_showfiles` | Die gespeicherten **Showfiles** und welches geladen ist |\n| Auswahl & Gruppen (`group_functions`) | `select_fixtures` | **Wählt** Scheinwerfer in der Oberfläche **aus** (oder `none` hebt die Auswahl auf) |\n| Auswahl & Gruppen | `create_group` | Legt eine **Gruppe** aus Scheinwerfern an (`name`, `fixtures`); die Auswahl des Benutzers bleibt |\n| Auswahl & Gruppen | `delete_group` | **Kritisch:** löscht eine Gruppe (die Scheinwerfer bleiben) |\n| Cue-Listen | `store_cue` | **Speichert** die Programmer-Werte als neuen Cue (`cuelist`, `cue`, optional `name`, `if_exists` = `merge` / `overwrite`) |\n| Cue-Listen | `delete_cue` | **Kritisch:** löscht einen Cue einer Liste |\n| Patch (`patch_functions`) | `list_fixture_types` | Sucht in der **Geräte-Bibliothek** nach Typen (Name, Hersteller, Modi mit Kanalzahl) |\n| Patch | `add_fixtures` | **Patcht** neue Scheinwerfer: Typ, Anzahl, Universum, erste Adresse, Name, Gruppe; überlappende Adressen werden abgelehnt |\n| Patch | `change_fixture` | Ändert **einen** Scheinwerfer: Name, Adresse, Universum, Gruppe |\n| Patch | `change_group` | Benennt eine Gruppe um und / oder legt ihre Mitglieder fest |\n| Patch | `delete_fixtures` | **Kritisch:** löscht Scheinwerfer aus der Show |\n| Showfiles (`showfile_functions`) | `save_show`, `save_show_as` | **Speichert** die Show (unter dem bekannten Namen / unter einem neuen; ein vorhandener Name wird nur mit `overwrite` ersetzt) |\n| Showfiles | `rename_showfile` | Benennt ein gespeichertes Showfile um |\n| Showfiles | `load_show`, `new_show` | **Kritisch:** lädt eine andere Show / beginnt eine neue und ersetzt die laufende. Ungespeicherte Änderungen werden abgelehnt – nur mit deiner Zustimmung (`discard_changes`) geht es trotzdem |\n| Showfiles | `delete_showfile` | **Kritisch:** löscht ein gespeichertes Showfile (das geladene nur mit `force`) |\n| Variablen (`variable_functions`) | `create_variable`, `change_variable` | Legt eine **Variable** an / ändert sie: Farbe (`color`), Helligkeit / Zoom / Fokus / Gobo (`level`), Position (`pan`, `tilt`); alles, was sie benutzt, folgt sofort |\n| Variablen | `delete_variable` | **Kritisch:** löscht eine Variable |\n| Effekte (`effect_functions`) | `list_effect_types` | Die **Effekt-Arten** mit Kategorie und ihren Einstellungen samt Grenzen |\n| Effekte | `create_effect`, `change_effect` | Legt einen **Effekt** aus einer Art mit Einstellungen (`settings`) an / ändert ihn |\n| Effekte | `delete_effect` | **Kritisch:** löscht einen Effekt (er stoppt überall) |\n| Cues bearbeiten (`cue_edit_functions`) | `set_cue` | Ändert die **Eigenschaften** eines Cues: Name, Fade, Delay, Auslöser (`go` / `follow` / `timecode` / `audio` / `midi`), Timecode, Befehl, Move-in-Black, neue Nummer |\n| Cues bearbeiten | `duplicate_cue`, `update_cue` | Kopiert einen Cue / übernimmt die Programmer-Werte in den **aktiven Cue** (wie die Taste Update) |\n| Cue-Listen verwalten (`cuelist_manage_functions`) | `create_cuelist`, `rename_cuelist`, `duplicate_cuelist` | Legt eine Cue-Liste an / benennt sie um / kopiert sie mit allen Cues |\n| Cue-Listen verwalten | `delete_cuelist` | **Kritisch:** löscht eine Cue-Liste mit allen Cues |\n| Befehl (`command_functions`) | `command_help` | Die **Syntax der Befehlszeile** aus der Anleitung (Kurzübersicht oder Thema: `selection`, `values`, `color`, `channels`, `effects`, `combine`, `clear`, `cuelists`, `cues`) – die KI schlägt dort nach, bevor sie `run_command` nutzt |\n| Befehl | `run_command` | **Kritisch:** führt **einen beliebigen Befehl der Befehlszeile** aus (auch Löschen und Speichern von Cues) – die KI fragt dich, bis du „Immer erlauben“ wählst |\n| Helfer (`helper_functions`) | `calculate` | Rechnet einen Ausdruck exakt aus: `+ - * / // % ** ^`, Klammern, `sqrt`, `sin`, `cos`, `tan`, `ln`, `log`, `exp`, `abs`, `round`, `floor`, `ceil`, `min`, `max`, `pi`, `e` … (Dezimalzahlen mit Punkt) |\n| Helfer | `random_number` | Zufallszahlen oder Würfelwürfe (`min`, `max`, `count`, ganze Zahlen oder Dezimalzahlen) |\n| Helfer | `current_time` | Uhrzeit, Datum und Wochentag des Rechners |"
+ },
+ {
+  "id": "assistant-010",
+  "page": "assistant",
+  "path": [
+   "KI-Assistent",
+   "4. Arbeiten: die KI mit Funktionen"
+  ],
+  "title": "4. Arbeiten: die KI mit Funktionen (3)",
+  "keywords": [],
+  "text": "Die KI **muss keine Funktion benutzen**: Bei einer Begrüßung, einem Dank oder einer allgemeinen Frage antwortet sie einfach in Worten. Nur Rechnungen, Zufallszahlen, Datum und Uhrzeit, Daten der Show und Änderungen an der Show laufen über eine Funktion – jedes Mal neu, auch bei einer Nachfrage. (Im **Chat**-Modus kennt die KI das heutige Datum, aber nicht die Uhrzeit.) Jede Funktion hat eine Beschreibung mit Beispiel-Fragen auf Deutsch und Englisch – daran erkennen auch kleine Modelle, wann sie sie rufen sollen.\n\nJeder Aufruf steht im Chat in einem **Funktionsblock** unter deiner Frage: zugeklappt siehst du Anzahl, Namen, Stand und Zeit, ein Klick zeigt jede Funktion mit **Eingabe und Ergebnis**. Klappt ein Aufruf nicht (z. B. eine ungültige Rechnung oder eine Scheinwerfernummer, die es nicht gibt), bekommt die KI den Fehler – mit dem, was es gibt – zu lesen und versucht es korrigiert noch einmal. Alle Werte, die die KI für `set_fixtures` angibt, werden vorher streng geprüft (Zahlenbereiche, Farbnamen, Kanalnamen); aus Text der KI wird nie ein beliebiger Befehl.\n\n**Funktionen selbst aufrufen:** Du kannst jede Funktion auch **von Hand** auslösen – ohne dass die KI etwas dazu sagt. Tippe im Textfeld `/` und den Namen; beim Tippen erscheinen Vorschläge (Pfeiltasten, **Tab** oder Klick übernehmen, **Enter** sendet):"
+ },
+ {
+  "id": "assistant-011",
+  "page": "assistant",
+  "path": [
+   "KI-Assistent",
+   "4. Arbeiten: die KI mit Funktionen"
+  ],
+  "title": "4. Arbeiten: die KI mit Funktionen (4)",
+  "keywords": [],
+  "text": "- `/read_fixtures {\"fixtures\":\"6-8\"}` – die Werte als JSON, wie die KI sie schreibt.\n- `/read_fixtures 6-8` – hat die Funktion genau einen Pflichtwert, genügt der Wert allein. `/calculate 17*23` rechnet.\n- `/set_fixtures fixtures=1-3 brightness=50` – oder als `name=wert`.\n- `/help` listet alle Funktionen mit Art und Werten.\n\nDas Ergebnis steht gleich aufgeklappt im Chat (Eingabe und Ergebnis als JSON). Es wird **kein Modell gefragt** und die KI sieht diese Aufrufe später nicht. Weil du selbst handelst, gelten die **Berechtigungen** hier nicht – auch eine Schreibfunktion läuft ohne Rückfrage, selbst wenn sie für die KI auf „Nie erlauben“ steht. Ein Fehler (unbekannte Funktion, falsche Schreibweise der Werte) erscheint als fehlgeschlagener Aufruf mit einer Erklärung. Eine Nachricht, die nur mit `/` beginnt, ohne ein Funktionsname zu sein (z. B. `/etc/hosts zeigen`), geht ganz normal an die KI.\n\n**Funktionsliste** (*Einstellungen → KI-Assistent → Modus „Arbeiten“*):"
+ },
+ {
+  "id": "assistant-012",
+  "page": "assistant",
+  "path": [
+   "KI-Assistent",
+   "4. Arbeiten: die KI mit Funktionen"
+  ],
+  "title": "4. Arbeiten: die KI mit Funktionen (5)",
+  "keywords": [],
+  "text": "- **Häufige sofort, der Rest nach Bedarf** (Standard, empfohlen): Die KI sieht die ca. 17 häufigen Funktionen (Scheinwerfer lesen und stellen, Blackout, Master, Cue-Liste spielen, Variablen und Effekte anwenden, Befehlszeile, Rechner …) sofort und für alles andere (Patchen, Showfiles, Variablen / Effekte / Cues bearbeiten …) eine **Sammelfunktion**: Ruft sie eine auf, bekommt sie die Funktionen dieser Sammlung ab dem nächsten Schritt. Der Prompt bleibt klein – wichtig, denn alle 56 Funktionen auf einmal sind etwa doppelt so groß, wie das Kontextfenster eines kleinen Modells fasst.\n- **Alle auf einmal**: Die KI sieht alle 56 Funktionen sofort. Nur für große Modelle mit großem Kontextfenster (*Einstellungen → KI-Assistent → Erweitert → Kontextgröße* hochsetzen).\n- **Alles nach Bedarf**: Die KI sieht nur die 14 Sammelfunktionen (`read_functions`, `library_functions`, `cuelist_functions`, `look_functions`, `group_functions`, `command_functions`, `control_functions`, `helper_functions`, `patch_functions`, `showfile_functions`, `variable_functions`, `effect_functions`, `cue_edit_functions`, `cuelist_manage_functions`). Der kleinste Prompt, aber kleine Modelle sind damit langsamer und greifen öfter zur falschen Sammlung."
+ },
+ {
+  "id": "assistant-013",
+  "page": "assistant",
+  "path": [
+   "KI-Assistent",
+   "4. Arbeiten: die KI mit Funktionen"
+  ],
+  "title": "4. Arbeiten: die KI mit Funktionen (6)",
+  "keywords": [],
+  "text": "**Schutz vor Endlosschleifen:** Derselbe Aufruf mit denselben Werten läuft höchstens **3-mal** je Frage, insgesamt höchstens **30** Aufrufe. Danach wird die KI gestoppt und schreibt ihre Antwort aus dem, was sie bis dahin hat (ein Hinweis steht im Chat).\n\n**Wichtig für das Modell:** Es muss **Funktionen aufrufen können** (z. B. `qwen2.5-coder`, `qwen3`, `llama3.1`). Kleine Modelle (3B) erfinden gelegentlich trotzdem etwas oder lassen eine Funktion aus; je größer das Modell, desto zuverlässiger – ein Modell wie `qwen3:4b` oder `llama3.1:8b` lohnt sich, wenn dein Rechner es schafft. Ein reines Chat-Modell meldet im Modus Arbeiten, dass es keine Funktionen kann; im Modus Chat läuft es normal."
+ },
+ {
+  "id": "assistant-014",
+  "page": "assistant",
+  "path": [
+   "KI-Assistent",
+   "5. Berechtigungen: was die KI allein tun darf"
+  ],
+  "title": "5. Berechtigungen: was die KI allein tun darf",
+  "keywords": [],
+  "text": "Jede Funktion gehört zu einer **Art**, und für jede Art stellst du ein, was die KI darf (*Einstellungen → KI-Assistent → Berechtigungen*):"
+ },
+ {
+  "id": "assistant-015",
+  "page": "assistant",
+  "path": [
+   "KI-Assistent",
+   "5. Berechtigungen: was die KI allein tun darf"
+  ],
+  "title": "5. Berechtigungen: was die KI allein tun darf (2)",
+  "keywords": [],
+  "text": "| Art | Beispiele | Voreinstellung |\n|---|---|---|\n| **Lesefunktionen** | `show_overview`, `list_fixtures`, `read_fixtures`, `list_groups`, `read_dmx`, `list_cuelists`, `read_cuelist`, `read_selection`, `list_effects`, `list_effect_types`, `list_showfiles`, `list_fixture_types`, `list_variables` – sie schauen nur in die Show | **Immer erlauben** |\n| **Schreibfunktionen** | `set_fixtures`, `set_blackout`, `set_master`, `timecode_control`, `control_cuelist`, `set_cuelist_fader`, `apply_variable`, `apply_effect`, `stop_effects`, `release_fixtures`, `select_fixtures`, `create_group`, `store_cue` und alles zum Patchen, Speichern, Bearbeiten von Variablen, Effekten, Cues und Cue-Listen (`add_fixtures`, `save_show`, `create_variable`, `create_effect`, `set_cue`, `create_cuelist` …) – sie verändern die Show | **Jedes Mal fragen** |\n| **Kritische Funktionen** | `run_command` (ein beliebiger Befehl der Befehlszeile), **alle Löschfunktionen** (`delete_cue`, `delete_group`, `delete_fixtures`, `delete_variable`, `delete_effect`, `delete_cuelist`, `delete_showfile`) sowie `load_show` und `new_show` (ersetzen die laufende Show) | **Jedes Mal fragen** |\n| Hilfsfunktionen | `calculate`, `random_number`, `current_time`, `command_help` – ohne Wirkung auf die Show | immer erlaubt, nicht einstellbar |"
+ },
+ {
+  "id": "assistant-016",
+  "page": "assistant",
+  "path": [
+   "KI-Assistent",
+   "5. Berechtigungen: was die KI allein tun darf"
+  ],
+  "title": "5. Berechtigungen: was die KI allein tun darf (3)",
+  "keywords": [],
+  "text": "Für jede der drei Arten wählst du **Immer erlauben**, **Jedes Mal fragen** oder **Nie erlauben**. Unter jeder Auswahl steht, welche Funktionen dazugehören.\n\n**Die Rückfrage:** Steht eine Art auf *Jedes Mal fragen*, hält die KI an, bevor sie die Funktion ausführt, und im Funktionsblock erscheint eine **Karte** mit Funktion und Werten (und der Art, z. B. „Verändert die Show“). Dazu drei Knöpfe:\n\n- **Einmal erlauben** – die Funktion läuft jetzt, beim nächsten Mal wird wieder gefragt.\n- **Immer erlauben** – die Funktion läuft jetzt und ab sofort **immer ohne Rückfrage** (auch in anderen Chats). Das gilt für genau diese eine Funktion und steht unter *Einstellungen → KI-Assistent → Berechtigungen → Immer erlaubte Funktionen*; mit **Entfernen** fragt sie wieder. Diesen Knopf gibt es nur am **Konsolenrechner** (nicht auf Tablets / Remote-Geräten); er gilt für **alle** Arten, auch für kritische Funktionen.\n- **Nicht erlauben** – die Funktion läuft nicht. Die KI erfährt es und sagt dir, dass sie es nicht getan hat.\n\nDie Rückfrage erscheint auf **allen** Geräten, die diesen Chat zeigen; *Einmal erlauben* und *Nicht erlauben* geht von jedem. Sie bleibt auch nach dem Neuladen der Seite stehen. Wer nicht antwortet, wird nach 10 Minuten als „nein“ gewertet; *Stopp* beendet die Rückfrage sofort."
+ },
+ {
+  "id": "assistant-017",
+  "page": "assistant",
+  "path": [
+   "KI-Assistent",
+   "5. Berechtigungen: was die KI allein tun darf"
+  ],
+  "title": "5. Berechtigungen: was die KI allein tun darf (4)",
+  "keywords": [],
+  "text": "Steht eine Art auf **Nie erlauben**, fragt die KI gar nicht erst: Die Funktion läuft nicht, die KI bekommt den Hinweis auf die Einstellung und sagt es dir."
+ },
+ {
+  "id": "assistant-018",
+  "page": "assistant",
+  "path": [
+   "KI-Assistent",
+   "6. Chats"
+  ],
+  "title": "6. Chats",
+  "keywords": [],
+  "text": "- Jeder Chat ist eine **eigene Datei** (Ordner `chats` im Datenordner) und bleibt nach dem Beenden erhalten; alle Geräte und Panels zeigen dieselben Chats.\n- **+** legt einen neuen Chat an; der erste entsteht beim ersten Senden von selbst.\n- **Doppelklick** auf den Titel benennt um. Bis die KI einen Titel vergibt, steht der Anfang der ersten Frage da.\n- **Automatische Titel:** Die KI gibt dem Chat selbst einen kurzen Titel (2–5 Wörter; eine zusätzliche, winzige Anfrage an das Modell) – **nach der zweiten Antwort**, damit sie mehr Zusammenhang hat (die ersten zwei Fragen und Antworten gehen in die Anfrage). Kommt innerhalb **einer Minute** keine zweite Frage, wird nach der ersten benannt. Bis dahin steht der Anfang der ersten Frage da. Einen Chat, den du selbst umbenannt hast, benennt sie nie um. Abschalten: *Einstellungen → KI-Assistent → Modell → Chats automatisch benennen*.\n- In der Kopfzeile wählst du das **Modell dieses Chats** – jederzeit änderbar, der Verlauf bleibt.\n- Jede Zeile der **Chat-Liste** hat ein **Drei-Punkte-Menü** (auch per Rechtsklick): **Umbenennen** (direkt in der Liste), **Duplizieren** (Kopie mit dem ganzen Verlauf, Titel „… (Kopie)“) und **Chat löschen** (nach einer Rückfrage). Das Symbol vor dem Titel zeigt den Modus des Chats. **Schreibt die KI gerade** in einem Chat, bewegen sich hinter dem Titel kleine Punkte – so siehst du, in welchem von mehreren Chats sie arbeitet. Ist eine Antwort **fertig und der Chat nicht geöffnet**, steht dort ein **gelber Punkt** („neue Antwort“). Er verschwindet, sobald du den Chat öffnest – auf allen Geräten.\n- Die **Chat-Liste lässt sich ein- und ausklappen** (erster Knopf in der Kopfzeile); der Zustand wird für jedes Panel gemerkt. In schmalen Panels liegt die Liste über dem Verlauf."
+ },
+ {
+  "id": "assistant-019",
+  "page": "assistant",
+  "path": [
+   "KI-Assistent",
+   "7. Wegweiser: erklärt dir das Programm und zeigt dir, wo es ist"
+  ],
+  "title": "7. Wegweiser: erklärt dir das Programm und zeigt dir, wo es ist",
+  "keywords": [],
+  "text": "Im Modus **Wegweiser** (Symbol: Wegweiser) beantwortet die KI Fragen wie *„Wo finde ich die Farbprofile?“*, *„Wie lege ich einen Cue an?“* oder *„Was ist eine Fixture-Gruppe?“* – und kann dir **Schaltflächen** anbieten, die den passenden Dialog öffnen."
+ },
+ {
+  "id": "assistant-020",
+  "page": "assistant",
+  "path": [
+   "KI-Assistent",
+   "7. Wegweiser: erklärt dir das Programm und zeigt dir, wo es ist"
+  ],
+  "title": "7. Wegweiser: erklärt dir das Programm und zeigt dir, wo es ist (2)",
+  "keywords": [],
+  "text": "- **Die KI erfindet nichts.** Sie bekommt nur wenig im Prompt (wie das Programm aufgebaut ist) und holt jede Einzelheit über die Funktion **`find_help`**: OpenCue sucht aus vielen kleinen Textschnipseln die passenden heraus und gibt sie der KI mit der Anweisung, **nur damit zu antworten**. Findet sich nichts, sagt die Funktion das ausdrücklich – die KI soll dann zugeben, dass sie es nicht weiß, statt zu raten.\n- **Quellen:** Die Schnipsel stehen als JSON-Dateien im Ordner `static/help/guide/snippets/<Sprache>/` (eine Datei je Anleitungsseite, zusammen rund 400 je Sprache). Ihr Text ist **wortgetreu aus den Anleitungen** übernommen. Du kannst Schnipsel von Hand ändern, kürzen oder mit `keywords` ergänzen; `synonyms.json` verbindet Wörter (z. B. „Dateimanager“ ↔ „file manager“).\n- **Dialoge öffnen:** Die Funktion **`show_dialog`** legt unter die Antwort eine Schaltfläche wie **„Öffnen: Dateimanager“**. Die KI klickt nie selbst – **du entscheidest**, ob du sie drückst. Der Klick ist derselbe wie auf den Menüpunkt; es wird nichts gespeichert oder gelöscht. Angeboten werden die wichtigen Dialoge (Einstellungen mit ihren Kategorien, Dateimanager für Shows / Layouts / Stages / Effekte, Fixture-Bibliothek, Show öffnen / speichern / importieren / exportieren, Panel hinzufügen, Bearbeitungsmodus, Tastenkürzel, Sprache …); die Liste liegt in `static/help/guide/targets.json`.\n- **`list_help_topics`** zeigt, worüber der Wegweiser Auskunft geben kann.\n- Der Wegweiser ändert **nichts** an deiner Show; er hat nur diese drei Funktionen (alle ohne Rückfrage erlaubt)."
+ }
+]

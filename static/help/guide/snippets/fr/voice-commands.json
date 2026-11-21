@@ -1,0 +1,196 @@
+[
+ {
+  "id": "voice-commands-001",
+  "page": "voice-commands",
+  "path": [
+   "Commandes vocales"
+  ],
+  "title": "Commandes vocales",
+  "keywords": [],
+  "text": "Avec les **commandes vocales**, vous pilotez OpenCue à la voix : vous dites le **mot de réveil** (par défaut « OpenCue ») et juste après une **commande de la ligne de commande** – OpenCue la transcrit, la convertit dans la notation de la ligne de commande et l'**exécute aussitôt**, exactement comme une commande saisie au clavier (elle apparaît aussi dans l'historique des commandes, toutes les fenêtres suivent). Tout fonctionne **hors ligne** sur l'ordinateur de la console (après le téléchargement unique des modèles), aucune IA n'est nécessaire.\n\nVous parlez **anglais** : les commandes de la ligne de commande (`Fixture`, `At`, `Color`, `Blackout`, `Go` …) sont en anglais, et la reconnaissance vocale est réglée pour écrire des mots anglais."
+ },
+ {
+  "id": "voice-commands-002",
+  "page": "voice-commands",
+  "path": [
+   "Commandes vocales",
+   "1. L'activer"
+  ],
+  "title": "1. L'activer",
+  "keywords": [],
+  "text": "1. Le **symbole du microphone** en haut à droite de la barre d'outils est un **interrupteur marche/arrêt** :\n   - **vert** = la commande vocale écoute le mot de réveil,\n   - **rouge et barré** = désactivée,\n   - **jaune** = erreur (microphone inaccessible, modèle manquant …; l'indication se trouve dans l'info-bulle).\n2. Une fois, deux modèles sont téléchargés (chacun une seule fois, ensuite tout fonctionne sans Internet) : le petit **modèle du mot de réveil** (41 Mo : *Paramètres → Mot de réveil → Télécharger le modèle vocal*, ou déjà dans l'installateur) et le **modèle de parole** pour les commandes (*Paramètres → Dictée → Charger maintenant* ; c'est le même que pour la dictée). Le modèle de parole *Précis* (small) comprend bien mieux que *Rapide* (base).\n3. Le microphone, le mot de réveil et la sensibilité se règlent sous *Paramètres → Mot de réveil*.\n\nLe symbole existe sur l'ordinateur de la console et aussi sur les appareils distants (iPad) : l'interrupteur active ou désactive la commande vocale du serveur ; le microphone lui-même reste toujours branché sur l'ordinateur principal."
+ },
+ {
+  "id": "voice-commands-003",
+  "page": "voice-commands",
+  "path": [
+   "Commandes vocales",
+   "2. Comment parler"
+  ],
+  "title": "2. Comment parler",
+  "keywords": [],
+  "text": "```\n\"OpenCue … Blackout on.\"\n\"OpenCue … Fixture five at seventy nine, color green.\"\n\"OpenCue … Fixtures one through five at full.\"\n```\n\n- D'abord le **mot de réveil**, puis – dans le même souffle ou après une courte pause (jusqu'à environ 2 secondes) – la **commande**.\n- Quand la commande est terminée, **attendez environ une seconde** : une courte pause termine l'enregistrement (10 secondes au maximum).\n- En bas au centre de l'écran, une bulle montre la progression : **Écoute …** → **Compréhension …** → **la commande** avec son résultat (vert = faite, rouge = erreur ou rien compris). Si OpenCue a corrigé un mot, cela s'affiche derrière (« corrigé : add → At »).\n- Parlez par commandes courtes et claires. Les mots de remplissage (« uh », « please », « now », « set ») et les bégaiements sont supprimés."
+ },
+ {
+  "id": "voice-commands-004",
+  "page": "voice-commands",
+  "path": [
+   "Commandes vocales",
+   "3. Ce que vous pouvez dire"
+  ],
+  "title": "3. Ce que vous pouvez dire",
+  "keywords": [],
+  "text": "Vous dites les commandes telles qu'elles s'écrivent dans la ligne de commande (voir le guide *Ligne de commande*). Les nombres peuvent être dits en mots (« seventy nine ») ou en chiffres. Plusieurs commandes dans un même souffle sont séparées par **« then »**."
+ },
+ {
+  "id": "voice-commands-005",
+  "page": "voice-commands",
+  "path": [
+   "Commandes vocales",
+   "3. Ce que vous pouvez dire",
+   "Sélectionner des projecteurs et la luminosité"
+  ],
+  "title": "Sélectionner des projecteurs et la luminosité",
+  "keywords": [],
+  "text": "| Vous dites | Ce qui s'exécute |\n|---|---|\n| Fixture five | `Fixture 5` |\n| Fixtures one through ten | `Fixture 1 Thru 10` |\n| Fixture three and seven | `Fixture 3 + 7` |\n| Fixture five at seventy nine | `Fixture 5 At 79` |\n| Fixture five brightness fifty percent | `Fixture 5 At 50%` (aussi *dimmer, intensity, level*) |\n| Fixtures one through five at full / at half | `Fixture 1 Thru 5 At Full` / `… At Half` |\n| Fixture five on / full | `Fixture 5 At Full` |\n| Fixture five off / out | `Fixture 5 At 0` |\n| Fixture five at seventy nine point five | `Fixture 5 At 79.5` |\n| At at / Everything on / All lights on | `At At` – **tout allumer** (100 % + blanc) : sans sélection tous les projecteurs, avec une sélection seulement cette sélection. Dites d'abord « Clear » pour être sûr que ce soit tout. |\n| Fixtures one through ten minus five (aussi *except / without*) | `Fixture 1 Thru 10 - 5` (sans le n° 5) |\n| Next fixture / Previous fixture | `Next` / `Previous` (sélectionne le projecteur suivant / précédent) |\n| Group front at full | `Group front At Full` |\n| Group front truss at forty | `Group \"front truss\" At 40` (plusieurs mots de nom vont ensemble entre guillemets) |\n| Light / lamp / spot five | `Fixture 5` |"
+ },
+ {
+  "id": "voice-commands-006",
+  "page": "voice-commands",
+  "path": [
+   "Commandes vocales",
+   "3. Ce que vous pouvez dire",
+   "Couleurs"
+  ],
+  "title": "Couleurs",
+  "keywords": [],
+  "text": "| Vous dites | Ce qui s'exécute |\n|---|---|\n| Fixture five color green | `Fixture 5 Color Green` |\n| Fixture five green | `Fixture 5 Color Green` (le mot « color » est ajouté) |\n| Fixture five warm white / cool white / light blue | `Fixture 5 Color Warm` / `Cool` / `Lightblue` |\n| RGB two fifty five zero zero | `RGB 255 0 0` |\n| Color two fifty five one twenty eight zero | `Color 255 128 0` (« one twenty eight » = 128 après *color / rgb / bpm*) |\n\nLes couleurs comme dans la ligne de commande : red, green, blue, white, black, yellow, cyan, magenta, orange, pink, purple, amber, lime, teal, violet, light blue, warm, cool."
+ },
+ {
+  "id": "voice-commands-007",
+  "page": "voice-commands",
+  "path": [
+   "Commandes vocales",
+   "3. Ce que vous pouvez dire",
+   "Position et faisceau"
+  ],
+  "title": "Position et faisceau",
+  "keywords": [],
+  "text": "| Vous dites | Ce qui s'exécute |\n|---|---|\n| Pan ninety / Pan fifty percent | `Pan 90` / `Pan 50%` |\n| Tilt minus forty five / Pan plus fifteen | `Tilt -45` / `Pan +15` (un signe = relatif) |\n| Fixture five home / center | `Fixture 5 Pan 50% Tilt 50%` |\n| Zoom half / full / minimum / fifty | `Zoom Half` / `Zoom Full` / `Zoom Min` / `Zoom 50` |\n| Focus twenty five | `Focus 25` |\n| Gobo forty / gobo spin thirty | `Gobo 40` / `GoboSpin 30` |\n| Prism one hundred | `Prism 100` |\n| Strobe zero / shutter ten | `Strobe 0` / `Strobe 10` |\n| Channel six one hundred twenty eight | `Channel 6 128` (canal 6 du projecteur sur DMX 128) |"
+ },
+ {
+  "id": "voice-commands-008",
+  "page": "voice-commands",
+  "path": [
+   "Commandes vocales",
+   "3. Ce que vous pouvez dire",
+   "Master et blackout"
+  ],
+  "title": "Master et blackout",
+  "keywords": [],
+  "text": "| Vous dites | Ce qui s'exécute |\n|---|---|\n| Blackout | `Blackout` (bascule) |\n| Blackout on / Blackout off | `Blackout On` / `Blackout Off` |\n| Master eighty / Master full / Master minus ten | `Master 80` / `Master Full` / `Master -10` |"
+ },
+ {
+  "id": "voice-commands-009",
+  "page": "voice-commands",
+  "path": [
+   "Commandes vocales",
+   "3. Ce que vous pouvez dire",
+   "Listes de cues"
+  ],
+  "title": "Listes de cues",
+  "keywords": [],
+  "text": "| Vous dites | Ce qui s'exécute |\n|---|---|\n| Go / Next cue | `Go` |\n| Back / Go back / Previous cue | `Back` |\n| Pause / Resume / Stop | `Pause` / `Resume` / `Stop` |\n| Go to cue five | `Go Cue 5` (aussi *goto cue five*) |\n| Cue list main go | `Cuelist main Go` |\n| Cue list front of house back | `Cuelist \"front of house\" Back` |\n| Cuelist two go | `Cuelist 2 Go` |\n| Cuelist main fader eighty / Fader fifty | `Cuelist main Fader 80` / `Fader 50` |\n| Cue five fade three / Cue five delay one point five | `Cue 5 Fade 3` / `Cue 5 Delay 1.5` |\n| Store cue five (merge) | `Store Cue 5` (`Merge`) |\n| Update / Clear | `Update` / `Clear` |"
+ },
+ {
+  "id": "voice-commands-010",
+  "page": "voice-commands",
+  "path": [
+   "Commandes vocales",
+   "3. Ce que vous pouvez dire",
+   "Timecode et audio"
+  ],
+  "title": "Timecode et audio",
+  "keywords": [],
+  "text": "| Vous dites | Ce qui s'exécute |\n|---|---|\n| Timecode play / pause / stop / reset / reverse | `Timecode Play` / `Pause` / `Stop` / `Reset` / `Reverse` |\n| Timecode rate two | `Timecode Rate 2` |\n| Tap | `Tap` (taper le tempo) |\n| BPM one twenty eight / BPM auto / BPM half | `BPM 128` / `BPM Auto` / `BPM Half` (aussi *beats per minute*) |\n| Audio start / stop / demo | `Audio Start` / `Stop` / `Demo` |"
+ },
+ {
+  "id": "voice-commands-011",
+  "page": "voice-commands",
+  "path": [
+   "Commandes vocales",
+   "3. Ce que vous pouvez dire",
+   "Effets, variables, programmeur"
+  ],
+  "title": "Effets, variables, programmeur",
+  "keywords": [],
+  "text": "| Vous dites | Ce qui s'exécute |\n|---|---|\n| Effect rainbow / Effect off | `Effect rainbow` / `Effect Off` |\n| Variable warm white | `Variable \"warm white\"` |\n| Manual / Manual color | `Manual` / `Manual Color` |"
+ },
+ {
+  "id": "voice-commands-012",
+  "page": "voice-commands",
+  "path": [
+   "Commandes vocales",
+   "3. Ce que vous pouvez dire",
+   "Plusieurs commandes"
+  ],
+  "title": "Plusieurs commandes",
+  "keywords": [],
+  "text": "« Fixture one at full **then** fixture two at zero » → `Fixture 1 At Full; Fixture 2 At 0`."
+ },
+ {
+  "id": "voice-commands-013",
+  "page": "voice-commands",
+  "path": [
+   "Commandes vocales",
+   "4. Ce qui est corrigé automatiquement"
+  ],
+  "title": "4. Ce qui est corrigé automatiquement",
+  "keywords": [],
+  "text": "Whisper écrit parfois des mots qui sonnent pareil mais n'ont aucun sens dans la commande (« add » au lieu de « at », « true » au lieu de « thru »). OpenCue vérifie **à quelle place de la commande** se trouve le mot et met le mot de commande qui convient – seulement là où il convient :"
+ },
+ {
+  "id": "voice-commands-014",
+  "page": "voice-commands",
+  "path": [
+   "Commandes vocales",
+   "4. Ce qui est corrigé automatiquement"
+  ],
+  "title": "4. Ce qui est corrigé automatiquement (2)",
+  "keywords": [],
+  "text": "| Entendu / écrit | Devient | Quand |\n|---|---|---|\n| add, ad, it, app | At | après un nombre, avant un nombre (« fixture 5 **add** 70 ») |\n| true, threw, till, through, until, to, too, drew, grew, crew, throw … | Thru | entre deux nombres (« fixtures 1 **true** 5 ») |\n| **2** (Whisper entend « thru » comme le nombre *two*) | Thru | dans une sélection exactement entre deux nombres (« fixtures one **two** five » = `Fixture 1 Thru 5` ; aussi « fixture 1-5 » et « 1, 2, 5 ») |\n| eight (8) | At | dans une sélection entre deux nombres (« fixture 5 **eight** 70 ») |\n| halve, calf | Half | toujours ; « fixture 3 half » = `Fixture 3 At Half` |\n| chanel, clair, stroke, pawn, tell, fate, delight … | Channel, Clear, Strobe, Pan, Tilt, Fade, Delay | selon la position (avant un nombre, ou toujours) |\n| oh | 0 | là où un nombre doit se trouver (« at oh », « master oh ») |\n| picture, pitcher, fix sure, fixer | Fixture | toujours (« **picture** one to four ») |\n| for, to, too, won, ate, tree | 4, 2, 2, 1, 8, 3 | seulement là où un nombre doit se trouver (« fixture **for** at fifty » → Fixture 4 At 50) |\n| collar, caller | Color | toujours |\n| pen, ban, pun | Pan | avant un nombre |\n| till, tilted | Tilt | avant un nombre (« **till** minus ten ») |\n| queue, q, cute, cube, key | Cue | avant un nombre (« go **key** five ») |\n| fool | Full | toujours |\n| of, own | Off, On | après Blackout |\n| prison, prisms | Prism | toujours |\n| strove | Strobe | toujours |\n| paws, pours | Pause | toujours |\n| affect, effects | Effect | toujours |\n| tab | Tap | toujours |\n| read, grin, grain, blew, wait … | Red, Green, Blue, White | après « color » ou comme nom de couleur |\n| black out, black art, blackouts | Blackout | toujours |\n| time code, cue list, grand master, go bo, b p m | Timecode, Cuelist, Master, Gobo, BPM | expressions de plusieurs mots |"
+ },
+ {
+  "id": "voice-commands-015",
+  "page": "voice-commands",
+  "path": [
+   "Commandes vocales",
+   "4. Ce qui est corrigé automatiquement"
+  ],
+  "title": "4. Ce qui est corrigé automatiquement (3)",
+  "keywords": [],
+  "text": "De plus :\n\n- **Les nombres en mots** → chiffres (« twenty one », « one hundred and five », « two point five », « minus ten percent »).\n- **Comparaison phonétique :** un mot inconnu qui se trouve là où un mot de commande précis doit se trouver et qui sonne pareil devient ce mot.\n- **Petites fautes d'orthographe** des mots-clés → le mot de commande le plus proche (« blakout » → Blackout).\n- **Variantes du mot de réveil** (« open queue », « open Q », « OpenCue ») sont supprimées au début, ainsi que tout ce qui a été dit avant le mot de réveil.\n- **Les noms** (après *group, cuelist, effect, variable*) restent tels que prononcés.\n- **Le pourcentage** après Master, Fader, BPM et les numéros de cue est supprimé (« master eighty percent » → `Master 80`), car la ligne de commande ne connaît pas de pourcentage à cet endroit.\n- Le bavardage introductif avant la commande (« set », « please », tout ce qui n'est pas compris) est supprimé ; la commande doit commencer par un mot de commande."
+ },
+ {
+  "id": "voice-commands-016",
+  "page": "voice-commands",
+  "path": [
+   "Commandes vocales",
+   "5. Ce qui ne fonctionne pas à la voix"
+  ],
+  "title": "5. Ce qui ne fonctionne pas à la voix",
+  "keywords": [],
+  "text": "En **mode opérateur** sur la console (*Affichage → Mode opérateur ...*), la commande vocale est **désactivée**, de sorte que sur ce PC seul ce que propose la surface de contrôle est possible ; après être sorti de ce mode, elle refonctionne si elle était activée.\n\nPar sécurité, la commande vocale **n'exécute jamais rien qui supprime ou écrase** : `Delete …`, `Clear Clear`, `Overwrite`. La bulle indique alors « Pas par la voix ». Saisissez ces commandes au clavier ou utilisez l'interface."
+ },
+ {
+  "id": "voice-commands-017",
+  "page": "voice-commands",
+  "path": [
+   "Commandes vocales",
+   "6. Quand ça ne marche pas"
+  ],
+  "title": "6. Quand ça ne marche pas",
+  "keywords": [],
+  "text": "| Affichage | Que faire |\n|---|---|\n| Microphone jaune | Lire l'info-bulle ; *Paramètres → Mot de réveil* (bon microphone ?) |\n| « Modèle de parole manquant » | *Paramètres → Dictée → Charger maintenant* (et pour le mot de réveil : *Paramètres → Mot de réveil → Télécharger le modèle vocal*) |\n| « Rien compris » | Se rapprocher du microphone, parler plus clairement, dire la commande tout de suite après le mot de réveil |\n| « Aucune commande reconnue » | Le texte ne commence pas par un mot de commande – la bulle montre ce qui a été compris ; parlez exactement comme dans la ligne de commande |\n| Commande rouge (✗) | La ligne de commande dit ce qui ne va pas (par exemple le projecteur n'existe pas, « cette liste de cues n'a pas de cues ») |\n| Le mot de réveil n'est pas reconnu | Augmenter *Paramètres → Mot de réveil → Sensibilité* |\n| Un mot est toujours mal écrit | Noter ce que Whisper écrit (le texte figure dans le journal) – le tableau des corrections est facile à compléter |\n\nLe mot de réveil est reconnu par un petit modèle hors ligne, la commande qui suit est transcrite par Whisper (environ 1 à 3 secondes sur un ordinateur normal). Une musique forte ou du bruit dans la pièce dégrade la reconnaissance – un microphone près de la bouche aide plus que tout."
+ }
+]

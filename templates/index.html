@@ -1,9 +1,11 @@
 <!DOCTYPE html>
-<html lang="en" translate="no" class="notranslate i18n-loading{% if is_remote %} is-remote{% endif %}">
+<html lang="en" translate="no" class="notranslate i18n-loading{% if is_remote %} is-remote{% endif %}{% if locked %} is-locked{% endif %}{% if kiosk %} is-kiosk{% endif %}">
 <head>
   <meta charset="UTF-8" />
   <!-- Browser-Auto-Uebersetzer (Safari/Chrome) duerfen technische Lichtbegriffe nicht veraendern. -->
   <meta name="google" content="notranslate" />
+  {% if ui_store is not none %}<script>window.__OC_UI_STORE__ = {{ ui_store|tojson }};</script>
+  <script src="/static/js/ui_store.js{% if asset_v %}?v={{ asset_v }}{% endif %}"></script>{% endif %}
   <!-- Zuletzt angewendetes Theme sofort setzen (Cache aus app.js applyTheme) - sonst blitzt beim
        Laden kurz die dunkle Basis auf, auch wenn Hell gewaehlt ist. Der Server bleibt die Quelle. -->
   <script>
@@ -46,7 +48,6 @@
   <link rel="stylesheet" href="/static/css/theme.css{% if asset_v %}?v={{ asset_v }}{% endif %}" />
   <link rel="stylesheet" href="/static/css/style.css{% if asset_v %}?v={{ asset_v }}{% endif %}" />
   <link rel="stylesheet" href="/static/css/modern.css{% if asset_v %}?v={{ asset_v }}{% endif %}" />
-<!--3D-AUS <link rel="stylesheet" href="/static/css/stage3d.css{% if asset_v %}?v={{ asset_v }}{% endif %}" /> 3D-AUS-->
 </head>
 <body>
   <!-- Outer viewport: the one and only element allowed to claim the full
@@ -71,6 +72,12 @@
             <span data-i18n="FILE_OPEN">Open Showfile...</span>
             <span class="menu__shortcut-hint" data-i18n="SHORTCUT_CTRL_O">Ctrl+O</span>
           </li>
+          <li class="menu__item menu__item--has-submenu" id="recent-menu-item" data-submenu="recent">
+            <span data-i18n="RECENT_MENU">Open Recent</span>
+            <ul class="menu__submenu menu__submenu--recent" id="recent-submenu">
+              <!-- Dynamisch befuellt von static/js/recent_shows.js -->
+            </ul>
+          </li>
           <li class="menu__item menu__item--with-shortcut" data-action="save-show">
             <span data-i18n="FILE_SAVE">Save Showfile</span>
             <span class="menu__shortcut-hint" data-i18n="SHORTCUT_CTRL_S">Ctrl+S</span>
@@ -80,9 +87,14 @@
             <span class="menu__shortcut-hint" data-i18n="SHORTCUT_CTRL_SHIFT_S">Ctrl+⇧+S</span>
           </li>
           <li class="menu__separator" role="separator"></li>
-          <li class="menu__item" data-i18n="FM_MENU" data-action="file-manager">File manager...</li>
+          <li class="menu__item menu__item--with-shortcut menu__item--featured" data-action="file-manager">
+            <span data-i18n="FM_MENU">File manager...</span>
+            <span class="menu__shortcut-hint" data-i18n="SHORTCUT_CTRL_M">Ctrl+M</span>
+          </li>
           <li class="menu__item" data-i18n="FM_MENU_IMPORT" data-action="import-show">Import show...</li>
           <li class="menu__item" data-i18n="FM_MENU_EXPORT" data-action="export-show">Export show...</li>
+          <li class="menu__item" data-i18n="BACKUP_MENU" data-action="restore-backup">Restore backup...</li>
+          <li class="menu__item" data-i18n="REPORT_MENU" data-action="open-report-modal">Print / PDF...</li>
           <li class="menu__separator" role="separator"></li>
           <li class="menu__item menu__item--remote-only" data-action="logout" data-i18n="FILE_LOGOUT">Sign out</li>
           <li class="menu__item menu__item--with-shortcut" data-action="exit">
@@ -107,12 +119,16 @@
             <span data-i18n="EDIT_REDO">Redo</span>
             <span class="menu__shortcut-hint" data-i18n="SHORTCUT_CTRL_Y">Ctrl+Y</span>
           </li>
+          <li class="menu__item menu__item--checkbox menu__item--checked" id="menu-guides" data-action="toggle-guides" data-i18n-tip="GUIDES_TIP">
+            <span data-i18n="GUIDES_LABEL">Guides</span>
+          </li>
           <li class="menu__separator" role="separator"></li>
           <!-- data-edit-only: disabled (pointer-events:none + dimmed) while
                isEditMode is false, enabled once Edit Panels is switched on. -->
           <li class="menu__item" data-i18n="ADD_PANEL" data-action="open-add-panel-modal" data-edit-only>Add Panel...</li>
           <li class="menu__item" data-i18n="ADD_WIDGET_BUTTON" data-action="add-panel" data-panel-type="button" data-edit-only>Add Button</li>
           <li class="menu__item" data-i18n="ADD_WIDGET_FADER" data-action="add-panel" data-panel-type="fader" data-edit-only>Add Fader</li>
+          <li class="menu__item" data-i18n="ADD_WIDGET_TOGGLE" data-action="add-panel" data-panel-type="toggle" data-edit-only>Add Toggle</li>
           <li class="menu__separator" role="separator"></li>
           <li class="menu__item" data-i18n="LAYOUT_MANAGE" data-action="file-manager" data-fm-kind="layouts">Manage Layouts...</li>
         </ul>
@@ -121,12 +137,15 @@
       <div class="menu" data-menu="library">
         <button type="button" class="menu__trigger" data-i18n="LIBRARY">Library</button>
         <ul class="menu__dropdown">
-          <li class="menu__item" data-i18n="FXLIB_MENU" data-action="fixture-library">Fixture Library...</li>
-<!--3D-AUS <li class="menu__item" data-i18n="ST3D_MENU" data-action="stage-manage">Manage Stages...</li> 3D-AUS-->
+          <li class="menu__item menu__item--featured" data-i18n="FXLIB_MENU" data-action="fixture-library">Fixture Library...</li>
+          <li class="menu__item" data-i18n="FXI_MENU" data-action="open-fixture-import">Import fixture list (CSV / Excel)...</li>
           <li class="menu__separator" role="separator"></li>
           <li class="menu__item" data-i18n="FM_MENU_SHOWS" data-action="file-manager" data-fm-kind="shows">Shows...</li>
           <li class="menu__item" data-i18n="FM_MENU_LAYOUTS" data-action="file-manager" data-fm-kind="layouts">Layouts...</li>
           <li class="menu__item" data-i18n="FM_MENU_STAGES" data-action="file-manager" data-fm-kind="stages">3D stages...</li>
+          <li class="menu__item" data-i18n="SIMJSON_MENU" data-action="open-sim-json">Edit 3D stage as JSON...</li>
+          <li class="menu__item" data-i18n="FM_MENU_MODELS" data-action="file-manager" data-fm-kind="models">3D models...</li>
+          <li class="menu__item" data-i18n="FM_MENU_MEDIA" data-action="file-manager" data-fm-kind="media">Media...</li>
           <li class="menu__item" data-i18n="FM_MENU_EFFECTS" data-action="file-manager" data-fm-kind="effects">Effects...</li>
         </ul>
       </div>
@@ -138,8 +157,29 @@
             <span data-i18n="FULLSCREEN">Fullscreen</span>
             <span class="menu__shortcut-hint">F11</span>
           </li>
+          <li class="menu__item" data-action="kiosk-enter" data-i18n="KIOSK_MENU">Operator mode ...</li>
+          <li class="menu__separator" role="separator"></li>
+          <li class="menu__item menu__item--with-shortcut" data-action="reload-layout">
+            <span data-i18n="RELOAD_LAYOUT_MENU">Reload layout</span>
+            <span class="menu__shortcut-hint" data-i18n="SHORTCUT_F5">F5</span>
+          </li>
+          <li class="menu__item menu__item--with-shortcut" data-action="reload-ui">
+            <span data-i18n="RELOAD_UI_MENU">Reload interface</span>
+            <span class="menu__shortcut-hint" data-i18n="SHORTCUT_CTRL_F5">Ctrl+F5</span>
+          </li>
           <li class="menu__separator" role="separator"></li>
           <li class="menu__item" data-i18n="GUI_SCALE_MENU" data-action="open-gui-scale-modal">GUI Scale...</li>
+          <li class="menu__separator" role="separator"></li>
+          <li class="menu__item menu__item--with-shortcut" data-action="open-command-window">
+            <span data-i18n="PANELWIN_CMDLINE">Command Line Window</span>
+            <span class="menu__shortcut-hint" data-i18n="SHORTCUT_CTRL_F">Ctrl+F</span>
+          </li>
+          <li class="menu__item menu__item--has-submenu" id="panelwin-menu-item" data-submenu="panelwin">
+            <span data-i18n="PANELWIN_MENU">Open Panel as Window</span>
+            <ul class="menu__submenu menu__submenu--panelwin" id="panelwin-submenu">
+              <!-- Dynamisch befuellt von static/js/panel_window.js -->
+            </ul>
+          </li>
           <li class="menu__separator" role="separator"></li>
           <li class="menu__item menu__item--has-submenu" id="layouts-menu-item" data-submenu="layouts">
             <span data-i18n="LAYOUTS_TITLE">Layouts</span>
@@ -150,11 +190,31 @@
         </ul>
       </div>
 
+      <div class="menu" data-menu="controls">
+        <button type="button" class="menu__trigger" data-i18n="CONTROLS_MENU">Controls</button>
+        <ul class="menu__dropdown">
+          <li class="menu__item" data-action="open-shortcuts-modal" data-i18n="CONTROLS_SHORTCUTS">Keyboard shortcuts...</li>
+          <li class="menu__item" data-action="open-hotkeys-modal" data-i18n="HOTKEYS_MENU">Custom keyboard shortcuts...</li>
+          <li class="menu__item" data-action="open-midi-modal" data-i18n="MIDI_MENU">MIDI mapping...</li>
+          <li class="menu__item" data-action="open-osc-modal" data-i18n="CONTROLS_OSC">OSC...</li>
+          <li class="menu__item" data-action="open-dmx-in-modal" data-i18n="DMXIN_MENU">DMX input...</li>
+          <li class="menu__item" data-action="open-schedule-modal" data-i18n="CONTROLS_SCHEDULE">Schedule...</li>
+          <li class="menu__item menu__item--with-shortcut" data-action="lock-console">
+            <span data-i18n="CONTROLS_LOCK">Lock screen</span>
+            <span class="menu__shortcut-hint" data-i18n="SHORTCUT_CTRL_L">Ctrl+L</span>
+          </li>
+        </ul>
+      </div>
+
       <div class="menu" data-menu="language">
         <button type="button" class="menu__trigger" data-i18n="LANGUAGE">Language</button>
         <ul class="menu__dropdown">
           <li class="menu__item" data-i18n="LANGUAGE_EN" data-lang="en">English</li>
           <li class="menu__item" data-i18n="LANGUAGE_DE" data-lang="de">Deutsch</li>
+          <li class="menu__item" data-i18n="LANGUAGE_FR" data-lang="fr">Français</li>
+          <li class="menu__item" data-i18n="LANGUAGE_NL" data-lang="nl">Nederlands</li>
+          <li class="menu__item" data-i18n="LANGUAGE_IT" data-lang="it">Italiano</li>
+          <li class="menu__item" data-i18n="LANGUAGE_ES" data-lang="es">Español</li>
           <li class="menu__separator" role="separator"></li>
           <li class="menu__item menu__item--with-shortcut" data-action="toggle-language">
             <span data-i18n="LANGUAGE_TOGGLE">Toggle Language</span>
@@ -166,13 +226,21 @@
       <div class="menu" data-menu="help">
         <button type="button" class="menu__trigger" data-i18n="HELP">Help</button>
         <ul class="menu__dropdown">
+          <li class="menu__item menu__item--with-shortcut menu__item--featured" data-action="open-help-viewer">
+            <span data-i18n="HELP_VIEWER_MENU">Guides</span>
+            <span class="menu__shortcut-hint">F1</span>
+          </li>
           <li class="menu__item menu__item--with-shortcut" data-action="open-shortcuts-modal">
             <span data-i18n="HELP_SHORTCUTS">Keyboard Shortcuts</span>
             <span class="menu__shortcut-hint">?</span>
           </li>
           <li class="menu__separator" role="separator"></li>
-          <li class="menu__item" data-action="open-github" data-i18n="HELP_GITHUB">GitHub Repository</li>
+          <li class="menu__item" data-action="open-whats-new" data-i18n="HELP_WHATS_NEW">What's new</li>
+          <li class="menu__item menu__item--featured" data-action="open-github" data-i18n="HELP_GITHUB">GitHub Repository</li>
           <li class="menu__item" data-action="check-updates" data-i18n="HELP_CHECK_UPDATES">Check for Updates...</li>
+          <li class="menu__separator" role="separator"></li>
+          <li class="menu__item" data-action="open-log-folder" data-i18n="HELP_OPEN_LOGS">Open log folder</li>
+          <li class="menu__item" data-action="report-problem" data-i18n="HELP_REPORT">Report a problem...</li>
           <li class="menu__item" data-action="open-about-modal" data-i18n="HELP_ABOUT">About OpenCue</li>
         </ul>
       </div>
@@ -193,11 +261,11 @@
 
       <!-- Showfile-Name + Dirty-Indikator, wird von updateWindowTitle() gesetzt. -->
       <span class="menubar__showfile-label menubar__showfile-name--link" data-action="file-manager" data-fm-kind="shows" data-i18n="SHOW_CHIP_LABEL">Show</span>
-      <span id="toolbar-showfile-name" class="menubar__showfile-name menubar__showfile-name--link" data-action="file-manager" data-fm-kind="shows" role="button" tabindex="0" title="Showfile">Untitled</span><span id="toolbar-dirty-star" class="toolbar__dirty-star menubar__showfile-name--link" data-action="file-manager" data-fm-kind="shows" hidden> *</span>
+      <span id="toolbar-showfile-name" class="menubar__showfile-name menubar__showfile-name--link" data-action="file-manager" data-fm-kind="shows" role="button" tabindex="0" title="Showfile" data-i18n-tip="SHOW_CHIP_TIP">Untitled</span><span id="toolbar-dirty-star" class="toolbar__dirty-star menubar__showfile-name--link" data-action="file-manager" data-fm-kind="shows" hidden> *</span><span id="toolbar-show-lock" class="toolbar__show-lock menubar__showfile-name--link" data-action="file-manager" data-fm-kind="shows" role="img" aria-label="Locked" data-i18n-title="FM_BADGE_LOCKED" hidden></span>
 
       <!-- Blackout: alle Helligkeiten aus/ein (Umschalter, auch per Befehl "Blackout"); leuchtet rot, solange er aktiv ist. -->
       <button type="button" id="toolbar-blackout" class="menubar__icon-button menubar__blackout" aria-pressed="false"
-              data-i18n-title="BLACKOUT_TITLE" data-i18n-aria="BLACKOUT_TITLE">
+              data-i18n-title="BLACKOUT_TITLE" data-i18n-tip="BLACKOUT_TITLE" data-i18n-aria="BLACKOUT_TITLE">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
           <path d="M9 18h6"/><path d="M10 21h4"/>
           <path d="M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2.1h5c0-.9.4-1.6 1-2.1A6 6 0 0 0 12 3z"/>
@@ -206,10 +274,10 @@
       </button>
 
       <!-- Globaler Timecode (die interne Uhr): Zeit + Punkt (gruen = laeuft); wird von timecode.js aktualisiert. -->
-      <span id="toolbar-timecode" class="menubar__tc" title="Timecode"><span class="menubar__tc-dot" aria-hidden="true"></span><span id="toolbar-timecode-text">TC 00:00:00.000</span></span>
+      <span id="toolbar-timecode" class="menubar__tc" title="Timecode" data-i18n-tip="PANEL_TIMECODE"><span class="menubar__tc-dot" aria-hidden="true"></span><span id="toolbar-timecode-text">TC 00:00:00.000</span></span>
 
       <!-- Dezente digitale Uhrzeit, sekuendlich per app.js aktualisiert. -->
-      <span id="menubar-clock" class="menubar__clock">00:00:00</span>
+      <span id="menubar-clock" class="menubar__clock" title="Clock" data-i18n-tip="CLOCK_TIP">00:00:00</span>
 
       <!-- DMX-Herz: pocht live im Rhythmus des DMX-Outputs, Farbe zeigt Protokoll-Status. -->
       <button type="button" id="dmx-heart-btn" class="menubar__dmx-heart-btn"
@@ -225,7 +293,7 @@
       <!-- Remote-Indikator: Netzwerk-Icon mit Anzahl der verbundenen Remote-Clients.
            Klick (nur an der Konsole selbst) oeffnet die Client-Verwaltung inkl. Kick. -->
       <button type="button" id="remote-clients-btn" class="menubar__remote-btn menubar__remote-btn--idle"
-              aria-label="Remote clients" data-i18n-aria="REMOTE_CLIENTS_TITLE" hidden>
+              title="Remote clients" aria-label="Remote clients" data-i18n-aria="REMOTE_CLIENTS_TITLE" data-i18n-tip="REMOTE_CLIENTS_TITLE" hidden>
         <svg class="menubar__remote-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
              stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
           <path d="M5 12.55a11 11 0 0 1 14.08 0"/>
@@ -234,6 +302,41 @@
           <circle cx="12" cy="20" r="1"/>
         </svg>
         <span id="remote-clients-badge" class="remote-badge" hidden>0</span>
+      </button>
+
+      <!-- Rueckgaengig schliesst Go / Back ein (Schalter; static/js/app.js ocUndoSync): aus = Strg+Z fasst die Auffuehrung (Cues abspielen) nie an -->
+      <button type="button" id="toolbar-undo-go" class="menubar__icon-button menubar__undogo" aria-pressed="false" aria-label="Undo includes Go" data-i18n-aria="UNDOGO_TIP" data-i18n-tip="UNDOGO_TIP">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+          <path d="M9 5L4 10l5 5"/><path d="M4 10h8.5a5 5 0 010 10H10"/><path class="menubar__undogo-go" d="M16 3.5l4.5 2.75L16 9z" fill="currentColor" stroke="none"/>
+        </svg>
+      </button>
+
+      <!-- Bedienmodus (static/js/kiosk.js): dieses Geraet darf nur noch bedienen; erscheint, sobald ein Passwort gesetzt ist -->
+      <button type="button" id="toolbar-kiosk" class="menubar__icon-button menubar__kiosk" hidden aria-label="Operator mode" data-i18n-aria="KIOSK_TITLE" data-i18n-tip="KIOSK_TITLE">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+          <circle cx="12" cy="8" r="3.5"/><path d="M12 11.5V16"/><rect x="5" y="16" width="14" height="4.5" rx="2"/>
+        </svg>
+      </button>
+
+      <!-- Sichern (static/js/lock.js): sperrt die Konsole (Sichermodus, Strg+L) bzw. meldet dieses Fernzugriffs-Geraet ab -->
+      <button type="button" id="toolbar-lock" class="menubar__icon-button menubar__lock" hidden aria-label="Lock" data-i18n-aria="LOCK_BUTTON" data-i18n-tip="LOCK_BUTTON">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+          <rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 018 0v3"/>
+        </svg>
+      </button>
+
+      <!-- Sprachsteuerung (static/js/voice.js): Ein/Aus-Schalter (nur an der Konsole): gruen = hoert zu, rot + durchgestrichen = aus -->
+      <button type="button" id="toolbar-voice" class="menubar__icon-button menubar__voice menubar__voice--off" hidden title="Voice control" aria-label="Voice control" aria-pressed="false">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+          <rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0"/><path d="M12 17.5V21"/><path d="M9 21h6"/>
+        </svg>
+      </button>
+
+      <!-- MIDI (static/js/midi.js): Zustand der MIDI-Geraete (nur an der Konsole): gruen = Geraet bereit, grau = kein Geraet, rot + durchgestrichen = aus; Klick oeffnet die MIDI-Belegung -->
+      <button type="button" id="toolbar-midi" class="menubar__icon-button menubar__voice menubar__midi" hidden title="MIDI" aria-label="MIDI">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+          <circle cx="12" cy="12" r="8.5"/><path d="M7.4 10.4v.01M12 7.6v.01M16.6 10.4v.01M9.2 15.4v.01M14.8 15.4v.01" stroke-width="2.4"/>
+        </svg>
       </button>
 
       <!-- Settings gear (plain stroked SVG, no emoji) - opens the central
@@ -267,7 +370,7 @@
        open underneath it, so it's simplest to always carry the class
        rather than toggle it conditionally. -->
   <div class="modal-backdrop modal-backdrop--stacked" data-modal-backdrop="gui-scale" aria-hidden="true">
-    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="gui-scale-modal-title">
+    <div class="modal modal--s" role="dialog" aria-modal="true" aria-labelledby="gui-scale-modal-title">
       <div class="modal__header">
         <span id="gui-scale-modal-title" data-i18n="GUI_SCALE">GUI Scale</span>
         <button type="button" class="modal__close" data-modal-close="gui-scale" aria-label="Close" data-i18n-aria="CLOSE">&times;</button>
@@ -298,7 +401,7 @@
        Cancel reverts the whole snapshot, Save & Close persists via a
        single update_panel WebSocket message. -->
   <div class="modal-backdrop" data-modal-backdrop="panel-properties" aria-hidden="true">
-    <div class="modal modal--panel-properties" role="dialog" aria-modal="true" aria-labelledby="panel-properties-modal-title">
+    <div class="modal modal--panel-properties modal--l" role="dialog" aria-modal="true" aria-labelledby="panel-properties-modal-title">
       <div class="modal__header">
         <span id="panel-properties-modal-title" data-i18n="PANEL_PROPERTIES">Panel Properties</span>
         <button type="button" class="modal__close" data-modal-close="panel-properties" aria-label="Close" data-i18n-aria="CLOSE">&times;</button>
@@ -450,61 +553,129 @@
        change (DMX/Network); Cancel reverts theme + GUI scale previews,
        Save & Apply commits/persists everything via the server. -->
   <div class="modal-backdrop" data-modal-backdrop="settings" aria-hidden="true">
-    <div class="modal modal--settings" role="dialog" aria-modal="true" aria-labelledby="settings-modal-title">
+    <div class="modal modal--settings modal--xl" role="dialog" aria-modal="true" aria-labelledby="settings-modal-title">
       <div class="modal__header">
         <span id="settings-modal-title" data-i18n="SETTINGS">Settings</span>
-        <button type="button" class="modal__close" data-modal-close="settings" aria-label="Close" data-i18n-aria="CLOSE">&times;</button>
+        <button type="button" id="settings-close" class="modal__close" aria-label="Close" data-i18n-aria="CLOSE">&times;</button>
       </div>
 
       <div class="settings-modal__body">
         <nav class="settings-modal__sidebar">
-          <button type="button" class="settings-modal__category settings-modal__category--active" data-settings-category="general" data-i18n="SETTINGS_CATEGORY_GENERAL">General</button>
-          <button type="button" class="settings-modal__category" data-settings-category="storage" data-i18n="SETTINGS_CATEGORY_STORAGE">Storage</button>
-          <button type="button" class="settings-modal__category" data-settings-category="dmx-network" data-i18n="SETTINGS_CATEGORY_DMX">DMX / Network</button>
-          <button type="button" class="settings-modal__category" data-settings-category="remote" id="settings-remote-category" hidden data-i18n="SETTINGS_CATEGORY_REMOTE">Remote</button>
-          <button type="button" class="settings-modal__category" data-settings-category="appearance" data-i18n="SETTINGS_CATEGORY_APPEARANCE">Colors</button>
-          <button type="button" class="settings-modal__category" data-settings-category="panel-defaults" data-i18n="SETTINGS_CATEGORY_PANEL_DEFAULTS">Panel Defaults</button>
+          <div class="settings-modal__search"><input type="search" id="settings-search" maxlength="60" autocomplete="off" placeholder="Search settings ..." data-i18n-placeholder="SETTINGS_SEARCH_PH" aria-label="Search settings" data-i18n-aria="SETTINGS_SEARCH_PH" /></div>
+          <div class="settings-modal__group" data-i18n="SETTINGS_GROUP_PROGRAM">Program</div>
+          <button type="button" class="settings-modal__category settings-modal__category--active" data-settings-category="general"><span data-i18n="SETTINGS_CATEGORY_GENERAL">General</span></button>
+          <button type="button" class="settings-modal__category" data-settings-category="appearance"><span data-i18n="SETTINGS_CATEGORY_APPEARANCE">Appearance</span></button>
+          <div class="settings-modal__group" data-i18n="SETTINGS_GROUP_OUTPUT">Output</div>
+          <button type="button" class="settings-modal__category" data-settings-category="dmx-network"><span data-i18n="SETTINGS_CATEGORY_DMX">DMX output</span></button>
+          <div class="settings-modal__group" data-i18n="SETTINGS_GROUP_NETWORK">Network</div>
+          <button type="button" class="settings-modal__category" data-settings-category="security" id="settings-security-category" hidden><span data-i18n="SEC_CATEGORY">Security</span></button>
+          <button type="button" class="settings-modal__category" data-settings-category="remote" id="settings-remote-category" hidden><span data-i18n="SETTINGS_CATEGORY_REMOTE">Remote access</span></button>
+          <button type="button" class="settings-modal__category" data-settings-category="api" id="settings-api-category" hidden><span data-i18n="API_CATEGORY">REST API</span></button>
+          <div class="settings-modal__group" data-i18n="SETTINGS_GROUP_CONTROLS">Controls</div>
+          <button type="button" class="settings-modal__category" data-settings-category="keyboard"><span data-i18n="KB_CATEGORY">Keyboard</span></button>
+          <button type="button" class="settings-modal__category" data-settings-category="midi" id="settings-midi-category" hidden><span data-i18n="MIDI_CATEGORY">MIDI</span></button>
+          <button type="button" class="settings-modal__category" data-settings-category="osc" id="settings-osc-category" hidden><span data-i18n="OSC_CATEGORY">OSC</span></button>
+          <button type="button" class="settings-modal__category" data-settings-category="timecode" id="settings-timecode-category"><span data-i18n="TC_CATEGORY">Timecode</span></button>
+          <div class="settings-modal__group" data-i18n="SETTINGS_GROUP_SPEECH">Speech &amp; audio</div>
+          <button type="button" class="settings-modal__category" data-settings-category="voice" id="settings-voice-category" hidden><span data-i18n="VOICE_CATEGORY">Wake word</span></button>
+          <button type="button" class="settings-modal__category" data-settings-category="dictation" id="settings-dictation-category" hidden><span data-i18n="DICT_CATEGORY">Dictation</span></button>
+          <div class="settings-modal__group" data-i18n="SETTINGS_GROUP_ASSISTANT">Assistant</div>
+          <button type="button" class="settings-modal__category" data-settings-category="ai" id="settings-ai-category" hidden><span data-i18n="AI_CATEGORY">AI assistant</span></button>
+          <div class="settings-modal__group" data-i18n="SETTINGS_GROUP_ADVANCED">Advanced</div>
+          <button type="button" class="settings-modal__category" data-settings-category="advanced"><span data-i18n="TB_CATEGORY">Toolbar &amp; internet</span></button>
+          <button type="button" class="settings-modal__category" data-settings-category="defaults" id="settings-defaults-category" hidden><span data-i18n="DEFAULTS_CATEGORY">Defaults</span></button>
+          <button type="button" class="settings-modal__category" data-settings-category="io" id="settings-io-category" hidden><span data-i18n="IO_CATEGORY">Inputs &amp; outputs</span></button>
           <button type="button" id="settings-reset-defaults" class="modal__button--link" data-i18n="RESET_DEFAULTS">Reset Defaults</button>
         </nav>
 
         <div class="settings-modal__content">
-          <!-- General -->
+          <p class="settings-search-empty" id="settings-search-empty" hidden data-i18n="SETTINGS_SEARCH_NONE">No setting matches.</p>
           <section class="settings-modal__pane settings-modal__pane--active" data-settings-pane="general">
-            <div class="settings-field">
-              <label for="settings-language" data-i18n="SETTINGS_LANGUAGE">Language</label>
-              <select id="settings-language" data-settings-field="language">
-                <option value="en" data-i18n="LANGUAGE_EN">English</option>
-                <option value="de" data-i18n="LANGUAGE_DE">Deutsch</option>
-              </select>
+            <p class="settings-pane-intro" data-i18n="SETTINGS_INTRO_GENERAL">Language, display, updates and where OpenCue keeps its data.</p>
+            <div class="settings-section">
+              <div class="settings-section__title" data-i18n="SETTINGS_SECTION_DISPLAY">Language &amp; display</div>
+              <div class="settings-field">
+                            <label for="settings-language" data-i18n="SETTINGS_LANGUAGE">Language</label>
+                            <select id="settings-language" data-settings-field="language">
+                              <option value="en" data-i18n="LANGUAGE_EN">English</option>
+                              <option value="de" data-i18n="LANGUAGE_DE">Deutsch</option>
+                              <option value="fr" data-i18n="LANGUAGE_FR">Français</option>
+                              <option value="nl" data-i18n="LANGUAGE_NL">Nederlands</option>
+                              <option value="it" data-i18n="LANGUAGE_IT">Italiano</option>
+                              <option value="es" data-i18n="LANGUAGE_ES">Español</option>
+                            </select>
+                          </div>
+                          <div class="settings-field">
+                            <label for="settings-gui-scale-number" data-i18n="GUI_SCALE">GUI Scale</label>
+                            <div class="modal__field">
+                              <input type="number" id="settings-gui-scale-number" min="0.5" max="2.0" step="0.01" />
+                              <button type="button" id="settings-launch-scale-tool" class="modal__button" data-action="open-gui-scale-modal" data-i18n="LAUNCH_SCALE_TOOL">Launch Scale Tool...</button>
+                            </div>
+                          </div>
             </div>
-            <div class="settings-field">
-              <label for="settings-gui-scale-number" data-i18n="GUI_SCALE">GUI Scale</label>
-              <div class="modal__field">
-                <input type="number" id="settings-gui-scale-number" min="0.5" max="2.0" step="0.01" />
-                <button type="button" id="settings-launch-scale-tool" class="modal__button" data-action="open-gui-scale-modal" data-i18n="LAUNCH_SCALE_TOOL">Launch Scale Tool...</button>
+            <div class="settings-section">
+              <div class="settings-section__title" data-i18n="SETTINGS_SECTION_BEHAVIOUR">Behaviour</div>
+              <div class="settings-field">
+                            <label for="settings-layout-swipe" data-i18n="SETTINGS_LAYOUT_SWIPE">Switch layouts by swiping</label>
+                            <label class="toggle-switch">
+                              <input type="checkbox" id="settings-layout-swipe" />
+                              <span class="toggle-switch__track"></span>
+                            </label>
+                          </div>
+                          <p class="settings-field-hint" data-i18n="SETTINGS_LAYOUT_SWIPE_HINT">Only applies to this device.</p>
+              <div id="settings-autostart-section" hidden>
+                <div class="settings-field">
+                  <label for="settings-autostart-enabled" data-i18n="SYS_AUTOSTART_ENABLED">Start OpenCue when I sign in to Windows</label>
+                  <label class="toggle-switch">
+                    <input type="checkbox" id="settings-autostart-enabled" />
+                    <span class="toggle-switch__track"></span>
+                  </label>
+                </div>
+                <div class="settings-field">
+                  <label for="settings-autostart-headless" data-i18n="SYS_AUTOSTART_HEADLESS">Start without a window (server only)</label>
+                  <label class="toggle-switch">
+                    <input type="checkbox" id="settings-autostart-headless" />
+                    <span class="toggle-switch__track"></span>
+                  </label>
+                </div>
+                <p class="settings-field-hint" id="settings-autostart-hint"></p>
               </div>
             </div>
-            <div class="settings-field">
-              <label for="settings-layout-swipe" data-i18n="SETTINGS_LAYOUT_SWIPE">Switch layouts by swiping</label>
-              <label class="toggle-switch">
-                <input type="checkbox" id="settings-layout-swipe" />
-                <span class="toggle-switch__track"></span>
-              </label>
-            </div>
-            <p class="settings-field-hint" data-i18n="SETTINGS_LAYOUT_SWIPE_HINT">Only applies to this device.</p>
-            <div class="settings-field">
-              <label for="settings-update-check" data-i18n="SETTINGS_UPDATE_CHECK">Check for updates on startup</label>
-              <label class="toggle-switch">
-                <input type="checkbox" id="settings-update-check" />
-                <span class="toggle-switch__track"></span>
-              </label>
-            </div>
-            <p class="settings-field-hint" data-i18n="SETTINGS_UPDATE_CHECK_HINT">At startup OpenCue asks GitHub whether a newer version exists. This needs internet; without a connection nothing happens and OpenCue keeps working offline.</p>
-          </section>
-
-          <!-- Storage -->
-          <section class="settings-modal__pane" data-settings-pane="storage">
             <div class="settings-section">
+              <div class="settings-section__title" data-i18n="SETTINGS_SECTION_UPDATES">Updates</div>
+              <div class="settings-field">
+                            <label for="settings-update-check" data-i18n="SETTINGS_UPDATE_CHECK">Check for updates on startup</label>
+                            <label class="toggle-switch">
+                              <input type="checkbox" id="settings-update-check" />
+                              <span class="toggle-switch__track"></span>
+                            </label>
+                          </div>
+                          <p class="settings-field-hint" data-i18n="SETTINGS_UPDATE_CHECK_HINT">At startup OpenCue asks GitHub whether a newer version exists. This needs internet; without a connection nothing happens and OpenCue keeps working offline.</p>
+            </div>
+            <div class="settings-section" id="settings-backup-section">
+              <div class="settings-section__title" data-i18n="SETTINGS_SECTION_BACKUP">Show backups</div>
+              <div class="settings-field">
+                <label for="settings-backup-enabled" data-i18n="SETTINGS_BACKUP_ENABLED">Back up the show in the background</label>
+                <label class="toggle-switch">
+                  <input type="checkbox" id="settings-backup-enabled" />
+                  <span class="toggle-switch__track"></span>
+                </label>
+              </div>
+              <div class="settings-field">
+                <label for="settings-backup-interval" data-i18n="SETTINGS_BACKUP_INTERVAL">Every (minutes)</label>
+                <input type="number" id="settings-backup-interval" min="1" max="240" step="1" />
+              </div>
+              <div class="settings-field">
+                <label for="settings-backup-keep" data-i18n="SETTINGS_BACKUP_KEEP">Keep per show</label>
+                <input type="number" id="settings-backup-keep" min="1" max="50" step="1" />
+              </div>
+              <p class="settings-field-hint" data-i18n="SETTINGS_BACKUP_HINT">Saves the current state - also unsaved changes - to the backups folder, only when something changed.</p>
+              <div class="settings-net-actions">
+                <button type="button" class="modal__button" id="settings-backup-restore" data-i18n="SETTINGS_BACKUP_RESTORE">Restore backup...</button>
+                <button type="button" class="modal__button" id="settings-backup-folder" data-i18n="BACKUP_OPEN_FOLDER">Open folder</button>
+              </div>
+            </div>
+            <div class="settings-section" data-track-skip>
               <div class="settings-section__title" data-i18n="STORAGE_SECTION_TITLE">Storage Location</div>
               <div class="settings-field">
                 <label data-i18n="STORAGE_CURRENT_PATH">Current Path</label>
@@ -517,24 +688,239 @@
                 <label data-i18n="STORAGE_CUSTOM_PATH">Custom Path</label>
                 <div class="modal__field">
                   <input type="text" id="settings-custom-data-path" placeholder="%LOCALAPPDATA%\OpenCue" style="flex:1" />
+                  <button type="button" id="settings-pick-data-path" class="modal__button" data-i18n="FS_PICK_BUTTON">Choose folder...</button>
                   <button type="button" id="settings-set-data-path" class="modal__button" data-i18n="STORAGE_APPLY">Apply</button>
                   <button type="button" id="settings-reset-data-path" class="modal__button" data-i18n="STORAGE_RESET_DEFAULT">Reset to Default</button>
                 </div>
               </div>
             </div>
+            <div class="settings-section" data-track-skip>
+              <div class="settings-section__title" data-i18n="SETTINGS_IO_TITLE">Back up settings</div>
+              <p class="settings-field-hint" data-i18n="SETTINGS_IO_HINT">Save all settings as a file or take them over from one. Imported values show up as changes - Save applies them.</p>
+              <div class="settings-net-actions">
+                <button type="button" class="modal__button" id="settings-export" data-i18n="SETTINGS_EXPORT">Export settings</button>
+                <button type="button" class="modal__button" id="settings-import" data-i18n="SETTINGS_IMPORT">Import settings ...</button>
+              </div>
+            </div>
           </section>
-
-          <!-- DMX / Network -->
+          <section class="settings-modal__pane" data-settings-pane="advanced">
+            <p class="settings-pane-intro" data-i18n="SETTINGS_INTRO_ADVANCED">What the toolbar shows at the top right, and the test of the internet connection.</p>
+            <div class="settings-section" id="settings-awake-section">
+              <div class="settings-section__title" data-i18n="KA_SECTION">Keep the screen awake</div>
+              <div class="settings-field">
+                <label for="settings-keep-awake" data-i18n="KA_ENABLE">Keep computer and screen awake while OpenCue runs</label>
+                <label class="toggle-switch">
+                  <input type="checkbox" id="settings-keep-awake" checked />
+                  <span class="toggle-switch__track"></span>
+                </label>
+              </div>
+              <p class="settings-field-hint" data-i18n="KA_HINT">During a show the computer must not go to sleep or lock. Tablets (iPad) keep their screen on by themselves - that needs a secure page (HTTPS).</p>
+              <p class="settings-field-hint" id="settings-keep-awake-status"></p>
+              <div class="settings-net-actions">
+                <button type="button" class="modal__button" id="settings-keep-awake-https" hidden data-i18n="KA_OPEN_HTTPS">Set up a secure page (HTTPS) ...</button>
+              </div>
+            </div>
+            <div class="settings-section" data-track-skip id="settings-quick-section">
+              <div class="settings-section__title" data-i18n="QS_SECTION">Quick switches</div>
+              <p class="settings-field-hint" data-i18n="QS_HINT">These switches act immediately - also when their button is hidden in the toolbar.</p>
+              <div class="settings-field">
+                <label for="settings-qs-voice" data-i18n="QS_VOICE">Voice control (microphone)</label>
+                <label class="toggle-switch">
+                  <input type="checkbox" id="settings-qs-voice" data-qs="voice" />
+                  <span class="toggle-switch__track"></span>
+                </label>
+              </div>
+              <div class="settings-field">
+                <label for="settings-qs-midi" data-i18n="QS_MIDI">MIDI devices</label>
+                <label class="toggle-switch">
+                  <input type="checkbox" id="settings-qs-midi" data-qs="midi" />
+                  <span class="toggle-switch__track"></span>
+                </label>
+              </div>
+              <div class="settings-field">
+                <label for="settings-qs-blackout" data-i18n="QS_BLACKOUT">Blackout</label>
+                <label class="toggle-switch">
+                  <input type="checkbox" id="settings-qs-blackout" data-qs="blackout" />
+                  <span class="toggle-switch__track"></span>
+                </label>
+              </div>
+              <div class="settings-field">
+                <label for="settings-qs-undogo" data-i18n="QS_UNDOGO">Undo also covers Go / Back</label>
+                <label class="toggle-switch">
+                  <input type="checkbox" id="settings-qs-undogo" data-qs="undogo" />
+                  <span class="toggle-switch__track"></span>
+                </label>
+              </div>
+            </div>
+            <div class="settings-section" id="settings-toolbar-section">
+              <div class="settings-section__title" data-i18n="TB_SECTION">Toolbar (top right)</div>
+              <p class="settings-field-hint" data-i18n="TB_HINT">Choose what is shown at the top right of the menu bar. Only applies to this device. The settings gear is always visible.</p>
+              <div class="settings-field">
+                <label for="settings-tb-layout" data-i18n="TB_LAYOUT">Current layout</label>
+                <label class="toggle-switch">
+                  <input type="checkbox" id="settings-tb-layout" data-tb="layout" />
+                  <span class="toggle-switch__track"></span>
+                </label>
+              </div>
+              <div class="settings-field">
+                <label for="settings-tb-stage" data-i18n="TB_STAGE">Current stage</label>
+                <label class="toggle-switch">
+                  <input type="checkbox" id="settings-tb-stage" data-tb="stage" />
+                  <span class="toggle-switch__track"></span>
+                </label>
+              </div>
+              <div class="settings-field">
+                <label for="settings-tb-show" data-i18n="TB_SHOW">Current show</label>
+                <label class="toggle-switch">
+                  <input type="checkbox" id="settings-tb-show" data-tb="show" />
+                  <span class="toggle-switch__track"></span>
+                </label>
+              </div>
+              <div class="settings-field">
+                <label for="settings-tb-blackout" data-i18n="TB_BLACKOUT">Blackout switch</label>
+                <label class="toggle-switch">
+                  <input type="checkbox" id="settings-tb-blackout" data-tb="blackout" />
+                  <span class="toggle-switch__track"></span>
+                </label>
+              </div>
+              <div class="settings-field">
+                <label for="settings-tb-timecode" data-i18n="TB_TIMECODE">Timecode</label>
+                <label class="toggle-switch">
+                  <input type="checkbox" id="settings-tb-timecode" data-tb="timecode" />
+                  <span class="toggle-switch__track"></span>
+                </label>
+              </div>
+              <div class="settings-field">
+                <label for="settings-tb-clock" data-i18n="TB_CLOCK">Clock</label>
+                <label class="toggle-switch">
+                  <input type="checkbox" id="settings-tb-clock" data-tb="clock" />
+                  <span class="toggle-switch__track"></span>
+                </label>
+              </div>
+              <div class="settings-field">
+                <label for="settings-tb-dmx" data-i18n="TB_DMX">DMX heart (output status)</label>
+                <label class="toggle-switch">
+                  <input type="checkbox" id="settings-tb-dmx" data-tb="dmx" />
+                  <span class="toggle-switch__track"></span>
+                </label>
+              </div>
+              <div class="settings-field">
+                <label for="settings-tb-remote" data-i18n="TB_REMOTE">Connected remote devices</label>
+                <label class="toggle-switch">
+                  <input type="checkbox" id="settings-tb-remote" data-tb="remote" />
+                  <span class="toggle-switch__track"></span>
+                </label>
+              </div>
+              <div class="settings-field">
+                <label for="settings-tb-kiosk" data-i18n="TB_KIOSK">Operator mode button</label>
+                <label class="toggle-switch">
+                  <input type="checkbox" id="settings-tb-kiosk" data-tb="kiosk" />
+                  <span class="toggle-switch__track"></span>
+                </label>
+              </div>
+              <div class="settings-field">
+                <label for="settings-tb-lock" data-i18n="TB_LOCK">Lock screen button</label>
+                <label class="toggle-switch">
+                  <input type="checkbox" id="settings-tb-lock" data-tb="lock" />
+                  <span class="toggle-switch__track"></span>
+                </label>
+              </div>
+              <div class="settings-field">
+                <label for="settings-tb-voice" data-i18n="TB_VOICE">Voice control (microphone)</label>
+                <label class="toggle-switch">
+                  <input type="checkbox" id="settings-tb-voice" data-tb="voice" />
+                  <span class="toggle-switch__track"></span>
+                </label>
+              </div>
+              <div class="settings-field">
+                <label for="settings-tb-midi" data-i18n="TB_MIDI">MIDI devices</label>
+                <label class="toggle-switch">
+                  <input type="checkbox" id="settings-tb-midi" data-tb="midi" />
+                  <span class="toggle-switch__track"></span>
+                </label>
+              </div>
+              <div class="settings-field">
+                <label for="settings-tb-undogo" data-i18n="TB_UNDOGO">Undo switch (including Go)</label>
+                <label class="toggle-switch">
+                  <input type="checkbox" id="settings-tb-undogo" data-tb="undogo" />
+                  <span class="toggle-switch__track"></span>
+                </label>
+              </div>
+            </div>
+            <div class="settings-section" data-track-skip id="settings-net-section" hidden>
+              <div class="settings-section__title" data-i18n="NET_SECTION">Internet connection</div>
+              <p class="settings-field-hint" data-i18n="NET_HINT">OpenCue only needs the internet for updates and GDTF Share.</p>
+              <div class="settings-net-actions">
+                <button type="button" class="modal__button" id="settings-net-test" data-i18n="NET_TEST">Test connection</button>
+              </div>
+              <ul id="settings-net-result" class="net-result"></ul>
+            </div>
+          </section>
+          <section class="settings-modal__pane" data-settings-pane="appearance">
+            <p class="settings-pane-intro" data-i18n="SETTINGS_INTRO_APPEARANCE">Colours and look of the program and of newly created panels.</p>
+            <div class="settings-section">
+              <div id="settings-theme-root" class="theme-root"></div>
+            </div>
+            <div class="settings-section">
+              <div class="settings-section__title" data-i18n="SETTINGS_SECTION_NEW_PANELS">New panels</div>
+              <div class="settings-field">
+                <label data-i18n="PANEL_DEFAULTS_BG_COLOR">Background Color</label>
+                <div class="modal__field">
+                  <input type="color" class="color-swatch-input" id="settings-panel-defaults-bg-swatch" />
+                  <input type="text" class="color-hex-input" id="settings-panel-defaults-bg-hex" maxlength="7" />
+                </div>
+              </div>
+              <div class="settings-field">
+                <label data-i18n="PANEL_DEFAULTS_TEXT_COLOR">Text Color</label>
+                <div class="modal__field">
+                  <input type="color" class="color-swatch-input" id="settings-panel-defaults-text-swatch" />
+                  <input type="text" class="color-hex-input" id="settings-panel-defaults-text-hex" maxlength="7" />
+                </div>
+              </div>
+              <div class="settings-field">
+                <label data-i18n="PANEL_DEFAULTS_HEADER_BG_COLOR">Header Background</label>
+                <div class="modal__field">
+                  <input type="color" class="color-swatch-input" id="settings-panel-defaults-header-bg-swatch" />
+                  <input type="text" class="color-hex-input" id="settings-panel-defaults-header-bg-hex" maxlength="7" />
+                </div>
+              </div>
+              <div class="settings-field">
+                <label data-i18n="PANEL_DEFAULTS_SHADOW">Drop Shadow Enabled by Default</label>
+                <label class="toggle-switch">
+                  <input type="checkbox" id="settings-panel-defaults-shadow" checked />
+                  <span class="toggle-switch__track"></span>
+                </label>
+              </div>
+              <div class="settings-field">
+                <label for="settings-panel-defaults-corners" data-i18n="PANEL_DEFAULTS_CORNERS">Corner radius for new panels</label>
+                <select id="settings-panel-defaults-corners" class="settings__select">
+                  <option value="global" data-i18n="PANEL_CORNERS_GLOBAL">Same as global</option>
+                  <option value="round" data-i18n="PANEL_CORNERS_ROUND">Rounded</option>
+                  <option value="square" data-i18n="PANEL_CORNERS_SQUARE">Square</option>
+                </select>
+              </div>
+            </div>
+          </section>
           <section class="settings-modal__pane" data-settings-pane="dmx-network">
+            <p class="settings-pane-intro" data-i18n="SETTINGS_INTRO_DMX">Where the light signal goes: Art-Net, sACN and USB DMX.</p>
             <div class="settings-section">
               <div class="settings-section__title">Art-Net</div>
-              <div class="settings-field">
+              <div class="settings-field settings-master">
                 <label data-i18n="SETTINGS_ARTNET_ENABLE">Enable</label>
                 <label class="toggle-switch">
                   <input type="checkbox" id="settings-artnet-enabled" data-settings-field="artnet_enabled" />
                   <span class="toggle-switch__track"></span>
                 </label>
               </div>
+              <p class="settings-field-hint settings-keep" data-i18n="SETTINGS_ARTNET_HINT">Off until you switch it on.</p>
+              <div class="settings-field">
+                <label for="settings-artnet-auto" data-i18n="SETTINGS_ARTNET_AUTO">Find devices automatically</label>
+                <label class="toggle-switch">
+                  <input type="checkbox" id="settings-artnet-auto" data-settings-field="artnet_auto" />
+                  <span class="toggle-switch__track"></span>
+                </label>
+              </div>
+              <p class="settings-field-hint" data-i18n="SETTINGS_ARTNET_AUTO_HINT">OpenCue looks for Art-Net devices in the network and sends to each of them directly - plug in a node and it just works.</p>
               <div class="settings-field">
                 <label for="settings-artnet-target-ip" data-i18n="SETTINGS_ARTNET_TARGET_IP">Target IP</label>
                 <input type="text" id="settings-artnet-target-ip" data-settings-field="artnet_ip" />
@@ -546,17 +932,22 @@
               <div class="settings-field settings-protocol-status-row">
                 <span id="settings-artnet-status" class="settings-protocol-status"></span>
               </div>
+              <div class="settings-net-actions" data-track-skip>
+                <button type="button" class="modal__button" id="settings-artnet-scan" data-i18n="SETTINGS_ARTNET_SCAN">Scan network</button>
+              </div>
+              <div id="settings-artnet-nodes" class="artnet-nodes" data-track-skip></div>
             </div>
 
             <div class="settings-section">
               <div class="settings-section__title">sACN</div>
-              <div class="settings-field">
+              <div class="settings-field settings-master">
                 <label data-i18n="SETTINGS_SACN_ENABLE">Enable</label>
                 <label class="toggle-switch">
                   <input type="checkbox" id="settings-sacn-enabled" data-settings-field="sacn_enabled" />
                   <span class="toggle-switch__track"></span>
                 </label>
               </div>
+              <p class="settings-field-hint settings-keep" data-i18n="SETTINGS_SACN_HINT">Off until you switch it on.</p>
               <div class="settings-field settings-protocol-status-row">
                 <span id="settings-sacn-status" class="settings-protocol-status"></span>
               </div>
@@ -564,7 +955,7 @@
 
             <div class="settings-section">
               <div class="settings-section__title" data-i18n="SETTINGS_ENTTEC_TITLE">USB DMX Output (Enttec Pro / FTDI)</div>
-              <div class="settings-field">
+              <div class="settings-field settings-master">
                 <label data-i18n="SETTINGS_ENTTEC_ENABLE">Enable</label>
                 <label class="toggle-switch">
                   <input type="checkbox" id="settings-enttec-enabled" data-settings-field="enttec_enabled" />
@@ -608,97 +999,227 @@
                 <button type="button" id="settings-dmx-reinit-btn" class="modal__button modal__button--primary settings-dmx-reinit-btn" data-i18n="SETTINGS_DMX_REINIT_BTN">Re-initialize DMX Interfaces</button>
               </div>
             </div>
+          
           </section>
-
-          <!-- Appearance -->
-          <section class="settings-modal__pane" data-settings-pane="appearance">
-            <div id="settings-theme-root" class="theme-root"></div>
-          </section>
-
-          <!-- Remote-Zugriff (nur an der Konsole selbst sichtbar) -->
-          <section class="settings-modal__pane" data-settings-pane="remote">
-            <div class="settings-section">
-              <div class="settings-section__title" data-i18n="SETTINGS_REMOTE_TITLE">Remote control</div>
+          <!-- Sicherheit: EIN Passwort (Fernzugriff + Sichermodus), Sichermodus ein/aus, automatische Sperre (nur an der Konsole selbst; static/js/lock.js, app/remote.py) -->
+          <section class="settings-modal__pane" data-settings-pane="security">
+            <p class="settings-pane-intro" data-i18n="SETTINGS_INTRO_SECURITY">One password protects remote access and the lock screen.</p>
+            <div class="settings-section" id="settings-security-section">
+              <div class="settings-section__title" data-i18n="SEC_PASSWORD_TITLE">Password</div>
               <div class="settings-field">
-                <label data-i18n="SETTINGS_REMOTE_ENABLE">Allow access from the network</label>
+                <label for="settings-remote-password" data-i18n="SETTINGS_REMOTE_PASSWORD">Password</label>
+                <div class="settings-remote-password">
+                  <input type="password" id="settings-remote-password" autocomplete="new-password" maxlength="64" />
+                  <button type="button" class="modal__button--link" id="settings-remote-password-toggle" data-i18n="SETTINGS_REMOTE_SHOW">Show</button>
+                </div>
+              </div>
+              <p class="settings-field-hint settings-keep" data-i18n="SEC_PASSWORD_HINT">There is no default password: you choose it yourself. At least 4 characters.</p>
+            </div>
+            <div class="settings-section" id="settings-lock-section">
+              <div class="settings-section__title" data-i18n="SEC_LOCK_TITLE">Lock mode</div>
+              <div class="settings-field">
+                <label for="settings-lock-enabled" data-i18n="SEC_LOCK_ENABLE">Use lock mode</label>
+                <label class="toggle-switch">
+                  <input type="checkbox" id="settings-lock-enabled" />
+                  <span class="toggle-switch__track"></span>
+                </label>
+              </div>
+              <p class="settings-field-hint settings-keep" data-i18n="SEC_LOCK_HINT">Lock the console with the lock button in the top bar or Ctrl+L. A locked console shows only a password window; the show keeps running.</p>
+              <div class="settings-field">
+                <label for="settings-lock-minutes" data-i18n="SEC_AUTO_LABEL">Lock automatically after</label>
+                <select id="settings-lock-minutes" class="settings__select"></select>
+              </div>
+              <p class="settings-field-hint settings-keep" data-i18n="SEC_AUTO_HINT">Without any input at the console (or at a remote device, which then logs out).</p>
+            </div>
+          </section>
+          <section class="settings-modal__pane" data-settings-pane="remote">
+            <p class="settings-pane-intro" data-i18n="SETTINGS_INTRO_REMOTE">Use OpenCue from tablets and other computers in the network.</p>
+            <div class="settings-section" id="settings-remote-section">
+              <div class="settings-field settings-master">
+                <label for="settings-remote-master" data-i18n="SETTINGS_REMOTE_MASTER">Remote access</label>
+                <label class="toggle-switch">
+                  <input type="checkbox" id="settings-remote-master" />
+                  <span class="toggle-switch__track"></span>
+                </label>
+              </div>
+              <p class="settings-field-hint settings-keep" data-i18n="SETTINGS_REMOTE_MASTER_HINT">Off: nothing leaves this computer. When you switch it on, Windows asks once - allow private networks.</p>
+              <div id="settings-remote-status" class="settings-remote-status settings-keep"></div>
+              <div id="settings-remote-mdns-status" class="settings-remote-name settings-keep" hidden></div>
+
+              <div class="settings-section__title settings-subtitle" data-i18n="REMOTE_SEC_CONNECTION">Connection</div>
+              <div class="settings-field">
+                <label data-i18n="SETTINGS_REMOTE_HTTP_ENABLE">Allow access over HTTP</label>
                 <label class="toggle-switch">
                   <input type="checkbox" id="settings-remote-enabled" />
                   <span class="toggle-switch__track"></span>
                 </label>
               </div>
               <div class="settings-field">
-                <label for="settings-remote-password" data-i18n="SETTINGS_REMOTE_PASSWORD">Password</label>
-                <div class="settings-remote-password">
-                  <input type="password" id="settings-remote-password" autocomplete="off" maxlength="64" />
-                  <button type="button" class="modal__button--link" id="settings-remote-password-toggle" data-i18n="SETTINGS_REMOTE_SHOW">Show</button>
-                </div>
-              </div>
-              <div class="settings-field">
-                <label for="settings-remote-port" data-i18n="SETTINGS_REMOTE_PORT">Port</label>
+                <label for="settings-remote-port" data-i18n="SETTINGS_REMOTE_PORT">HTTP port</label>
                 <input type="number" id="settings-remote-port" min="1024" max="65535" step="1" />
               </div>
               <div id="settings-remote-restart" class="settings-remote-restart" hidden data-i18n="SETTINGS_REMOTE_RESTART">A changed port takes effect after restarting OpenCue.</div>
-            </div>
-            <div class="settings-section">
-              <div class="settings-section__head">
-                <div class="settings-section__title" data-i18n="SETTINGS_REMOTE_CONNECTION">Connection</div>
-                <button type="button" class="modal__button settings-remote-refresh" id="settings-remote-refresh">
-                  <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M20 5.5V10h-4.5M4 18.5V14h4.5"/><path d="M6.2 9.5A7 7 0 0118.6 10M17.8 14.5A7 7 0 015.4 14"/></svg>
-                  <span data-i18n="SETTINGS_REMOTE_REFRESH">Detect addresses again</span>
-                </button>
+              <div class="settings-field">
+                <label data-i18n="SETTINGS_REMOTE_HTTPS_ENABLE">Allow access over HTTPS</label>
+                <label class="toggle-switch">
+                  <input type="checkbox" id="settings-remote-https-enabled" />
+                  <span class="toggle-switch__track"></span>
+                </label>
               </div>
-              <div id="settings-remote-status" class="settings-remote-status"></div>
+              <div class="settings-field">
+                <label for="settings-remote-https-port" data-i18n="SETTINGS_REMOTE_HTTPS_PORT">HTTPS port</label>
+                <input type="number" id="settings-remote-https-port" min="1024" max="65535" step="1" />
+              </div>
+              <div class="settings-field">
+                <label for="settings-remote-mdns" data-i18n="SETTINGS_REMOTE_MDNS_ENABLE">Use network name (opencue.local)</label>
+                <label class="toggle-switch">
+                  <input type="checkbox" id="settings-remote-mdns" />
+                  <span class="toggle-switch__track"></span>
+                </label>
+              </div>
+              <div class="settings-section__title settings-subtitle" data-i18n="REMOTE_SEC_LOGIN">Login</div>
+              <div class="settings-field settings-keep">
+                <label data-i18n="SETTINGS_REMOTE_PASSWORD">Password</label>
+                <div class="settings-stack">
+                  <span id="settings-remote-password-state" class="settings-remote-hint"></span>
+                  <button type="button" class="modal__button" id="settings-remote-password-open" data-i18n="REMOTE_PW_OPEN">Set or change password ...</button>
+                </div>
+              </div>
+              <p class="settings-field-hint settings-keep" data-i18n="REMOTE_PW_SHARED_HINT">The same password also protects the lock screen (Settings -> Security).</p>
+              <div class="settings-section__title settings-subtitle" data-i18n="REMOTE_SEC_ADDRESSES">Addresses</div>
               <div class="settings-remote-grid">
                 <div id="settings-remote-info" class="settings-remote-info"></div>
                 <div id="settings-remote-qr" class="settings-remote-qr" hidden></div>
               </div>
+              <div class="settings-remote-grid">
+                <div id="settings-remote-https-info" class="settings-remote-info"></div>
+                <div id="settings-remote-https-qr" class="settings-remote-qr" hidden></div>
+              </div>
+              <div id="settings-remote-cert" class="settings-keep" hidden>
+                <div class="settings-section__title settings-subtitle" data-i18n="CERT_TITLE">Certificate for iPad and browsers</div>
+                <p class="settings-field-hint" data-i18n="CERT_HINT">Install this certificate once on the device and trust it: then the secure page (HTTPS) works without a warning, the home-screen app opens and the offline page works - also when the computer gets a new IP address.</p>
+                <div class="settings-remote-grid">
+                  <div class="settings-remote-info" id="settings-remote-cert-info"></div>
+                  <div id="settings-remote-cert-qr" class="settings-remote-qr" hidden></div>
+                </div>
+                <details class="settings-advanced">
+                  <summary data-i18n="CERT_INSTALL_SUM">Install (short)</summary>
+                  <p class="settings-field-hint"><strong data-i18n="CERT_SAFARI">Important: open the address in Safari.</strong></p>
+                  <ol class="settings-field-hint settings-remote-steps" id="settings-remote-cert-install"></ol>
+                </details>
+                <details class="settings-advanced">
+                  <summary data-i18n="CERT_REMOVE_SUM">Remove again</summary>
+                  <ul class="settings-field-hint settings-remote-steps" id="settings-remote-cert-remove"></ul>
+                </details>
+              </div>
+              <details class="settings-advanced settings-keep">
+                <summary data-i18n="SETTINGS_ADVANCED">Advanced</summary>
+                <div class="settings-field">
+                  <button type="button" class="modal__button settings-remote-refresh" id="settings-remote-refresh">
+                    <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M20 5.5V10h-4.5M4 18.5V14h4.5"/><path d="M6.2 9.5A7 7 0 0118.6 10M17.8 14.5A7 7 0 015.4 14"/></svg>
+                    <span data-i18n="SETTINGS_REMOTE_REFRESH">Detect addresses again</span>
+                  </button>
+                </div>
+              </details>
+            </div>
+            <div class="settings-section" id="settings-firewall-section" hidden>
+              <div class="settings-section__title" data-i18n="SYS_FIREWALL_TITLE">Windows Firewall</div>
+              <div class="settings-field">
+                <label data-i18n="SYS_FIREWALL_RULE">Firewall rule</label>
+                <div class="settings-stack">
+                  <div id="settings-firewall-status" class="settings-remote-status"></div>
+                  <button type="button" class="modal__button" id="settings-firewall-add" data-i18n="SYS_FIREWALL_ADD">Allow OpenCue in the firewall</button>
+                  <button type="button" class="modal__button" id="settings-firewall-remove" data-i18n="SYS_FIREWALL_REMOVE" hidden>Remove the firewall rule</button>
+                </div>
+              </div>
+              <p class="settings-field-hint" data-i18n="SYS_FIREWALL_HINT">Without a rule Windows asks once whether OpenCue may use the network.</p>
+              <p class="settings-field-hint" id="settings-admin-note"></p>
             </div>
           </section>
+          <section class="settings-modal__pane" data-settings-pane="api">
+            <p class="settings-pane-intro" data-i18n="SETTINGS_INTRO_API">Let other programs read and control OpenCue with tokens.</p>
+            <div id="settings-api-root" class="api-settings" data-search-keys="API_ENABLE_LABEL API_HINT API_REACH API_REACH_LOCAL API_REACH_NETWORK API_CORS API_BASE_URL API_DOCS_URL API_EXAMPLE API_TOKENS API_NEW"></div>
+          </section>
 
-          <section class="settings-modal__pane" data-settings-pane="panel-defaults">
-            <div class="settings-field">
-              <label data-i18n="PANEL_DEFAULTS_BG_COLOR">Background Color</label>
-              <div class="modal__field">
-                <input type="color" class="color-swatch-input" id="settings-panel-defaults-bg-swatch" />
-                <input type="text" class="color-hex-input" id="settings-panel-defaults-bg-hex" maxlength="7" />
-              </div>
-            </div>
-            <div class="settings-field">
-              <label data-i18n="PANEL_DEFAULTS_TEXT_COLOR">Text Color</label>
-              <div class="modal__field">
-                <input type="color" class="color-swatch-input" id="settings-panel-defaults-text-swatch" />
-                <input type="text" class="color-hex-input" id="settings-panel-defaults-text-hex" maxlength="7" />
-              </div>
-            </div>
-            <div class="settings-field">
-              <label data-i18n="PANEL_DEFAULTS_HEADER_BG_COLOR">Header Background</label>
-              <div class="modal__field">
-                <input type="color" class="color-swatch-input" id="settings-panel-defaults-header-bg-swatch" />
-                <input type="text" class="color-hex-input" id="settings-panel-defaults-header-bg-hex" maxlength="7" />
-              </div>
-            </div>
-            <div class="settings-field">
-              <label data-i18n="PANEL_DEFAULTS_SHADOW">Drop Shadow Enabled by Default</label>
-              <label class="toggle-switch">
-                <input type="checkbox" id="settings-panel-defaults-shadow" checked />
-                <span class="toggle-switch__track"></span>
-              </label>
-            </div>
-            <div class="settings-field">
-              <label for="settings-panel-defaults-corners" data-i18n="PANEL_DEFAULTS_CORNERS">Corner radius for new panels</label>
-              <select id="settings-panel-defaults-corners" class="settings__select">
-                <option value="global" data-i18n="PANEL_CORNERS_GLOBAL">Same as global</option>
-                <option value="round" data-i18n="PANEL_CORNERS_ROUND">Rounded</option>
-                <option value="square" data-i18n="PANEL_CORNERS_SQUARE">Square</option>
-              </select>
-            </div>
+          <!-- KI-Assistent (Ollama): Server, Modell, Parameter, Berechtigungen (nur an der Konsole selbst; static/js/ai_settings.js) -->
+          <section class="settings-modal__pane" data-settings-pane="ai">
+            <p class="settings-pane-intro" data-i18n="SETTINGS_INTRO_AI">Chat with a language model that runs on your own computer (Ollama).</p>
+            <div id="settings-ai-root" class="ai-settings" data-search-keys="AI_ENABLE AI_URL AI_KEY AI_TEST AI_MODEL_DEFAULT_LABEL AI_SECTION_BEHAVIOUR AI_DEFAULT_MODE AI_AUTO_TITLE AI_TOOLS_MODE AI_SECTION_PERMS AI_PERM_READ AI_PERM_WRITE AI_PERM_CRITICAL AI_SECTION_ALLOWED AI_SECTION_ADVANCED AI_NUM_CTX AI_TEMPERATURE AI_NUM_PREDICT AI_TIMEOUT"></div>
+          </section>
+
+          <!-- Tastatur: Kuerzel anzeigen, eigene Tastenbelegung (static/js/controls_settings.js, static/js/hotkeys.js) -->
+          <section class="settings-modal__pane" data-settings-pane="keyboard">
+            <p class="settings-pane-intro" data-i18n="SETTINGS_INTRO_KB">Keyboard shortcuts of the program and your own key mapping.</p>
+            <div id="settings-keyboard-root" class="ai-settings" data-search-keys="KB_SECTION KB_SECTION_HINT KB_SHOW KB_CUSTOM"></div>
+          </section>
+
+          <!-- MIDI: verwenden, Geraete waehlen, Ausgang, Belegung oeffnen (nur an der Konsole selbst; static/js/controls_settings.js, app/midi_engine.py) -->
+          <section class="settings-modal__pane" data-settings-pane="midi">
+            <p class="settings-pane-intro" data-i18n="SETTINGS_INTRO_MIDI">Connect, choose and map MIDI devices.</p>
+            <div id="settings-midi-root" class="ai-settings" data-search-keys="MIDI_SET_SECTION_MAIN MIDI_SET_ENABLE MIDI_SET_ENABLE_HINT MIDI_SET_SECTION_IN MIDI_SET_USE MIDI_SET_SECTION_OUT MIDI_SET_OUT_HINT MIDI_SET_SECTION_TIME MIDI_SET_MTC MIDI_SET_MTC_HINT MIDI_SET_CLOCK MIDI_SET_CLOCK_HINT MIDI_SET_SECTION_SEND MIDI_SET_MTC_OUT MIDI_SET_CLOCK_OUT MIDI_SET_SECTION_MSC MIDI_SET_MSC MIDI_SET_SECTION_MAP MIDI_SET_OPEN"></div>
+          </section>
+
+          <!-- OSC: ein-/ausschalten, Port, Dialog oeffnen (nur an der Konsole selbst; static/js/controls_settings.js, app/osc.py) -->
+          <section class="settings-modal__pane" data-settings-pane="osc">
+            <p class="settings-pane-intro" data-i18n="SETTINGS_INTRO_OSC">Control OpenCue from tablets and other programs over the network.</p>
+            <div id="settings-osc-root" class="ai-settings" data-search-keys="OSC_CATEGORY OSC_SET_SECTION OSC_SET_ENABLE OSC_SET_ENABLE_HINT OSC_SET_PORT OSC_SET_OPEN OSC_WARNING"></div>
+          </section>
+
+          <!-- Timecode: LTC (Timecode als Audiosignal) lesen (static/js/ltc_settings.js, app/ltc.py, app/ltc_routes.py) -->
+          <section class="settings-modal__pane" data-settings-pane="timecode">
+            <p class="settings-pane-intro" data-i18n="SETTINGS_INTRO_TIMECODE">Let OpenCue follow an external clock: LTC, timecode as an audio signal.</p>
+            <div id="settings-timecode-root" class="ai-settings" data-search-keys="TC_CATEGORY LTC_SECTION LTC_SECTION_HINT LTC_ENABLE LTC_ENABLE_HINT LTC_DEVICE LTC_CHANNEL LTC_CHANNEL_HINT LTC_STATUS"></div>
+          </section>
+
+          <!-- Sprachsteuerung: Mikrofon, Weckwort, Empfindlichkeit (nur an der Konsole selbst; static/js/voice.js, app/voice.py) -->
+          <section class="settings-modal__pane" data-settings-pane="voice">
+            <p class="settings-pane-intro" data-i18n="SETTINGS_INTRO_VOICE">Say the wake word (or press the microphone button) - everything stays on this computer, no internet needed.</p>
+            <div id="settings-voice-root" class="ai-settings" data-search-keys="VOICE_SECTION_WAKE VOICE_ENABLE VOICE_ENABLE_HINT VOICE_DEVICE VOICE_WORD VOICE_SENSITIVITY VOICE_SECTION_TEST"></div>
+          </section>
+
+          <!-- Diktieren: Sprache -> Text im KI-Chat (Mikrofon, Sprachmodell; nur an der Konsole selbst; static/js/dictation.js, app/dictation.py) -->
+          <section class="settings-modal__pane" data-settings-pane="dictation">
+            <p class="settings-pane-intro" data-i18n="SETTINGS_INTRO_DICT">Speech to text in the AI chat.</p>
+            <div id="settings-dictation-root" class="ai-settings" data-search-keys="DICT_SECTION DICT_SECTION_HINT DICT_DEVICE DICT_MODEL"></div>
+          </section>
+
+          <!-- Standardwerte: neue Cues (Abspielart, Zeiten, MIB), Grundzustand nach Clear Clear (nur an der Konsole selbst; static/js/defaults_settings.js, app/console_defaults.py) -->
+          <section class="settings-modal__pane" data-settings-pane="defaults">
+            <p class="settings-pane-intro" data-i18n="SETTINGS_INTRO_DEFAULTS">Starting values that apply to the whole program, for every show.</p>
+            <div id="settings-defaults-root" class="ai-settings" data-search-keys="DEFAULTS_SECTION_DELETE DEFAULTS_DEL_CUES DEFAULTS_DEL_FIXTURES DEFAULTS_DEL_LIBRARY DEFAULTS_DEL_FILES DEFAULTS_DEL_OTHER DEFAULTS_SECTION_CUES DEFAULTS_SECTION_CLEAR DEFAULTS_SECTION_START DEFAULTS_CUE_PLAY DEFAULTS_CUE_TRIGGER DEFAULTS_CUE_DELAY DEFAULTS_CUE_FADE DEFAULTS_CUE_MIB DEFAULTS_UPDATE_MODE DEFAULTS_CLEAR_DIMMER DEFAULTS_CLEAR_COLOR DEFAULTS_CLEAR_POSITION DEFAULTS_START_MASTER DEFAULTS_START_BLACKOUT DEFAULTS_EXECUTOR_START"></div>
+          </section>
+
+          <!-- Ein- & Ausgaenge: alle benutzten Ausgaenge / Eingaenge und wofuer (nur Anzeige; static/js/io_settings.js, app/io_overview.py) -->
+          <section class="settings-modal__pane" data-settings-pane="io">
+            <p class="settings-pane-intro" data-i18n="SETTINGS_INTRO_IO">Which output or input is used for what.</p>
+            <div id="settings-io-root" class="ai-settings" data-search-keys="IOV_USED IO_SECTION IOV_G_DMX IOV_G_NETWORK IOV_G_AUDIO IOV_G_KEYBOARDS IOV_G_OTHER IO_INPUTS IO_OUTPUTS IOV_ROLE_UPDATE IOV_ROLE_GDTF"></div>
           </section>
         </div>
       </div>
 
       <div class="modal__footer">
-        <button type="button" data-modal-cancel="settings" class="modal__button" data-i18n="CANCEL">Cancel</button>
-        <button type="button" id="settings-save" class="modal__button modal__button--primary" data-i18n="SAVE_APPLY">Save &amp; Apply</button>
+        <button type="button" id="settings-save" class="modal__button modal__button--primary">Save</button>
+        <button type="button" id="settings-cancel" class="modal__button" data-i18n="SETTINGS_CLOSE">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Fernzugriff einschalten: erst ein eigenes Passwort festlegen (stapelt auf den Einstellungen) -->
+  <div class="modal-backdrop modal-backdrop--stacked" data-modal-backdrop="remote-password" aria-hidden="true">
+    <div class="modal modal--cue-update modal--s" role="dialog" aria-modal="true" aria-labelledby="remote-password-title">
+      <div class="modal__header">
+        <span id="remote-password-title" data-i18n="REMOTE_PW_TITLE">Set a password first</span>
+        <button type="button" class="modal__close" data-modal-close="remote-password" aria-label="Close" data-i18n-aria="CLOSE">&times;</button>
+      </div>
+      <div class="modal__body">
+        <p style="margin:0 0 var(--sp-3);line-height:1.5" data-i18n="REMOTE_PW_BODY">Before remote access can be switched on you need your own password. You can change it at any time.</p>
+        <input type="password" id="remote-password-new" class="settings__text-input" style="width:100%;box-sizing:border-box" autocomplete="new-password" maxlength="64" data-i18n-placeholder="LOCK_PASSWORD" placeholder="Password" />
+        <input type="password" id="remote-password-repeat" class="settings__text-input" style="width:100%;box-sizing:border-box;margin-top:var(--sp-2)" autocomplete="new-password" maxlength="64" data-i18n-placeholder="REMOTE_PW_REPEAT" placeholder="Repeat password" />
+        <p id="remote-password-error" class="cue-store__hint cue-store__hint--error" hidden></p>
+      </div>
+      <div class="modal__footer">
+        <button type="button" id="remote-password-cancel" class="modal__button" data-i18n="CANCEL">Cancel</button>
+        <button type="button" id="remote-password-ok" class="modal__button modal__button--primary" data-i18n="REMOTE_PW_OK">Set password</button>
       </div>
     </div>
   </div>
@@ -710,7 +1231,7 @@
        or cancelling only ever closes this dialog, never the Settings modal
        underneath it. -->
   <div class="modal-backdrop modal-backdrop--stacked" data-modal-backdrop="reset-confirm" aria-hidden="true">
-    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="reset-confirm-title">
+    <div class="modal modal--xs" role="dialog" aria-modal="true" aria-labelledby="reset-confirm-title">
       <div class="modal__header">
         <span id="reset-confirm-title" data-i18n="RESET_CONFIRM_TITLE">Reset Settings</span>
         <button type="button" class="modal__close" data-modal-close="reset-confirm" aria-label="Close" data-i18n-aria="CLOSE">&times;</button>
@@ -727,7 +1248,7 @@
 
   <!-- Storage-path change/reset confirmation - stacked on top of Settings modal -->
   <div class="modal-backdrop modal-backdrop--stacked" data-modal-backdrop="data-path-confirm" aria-hidden="true">
-    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="data-path-confirm-title">
+    <div class="modal modal--xs" role="dialog" aria-modal="true" aria-labelledby="data-path-confirm-title">
       <div class="modal__header">
         <span id="data-path-confirm-title"></span>
         <button type="button" class="modal__close" data-modal-close="data-path-confirm" aria-label="Close" data-i18n-aria="CLOSE">&times;</button>
@@ -744,7 +1265,7 @@
 
   <!-- Remote-Client-Verwaltung (Toolbar-Icon -> nur an der Konsole). -->
   <div class="modal-backdrop" data-modal-backdrop="remote-clients" aria-hidden="true">
-    <div class="modal modal--remote-clients" role="dialog" aria-modal="true" aria-labelledby="remote-clients-title">
+    <div class="modal modal--remote-clients modal--s" role="dialog" aria-modal="true" aria-labelledby="remote-clients-title">
       <div class="modal__header">
         <span id="remote-clients-title" data-i18n="REMOTE_CLIENTS_TITLE">Remote clients</span>
         <button type="button" class="modal__close" data-modal-close="remote-clients" aria-label="Close" data-i18n-aria="CLOSE">&times;</button>
@@ -780,7 +1301,7 @@
        Panel type list is populated dynamically from PanelRegistry via the
        state_snapshot payload; clicking a type sends add_panel + closes. -->
   <div class="modal-backdrop" data-modal-backdrop="add-panel" aria-hidden="true">
-    <div class="modal modal--addpanel" role="dialog" aria-modal="true" aria-labelledby="add-panel-modal-title">
+    <div class="modal modal--addpanel modal--l" role="dialog" aria-modal="true" aria-labelledby="add-panel-modal-title">
       <div class="modal__header">
         <span id="add-panel-modal-title" data-i18n="ADD_PANEL">Add Panel...</span>
         <button type="button" class="modal__close" data-modal-close="add-panel" aria-label="Close" data-i18n-aria="CLOSE">&times;</button>
@@ -809,7 +1330,7 @@
        Opened by _guardUnsavedChanges() when navigating away with unsaved data.
        Wired in setupFileMenu(). -->
   <div class="modal-backdrop modal-backdrop--stacked" data-modal-backdrop="unsaved-changes" aria-hidden="true">
-    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="unsaved-changes-title">
+    <div class="modal modal--xs" role="dialog" aria-modal="true" aria-labelledby="unsaved-changes-title">
       <div class="modal__header">
         <span id="unsaved-changes-title" data-i18n="UNSAVED_CHANGES_TITLE">Unsaved Changes</span>
         <button type="button" class="modal__close" data-modal-close="unsaved-changes" aria-label="Close" data-i18n-aria="CLOSE">&times;</button>
@@ -819,7 +1340,7 @@
           The current show has unsaved changes. Do you want to save before continuing?
         </p>
       </div>
-      <div class="modal__footer">
+      <div class="modal__footer modal__footer--decision">
         <button type="button" id="unsaved-cancel-button" class="modal__button" data-i18n="CANCEL">Cancel</button>
         <button type="button" id="unsaved-dont-save-button" class="modal__button" data-i18n="UNSAVED_DONT_SAVE">Don't Save</button>
         <button type="button" id="unsaved-save-button" class="modal__button modal__button--primary" data-i18n="UNSAVED_SAVE">Save</button>
@@ -829,12 +1350,17 @@
 
   <!-- Beenden-Dialog (X, Datei > Beenden, Ctrl+Q) - touch-optimiert -->
   <div class="modal-backdrop" data-modal-backdrop="close-confirm" aria-hidden="true">
-    <div class="modal modal--touch" role="dialog" aria-modal="true" aria-labelledby="close-confirm-title">
+    <div class="modal modal--touch modal--xs" role="dialog" aria-modal="true" aria-labelledby="close-confirm-title">
       <div class="modal__header modal__header--touch">
         <span id="close-confirm-title" data-i18n="CLOSE_CONFIRM_TITLE">Programm beenden</span>
         <button type="button" class="modal__close" data-modal-close="close-confirm" aria-label="Close" data-i18n-aria="CLOSE">&times;</button>
       </div>
       <div class="modal__body modal__body--touch">
+        <div id="close-warn" class="close-warn" role="alert" hidden>
+          <div class="close-warn__title" id="close-warn-title" data-i18n="CLOSE_WARN_TITLE">This show cannot be saved</div>
+          <ul class="close-warn__list" id="close-warn-list"></ul>
+          <div class="close-warn__note" id="close-warn-note"></div>
+        </div>
         <p data-i18n="CLOSE_CONFIRM_BODY" style="margin:0;line-height:1.5">Möchtest du das Programm wirklich beenden?</p>
       </div>
       <div class="modal__footer modal__footer--stack">
@@ -845,9 +1371,278 @@
     </div>
   </div>
 
+  <!-- Sicherung wiederherstellen (Datei-Menue, Einstellungen; static/js/backups.js, app/backups.py) -->
+  <div class="modal-backdrop" data-modal-backdrop="backup-restore" aria-hidden="true">
+    <div class="modal modal--backups modal--m" role="dialog" aria-modal="true" aria-labelledby="backup-title">
+      <div class="modal__header">
+        <span id="backup-title" data-i18n="BACKUP_TITLE">Restore a backup</span>
+        <button type="button" class="modal__close" data-modal-close="backup-restore" aria-label="Close" data-i18n-aria="CLOSE">&times;</button>
+      </div>
+      <div class="modal__body">
+        <p class="bk__intro" data-i18n="BACKUP_INTRO">OpenCue saves the current state of your show in the background.</p>
+        <div class="bk__head"><span data-i18n="BACKUP_COL_SHOW">Show</span><span data-i18n="BACKUP_COL_TIME">Taken</span><span data-i18n="BACKUP_COL_REASON">Reason</span><span></span><span></span></div>
+        <div id="backup-list" class="bk__list"></div>
+        <p id="backup-empty" class="bk__empty" data-i18n="BACKUP_EMPTY" hidden>No backups yet.</p>
+        <p class="bk__dir" id="backup-dir"></p>
+      </div>
+      <div class="modal__footer">
+        <button type="button" class="modal__button" id="backup-now" data-i18n="BACKUP_NOW">Back up now</button>
+        <button type="button" class="modal__button" id="backup-open-folder" data-i18n="BACKUP_OPEN_FOLDER">Open folder</button>
+        <button type="button" class="modal__button" data-modal-cancel="backup-restore" data-i18n="CLOSE">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-backdrop" data-modal-backdrop="backup-recovery" aria-hidden="true">
+    <div class="modal modal--xs" role="alertdialog" aria-modal="true" aria-labelledby="backup-recovery-title">
+      <div class="modal__header">
+        <span id="backup-recovery-title" data-i18n="BACKUP_RECOVERY_TITLE">OpenCue was not closed properly</span>
+        <button type="button" class="modal__close" data-modal-close="backup-recovery" aria-label="Close" data-i18n-aria="CLOSE">&times;</button>
+      </div>
+      <div class="modal__body">
+        <p id="backup-recovery-body" style="margin:0;line-height:1.5"></p>
+      </div>
+      <div class="modal__footer modal__footer--decision">
+        <button type="button" class="modal__button" id="backup-recovery-later" data-i18n="BACKUP_RECOVERY_LATER">Not now</button>
+        <button type="button" class="modal__button" id="backup-recovery-all" data-i18n="BACKUP_RECOVERY_ALL">Show all backups</button>
+        <button type="button" class="modal__button modal__button--primary" id="backup-recovery-restore" data-i18n="BACKUP_RESTORE">Restore</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3D-Buehne als JSON bearbeiten (3D-Panel, Menue Bibliothek; static/js/sim_json.js, app/sim_stages.py) -->
+  <div class="modal-backdrop" data-modal-backdrop="sim-json" aria-hidden="true">
+    <div class="modal modal--simjson modal--l" role="dialog" aria-modal="true" aria-labelledby="simjson-title">
+      <div class="modal__header">
+        <span id="simjson-title" data-i18n="SIMJSON_TITLE">3D stage as JSON</span>
+        <span class="simjson__name" id="simjson-name"></span>
+        <button type="button" class="modal__close" data-modal-close="sim-json" aria-label="Close" data-i18n-aria="CLOSE">&times;</button>
+      </div>
+      <div class="modal__body simjson">
+        <p class="simjson__intro" data-i18n="SIMJSON_INTRO">The working copy of the stage as text: room settings, objects and fixture positions (metres, degrees, Z up). Fixtures are listed by their number. Check shows what would be taken over; Apply works like a change in the 3D panel.</p>
+        <textarea id="simjson-text" class="simjson__text" spellcheck="false" wrap="off" autocomplete="off" autocapitalize="off"></textarea>
+        <p id="simjson-status" class="simjson__status"></p>
+        <details class="simjson__legend-wrap"><summary data-i18n="SIMJSON_LEGEND">Fixture numbers</summary><div id="simjson-legend" class="simjson__legend"></div></details>
+      </div>
+      <div class="modal__footer">
+        <button type="button" class="modal__button" id="simjson-reload" data-i18n="SIMJSON_RELOAD">Reload</button>
+        <button type="button" class="modal__button" id="simjson-format" data-i18n="SIMJSON_FORMAT">Tidy up</button>
+        <button type="button" class="modal__button" data-modal-cancel="sim-json" data-i18n="CLOSE">Close</button>
+        <button type="button" class="modal__button" id="simjson-check" data-i18n="SIMJSON_CHECK">Check</button>
+        <button type="button" class="modal__button modal__button--primary" id="simjson-apply" data-i18n="SIMJSON_APPLY">Apply</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scheinwerfer-Liste aus CSV / Excel (Menue Bibliothek, Scheinwerfer hinzufuegen -> Erweiterte Importfunktionen; static/js/fixture_import.js, app/fixture_import.py) -->
+  <div class="modal-backdrop" data-modal-backdrop="fx-import" aria-hidden="true">
+    <div class="modal modal--fxi modal--m" role="dialog" aria-modal="true" aria-labelledby="fxi-title">
+      <div class="modal__header">
+        <span id="fxi-title" data-i18n="FXI_TITLE">Import fixture list</span>
+        <button type="button" class="modal__close" data-modal-close="fx-import" aria-label="Close" data-i18n-aria="CLOSE">&times;</button>
+      </div>
+      <div class="modal__body fxi">
+        <div id="fxi-step-file">
+          <p class="fxi__intro" data-i18n="FXI_INTRO">Add many fixtures at once from a table (.csv or Excel .xlsx). The first row holds the column titles: name, type, mode, universe, address, number, count - only type is needed.</p>
+          <div class="fxi__buttons">
+            <button type="button" class="modal__button modal__button--primary" id="fxi-pick" data-i18n="FXI_PICK">Choose file ...</button>
+            <button type="button" class="modal__button" id="fxi-template" data-i18n="FXI_TEMPLATE">Download the current patch as CSV (template)</button>
+          </div>
+        </div>
+        <div id="fxi-step-map" hidden>
+          <p class="fxi__count" id="fxi-count"></p>
+          <div class="fxi__mapping" id="fxi-mapping"></div>
+          <div class="fxi__defaults">
+            <label>
+              <span data-i18n="FXI_DEFAULT_TYPE">Type when the cell is empty</span>
+              <select id="fxi-default-type" class="settings__select"></select>
+            </label>
+            <label>
+              <span data-i18n="FXI_DEFAULT_UNIVERSE">Universe when missing</span>
+              <input type="number" id="fxi-default-universe" min="1" max="64" step="1" />
+            </label>
+          </div>
+          <div class="fxi__table-wrap">
+            <table class="fxi__table">
+              <thead><tr><th>#</th><th data-i18n="FXI_F_NAME">Name</th><th data-i18n="FXI_F_TYPE">Type</th><th data-i18n="FXI_F_MODE">Mode</th><th data-i18n="FXI_F_UNIVERSE">Universe</th><th data-i18n="FXI_F_ADDRESS">Address</th><th data-i18n="FXI_F_FID">Number</th><th data-i18n="FXI_F_COUNT">Count</th><th></th></tr></thead>
+              <tbody id="fxi-rows"></tbody>
+            </table>
+          </div>
+          <p class="fxi__summary" id="fxi-summary"></p>
+        </div>
+        <p class="fxi__msg" id="fxi-msg"></p>
+      </div>
+      <div class="modal__footer">
+        <label class="fxi__skip" id="fxi-skip-wrap" hidden><input type="checkbox" class="oc-check" id="fxi-skip" /> <span data-i18n="FXI_SKIP">Skip rows with problems</span></label>
+        <button type="button" class="modal__button" id="fxi-again" data-i18n="FXI_AGAIN" hidden>Other file ...</button>
+        <button type="button" class="modal__button" data-modal-cancel="fx-import" data-i18n="CANCEL">Cancel</button>
+        <button type="button" class="modal__button modal__button--primary" id="fxi-import" data-i18n="FXI_IMPORT" hidden disabled>Import</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Willkommen beim ersten Start (nicht schliessbar; static/js/welcome.js) -->
+  <div class="modal-backdrop" data-modal-backdrop="welcome" aria-hidden="true">
+    <div class="modal modal--welcome modal--m" role="dialog" aria-modal="true" aria-labelledby="welcome-title">
+      <div class="modal__header">
+        <span id="welcome-title">Welcome</span>
+        <span class="welcome__dots" id="welcome-dots"></span>
+      </div>
+      <div class="modal__body welcome" id="welcome-body"></div>
+      <div class="modal__footer">
+        <button type="button" class="modal__button modal__button--link welcome__skip" id="welcome-skip" data-i18n="WELCOME_SKIP">Skip</button>
+        <button type="button" class="modal__button" id="welcome-back" data-i18n="WELCOME_BACK" hidden>Back</button>
+        <button type="button" class="modal__button modal__button--primary" id="welcome-next" data-i18n="WELCOME_NEXT">Next</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Drucken / PDF: Dokumentation der Show (Datei-Menue; static/js/report.js, app/reports.py) -->
+  <div class="modal-backdrop" data-modal-backdrop="report" aria-hidden="true">
+    <div class="modal modal--report modal--l" role="dialog" aria-modal="true" aria-labelledby="report-title">
+      <div class="modal__header">
+        <span id="report-title" data-i18n="REPORT_TITLE">Print / PDF</span>
+        <button type="button" class="modal__close" data-modal-close="report" aria-label="Close" data-i18n-aria="CLOSE">&times;</button>
+      </div>
+      <div class="modal__body report">
+        <div class="report__options">
+        <p class="report__intro" data-i18n="REPORT_INTRO">Documentation of this show for technicians - as a PDF to save or print. Choose what it should contain.</p>
+        <label class="report__row"><input type="checkbox" class="oc-check" id="report-part-patch" /><span class="report__name" data-i18n="REPORT_PATCH">Patch list</span><span class="report__hint" data-i18n="REPORT_PATCH_HINT">every fixture with number, type, universe and DMX address</span><span class="report__count" id="report-count-patch"></span></label>
+        <label class="report__row"><input type="checkbox" class="oc-check" id="report-part-universes" /><span class="report__name" data-i18n="REPORT_UNIVERSES">DMX channel map</span><span class="report__hint" data-i18n="REPORT_UNIVERSES_HINT">which fixture occupies which channels of each universe; overlaps in red</span><span class="report__count" id="report-count-universes"></span></label>
+        <label class="report__row"><input type="checkbox" class="oc-check" id="report-part-groups" /><span class="report__name" data-i18n="REPORT_GROUPS">Groups</span><span class="report__hint" data-i18n="REPORT_GROUPS_HINT">which fixture belongs to which group</span><span class="report__count" id="report-count-groups"></span></label>
+        <label class="report__row"><input type="checkbox" class="oc-check" id="report-part-plan" /><span class="report__name" data-i18n="REPORT_PLAN">Plan (top view)</span><span class="report__hint" data-i18n="REPORT_PLAN_HINT">where the fixtures are - from the 3D stage, otherwise from the fixture layout view</span><span class="report__count" id="report-count-plan"></span></label>
+        <label class="report__row"><input type="checkbox" class="oc-check" id="report-part-cues" /><span class="report__name" data-i18n="REPORT_CUES">Cue lists</span><span class="report__hint" data-i18n="REPORT_CUES_HINT">cue number, name, trigger and times</span><span class="report__count" id="report-count-cues"></span></label>
+        <div class="report__paper"><label for="report-paper" data-i18n="REPORT_PAPER">Paper</label>
+          <select id="report-paper" class="settings__select"><option value="a4">A4</option><option value="letter">Letter</option></select></div>
+        </div>
+        <div class="report__preview" id="report-preview-box">
+          <iframe id="report-preview" class="report__frame" data-i18n-tip="REPORT_PREVIEW" title="Preview"></iframe>
+          <p class="report__preview-empty" id="report-preview-empty" data-i18n="REPORT_PREVIEW_EMPTY" hidden>Choose at least one part to see a preview.</p>
+        </div>
+      </div>
+      <div class="modal__footer">
+        <button type="button" class="modal__button" data-modal-cancel="report" data-i18n="CLOSE">Close</button>
+        <button type="button" class="modal__button" id="report-print" data-i18n="REPORT_PRINT">Open to print</button>
+        <button type="button" class="modal__button modal__button--primary" id="report-save" data-i18n="REPORT_SAVE">Save as PDF</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- OpenCue-Explorer: Dateien im Datenordner verwalten / einen Ordner aussuchen - ersetzt den Windows-Explorer auf Fernzugriffs-Geraeten (static/js/fs_browser.js, app/fs_browser.py) -->
+  <div class="modal-backdrop" data-modal-backdrop="fs-browser" aria-hidden="true">
+    <div class="modal modal--fsb modal--xl" role="dialog" aria-modal="true" aria-labelledby="fs-title">
+      <div class="modal__header">
+        <span id="fs-title" data-i18n="FS_TITLE">OpenCue Explorer</span>
+        <button type="button" class="modal__close" data-modal-close="fs-browser" aria-label="Close" data-i18n-aria="CLOSE">&times;</button>
+      </div>
+      <div class="modal__body fsb" id="fs-body"></div>
+      <div class="modal__footer">
+        <button type="button" id="fs-use" class="modal__button modal__button--primary" data-i18n="FS_PICK_USE" hidden>Use this folder</button>
+        <button type="button" data-modal-cancel="fs-browser" class="modal__button" data-i18n="CLOSE">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- DMX-Eingang: Art-Net / sACN empfangen, weiterleiten / mischen, Ausloeser (Menue Steuerung; static/js/dmx_in.js, app/dmx_in.py) -->
+  <div class="modal-backdrop" data-modal-backdrop="dmx-in" aria-hidden="true">
+    <div class="modal modal--osc modal--dmxin modal--l" role="dialog" aria-modal="true" aria-labelledby="dmxin-title">
+      <div class="modal__header">
+        <span id="dmxin-title" data-i18n="DMXIN_TITLE">DMX input (Art-Net / sACN)</span>
+        <button type="button" class="modal__close" data-modal-close="dmx-in" aria-label="Close" data-i18n-aria="CLOSE">&times;</button>
+      </div>
+      <div class="modal__body osc dmxin" id="dmxin-body"></div>
+      <div class="modal__footer">
+        <button type="button" data-modal-cancel="dmx-in" class="modal__button" data-i18n="CLOSE">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- OSC: Empfangen und Senden (Menue Steuerung; static/js/osc.js, app/osc.py) -->
+  <div class="modal-backdrop" data-modal-backdrop="osc" aria-hidden="true">
+    <div class="modal modal--osc modal--l" role="dialog" aria-modal="true" aria-labelledby="osc-title">
+      <div class="modal__header">
+        <span id="osc-title" data-i18n="OSC_TITLE">OSC (Open Sound Control)</span>
+        <button type="button" class="modal__close" data-modal-close="osc" aria-label="Close" data-i18n-aria="CLOSE">&times;</button>
+      </div>
+      <div class="modal__body osc">
+        <p class="osc__intro" data-i18n="OSC_INTRO">Control OpenCue from other programs and devices over the network.</p>
+        <p class="osc__warning" data-i18n="OSC_WARNING">OSC has no password: anyone in the network can send.</p>
+        <p class="osc__warning" id="osc-readonly" data-i18n="OSC_READONLY" hidden>OSC can only be changed at the console computer itself.</p>
+        <div class="osc__grid">
+          <label for="osc-enabled" data-i18n="OSC_ON">Receive OSC</label>
+          <label class="toggle-switch"><input type="checkbox" id="osc-enabled" /><span class="toggle-switch__track"></span></label>
+          <label for="osc-port" data-i18n="OSC_PORT">UDP port</label>
+          <input type="number" id="osc-port" min="1" max="65535" step="1" />
+          <span></span><div id="osc-status" class="osc__status"></div>
+          <label for="osc-allow" data-i18n="OSC_ALLOW">Allowed senders</label>
+          <input type="text" id="osc-allow" data-i18n-placeholder="OSC_ALLOW_PH" placeholder="empty = anyone" autocomplete="off" spellcheck="false" />
+          <label for="osc-raw" data-i18n="OSC_RAW">Allow any command (/opencue/cmd)</label>
+          <label class="toggle-switch"><input type="checkbox" id="osc-raw" /><span class="toggle-switch__track"></span></label>
+          <span></span><p class="osc__hint" data-i18n="OSC_RAW_HINT">/opencue/cmd runs ANY console command.</p>
+          <label for="osc-send-host" data-i18n="OSC_SEND_TO">Send to</label>
+          <div class="osc__send">
+            <input type="text" id="osc-send-host" data-i18n-placeholder="OSC_SEND_HOST_PH" placeholder="192.168.1.20" autocomplete="off" spellcheck="false" />
+            <input type="number" id="osc-send-port" min="1" max="65535" step="1" />
+            <button type="button" class="modal__button" id="osc-send-test" data-i18n="OSC_SEND_TEST">Send test message</button>
+          </div>
+          <span></span><p class="osc__hint" data-i18n="OSC_SEND_HINT">The console command Osc /address 0.5 sends a message to this target.</p>
+          <label for="osc-fb-on" data-i18n="OSC_FB_ON">Report state back (feedback)</label>
+          <label class="toggle-switch"><input type="checkbox" id="osc-fb-on" /><span class="toggle-switch__track"></span></label>
+          <span></span><p class="osc__hint" data-i18n="OSC_FB_HINT">OpenCue reports changes by itself.</p>
+          <label for="osc-fb-senders" data-i18n="OSC_FB_SENDERS">Also to every sender</label>
+          <label class="toggle-switch"><input type="checkbox" id="osc-fb-senders" /><span class="toggle-switch__track"></span></label>
+          <span></span><p class="osc__hint" data-i18n="OSC_FB_SENDERS_HINT">OpenCue also answers every device that has sent it a message.</p>
+          <span></span>
+          <div class="osc__send">
+            <div id="osc-fb-status" class="osc__status"></div>
+            <button type="button" class="modal__button" id="osc-fb-now" data-i18n="OSC_FB_NOW">Send everything now</button>
+          </div>
+        </div>
+        <div class="osc__title" data-i18n="OSC_MAPPINGS">Your addresses</div>
+        <div id="osc-list" class="osc__list"></div>
+        <p id="osc-empty" class="osc__empty" data-i18n="OSC_EMPTY" hidden>No mappings yet.</p>
+        <div><button type="button" class="modal__button modal__button--primary" id="osc-add"><span class="osc__add-plus" aria-hidden="true">+</span> <span data-i18n="OSC_ADD">New mapping</span></button></div>
+        <details class="osc__details">
+          <summary data-i18n="OSC_BUILTIN">Built-in addresses</summary>
+          <div id="osc-builtin" class="osc__builtin"></div>
+        </details>
+        <details class="osc__details">
+          <summary data-i18n="OSC_FB_WHAT">What is reported</summary>
+          <div id="osc-fb-items" class="osc__builtin"></div>
+        </details>
+        <div class="osc__title" data-i18n="OSC_MONITOR">Incoming messages</div>
+        <div id="osc-monitor" class="osc__monitor"></div>
+        <p id="osc-monitor-empty" class="osc__empty" data-i18n="OSC_MONITOR_EMPTY">Nothing received yet.</p>
+      </div>
+      <div class="modal__footer">
+        <button type="button" class="modal__button" data-modal-cancel="osc" data-i18n="CLOSE">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Zeitplan der Show (Menue Steuerung; static/js/schedule.js, app/schedule.py, app/timeofday.py) -->
+  <div class="modal-backdrop" data-modal-backdrop="schedule" aria-hidden="true">
+    <div class="modal modal--schedule modal--l" role="dialog" aria-modal="true" aria-labelledby="schedule-title">
+      <div class="modal__header">
+        <span id="schedule-title" data-i18n="SCH_TITLE">Schedule</span>
+        <span class="sch__clock" id="schedule-clock"></span>
+        <button type="button" class="modal__close" data-modal-close="schedule" aria-label="Close" data-i18n-aria="CLOSE">&times;</button>
+      </div>
+      <div class="modal__body">
+        <p class="sch__intro" data-i18n="SCH_INTRO">Commands that run at a time of day - on certain weekdays or once on a date. The schedule belongs to the show and is saved with it.</p>
+        <div id="schedule-list" class="sch__list"></div>
+        <p id="schedule-empty" class="sch__empty" data-i18n="SCH_EMPTY" hidden>No entries yet.</p>
+      </div>
+      <div class="modal__footer">
+        <button type="button" class="modal__button" id="schedule-add" data-i18n="SCH_ADD">New entry</button>
+        <button type="button" class="modal__button" data-modal-cancel="schedule" data-i18n="CLOSE">Close</button>
+      </div>
+    </div>
+  </div>
+
   <!-- New Show confirm modal -->
   <div class="modal-backdrop modal-backdrop--stacked" data-modal-backdrop="new-show-confirm" aria-hidden="true">
-    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="new-show-confirm-title">
+    <div class="modal modal--xs" role="dialog" aria-modal="true" aria-labelledby="new-show-confirm-title">
       <div class="modal__header">
         <span id="new-show-confirm-title" data-i18n="FILE_NEW">New Showfile</span>
         <button type="button" class="modal__close" data-modal-close="new-show-confirm" aria-label="Close" data-i18n-aria="CLOSE">&times;</button>
@@ -864,7 +1659,7 @@
 
   <!-- Save Show As modal -->
   <div class="modal-backdrop modal-backdrop--stacked" data-modal-backdrop="save-show-as" aria-hidden="true">
-    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="save-as-title">
+    <div class="modal modal--s" role="dialog" aria-modal="true" aria-labelledby="save-as-title">
       <div class="modal__header">
         <span id="save-as-title" data-i18n="FILE_SAVE_AS">Save Showfile As...</span>
         <button type="button" class="modal__close" data-modal-close="save-show-as" aria-label="Close" data-i18n-aria="CLOSE">&times;</button>
@@ -883,7 +1678,7 @@
 
   <!-- Cue speichern (Nummer/Position/Name) -->
   <div class="modal-backdrop" data-modal-backdrop="cue-store" aria-hidden="true">
-    <div class="modal modal--cue-store" role="dialog" aria-modal="true" aria-labelledby="cue-store-title">
+    <div class="modal modal--cue-store modal--s" role="dialog" aria-modal="true" aria-labelledby="cue-store-title">
       <div class="modal__header">
         <span id="cue-store-title" data-i18n="CUE_STORE_TITLE">Store Cue</span>
         <button type="button" class="modal__close" data-modal-close="cue-store" aria-label="Close" data-i18n-aria="CLOSE">&times;</button>
@@ -896,6 +1691,12 @@
         <p id="cue-store-hint" class="cue-store__hint" role="status"></p>
         <label for="cue-store-name" data-i18n="CUE_STORE_NAME">Name (optional)</label>
         <input id="cue-store-name" type="text" maxlength="80" autocomplete="off" class="settings__text-input">
+        <label for="cue-store-playmode" data-i18n="CUE_PLAY_MODE">Playback</label>
+        <select id="cue-store-playmode" class="settings__text-input">
+          <option value="tracking" data-i18n="CUE_PLAY_TRACKING">Relative - only the changes</option>
+          <option value="absolute" data-i18n="CUE_PLAY_ABSOLUTE">Absolute - exactly this state</option>
+        </select>
+        <p class="cue-store__hint" data-i18n="CUE_PLAY_HINT">The full state of all fixtures is always stored with the cue. Relative plays only your changes; absolute sets every fixture exactly as it is now.</p>
       </div>
       <div class="modal__footer">
         <button type="button" data-modal-cancel="cue-store" class="modal__button" data-i18n="CANCEL">Cancel</button>
@@ -906,7 +1707,7 @@
 
   <!-- Cue-Nummer existiert bereits: Zusammenfuehren / Ueberschreiben / Abbrechen -->
   <div class="modal-backdrop modal-backdrop--stacked" data-modal-backdrop="cue-conflict" aria-hidden="true">
-    <div class="modal modal--cue-conflict" role="dialog" aria-modal="true" aria-labelledby="cue-conflict-title">
+    <div class="modal modal--cue-conflict modal--xs" role="dialog" aria-modal="true" aria-labelledby="cue-conflict-title">
       <div class="modal__header">
         <span id="cue-conflict-title" data-i18n="CUE_CONFLICT_TITLE">Cue number already exists</span>
         <button type="button" class="modal__close" data-modal-close="cue-conflict" aria-label="Close" data-i18n-aria="CLOSE">&times;</button>
@@ -916,17 +1717,17 @@
         <p class="cue-conflict__option"><strong data-i18n="CUE_CONFLICT_MERGE">Merge</strong><span data-i18n="CUE_CONFLICT_MERGE_HINT"></span></p>
         <p class="cue-conflict__option"><strong data-i18n="CUE_CONFLICT_OVERWRITE">Overwrite</strong><span data-i18n="CUE_CONFLICT_OVERWRITE_HINT"></span></p>
       </div>
-      <div class="modal__footer cue-conflict__footer">
+      <div class="modal__footer modal__footer--decision">
         <button type="button" data-modal-cancel="cue-conflict" class="modal__button" data-i18n="CANCEL">Cancel</button>
-        <button type="button" id="cue-conflict-merge" class="modal__button modal__button--primary" data-i18n="CUE_CONFLICT_MERGE">Merge</button>
         <button type="button" id="cue-conflict-overwrite" class="modal__button modal__button--danger" data-i18n="CUE_CONFLICT_OVERWRITE">Overwrite</button>
+        <button type="button" id="cue-conflict-merge" class="modal__button modal__button--primary" data-i18n="CUE_CONFLICT_MERGE">Merge</button>
       </div>
     </div>
   </div>
 
   <!-- Aktive Cue aktualisieren: Normal / Nur diese Cue -->
   <div class="modal-backdrop" data-modal-backdrop="cue-update" aria-hidden="true">
-    <div class="modal modal--cue-update" role="dialog" aria-modal="true" aria-labelledby="cue-update-title">
+    <div class="modal modal--cue-update modal--xs" role="dialog" aria-modal="true" aria-labelledby="cue-update-title">
       <div class="modal__header">
         <span id="cue-update-title" data-i18n="CUE_UPDATE_TITLE">Update active cue</span>
         <button type="button" class="modal__close" data-modal-close="cue-update" aria-label="Close" data-i18n-aria="CLOSE">&times;</button>
@@ -947,44 +1748,10 @@
   </div>
 
   <!-- 3D-Buehnen verwalten (Muster: Layouts verwalten) -->
-<!--3D-AUS
-  <div class="modal-backdrop" data-modal-backdrop="stage-manage" aria-hidden="true">
-    <div class="modal modal--stages" role="dialog" aria-modal="true" aria-labelledby="stage-manage-title">
-      <div class="modal__header">
-        <span id="stage-manage-title" data-i18n="ST3D_MANAGE_TITLE">Manage Stages</span>
-        <button type="button" class="modal__close" data-modal-close="stage-manage" aria-label="Close" data-i18n-aria="CLOSE">&times;</button>
-      </div>
-      <div class="modal__body">
-        <div class="fxlib__tabs" id="stage-manage-tabs" role="tablist">
-          <button type="button" role="tab" class="fxlib__tab fxlib__tab--active" data-stage-tab="room" aria-selected="true"></button>
-          <button type="button" role="tab" class="fxlib__tab" data-stage-tab="rig" aria-selected="false"></button>
-        </div>
-        <div class="stage-current" id="stage-manage-current">
-          <span class="stage-current__label" id="stage-manage-active-label"></span>
-          <span class="stage-current__name" id="stage-manage-name">&mdash;</span>
-          <span class="stage-current__state" id="stage-manage-state"></span>
-        </div>
-        <p class="layout-manage__hint" id="stage-manage-hint"></p>
-        <div class="stage-actions">
-          <button type="button" id="stage-manage-save" class="modal__button modal__button--primary modal__button--icon"></button>
-          <button type="button" id="stage-manage-saveas" class="modal__button modal__button--icon"></button>
-          <button type="button" id="stage-manage-new" class="modal__button modal__button--icon"></button>
-          <button type="button" id="stage-manage-export" class="modal__button modal__button--icon"></button>
-          <button type="button" id="stage-manage-import" class="modal__button modal__button--icon"></button>
-          <input type="file" id="stage-manage-import-input" accept=".json,application/json" hidden />
-        </div>
-        <ul class="stage-list" id="stage-manage-list"></ul>
-      </div>
-      <div class="modal__footer">
-        <button type="button" data-modal-cancel="stage-manage" class="modal__button" data-i18n="CLOSE">Close</button>
-      </div>
-    </div>
-  </div>
-3D-AUS-->
 
   <!-- Dateimanager: Shows, Layouts, 3D-Buehnen, Effekte, Scheinwerfer-Dateien (static/js/file_manager.js) -->
   <div class="modal-backdrop" data-modal-backdrop="file-manager" aria-hidden="true">
-    <div class="modal modal--files" role="dialog" aria-modal="true" aria-labelledby="fm-title">
+    <div class="modal modal--files modal--xl" role="dialog" aria-modal="true" aria-labelledby="fm-title">
       <div class="modal__header">
         <span id="fm-title" data-i18n="FM_TITLE">File manager</span>
         <button type="button" class="modal__close" data-modal-close="file-manager" aria-label="Close" data-i18n-aria="CLOSE">&times;</button>
@@ -998,7 +1765,7 @@
 
   <!-- Effekt-Studio: Effekt oeffnen / neuer Effekt / Hilfe (static/js/app.js, Abschnitt "Effekt-Studio") -->
   <div class="modal-backdrop" data-modal-backdrop="fxs-open" aria-hidden="true">
-    <div class="modal modal--fxs-open" role="dialog" aria-modal="true" aria-labelledby="fxs-open-title">
+    <div class="modal modal--fxs-open modal--l" role="dialog" aria-modal="true" aria-labelledby="fxs-open-title">
       <div class="modal__header">
         <span id="fxs-open-title" data-i18n="FXS_OPEN_TITLE">Open effect</span>
         <button type="button" class="modal__close" data-modal-close="fxs-open" aria-label="Close" data-i18n-aria="CLOSE">&times;</button>
@@ -1009,7 +1776,7 @@
   </div>
 
   <div class="modal-backdrop" data-modal-backdrop="fxs-new" aria-hidden="true">
-    <div class="modal modal--fxs-new" role="dialog" aria-modal="true" aria-labelledby="fxs-new-title">
+    <div class="modal modal--fxs-new modal--m" role="dialog" aria-modal="true" aria-labelledby="fxs-new-title">
       <div class="modal__header">
         <span id="fxs-new-title" data-i18n="FXS_NEW_TITLE">New effect</span>
         <button type="button" class="modal__close" data-modal-close="fxs-new" aria-label="Close" data-i18n-aria="CLOSE">&times;</button>
@@ -1020,7 +1787,7 @@
   </div>
 
   <div class="modal-backdrop" data-modal-backdrop="fxs-help" aria-hidden="true">
-    <div class="modal modal--fxs-help" role="dialog" aria-modal="true" aria-labelledby="fxs-help-title">
+    <div class="modal modal--fxs-help modal--xl" role="dialog" aria-modal="true" aria-labelledby="fxs-help-title">
       <div class="modal__header">
         <span id="fxs-help-title" data-i18n="FXS_HELP_TITLE">Effect studio guide</span>
         <button type="button" class="modal__close" data-modal-close="fxs-help" aria-label="Close" data-i18n-aria="CLOSE">&times;</button>
@@ -1034,7 +1801,7 @@
 
   <!-- Export-Paket der geladenen Show: was soll mit? -->
   <div class="modal-backdrop" data-modal-backdrop="file-export" aria-hidden="true">
-    <div class="modal modal--fmexport" role="dialog" aria-modal="true" aria-labelledby="fm-export-title">
+    <div class="modal modal--fmexport modal--s" role="dialog" aria-modal="true" aria-labelledby="fm-export-title">
       <div class="modal__header">
         <span id="fm-export-title" data-i18n="FM_EXPORT_TITLE">Export show</span>
         <button type="button" class="modal__close" data-modal-close="file-export" aria-label="Close" data-i18n-aria="CLOSE">&times;</button>
@@ -1047,9 +1814,44 @@
     </div>
   </div>
 
+  <!-- Eigener Scheinwerfer-Editor (static/js/fixture_editor.js, app/fixture_editor.py): baut eine lokale GDTF-Datei -->
+  <div class="modal-backdrop modal-backdrop--stacked" data-modal-backdrop="fixture-editor" aria-hidden="true">
+    <div class="modal modal--fxed modal--xl" role="dialog" aria-modal="true" aria-labelledby="fxed-title">
+      <div class="modal__header">
+        <span id="fxed-title" data-i18n="FXED_TITLE">Own fixture</span>
+        <button type="button" class="modal__close" data-modal-close="fixture-editor" aria-label="Close" data-i18n-aria="CLOSE">&times;</button>
+      </div>
+      <div class="modal__body fxed" id="fxed-body">
+        <div class="fxlib__tabs" role="tablist">
+          <button type="button" role="tab" class="fxlib__tab fxlib__tab--active" data-fxed-tab="general" aria-selected="true" data-i18n="FXED_TAB_GENERAL">General</button>
+          <button type="button" role="tab" class="fxlib__tab" data-fxed-tab="channels" aria-selected="false" data-i18n="FXED_TAB_CHANNELS">Modes &amp; channels</button>
+          <button type="button" role="tab" class="fxlib__tab" data-fxed-tab="media" aria-selected="false" data-i18n="FXED_TAB_MEDIA">Picture &amp; 3D</button>
+        </div>
+        <div class="fxed__panes">
+          <div id="fxed-pane-general" class="fxed__pane"></div>
+          <div id="fxed-pane-channels" class="fxed__pane" hidden>
+            <div class="fxed__modes" id="fxed-modes"></div>
+            <div class="fxed__channels" id="fxed-channels"></div>
+            <div class="fxed__foot" id="fxed-foot"></div>
+            <div id="fxed-warn"></div>
+          </div>
+          <div id="fxed-pane-media" class="fxed__pane" hidden></div>
+        </div>
+        <p class="fxed__error" id="fxed-error" role="alert" hidden></p>
+        <input type="file" id="fxed-csv-input" accept=".csv,.txt,text/csv,text/plain" hidden />
+        <input type="file" id="fxed-image-input" accept="image/*" hidden />
+        <input type="file" id="fxed-model-input" accept=".glb,.3ds" hidden />
+      </div>
+      <div class="modal__footer">
+        <button type="button" data-modal-cancel="fixture-editor" class="modal__button" data-i18n="CANCEL">Cancel</button>
+        <button type="button" id="fxed-save" class="modal__button modal__button--primary" data-i18n="FXED_SAVE">Save</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Scheinwerfer-Bibliothek: installierte GDTF-Dateien verwalten, GDTF Share durchsuchen und installieren -->
   <div class="modal-backdrop" data-modal-backdrop="fixture-library" aria-hidden="true">
-    <div class="modal modal--fxlib" role="dialog" aria-modal="true" aria-labelledby="fxlib-title">
+    <div class="modal modal--fxlib modal--xl" role="dialog" aria-modal="true" aria-labelledby="fxlib-title">
       <div class="modal__header">
         <span id="fxlib-title" data-i18n="FXLIB_TITLE">Fixture Library</span>
         <button type="button" class="modal__close" data-modal-close="fixture-library" aria-label="Close" data-i18n-aria="CLOSE">&times;</button>
@@ -1060,6 +1862,7 @@
           <button type="button" role="tab" id="fxlib-tab-show" class="fxlib__tab" data-fxlib-tab="show" aria-selected="false"></button>
           <button type="button" role="tab" id="fxlib-tab-online" class="fxlib__tab" data-fxlib-tab="online" aria-selected="false" data-i18n="FXLIB_TAB_ONLINE">Online (GDTF Share)</button>
           <span class="fxlib__spacer"></span>
+          <button type="button" id="fxlib-new" class="modal__button" data-i18n="FXLIB_NEW">Own fixture...</button>
           <button type="button" id="fxlib-import" class="modal__button" data-i18n="FXLIB_IMPORT">Import GDTF file...</button>
           <input type="file" id="fxlib-import-input" accept=".gdtf" multiple hidden />
         </div>
@@ -1078,6 +1881,7 @@
             <div class="fxlib__grid" id="fxlib-show-grid"></div>
           </div>
           <div id="fxlib-view-online" class="fxlib__scroll" hidden>
+            <p class="fxlib__credit gdtf-credit"><img src="/static/icons/gdtf-logo.png" alt="GDTF" width="1027" height="318" /><span data-i18n="FXLIB_CREDIT">Powered by GDTF - data from GDTF Share (gdtf-share.com)</span></p>
             <form id="fxlib-login" class="fxlib__login" autocomplete="off" hidden>
               <h3 class="fxlib__login-title" data-i18n="FXLIB_LOGIN_TITLE">Sign in to GDTF Share</h3>
               <p class="fxlib__hint" data-i18n="FXLIB_LOGIN_INFO"></p>
@@ -1135,12 +1939,18 @@
 
   <!-- Scheinwerfer-Details (aus der Bibliothek): Stammdaten, Modi, alle DMX-Kanaele mit Funktionen -->
   <div class="modal-backdrop modal-backdrop--stacked" data-modal-backdrop="fixture-library-detail" aria-hidden="true">
-    <div class="modal modal--fxlib modal--fxdet" role="dialog" aria-modal="true" aria-labelledby="fxdet-title">
+    <div class="modal modal--fxlib modal--fxdet modal--xl" role="dialog" aria-modal="true" aria-labelledby="fxdet-title">
       <div class="modal__header">
         <span id="fxdet-title"></span>
         <button type="button" class="modal__close" data-modal-close="fixture-library-detail" aria-label="Close" data-i18n-aria="CLOSE">&times;</button>
       </div>
       <div class="modal__body fxdet">
+        <div class="fxdet__previewbar" id="fxdet-previewbar" hidden>
+          <button type="button" id="fxdet-preview-back" class="modal__button modal__button--icon"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M19 12H5M12 5l-7 7 7 7"/></svg><span data-i18n="FXLIB_PREVIEW_BACK">Back to search</span></button>
+          <span class="fxdet__muted" id="fxdet-preview-hint" data-i18n="FXLIB_PREVIEW_HINT"></span>
+          <span class="fxlib__spacer"></span>
+          <button type="button" id="fxdet-preview-install" class="modal__button modal__button--primary" data-i18n="FXLIB_INSTALL">Install</button>
+        </div>
         <div class="fxdet__tabs" id="fxdet-tabs" role="tablist"></div>
         <div class="fxdet__wrap">
         <div class="fxdet__scroll" id="fxdet-scroll">
@@ -1186,7 +1996,7 @@
 
   <!-- Video/Audio-Player: Startzeit festlegen (Rechtsklick auf den Player) -->
   <div class="modal-backdrop" data-modal-backdrop="media-start" aria-hidden="true">
-    <div class="modal modal--media" role="dialog" aria-modal="true" aria-labelledby="media-start-title">
+    <div class="modal modal--media modal--s" role="dialog" aria-modal="true" aria-labelledby="media-start-title">
       <div class="modal__header">
         <span id="media-start-title">Start time</span>
         <button type="button" class="modal__close" data-modal-close="media-start" aria-label="Close" data-i18n-aria="CLOSE">&times;</button>
@@ -1205,11 +2015,10 @@
   </div>
 
   <!-- Medium hinzufuegen: Dateiauswahl (die Datei wird in den lokalen Medien-Ordner kopiert) -->
-  <input type="file" id="media-import-file" hidden accept="video/*,audio/*,.mp4,.m4v,.webm,.ogg,.ogv,.wav,.mp3,.flac,.aac,.m4a,.mov" />
 
   <!-- Medium entfernen: eigener Bestaetigungsdialog mit den Folgen -->
   <div class="modal-backdrop" data-modal-backdrop="media-remove" aria-hidden="true">
-    <div class="modal modal--media" role="dialog" aria-modal="true" aria-labelledby="media-remove-title">
+    <div class="modal modal--xs" role="dialog" aria-modal="true" aria-labelledby="media-remove-title">
       <div class="modal__header">
         <span id="media-remove-title" data-i18n="MEDIA_REMOVE_TITLE">Remove media</span>
         <button type="button" class="modal__close" data-modal-close="media-remove" aria-label="Close" data-i18n-aria="CLOSE">&times;</button>
@@ -1228,7 +2037,7 @@
 
   <!-- Livestream-Panel: Quelle anlegen/bearbeiten -->
   <div class="modal-backdrop" data-modal-backdrop="stream-source" aria-hidden="true">
-    <div class="modal modal--media" role="dialog" aria-modal="true" aria-labelledby="stream-source-title">
+    <div class="modal modal--media modal--m" role="dialog" aria-modal="true" aria-labelledby="stream-source-title">
       <div class="modal__header">
         <span id="stream-source-title" data-i18n="STREAM_SRC_TITLE_NEW">New stream source</span>
         <button type="button" class="modal__close" data-modal-close="stream-source" aria-label="Close" data-i18n-aria="CLOSE">&times;</button>
@@ -1270,7 +2079,7 @@
 
   <!-- Livestream-Panel: Quelle entfernen -->
   <div class="modal-backdrop" data-modal-backdrop="stream-remove" aria-hidden="true">
-    <div class="modal modal--media" role="dialog" aria-modal="true" aria-labelledby="stream-remove-title">
+    <div class="modal modal--xs" role="dialog" aria-modal="true" aria-labelledby="stream-remove-title">
       <div class="modal__header">
         <span id="stream-remove-title" data-i18n="STREAM_REMOVE_TITLE">Remove stream source</span>
         <button type="button" class="modal__close" data-modal-close="stream-remove" aria-label="Close" data-i18n-aria="CLOSE">&times;</button>
@@ -1288,7 +2097,7 @@
 
   <!-- Name abfragen (Neu / Umbenennen / Speichern ohne Namen) -->
   <div class="modal-backdrop modal-backdrop--stacked" data-modal-backdrop="layout-name-prompt" aria-hidden="true">
-    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="layout-name-prompt-title">
+    <div class="modal modal--s" role="dialog" aria-modal="true" aria-labelledby="layout-name-prompt-title">
       <div class="modal__header">
         <span id="layout-name-prompt-title"></span>
         <button type="button" class="modal__close" data-modal-close="layout-name-prompt" aria-label="Close" data-i18n-aria="CLOSE">&times;</button>
@@ -1307,13 +2116,14 @@
 
   <!-- Rueckfrage (Ueberschreiben, Verwerfen) -->
   <div class="modal-backdrop modal-backdrop--stacked" data-modal-backdrop="layout-confirm" aria-hidden="true">
-    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="layout-confirm-title">
+    <div class="modal modal--xs" role="dialog" aria-modal="true" aria-labelledby="layout-confirm-title">
       <div class="modal__header">
         <span id="layout-confirm-title"></span>
         <button type="button" class="modal__close" data-modal-close="layout-confirm" aria-label="Close" data-i18n-aria="CLOSE">&times;</button>
       </div>
       <div class="modal__body">
         <p id="layout-confirm-body" style="margin:0;line-height:1.5"></p>
+        <p id="layout-confirm-detail" class="modal__note" hidden></p>
       </div>
       <div class="modal__footer">
         <button type="button" data-modal-cancel="layout-confirm" class="modal__button" data-i18n="CANCEL">Cancel</button>
@@ -1324,7 +2134,7 @@
 
   <!-- Bearbeitungsmodus verlassen mit ungespeicherten Aenderungen -->
   <div class="modal-backdrop modal-backdrop--stacked" data-modal-backdrop="layout-exit-edit" aria-hidden="true">
-    <div class="modal modal--exit-edit" role="dialog" aria-modal="true" aria-labelledby="layout-exit-edit-title">
+    <div class="modal modal--exit-edit modal--xs" role="dialog" aria-modal="true" aria-labelledby="layout-exit-edit-title">
       <div class="modal__header">
         <span id="layout-exit-edit-title" data-i18n="LAYOUT_EXIT_TITLE">Unsaved changes</span>
         <button type="button" class="modal__close" data-modal-close="layout-exit-edit" aria-label="Close" data-i18n-aria="CLOSE">&times;</button>
@@ -1332,7 +2142,7 @@
       <div class="modal__body">
         <p id="layout-exit-edit-body" style="margin:0;line-height:1.5"></p>
       </div>
-      <div class="modal__footer layout-exit-edit__footer">
+      <div class="modal__footer modal__footer--decision">
         <button type="button" id="layout-exit-edit-continue" class="modal__button" data-i18n="LAYOUT_EXIT_CONTINUE">Keep editing</button>
         <button type="button" id="layout-exit-edit-discard" class="modal__button modal__button--danger" data-i18n="LAYOUT_EXIT_DISCARD">Discard changes</button>
         <button type="button" id="layout-exit-edit-save" class="modal__button modal__button--primary" data-i18n="LAYOUT_SAVE_CONFIRM">Save</button>
@@ -1342,7 +2152,7 @@
 
   <!-- Layout löschen Bestätigung modal -->
   <div class="modal-backdrop modal-backdrop--stacked" data-modal-backdrop="layout-delete-confirm" aria-hidden="true">
-    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="layout-delete-confirm-title">
+    <div class="modal modal--xs" role="dialog" aria-modal="true" aria-labelledby="layout-delete-confirm-title">
       <div class="modal__header">
         <span id="layout-delete-confirm-title" data-i18n="LAYOUT_DELETE_TITLE">Delete Layout</span>
         <button type="button" class="modal__close" data-modal-close="layout-delete-confirm" aria-label="Close" data-i18n-aria="CLOSE">&times;</button>
@@ -1359,7 +2169,7 @@
 
   <!-- Preset hinzufügen / bearbeiten modal -->
   <div class="modal-backdrop modal-backdrop--stacked" data-modal-backdrop="preset-edit" aria-hidden="true">
-    <div class="modal modal--preset" role="dialog" aria-modal="true" aria-labelledby="preset-edit-title">
+    <div class="modal modal--preset modal--m" role="dialog" aria-modal="true" aria-labelledby="preset-edit-title">
       <div class="modal__header">
         <span id="preset-edit-title" data-i18n="PRESET_ADD_TITLE">Add Preset</span>
         <button type="button" class="modal__close" data-modal-close="preset-edit" aria-label="Close" data-i18n-aria="CLOSE">&times;</button>
@@ -1382,8 +2192,8 @@
         </div>
         <div id="preset-edit-type-hint" class="pe-hint" data-i18n="PRESET_TYPE_LOCKED" hidden>The type of a preset cannot be changed after creation.</div>
         <!-- Dynamic value fields — injected by JS based on type -->
-        <div id="preset-edit-values" style="margin-top:0.5rem"></div>
-        <div class="modal__field" style="margin-top:0.5rem">
+        <div id="preset-edit-values"></div>
+        <div class="modal__field">
           <label data-i18n="PRESET_GROUP">Group</label>
           <select id="preset-edit-group" class="settings__select" style="width:100%">
             <option value="" data-i18n="PRESET_GROUP_NONE">— No Group —</option>
@@ -1397,9 +2207,33 @@
     </div>
   </div>
 
+  <!-- Effekttyp waehlen: grosser Dialog mit Kategorie | Effekte | Beschreibung und Suche (static/js/fx_picker.js) -->
+  <div class="modal-backdrop modal-backdrop--stacked" data-modal-backdrop="fx-type-picker" aria-hidden="true">
+    <div class="modal modal--fx-picker modal--l" id="fx-picker-root" role="dialog" aria-modal="true" aria-labelledby="fx-picker-title">
+      <div class="modal__header">
+        <span id="fx-picker-title" data-i18n="FXP_TITLE">Choose effect type</span>
+        <button type="button" class="modal__close" data-modal-close="fx-type-picker" aria-label="Close" data-i18n-aria="CLOSE">&times;</button>
+      </div>
+      <div class="fxpick__top">
+        <input id="fx-picker-search" type="search" class="settings__text-input fxpick__search" maxlength="80" autocomplete="off" placeholder="Search effects (name, file, tag, description) ..." data-i18n-placeholder="FXP_SEARCH_PH">
+        <div id="fx-picker-tags" class="fxpick__tags"></div>
+        <button type="button" id="fx-picker-clear" class="modal__button fxpick__clear" data-i18n="FXP_CLEAR">Clear filters</button>
+      </div>
+      <div class="fxpick__body">
+        <div id="fx-picker-cats" class="fxpick__col fxpick__cats"></div>
+        <div id="fx-picker-list" class="fxpick__col fxpick__list"></div>
+        <div id="fx-picker-detail" class="fxpick__col fxpick__detail"></div>
+      </div>
+      <div class="modal__footer">
+        <button type="button" data-modal-cancel="fx-type-picker" class="modal__button" data-i18n="CANCEL">Cancel</button>
+        <button type="button" id="fx-picker-select" class="modal__button modal__button--primary" data-i18n="FXP_SELECT" disabled>Select</button>
+      </div>
+    </div>
+  </div>
+
   <!-- FX bearbeiten / anlegen -->
   <div class="modal-backdrop modal-backdrop--stacked" data-modal-backdrop="fx-edit" aria-hidden="true">
-    <div class="modal modal--effect" role="dialog" aria-modal="true" aria-labelledby="fx-edit-title">
+    <div class="modal modal--effect modal--m" role="dialog" aria-modal="true" aria-labelledby="fx-edit-title">
       <div class="modal__header">
         <span id="fx-edit-title" data-i18n="FXE_DIALOG_TITLE">Create / Edit Effect</span>
         <button type="button" class="modal__close" data-modal-close="fx-edit" aria-label="Close" data-i18n-aria="CLOSE">&times;</button>
@@ -1407,15 +2241,19 @@
       <div class="modal__body">
         <div class="modal__field">
           <label data-i18n="FXE_NAME">Name</label>
-          <input id="fx-edit-name" type="text" class="settings__text-input" style="width:100%;box-sizing:border-box" maxlength="80" autocomplete="off" placeholder="Leave empty for an automatic name (e.g. Position_1)" data-i18n-placeholder="FXE_NAME_PLACEHOLDER">
+          <input id="fx-edit-name" type="text" class="settings__text-input" style="width:100%;box-sizing:border-box" maxlength="80" autocomplete="off">
         </div>
-        <div class="modal__field" style="margin-top:0.5rem">
+        <div class="modal__field">
           <label data-i18n="FXE_TYPE">Effect type</label>
-          <select id="fx-edit-type" class="settings__select" style="width:100%"></select>
+          <div class="fxtype">
+            <div id="fx-edit-type-display" class="fxtype__display" aria-live="polite"></div>
+            <button type="button" id="fx-edit-type-choose" class="modal__button" data-i18n="FXP_CHOOSE">Choose...</button>
+          </div>
+          <select id="fx-edit-type" class="settings__select" hidden></select>
         </div>
         <div id="fx-edit-type-hint" class="pe-hint" data-i18n="FXE_TYPE_LOCKED" hidden>The effect type cannot be changed after creation.</div>
         <div id="fx-edit-params" class="fx-edit__params"></div>
-        <div class="modal__field" style="margin-top:0.5rem">
+        <div class="modal__field">
           <label data-i18n="FXE_GROUP">Group</label>
           <select id="fx-edit-group" class="settings__select" style="width:100%"></select>
         </div>
@@ -1429,7 +2267,7 @@
 
   <!-- Preset löschen Bestätigung modal -->
   <div class="modal-backdrop modal-backdrop--stacked" data-modal-backdrop="preset-delete-confirm" aria-hidden="true">
-    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="preset-delete-confirm-title">
+    <div class="modal modal--xs" role="dialog" aria-modal="true" aria-labelledby="preset-delete-confirm-title">
       <div class="modal__header">
         <span id="preset-delete-confirm-title" data-i18n="PRESET_DELETE_TITLE">Delete Preset</span>
         <button type="button" class="modal__close" data-modal-close="preset-delete-confirm" aria-label="Close" data-i18n-aria="CLOSE">&times;</button>
@@ -1446,7 +2284,7 @@
 
   <!-- Gruppe hinzufügen modal -->
   <div class="modal-backdrop modal-backdrop--stacked" data-modal-backdrop="preset-group-add" aria-hidden="true">
-    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="preset-group-add-title">
+    <div class="modal modal--s" role="dialog" aria-modal="true" aria-labelledby="preset-group-add-title">
       <div class="modal__header">
         <span id="preset-group-add-title" data-i18n="PRESET_GROUP_ADD_TITLE">Add Group</span>
         <button type="button" class="modal__close" data-modal-close="preset-group-add" aria-label="Close" data-i18n-aria="CLOSE">&times;</button>
@@ -1464,7 +2302,7 @@
 
   <!-- Gruppe löschen modal -->
   <div class="modal-backdrop modal-backdrop--stacked" data-modal-backdrop="preset-group-delete-confirm" aria-hidden="true">
-    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="preset-group-delete-confirm-title">
+    <div class="modal modal--xs" role="dialog" aria-modal="true" aria-labelledby="preset-group-delete-confirm-title">
       <div class="modal__header">
         <span id="preset-group-delete-confirm-title" data-i18n="PRESET_GROUP_DELETE_TITLE">Delete Group</span>
         <button type="button" class="modal__close" data-modal-close="preset-group-delete-confirm" aria-label="Close" data-i18n-aria="CLOSE">&times;</button>
@@ -1481,7 +2319,7 @@
 
   <!-- Cue-Listen verwalten: alle Listen mit ihren Cues, Reihenfolge, umbenennen, duplizieren, loeschen, neu -->
   <div class="modal-backdrop modal-backdrop--stacked" data-modal-backdrop="cuelist-manage" aria-hidden="true">
-    <div class="modal modal--cuelists" role="dialog" aria-modal="true" aria-labelledby="cuelist-manage-title">
+    <div class="modal modal--cuelists modal--l" role="dialog" aria-modal="true" aria-labelledby="cuelist-manage-title">
       <div class="modal__header">
         <span id="cuelist-manage-title" data-i18n="CUELIST_MANAGE_TITLE">Manage cue lists</span>
         <button type="button" class="modal__close" data-modal-close="cuelist-manage" aria-label="Close" data-i18n-aria="CLOSE">&times;</button>
@@ -1495,7 +2333,7 @@
 
   <!-- Neue Cue-Liste erstellen modal -->
   <div class="modal-backdrop modal-backdrop--stacked" data-modal-backdrop="cuelist-new" aria-hidden="true">
-    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="cuelist-new-title">
+    <div class="modal modal--s" role="dialog" aria-modal="true" aria-labelledby="cuelist-new-title">
       <div class="modal__header">
         <span id="cuelist-new-title" data-i18n="CUELIST_NEW_TITLE">New Cue List</span>
         <button type="button" class="modal__close" data-modal-close="cuelist-new" aria-label="Close" data-i18n-aria="CLOSE">&times;</button>
@@ -1511,32 +2349,125 @@
     </div>
   </div>
 
+  <!-- Cues kopieren: Ziel-Liste und Nummer der ersten Kopie -->
+  <div class="modal-backdrop modal-backdrop--stacked" data-modal-backdrop="cue-copy" aria-hidden="true">
+    <div class="modal modal--cue-copy modal--s" role="dialog" aria-modal="true" aria-labelledby="cue-copy-title">
+      <div class="modal__header">
+        <span id="cue-copy-title" data-i18n="CUE_COPY_TITLE">Copy cues</span>
+        <button type="button" class="modal__close" data-modal-close="cue-copy" aria-label="Close" data-i18n-aria="CLOSE">&times;</button>
+      </div>
+      <div class="modal__body cue-copy__body">
+        <p id="cue-copy-body" style="margin:0;line-height:1.5"></p>
+        <div class="modal__field">
+          <label for="cue-copy-list" data-i18n="CUE_COPY_LIST">Copy into list</label>
+          <select id="cue-copy-list" class="settings__select" style="width:100%"></select>
+        </div>
+        <div class="modal__field">
+          <label for="cue-copy-number" data-i18n="CUE_COPY_NUMBER">Number of the first copy</label>
+          <input type="text" id="cue-copy-number" class="settings__text-input" inputmode="decimal" autocomplete="off" style="width:100%;box-sizing:border-box">
+          <div class="mp-prop__hint" id="cue-copy-hint" data-i18n="CUE_COPY_HINT"></div>
+        </div>
+      </div>
+      <div class="modal__footer">
+        <button type="button" data-modal-cancel="cue-copy" class="modal__button" data-i18n="CANCEL">Cancel</button>
+        <button type="button" id="cue-copy-confirm" class="modal__button modal__button--primary" data-i18n="CUE_COPY_CONFIRM">Copy</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Cue bearbeiten modal (groß, geräumig: Generell / Zeiten / Attribut-Zeiten / MIB & CMD) -->
   <div class="modal-backdrop modal-backdrop--stacked" data-modal-backdrop="cue-edit" aria-hidden="true">
-    <div class="modal modal--cue-edit" role="dialog" aria-modal="true" aria-labelledby="cue-edit-title">
+    <div class="modal modal--cue-edit modal--l" role="dialog" aria-modal="true" aria-labelledby="cue-edit-title">
       <div class="modal__header">
-        <span id="cue-edit-title" data-i18n="CUE_EDIT_TITLE">Edit Cue</span>
+        <span id="cue-edit-title">Edit Cue</span>
         <button type="button" class="modal__close" data-modal-close="cue-edit" aria-label="Close" data-i18n-aria="CLOSE">&times;</button>
       </div>
       <div class="modal__body">
         <div class="modal__field-grid-title" data-i18n="CUE_SECTION_GENERAL">General</div>
-        <div class="modal__field">
-          <label data-i18n="CUE_NAME">Name</label>
-          <input id="cue-edit-name" type="text" class="settings__text-input" style="width:100%;box-sizing:border-box" maxlength="80">
-        </div>
-        <div class="modal__field-grid">
-          <div class="modal__field-grid-item">
+        <div class="cue-edit__namerow">
+          <div class="modal__field cue-edit__name">
+            <label for="cue-edit-name" data-i18n="CUE_NAME">Name</label>
+            <input id="cue-edit-name" type="text" class="settings__text-input" style="width:100%;box-sizing:border-box" maxlength="80">
+          </div>
+          <div class="modal__field cue-edit__number">
             <label for="cue-edit-number" data-i18n="CUE_NUMBER">Cue #</label>
             <input type="number" id="cue-edit-number" step="0.001">
           </div>
+        </div>
+
+        <div class="modal__field-grid-title" data-i18n="CUE_TRIGGER">Trigger</div>
+        <div class="cue-trig" id="cue-edit-trigger-bar" role="radiogroup" data-i18n-aria="CUE_TRIGGER" aria-label="Trigger"></div>
+        <div class="mp-prop__hint" id="cue-edit-trigger-hint"></div>
+        <div class="modal__field" hidden>
           <div class="modal__field-grid-item">
             <label for="cue-edit-trigger" data-i18n="CUE_TRIGGER">Trigger</label>
             <select id="cue-edit-trigger" class="settings__select">
               <option value="go" data-i18n="CUE_TRIGGER_GO">Go</option>
               <option value="follow" data-i18n="CUE_TRIGGER_FOLLOW">Follow</option>
               <option value="timecode" data-i18n="CUE_TRIGGER_TIMECODE">Timecode</option>
+              <option value="audio" data-i18n="CUE_TRIGGER_AUDIO">Audio</option>
+              <option value="midi" data-i18n="CUE_TRIGGER_MIDI">MIDI</option>
+              <option value="clock" data-i18n="CUE_TRIGGER_CLOCK">Time of day</option>
             </select>
           </div>
+        </div>
+        <div class="modal__field" id="cue-edit-audio-wrap" hidden>
+          <div class="modal__field-grid">
+            <div class="modal__field-grid-item">
+              <label for="cue-edit-audio-source" data-i18n="CUE_EDIT_AUDIO_SOURCE">Audio source</label>
+              <select id="cue-edit-audio-source" class="settings__select"></select>
+            </div>
+            <div class="modal__field-grid-item">
+              <label for="cue-edit-audio-value" id="cue-edit-audio-value-label" data-i18n="CUE_EDIT_AUDIO_COUNT">Every n-th</label>
+              <input type="number" id="cue-edit-audio-value" min="1" max="100" step="1">
+            </div>
+          </div>
+          <div class="mp-prop__hint" id="cue-edit-audio-hint"></div>
+        </div>
+        <div class="modal__field" id="cue-edit-clock-wrap" hidden>
+          <div class="modal__field-grid">
+            <div class="modal__field-grid-item">
+              <label for="cue-edit-clock-time" data-i18n="CUE_EDIT_CLOCK_TIME">Time of day</label>
+              <input type="text" id="cue-edit-clock-time" maxlength="8" placeholder="HH:MM" autocomplete="off" />
+            </div>
+            <div class="modal__field-grid-item">
+              <label data-i18n="CUE_EDIT_CLOCK_DAYS">Days</label>
+              <div class="sch__days" id="cue-edit-clock-days"></div>
+            </div>
+          </div>
+          <div class="mp-prop__hint" data-i18n="CUE_EDIT_CLOCK_HINT">The cue waits as the next cue of a running list until the clock reaches this time.</div>
+        </div>
+        <div class="modal__field" id="cue-edit-midi-wrap" hidden>
+          <div class="modal__field-grid">
+            <div class="modal__field-grid-item">
+              <label for="cue-edit-midi-type" data-i18n="CUE_EDIT_MIDI_TYPE">Signal</label>
+              <select id="cue-edit-midi-type" class="settings__select">
+                <option value="note" data-i18n="CUE_EDIT_MIDI_NOTE">Note (key / pad)</option>
+                <option value="cc" data-i18n="CUE_EDIT_MIDI_CC">Controller (CC)</option>
+                <option value="pc" data-i18n="CUE_EDIT_MIDI_PC">Program change</option>
+              </select>
+            </div>
+            <div class="modal__field-grid-item">
+              <label for="cue-edit-midi-number" data-i18n="CUE_EDIT_MIDI_NUMBER">Number (0-127)</label>
+              <input type="number" id="cue-edit-midi-number" min="0" max="127" step="1">
+              <div class="mp-prop__hint" id="cue-edit-midi-notename"></div>
+            </div>
+          </div>
+          <div class="modal__field-grid">
+            <div class="modal__field-grid-item">
+              <label for="cue-edit-midi-channel" data-i18n="CUE_EDIT_MIDI_CHANNEL">Channel</label>
+              <select id="cue-edit-midi-channel" class="settings__select"><option value="0" data-i18n="CUE_EDIT_MIDI_ANY">Any</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10">10</option><option value="11">11</option><option value="12">12</option><option value="13">13</option><option value="14">14</option><option value="15">15</option><option value="16">16</option></select>
+            </div>
+            <div class="modal__field-grid-item" id="cue-edit-midi-value-wrap">
+              <label for="cue-edit-midi-value" data-i18n="CUE_EDIT_MIDI_VALUE">Threshold (1-127)</label>
+              <input type="number" id="cue-edit-midi-value" min="1" max="127" step="1">
+            </div>
+          </div>
+          <div class="modal__field">
+            <button type="button" id="cue-edit-midi-learn" class="modal__button" data-i18n="CUE_EDIT_MIDI_LEARN">Learn signal</button>
+            <span class="mp-prop__hint" id="cue-edit-midi-learn-msg"></span>
+          </div>
+          <div class="mp-prop__hint" id="cue-edit-midi-hint" data-i18n="CUE_EDIT_MIDI_HINT"></div>
         </div>
         <div class="modal__field" id="cue-edit-timecode-wrap" hidden>
           <label for="cue-edit-timecode" data-i18n="CUE_EDIT_TIMECODE">Trigger time (timecode)</label>
@@ -1607,6 +2538,13 @@
         <div class="modal__field-grid-title" data-i18n="CUE_SECTION_MIB_CMD">MIB &amp; CMD</div>
         <div class="modal__field-grid">
           <div class="modal__field-grid-item">
+            <label for="cue-edit-play-mode" data-i18n="CUE_PLAY_MODE">Playback</label>
+            <select id="cue-edit-play-mode" class="settings__select">
+              <option value="tracking" data-i18n="CUE_PLAY_TRACKING">Relative - only the changes</option>
+              <option value="absolute" data-i18n="CUE_PLAY_ABSOLUTE">Absolute - exactly this state</option>
+            </select>
+          </div>
+          <div class="modal__field-grid-item">
             <label for="cue-edit-mib" data-i18n="CUE_MIB">MIB</label>
             <select id="cue-edit-mib" class="settings__select">
               <option value="Off" data-i18n="CUE_MIB_OFF">Off</option>
@@ -1619,6 +2557,9 @@
           <label for="cue-edit-cmd" data-i18n="CUE_CMD">CMD</label>
           <input id="cue-edit-cmd" type="text" class="settings__text-input" style="width:100%;box-sizing:border-box" maxlength="200" data-i18n-placeholder="CUE_CMD_PLACEHOLDER" placeholder="Fixture 1 At 100, Fixture 2 At 0" autocomplete="off" spellcheck="false">
         </div>
+        <div class="modal__field">
+          <button type="button" id="cue-edit-midi" class="modal__button" data-i18n="CUE_MIDI_TRIGGER">MIDI trigger ...</button>
+        </div>
       </div>
       <div class="modal__footer">
         <button type="button" data-modal-cancel="cue-edit" class="modal__button" data-i18n="CANCEL">Cancel</button>
@@ -1629,7 +2570,7 @@
 
   <!-- Cue löschen Bestätigung modal -->
   <div class="modal-backdrop modal-backdrop--stacked" data-modal-backdrop="cue-delete-confirm" aria-hidden="true">
-    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="cue-delete-confirm-title">
+    <div class="modal modal--xs" role="dialog" aria-modal="true" aria-labelledby="cue-delete-confirm-title">
       <div class="modal__header">
         <span id="cue-delete-confirm-title" data-i18n="CUE_DELETE_TITLE">Delete Cue</span>
         <button type="button" class="modal__close" data-modal-close="cue-delete-confirm" aria-label="Close" data-i18n-aria="CLOSE">&times;</button>
@@ -1646,7 +2587,7 @@
 
   <!-- Update verfuegbar / nach Updates suchen (static/js/updater.js, app/updater.py, app/about.py) -->
   <div class="modal-backdrop" data-modal-backdrop="update" aria-hidden="true">
-    <div class="modal modal--update" role="dialog" aria-modal="true" aria-labelledby="update-title">
+    <div class="modal modal--update modal--s" role="dialog" aria-modal="true" aria-labelledby="update-title">
       <div class="modal__header">
         <span id="update-title" data-i18n="UPDATE_TITLE">Update</span>
         <button type="button" class="modal__close" data-modal-close="update" aria-label="Close" data-i18n-aria="CLOSE">&times;</button>
@@ -1673,7 +2614,7 @@
 
   <!-- Ueber OpenCue (Hilfe-Menue): Version, Lizenz, Drittanbieter-Komponenten (static/js/about.js, app/about.py, app/version.py) -->
   <div class="modal-backdrop" data-modal-backdrop="about" aria-hidden="true">
-    <div class="modal modal--about" role="dialog" aria-modal="true" aria-labelledby="about-title">
+    <div class="modal modal--about modal--m" role="dialog" aria-modal="true" aria-labelledby="about-title">
       <div class="modal__header">
         <span id="about-title" data-i18n="ABOUT_TITLE">About OpenCue</span>
         <button type="button" class="modal__close" data-modal-close="about" aria-label="Close" data-i18n-aria="CLOSE">&times;</button>
@@ -1694,6 +2635,7 @@
         </div>
         <div class="about__pane" data-about-pane="about">
           <p class="about__line" id="about-copyright"></p>
+          <p class="about__line gdtf-credit"><img src="/static/icons/gdtf-logo.png" alt="GDTF" width="1027" height="318" /><span data-i18n="ABOUT_GDTF">Powered by GDTF - fixture files and the online search come from GDTF Share (gdtf-share.com).</span></p>
           <p class="about__line about__notice" data-i18n="ABOUT_NOTICE">This program comes with ABSOLUTELY NO WARRANTY. This is free software, and you are welcome to redistribute it under certain conditions; see the license for details.</p>
           <dl class="about__facts">
             <dt data-i18n="ABOUT_VERSION">Version</dt><dd id="about-fact-version"></dd>
@@ -1726,32 +2668,41 @@
 
   <!-- Keyboard Shortcuts Help Modal -->
   <div class="modal-backdrop" data-modal-backdrop="keyboard-shortcuts" aria-hidden="true">
-    <div class="modal modal--shortcuts" role="dialog" aria-modal="true" aria-labelledby="shortcuts-modal-title">
+    <div class="modal modal--shortcuts modal--l" role="dialog" aria-modal="true" aria-labelledby="shortcuts-modal-title">
       <div class="modal__header">
         <span id="shortcuts-modal-title" data-i18n="SHORTCUTS_TITLE">Keyboard Shortcuts</span>
         <button type="button" class="modal__close" data-modal-close="keyboard-shortcuts" aria-label="Close" data-i18n-aria="CLOSE">&times;</button>
       </div>
       <div class="modal__body shortcuts-modal">
+        <p class="sc-open-hint" data-i18n="SC_OPEN_HINT">Press ? anywhere to show or hide this overview.</p>
+        <p class="sc-edit-hint" id="shortcuts-edit-hint" hidden data-i18n="SC_EDIT_HINT">Click a key, then press the new combination and release it.</p>
+        <p class="sc-msg" id="shortcuts-msg" role="alert" hidden></p>
         <div class="shortcuts-grid">
 
           <section class="shortcuts-section">
             <div class="shortcuts-cat__title" data-i18n="SHORTCUTS_CAT_FILE">Showfile</div>
             <div class="shortcuts-table">
-              <div class="shortcuts-row"><kbd data-i18n="SHORTCUT_CTRL_N">Ctrl+N</kbd><span data-i18n="SHORTCUTS_NEW">New Showfile</span></div>
-              <div class="shortcuts-row"><kbd data-i18n="SHORTCUT_CTRL_O">Ctrl+O</kbd><span data-i18n="SHORTCUTS_OPEN">Open Showfile</span></div>
-              <div class="shortcuts-row"><kbd data-i18n="SHORTCUT_CTRL_S">Ctrl+S</kbd><span data-i18n="SHORTCUTS_SAVE">Save Showfile</span></div>
-              <div class="shortcuts-row"><kbd data-i18n="SHORTCUT_CTRL_SHIFT_S">Ctrl+⇧+S</kbd><span data-i18n="SHORTCUTS_SAVE_AS">Save Showfile As</span></div>
-              <div class="shortcuts-row"><kbd data-i18n="SHORTCUT_CTRL_Q">Ctrl+Q</kbd><span data-i18n="SHORTCUTS_EXIT">Exit Application</span></div>
+              <div class="shortcuts-row" data-sc="new"><kbd data-i18n="SHORTCUT_CTRL_N">Ctrl+N</kbd><span data-i18n="SHORTCUTS_NEW">New Showfile</span></div>
+              <div class="shortcuts-row" data-sc="open"><kbd data-i18n="SHORTCUT_CTRL_O">Ctrl+O</kbd><span data-i18n="SHORTCUTS_OPEN">Open Showfile</span></div>
+              <div class="shortcuts-row" data-sc="file_manager"><kbd data-i18n="SHORTCUT_CTRL_M">Ctrl+M</kbd><span data-i18n="SHORTCUTS_FILE_MANAGER">File manager</span></div>
+              <div class="shortcuts-row" data-sc="save"><kbd data-i18n="SHORTCUT_CTRL_S">Ctrl+S</kbd><span data-i18n="SHORTCUTS_SAVE">Save Showfile</span></div>
+              <div class="shortcuts-row" data-sc="save_as"><kbd data-i18n="SHORTCUT_CTRL_SHIFT_S">Ctrl+⇧+S</kbd><span data-i18n="SHORTCUTS_SAVE_AS">Save Showfile As</span></div>
+              <div class="shortcuts-row" data-sc="exit"><kbd data-i18n="SHORTCUT_CTRL_Q">Ctrl+Q</kbd><span data-i18n="SHORTCUTS_EXIT">Exit Application</span></div>
             </div>
           </section>
 
           <section class="shortcuts-section">
             <div class="shortcuts-cat__title" data-i18n="SHORTCUTS_CAT_VIEW">View &amp; UI</div>
             <div class="shortcuts-table">
-              <div class="shortcuts-row"><kbd>F11</kbd><span data-i18n="SHORTCUTS_FULLSCREEN">Toggle Fullscreen</span></div>
-              <div class="shortcuts-row"><kbd data-i18n="SHORTCUT_CTRL_PLUS">Ctrl++</kbd><span data-i18n="SHORTCUTS_SCALE_UP">Scale UI Up</span></div>
-              <div class="shortcuts-row"><kbd data-i18n="SHORTCUT_CTRL_MINUS">Ctrl+−</kbd><span data-i18n="SHORTCUTS_SCALE_DOWN">Scale UI Down</span></div>
-              <div class="shortcuts-row"><kbd data-i18n="SHORTCUT_CTRL_0">Ctrl+0</kbd><span data-i18n="SHORTCUTS_SCALE_RESET">Reset Scale to 100%</span></div>
+              <div class="shortcuts-row" data-sc="help"><kbd>F1</kbd><span data-i18n="SHORTCUTS_HELP_VIEWER">Guides (search inside with Ctrl+F)</span></div>
+              <div class="shortcuts-row"><kbd data-i18n="SHORTCUT_QUESTION">?</kbd><span data-i18n="SHORTCUTS_HELP_TOGGLE">Show / hide this overview</span></div>
+              <div class="shortcuts-row" data-sc="reload_layout"><kbd data-i18n="SHORTCUT_F5">F5</kbd><span data-i18n="SHORTCUTS_RELOAD_LAYOUT">Reload layout</span></div>
+              <div class="shortcuts-row" data-sc="reload_ui"><kbd data-i18n="SHORTCUT_CTRL_F5">Ctrl+F5</kbd><span data-i18n="SHORTCUTS_RELOAD_UI">Reload interface</span></div>
+              <div class="shortcuts-row" data-sc="fullscreen"><kbd>F11</kbd><span data-i18n="SHORTCUTS_FULLSCREEN">Toggle Fullscreen</span></div>
+              <div class="shortcuts-row" data-sc="scale_up"><kbd data-i18n="SHORTCUT_CTRL_PLUS">Ctrl++</kbd><span data-i18n="SHORTCUTS_SCALE_UP">Scale UI Up</span></div>
+              <div class="shortcuts-row" data-sc="scale_down"><kbd data-i18n="SHORTCUT_CTRL_MINUS">Ctrl+−</kbd><span data-i18n="SHORTCUTS_SCALE_DOWN">Scale UI Down</span></div>
+              <div class="shortcuts-row" data-sc="scale_reset"><kbd data-i18n="SHORTCUT_CTRL_0">Ctrl+0</kbd><span data-i18n="SHORTCUTS_SCALE_RESET">Reset Scale to 100%</span></div>
+              <div class="shortcuts-row" data-sc="cmd_window"><kbd data-i18n="SHORTCUT_CTRL_F">Ctrl+F</kbd><span data-i18n="SHORTCUTS_CMD_WINDOW">Command Line as Window (open / close)</span></div>
               <div class="shortcuts-row"><kbd>Esc</kbd><span data-i18n="SHORTCUTS_CLOSE_DIALOG">Close Dialog</span></div>
             </div>
           </section>
@@ -1759,11 +2710,13 @@
           <section class="shortcuts-section">
             <div class="shortcuts-cat__title" data-i18n="SHORTCUTS_CAT_EDIT">Edit &amp; System</div>
             <div class="shortcuts-table">
-              <div class="shortcuts-row"><kbd data-i18n="SHORTCUT_CTRL_E">Ctrl+E</kbd><span data-i18n="SHORTCUTS_EDIT_PANELS">Toggle Panel Edit Mode</span></div>
+              <div class="shortcuts-row" data-sc="edit_mode"><kbd data-i18n="SHORTCUT_CTRL_E">Ctrl+E</kbd><span data-i18n="SHORTCUTS_EDIT_PANELS">Toggle Panel Edit Mode</span></div>
               <div class="shortcuts-row"><kbd data-i18n="SHORTCUT_CTRL_CXV">Ctrl+C / X / V</kbd><span data-i18n="SHORTCUTS_PANEL_CLIPBOARD">Copy / Cut / Paste Panels (Edit Mode)</span></div>
-              <div class="shortcuts-row"><kbd data-i18n="SHORTCUT_CTRL_Z">Ctrl+Z</kbd><span data-i18n="SHORTCUTS_UNDO">Undo Panel Change (Edit Mode)</span></div>
-              <div class="shortcuts-row"><kbd data-i18n="SHORTCUT_CTRL_Y">Ctrl+Y</kbd><span data-i18n="SHORTCUTS_REDO">Redo Panel Change (Edit Mode)</span></div>
-              <div class="shortcuts-row"><kbd data-i18n="SHORTCUT_CTRL_SHIFT_L">Ctrl+⇧+L</kbd><span data-i18n="SHORTCUTS_LANGUAGE_TOGGLE">Toggle Language</span></div>
+              <div class="shortcuts-row" data-sc="undo"><kbd data-i18n="SHORTCUT_CTRL_Z">Ctrl+Z</kbd><span data-i18n="SHORTCUTS_UNDO">Undo Panel Change (Edit Mode)</span></div>
+              <div class="shortcuts-row" data-sc="redo"><kbd data-i18n="SHORTCUT_CTRL_Y">Ctrl+Y</kbd><span data-i18n="SHORTCUTS_REDO">Redo Panel Change (Edit Mode)</span></div>
+              <div class="shortcuts-row" data-sc="language"><kbd data-i18n="SHORTCUT_CTRL_SHIFT_L">Ctrl+⇧+L</kbd><span data-i18n="SHORTCUTS_LANGUAGE_TOGGLE">Toggle Language</span></div>
+              <div class="shortcuts-row" data-sc="lock"><kbd data-i18n="SHORTCUT_CTRL_L">Ctrl+L</kbd><span data-i18n="SHORTCUTS_LOCK">Lock the console</span></div>
+              <div class="shortcuts-row"><kbd data-i18n="SHORTCUT_CTRL_L">Ctrl+L</kbd><span data-i18n="SHORTCUTS_KIOSK">In operator mode: asks for the password to leave it</span></div>
             </div>
           </section>
 
@@ -1778,6 +2731,14 @@
               <div class="shortcuts-row"><kbd data-i18n="SHORTCUT_ARROWS">Arrow keys</kbd><span data-i18n="SHORTCUTS_SIM3D_NUDGE">Move Selection (Shift = 5x); no layout switch while selected</span></div>
               <div class="shortcuts-row"><kbd data-i18n="SHORTCUT_DEL">Del</kbd><span data-i18n="SHORTCUTS_SIM3D_DELETE">Delete Object (with confirmation)</span></div>
               <div class="shortcuts-row"><kbd>Esc</kbd><span data-i18n="SHORTCUTS_SIM3D_DESELECT">Clear Selection</span></div>
+              <div class="shortcuts-row"><kbd data-i18n="SHORTCUT_SIM3D_GROUP">Group</kbd><span data-i18n="SHORTCUTS_SIM3D_GROUP">Several selected: handles and arrows act on all</span></div>
+              <div class="shortcuts-row"><kbd data-i18n="SHORTCUT_CTRL_CV">Ctrl+C / V</kbd><span data-i18n="SHORTCUTS_SIM3D_POSE">Fixtures: copy / paste pose (position + rotation)</span></div>
+              <div class="shortcuts-row"><kbd data-i18n="SHORTCUT_CTRL_A">Ctrl+A</kbd><span data-i18n="SHORTCUTS_SIM3D_SELECTALL">Select all objects / fixtures</span></div>
+              <div class="shortcuts-row"><kbd data-i18n="SHORTCUT_SIM3D_LIST">List</kbd><span data-i18n="SHORTCUTS_SIM3D_LIST">In the list: Shift = range, Ctrl = add, double-click = bring into view</span></div>
+              <div class="shortcuts-row"><kbd>D</kbd><span data-i18n="SHORTCUTS_SIM3D_DROP">Drop Selection to the Floor</span></div>
+              <div class="shortcuts-row"><kbd>F</kbd><span data-i18n="SHORTCUTS_SIM3D_FRAME">Bring Selection into View</span></div>
+              <div class="shortcuts-row"><kbd data-i18n="SHORTCUT_SIM3D_MOUSE">Mouse</kbd><span data-i18n="SHORTCUTS_SIM3D_MOUSE">Left: select / move / drag a frame - Right: rotate view - Middle: pan - Wheel: zoom</span></div>
+              <div class="shortcuts-row"><kbd data-i18n="SHORTCUT_SIM3D_RESIZE">Shift / Alt</kbd><span data-i18n="SHORTCUTS_SIM3D_RESIZE">While resizing: Shift = proportional, Alt = from the centre</span></div>
             </div>
           </section>
 
@@ -1791,27 +2752,335 @@
 
         </div>
       </div>
+      <div class="modal__footer">
+        <button type="button" class="modal__button" id="shortcuts-edit-toggle" data-i18n="SC_EDIT">Edit shortcuts</button>
+        <button type="button" class="modal__button" id="shortcuts-reset-all" data-i18n="SC_RESET_ALL" hidden>Restore all standard keys</button>
+        <button type="button" class="modal__button" data-action="open-hotkeys-modal" data-i18n="HOTKEYS_MENU">Custom keyboard shortcuts...</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Eigene Tastaturbelegung: Taste/Tastenkombination -> Befehl der Befehlszeile (static/js/hotkeys.js, app/hotkeys.py) -->
+  <div class="modal-backdrop" data-modal-backdrop="hotkeys" aria-hidden="true">
+    <div class="modal modal--hotkeys modal--l" role="dialog" aria-modal="true" aria-labelledby="hotkeys-title">
+      <div class="modal__header">
+        <span id="hotkeys-title" data-i18n="HOTKEYS_TITLE">Custom keyboard shortcuts</span>
+        <button type="button" class="modal__close" data-modal-close="hotkeys" aria-label="Close" data-i18n-aria="CLOSE">&times;</button>
+      </div>
+      <div class="modal__body hk">
+        <p class="hk__hint" data-i18n="HOTKEYS_HINT">A key or key combination triggers a command.</p>
+        <div class="hk__quick" id="hotkeys-quick">
+          <span class="hk__quick-label" data-i18n="HOTKEYS_QUICK">Quick start:</span>
+          <button type="button" class="modal__button hk__chip" data-quick="Go" data-i18n="HOTKEYS_QUICK_GO">Next cue (Go)</button>
+          <button type="button" class="modal__button hk__chip" data-quick="Back" data-i18n="HOTKEYS_QUICK_BACK">Previous cue (Back)</button>
+          <button type="button" class="modal__button hk__chip" data-quick="Pause" data-i18n="HOTKEYS_QUICK_PAUSE">Pause</button>
+          <button type="button" class="modal__button hk__chip" data-quick="Blackout" data-i18n="HOTKEYS_QUICK_BLACKOUT">Blackout</button>
+        </div>
+        <div class="hk__head" aria-hidden="true">
+          <span data-i18n="HOTKEYS_COL_ON">On</span>
+          <span data-i18n="HOTKEYS_COL_KEY">Key</span>
+          <span data-i18n="HOTKEYS_COL_CMD">Command</span>
+          <span data-i18n="HOTKEYS_COL_RUN">Run</span>
+          <span data-i18n="HOTKEYS_COL_LOG">In history</span>
+          <span></span>
+        </div>
+        <div id="hotkeys-list" class="hk__list"></div>
+        <div id="hotkeys-empty" class="hk__empty" data-i18n="HOTKEYS_EMPTY">No custom keyboard shortcuts yet.</div>
+      </div>
+      <div class="modal__footer hk__footer">
+        <button type="button" id="hotkeys-add" class="modal__button modal__button--primary modal__button--icon"><span data-i18n="HOTKEYS_ADD">New key combination</span></button>
+        <span class="mi__footer-links">
+          <button type="button" id="hotkeys-export" class="modal__button" data-i18n="HOTKEYS_EXPORT">Export ...</button>
+          <button type="button" id="hotkeys-import" class="modal__button" data-i18n="HOTKEYS_IMPORT">Import ...</button>
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Eigene Tastaturbelegung: Taste einer BESTIMMTEN Tastatur festlegen (Aufnahme ueber den Server: app/rawkeys.py, nur an der Konsole) -->
+  <div class="modal-backdrop modal-backdrop--stacked" data-modal-backdrop="hotkey-device" aria-hidden="true">
+    <div class="modal modal--hotkey-device modal--m" role="dialog" aria-modal="true" aria-labelledby="hotkey-device-title">
+      <div class="modal__header">
+        <span id="hotkey-device-title" data-i18n="HOTKEYS_DEV_TITLE">Set key</span>
+        <button type="button" class="modal__close" data-modal-close="hotkey-device" aria-label="Close" data-i18n-aria="CLOSE">&times;</button>
+      </div>
+      <div class="modal__body hkdev">
+        <section class="hkdev__sec">
+          <div class="hkdev__label" data-i18n="HOTKEYS_DEV_SEC_KEY">Key</div>
+          <div class="hk__capturerow">
+            <div id="hkdev-capture" class="hk__capture" aria-live="polite"></div>
+            <button type="button" id="hkdev-reset" class="modal__button hk__icon" title="Record again" aria-label="Record again">
+              <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M20 5.5V10h-4.5M4 18.5V14h4.5"/><path d="M6.2 9.5A7 7 0 0118.6 10M17.8 14.5A7 7 0 015.4 14"/></svg>
+            </button>
+          </div>
+          <p class="hk__hint" data-i18n="HOTKEYS_DEV_HINT">Press the key on the keyboard you want to use.</p>
+          <div id="hkdev-from" class="hk__devname" hidden></div>
+        </section>
+        <section class="hkdev__sec">
+          <div class="hkdev__label" data-i18n="HOTKEYS_DEV_SEC_SCOPE">Applies to</div>
+          <div class="hk__cards" role="radiogroup">
+            <label class="hk__card">
+              <input type="radio" name="hkdev-scope" id="hkdev-scope-all" checked />
+              <svg class="ico hk__card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="2.5" y="9" width="15" height="9" rx="2"/><path d="M6.5 6.5h13a2 2 0 012 2v7.5"/><path d="M6 13.5h8"/></svg>
+              <span class="hk__card-text"><span class="hk__card-title" data-i18n="HOTKEYS_DEV_SCOPE_ALL">All keyboards</span><span class="hk__card-sub" data-i18n="HOTKEYS_DEV_ALL_SUB">Any connected keyboard</span></span>
+            </label>
+            <label class="hk__card">
+              <input type="radio" name="hkdev-scope" id="hkdev-scope-one" />
+              <svg class="ico hk__card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="2.5" y="6" width="19" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M7.5 14h9"/></svg>
+              <span class="hk__card-text"><span class="hk__card-title" data-i18n="HOTKEYS_DEV_SCOPE_ONE">Only this keyboard</span><span class="hk__card-sub" id="hkdev-scope-one-sub"></span></span>
+            </label>
+          </div>
+        </section>
+        <div id="hkdev-msg" class="hk__msg" role="alert" hidden></div>
+        <p class="hk__note" data-i18n="HOTKEYS_DEV_NOTE">The key still reaches the active program.</p>
+      </div>
+      <div class="modal__footer">
+        <button type="button" data-modal-cancel="hotkey-device" class="modal__button" data-i18n="CANCEL">Cancel</button>
+        <button type="button" id="hkdev-apply" class="modal__button modal__button--primary" data-i18n="HOTKEYS_DEV_APPLY">Apply</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Eigene Tastaturbelegung: Eintrag loeschen? -->
+  <div class="modal-backdrop modal-backdrop--stacked" data-modal-backdrop="hotkey-delete-confirm" aria-hidden="true">
+    <div class="modal modal--xs" role="dialog" aria-modal="true" aria-labelledby="hotkey-delete-title">
+      <div class="modal__header">
+        <span id="hotkey-delete-title" data-i18n="HOTKEYS_DELETE_TITLE">Delete key combination</span>
+        <button type="button" class="modal__close" data-modal-close="hotkey-delete-confirm" aria-label="Close" data-i18n-aria="CLOSE">&times;</button>
+      </div>
+      <div class="modal__body">
+        <p id="hotkey-delete-body" style="margin:0;line-height:1.5"></p>
+      </div>
+      <div class="modal__footer">
+        <button type="button" data-modal-cancel="hotkey-delete-confirm" class="modal__button" data-i18n="CANCEL">Cancel</button>
+        <button type="button" id="hotkey-delete-confirm-button" class="modal__button modal__button--danger" data-i18n="HOTKEYS_DELETE_CONFIRM">Delete</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Anleitungen (Hilfe -> Anleitungen, F1): die Dateien static/help/*.md als Dialog mit Suche (static/js/help_viewer.js) -->
+  <div class="modal-backdrop" data-modal-backdrop="help" aria-hidden="true">
+    <div class="modal modal--help modal--xl" role="dialog" aria-modal="true" aria-labelledby="help-title">
+      <div class="modal__header">
+        <span id="help-title" data-i18n="HELP_VIEWER_TITLE">Guides</span>
+        <button type="button" class="modal__close" data-modal-close="help" aria-label="Close" data-i18n-aria="CLOSE">&times;</button>
+      </div>
+      <div class="modal__body hv" id="help-body"></div>
+    </div>
+  </div>
+
+  <!-- MIDI-Belegung: Taste / Regler / Programmwechsel eines MIDI-Geraets -> Befehl der Befehlszeile (static/js/midi.js, app/midi_engine.py) -->
+  <div class="modal-backdrop" data-modal-backdrop="midi" aria-hidden="true">
+    <div class="modal modal--midi modal--l" role="dialog" aria-modal="true" aria-labelledby="midi-title">
+      <div class="modal__header">
+        <span id="midi-title" data-i18n="MIDI_TITLE">MIDI mapping</span>
+        <button type="button" class="modal__close" data-modal-close="midi" aria-label="Close" data-i18n-aria="CLOSE">&times;</button>
+      </div>
+      <div class="modal__body mi">
+        <div class="mi__bar">
+          <div class="mi__onoff"><span id="midi-enabled-slot"></span><span class="mi__onoff-label" data-i18n="MIDI_ENABLED">MIDI on</span></div>
+          <div id="midi-devices" class="mi__devices" aria-live="polite"></div>
+          <label class="mi__out" for="midi-output"><span data-i18n="MIDI_OUTPUT">Output</span><select id="midi-output" class="modal__input mi__select"></select></label>
+        </div>
+        <p class="hk__hint" data-i18n="MIDI_HINT">A key or fader of your MIDI device triggers a command.</p>
+        <div class="mi__searchrow"><input type="search" id="midi-search" class="modal__input mi__search" maxlength="60" autocomplete="off" data-i18n-placeholder="MIDI_SEARCH_PH" placeholder="Search ..." aria-label="Search" /></div>
+        <div class="mi__head" aria-hidden="true">
+          <span data-i18n="MIDI_COL_ON">On</span>
+          <span data-i18n="MIDI_COL_SIGNAL">Signal</span>
+          <span data-i18n="MIDI_COL_MODE">Type</span>
+          <span data-i18n="MIDI_COL_CMD">Command</span>
+          <span></span>
+        </div>
+        <div id="midi-list" class="hk__list mi__list"></div>
+        <div id="midi-empty" class="hk__empty" data-i18n="MIDI_EMPTY">No MIDI mapping yet.</div>
+        <section class="mi__monitor">
+          <div class="mi__monitor-head">
+            <span class="hkdev__label" data-i18n="MIDI_MONITOR">Monitor</span>
+            <span class="mi__monitor-hint" data-i18n="MIDI_MONITOR_HINT">Shows what your device sends.</span>
+            <button type="button" id="midi-monitor-clear" class="modal__button mi__monitor-clear" data-i18n="MIDI_MONITOR_CLEAR">Clear</button>
+          </div>
+          <div id="midi-monitor" class="mi__log"></div>
+        </section>
+      </div>
+      <div class="modal__footer hk__footer">
+        <button type="button" id="midi-add" class="modal__button modal__button--primary modal__button--icon"><span data-i18n="MIDI_ADD">New MIDI mapping</span></button>
+        <button type="button" id="midi-template" class="modal__button" data-i18n="MIDI_TEMPLATE">Template ...</button>
+        <span class="mi__footer-links">
+          <button type="button" id="midi-export" class="modal__button" data-i18n="MIDI_EXPORT">Export ...</button>
+          <button type="button" id="midi-import" class="modal__button" data-i18n="MIDI_IMPORT">Import ...</button>
+          <button type="button" id="midi-open-settings" class="modal__button" data-i18n="MIDI_OPEN_SETTINGS">Settings ...</button>
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <!-- MIDI-Belegung: Signal einlernen (Aufnahme ueber den Server: app/midi_engine.py, nur an der Konsole) oder von Hand eintragen -->
+  <div class="modal-backdrop modal-backdrop--stacked" data-modal-backdrop="midi-learn" aria-hidden="true">
+    <div class="modal modal--midi-learn modal--m" role="dialog" aria-modal="true" aria-labelledby="midi-learn-title">
+      <div class="modal__header">
+        <span id="midi-learn-title" data-i18n="MIDI_LEARN_TITLE">Learn signal</span>
+        <button type="button" class="modal__close" data-modal-close="midi-learn" aria-label="Close" data-i18n-aria="CLOSE">&times;</button>
+      </div>
+      <div class="modal__body hkdev">
+        <section class="hkdev__sec">
+          <div class="hkdev__label" data-i18n="MIDI_LEARN_SEC_SIGNAL">Signal</div>
+          <div class="hk__capturerow">
+            <div id="mlearn-capture" class="hk__capture mi__capture" aria-live="polite"></div>
+            <button type="button" id="mlearn-again" class="modal__button hk__icon" title="Learn again" aria-label="Learn again">
+              <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M20 5.5V10h-4.5M4 18.5V14h4.5"/><path d="M6.2 9.5A7 7 0 0118.6 10M17.8 14.5A7 7 0 015.4 14"/></svg>
+            </button>
+          </div>
+          <p id="mlearn-hint" class="hk__hint" data-i18n="MIDI_LEARN_HINT">The first signal that arrives is taken.</p>
+          <div id="mlearn-from" class="hk__devname" hidden></div>
+        </section>
+        <section class="hkdev__sec">
+          <div class="hkdev__label" data-i18n="MIDI_LEARN_MANUAL">By hand</div>
+          <div class="mi__manual">
+            <label class="mi__field"><span data-i18n="MIDI_F_TYPE">Type</span>
+              <select id="mlearn-type" class="modal__input mi__select">
+                <option value="" data-i18n="MIDI_F_TYPE_NONE">- choose -</option>
+                <option value="note" data-i18n="MIDI_F_TYPE_NOTE">Note (key)</option>
+                <option value="cc" data-i18n="MIDI_F_TYPE_CC">Controller (CC)</option>
+                <option value="pc" data-i18n="MIDI_F_TYPE_PC">Program change</option>
+                <option value="pitch" data-i18n="MIDI_F_TYPE_PITCH">Pitch bend</option>
+                <option value="aftertouch" data-i18n="MIDI_F_TYPE_AFTERTOUCH">Aftertouch (per key)</option>
+                <option value="pressure" data-i18n="MIDI_F_TYPE_PRESSURE">Channel pressure</option>
+                <option value="start" data-i18n="MIDI_F_TYPE_START">Start (transport)</option>
+                <option value="stop" data-i18n="MIDI_F_TYPE_STOP">Stop (transport)</option>
+                <option value="continue" data-i18n="MIDI_F_TYPE_CONTINUE">Continue (transport)</option>
+              </select>
+            </label>
+            <label class="mi__field"><span data-i18n="MIDI_F_CHANNEL">Channel</span><select id="mlearn-channel" class="modal__input mi__select"></select></label>
+            <label class="mi__field"><span data-i18n="MIDI_F_NUMBER">Number</span><input id="mlearn-number" type="number" min="0" max="127" step="1" class="modal__input mi__num" /></label>
+            <span id="mlearn-notename" class="mi__notename"></span>
+          </div>
+        </section>
+        <section class="hkdev__sec">
+          <div class="hkdev__label" data-i18n="MIDI_SCOPE">Applies to</div>
+          <div class="hk__cards" role="radiogroup">
+            <label class="hk__card">
+              <input type="radio" name="mlearn-scope" id="mlearn-scope-all" checked />
+              <svg class="ico hk__card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="8.5"/><path d="M7.4 10.4v.01M12 7.6v.01M16.6 10.4v.01M9.2 15.4v.01M14.8 15.4v.01" stroke-width="2.4"/></svg>
+              <span class="hk__card-text"><span class="hk__card-title" data-i18n="MIDI_SCOPE_ALL">All devices</span><span class="hk__card-sub" data-i18n="MIDI_SCOPE_ALL_SUB">Any connected MIDI device</span></span>
+            </label>
+            <label class="hk__card">
+              <input type="radio" name="mlearn-scope" id="mlearn-scope-one" />
+              <svg class="ico hk__card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="2.5" y="6" width="19" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M7.5 14h9"/></svg>
+              <span class="hk__card-text"><span class="hk__card-title" data-i18n="MIDI_SCOPE_ONE">Only this device</span><span class="hk__card-sub" id="mlearn-scope-one-sub"></span></span>
+            </label>
+          </div>
+        </section>
+        <div id="mlearn-msg" class="hk__msg" role="alert" hidden></div>
+      </div>
+      <div class="modal__footer">
+        <span id="mlearn-progress" class="mi__progress" hidden></span>
+        <button type="button" id="mlearn-skip" class="modal__button" data-i18n="MIDI_LEARN_SKIP" hidden>Skip</button>
+        <button type="button" data-modal-cancel="midi-learn" class="modal__button" data-i18n="CANCEL">Cancel</button>
+        <button type="button" id="mlearn-apply" class="modal__button modal__button--primary" data-i18n="MIDI_LEARN_APPLY">Apply</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MIDI-Belegung: Vorlage (Reihe von Fadern / Pads / Transport-Tasten anlegen und nacheinander einlernen) -->
+  <div class="modal-backdrop modal-backdrop--stacked" data-modal-backdrop="midi-template" aria-hidden="true">
+    <div class="modal modal--midi-learn modal--m" role="dialog" aria-modal="true" aria-labelledby="midi-template-title">
+      <div class="modal__header">
+        <span id="midi-template-title" data-i18n="MIDI_TPL_TITLE">Template</span>
+        <button type="button" class="modal__close" data-modal-close="midi-template" aria-label="Close" data-i18n-aria="CLOSE">&times;</button>
+      </div>
+      <div class="modal__body hkdev">
+        <section class="hkdev__sec">
+          <div id="midi-tpl-list" class="mi__tpl" role="radiogroup"></div>
+        </section>
+        <section class="hkdev__sec mi__manual" id="midi-tpl-opts">
+          <label class="mi__field"><span data-i18n="MIDI_TPL_COUNT">How many</span><input id="midi-tpl-count" type="number" min="1" max="32" step="1" class="modal__input mi__num" /></label>
+          <label class="mi__field"><span id="midi-tpl-start-label">Start</span><input id="midi-tpl-start" type="number" min="0" step="1" class="modal__input mi__num" /></label>
+        </section>
+        <p class="hk__hint" data-i18n="MIDI_TPL_HINT">The rows are created, then you press or move one control after the other.</p>
+      </div>
+      <div class="modal__footer">
+        <button type="button" data-modal-cancel="midi-template" class="modal__button" data-i18n="CANCEL">Cancel</button>
+        <button type="button" id="midi-tpl-create" class="modal__button modal__button--primary" data-i18n="MIDI_TPL_CREATE">Create</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MIDI-Belegung: Eintrag loeschen? -->
+  <div class="modal-backdrop modal-backdrop--stacked" data-modal-backdrop="midi-delete-confirm" aria-hidden="true">
+    <div class="modal modal--xs" role="dialog" aria-modal="true" aria-labelledby="midi-delete-title">
+      <div class="modal__header">
+        <span id="midi-delete-title" data-i18n="MIDI_DELETE_TITLE">Delete MIDI mapping</span>
+        <button type="button" class="modal__close" data-modal-close="midi-delete-confirm" aria-label="Close" data-i18n-aria="CLOSE">&times;</button>
+      </div>
+      <div class="modal__body">
+        <p id="midi-delete-body" style="margin:0;line-height:1.5"></p>
+      </div>
+      <div class="modal__footer">
+        <button type="button" data-modal-cancel="midi-delete-confirm" class="modal__button" data-i18n="CANCEL">Cancel</button>
+        <button type="button" id="midi-delete-confirm-button" class="modal__button modal__button--danger" data-i18n="MIDI_DELETE_CONFIRM">Delete</button>
+      </div>
     </div>
   </div>
 
   <!-- Toast-Container: Hardware-Statusmeldungen, slide-in from top-right -->
   <div id="toast-container" aria-live="polite" aria-atomic="false"></div>
 
+  <script src="/static/js/error_report.js{% if asset_v %}?v={{ asset_v }}{% endif %}"></script>
   <script src="/static/js/icons.js{% if asset_v %}?v={{ asset_v }}{% endif %}"></script>
+  <script src="/static/js/view_state.js{% if asset_v %}?v={{ asset_v }}{% endif %}"></script>
   <script src="/static/js/app.js{% if asset_v %}?v={{ asset_v }}{% endif %}"></script>
   <script src="/static/js/fullscreen.js{% if asset_v %}?v={{ asset_v }}{% endif %}"></script>
+  <script src="/static/js/transfer.js{% if asset_v %}?v={{ asset_v }}{% endif %}"></script>
+  <script src="/static/js/hotkeys.js{% if asset_v %}?v={{ asset_v }}{% endif %}"></script>
+  <script src="/static/js/midi.js{% if asset_v %}?v={{ asset_v }}{% endif %}"></script>
+  <script src="/static/js/controls_settings.js{% if asset_v %}?v={{ asset_v }}{% endif %}"></script>
+  <script src="/static/js/ltc_settings.js{% if asset_v %}?v={{ asset_v }}{% endif %}"></script>
+  <script src="/static/js/settings_tracker.js{% if asset_v %}?v={{ asset_v }}{% endif %}"></script>
+  <script src="/static/js/tile_beam.js{% if asset_v %}?v={{ asset_v }}{% endif %}"></script>
   <script src="/static/js/timecode.js{% if asset_v %}?v={{ asset_v }}{% endif %}"></script>
+  <script src="/static/js/audio_panel.js{% if asset_v %}?v={{ asset_v }}{% endif %}"></script>
+  <script src="/static/js/ai_settings.js{% if asset_v %}?v={{ asset_v }}{% endif %}"></script>
+  <script src="/static/js/dictation.js{% if asset_v %}?v={{ asset_v }}{% endif %}"></script>
+  <script src="/static/js/ai_panel.js{% if asset_v %}?v={{ asset_v }}{% endif %}"></script>
   <script src="/static/js/media_player.js{% if asset_v %}?v={{ asset_v }}{% endif %}"></script>
   <script src="/static/js/stream_panel.js{% if asset_v %}?v={{ asset_v }}{% endif %}"></script>
+  <script src="/static/js/panel_window.js{% if asset_v %}?v={{ asset_v }}{% endif %}"></script>
+  <script src="/static/js/voice.js{% if asset_v %}?v={{ asset_v }}{% endif %}"></script>
+  <script src="/static/js/voice_settings.js{% if asset_v %}?v={{ asset_v }}{% endif %}"></script>
+  <script src="/static/js/defaults_settings.js{% if asset_v %}?v={{ asset_v }}{% endif %}"></script>
+  <script src="/static/js/io_settings.js{% if asset_v %}?v={{ asset_v }}{% endif %}"></script>
   <!-- 3D-Engine: three.js lokal (static/vendor/three, MIT); der Betrachter ist ein ES-Modul und stellt window.OCModelViewer bereit -->
   <script type="importmap">{"imports": {"three": "/static/vendor/three/three.module.js", "three/addons/": "/static/vendor/three/addons/"}}</script>
   <script type="module" src="/static/js/model_viewer.js{% if asset_v %}?v={{ asset_v }}{% endif %}"></script>
-<!--3D-AUS <script src="/static/js/stage3d_boot.js{% if asset_v %}?v={{ asset_v }}{% endif %}"></script> 3D-AUS-->
   <script src="/static/js/sim3d_stages.js{% if asset_v %}?v={{ asset_v }}{% endif %}"></script>
   <script src="/static/js/file_manager.js{% if asset_v %}?v={{ asset_v }}{% endif %}"></script>
+  <script src="/static/js/backups.js{% if asset_v %}?v={{ asset_v }}{% endif %}"></script>
+  <script src="/static/js/shortcuts.js{% if asset_v %}?v={{ asset_v }}{% endif %}"></script>
+  <script src="/static/js/lock.js{% if asset_v %}?v={{ asset_v }}{% endif %}"></script>
+  <script src="/static/js/simple_panel.js{% if asset_v %}?v={{ asset_v }}{% endif %}"></script>
+  <script src="/static/js/timeline_panel.js{% if asset_v %}?v={{ asset_v }}{% endif %}"></script>
+  <script src="/static/js/kiosk.js{% if asset_v %}?v={{ asset_v }}{% endif %}"></script>
+  <script src="/static/js/toolbar_settings.js{% if asset_v %}?v={{ asset_v }}{% endif %}"></script>
+  <script src="/static/js/keep_awake.js{% if asset_v %}?v={{ asset_v }}{% endif %}"></script>
+  <script src="/static/js/tooltips.js{% if asset_v %}?v={{ asset_v }}{% endif %}"></script>
+  <script src="/static/js/recent_shows.js{% if asset_v %}?v={{ asset_v }}{% endif %}"></script>
+  <script src="/static/js/report.js{% if asset_v %}?v={{ asset_v }}{% endif %}"></script>
+  <script src="/static/js/welcome.js{% if asset_v %}?v={{ asset_v }}{% endif %}"></script>
+  <script src="/static/js/fixture_import.js{% if asset_v %}?v={{ asset_v }}{% endif %}"></script>
+  <script src="/static/js/sim_json.js{% if asset_v %}?v={{ asset_v }}{% endif %}"></script>
+  <script src="/static/js/schedule.js{% if asset_v %}?v={{ asset_v }}{% endif %}"></script>
+  <script src="/static/js/osc.js{% if asset_v %}?v={{ asset_v }}{% endif %}"></script>
+  <script src="/static/js/dmx_in.js{% if asset_v %}?v={{ asset_v }}{% endif %}"></script>
+  <script src="/static/js/fs_browser.js{% if asset_v %}?v={{ asset_v }}{% endif %}"></script>
+  <script src="/static/js/settings_hints.js{% if asset_v %}?v={{ asset_v }}{% endif %}"></script>
+  <script src="/static/js/system_settings.js{% if asset_v %}?v={{ asset_v }}{% endif %}"></script>
   <script src="/static/js/about.js{% if asset_v %}?v={{ asset_v }}{% endif %}"></script>
+  <script src="/static/js/help_viewer.js{% if asset_v %}?v={{ asset_v }}{% endif %}"></script>
   <script src="/static/js/updater.js{% if asset_v %}?v={{ asset_v }}{% endif %}"></script>
+  <script src="/static/js/api_settings.js{% if asset_v %}?v={{ asset_v }}{% endif %}"></script>
+  <script src="/static/js/fx_picker.js{% if asset_v %}?v={{ asset_v }}{% endif %}"></script>
   <script src="/static/js/sim3d_boot.js{% if asset_v %}?v={{ asset_v }}{% endif %}"></script>
   <script src="/static/js/fixture_library.js{% if asset_v %}?v={{ asset_v }}{% endif %}"></script>
+  <script src="/static/js/fixture_editor.js{% if asset_v %}?v={{ asset_v }}{% endif %}"></script>
 </body>
 </html>

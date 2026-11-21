@@ -1,3 +1,5 @@
+// Copyright (C) 2026 Samuel Zenker
+// SPDX-License-Identifier: GPL-3.0-or-later
 /* Globaler Timecode (die interne Uhr) - Client-Seite.
  *  - OCTimecode: Spiegel des Server-Zustands (laeuft/Richtung/Rate/Position) mit lokaler Fortschreibung zwischen den Meldungen,
  *    Formatieren/Parsen von Zeiten, Bedienung (Nachrichten an den Server).
@@ -54,13 +56,32 @@
   }
 
   // -------------------------------------------------------------------------------------------- Zustand + Bedienung
-  let state = { running: false, direction: 1, rate: 1, position_ms: 0 };
+  let state = { running: false, direction: 1, rate: 1, position_ms: 0, epoch: 0 };
+  let epoch = 0;                                         // zaehlt jede Unterbrechung des gleichmaessigen Laufs (Start, Stopp, Verschieben, Tempo): Medien gleichen sich nur dann ab
   let receivedAt = performance.now();
   const listeners = new Set();
 
+  // Die Meldungen des Servers (waehrend des Laufs jede Sekunde) kommen ueber WLAN unterschiedlich spaet an. Wuerde jede Meldung die lokale Uhr neu setzen, sprunge die Position
+  // um diese Schwankung (iPad: 50-300 ms) - und das mit der Position synchrone Medium wuerde jede Sekunde nachspringen (Ton ruckelt). Deshalb:
+  //  1. Die Laufzeit schaetzen: die schnellste Meldung der letzten Zeit (kleinster Unterschied "Ankunft - Server-Zeit", die Uhren beider Geraete duerfen verschieden gehen)
+  //     gilt als Bezug; kam eine Meldung spaeter an, wird die Position um diese Verspaetung weitergerechnet.
+  //  2. Laeuft derselbe Lauf weiter und weicht die gemeldete Position um weniger als 250 ms von der lokalen Uhr ab, bleibt die lokale Uhr, wie sie ist (sonst beginnt eine neue "Epoche": Start, Stopp, Verschieben oder anderes Tempo - nur dann gleichen sich Medien ab).
+  let deltaMin = Infinity;
   function ingest(next) {
     if (!next || typeof next !== "object") return;
-    state = { running: !!next.running, direction: next.direction < 0 ? -1 : 1, rate: Number(next.rate) || 1, position_ms: Number(next.position_ms) || 0 };
+    const running = !!next.running;
+    const direction = next.direction < 0 ? -1 : 1;
+    const rate = Number(next.rate) || 1;
+    let positionMs = Number(next.position_ms) || 0;
+    const serverTime = Number(next.server_time_ms);
+    if (running && Number.isFinite(serverTime) && serverTime > 0) {
+      const delta = Date.now() - serverTime;
+      deltaMin = Math.min(deltaMin + 0.25, delta);               // langsam vergessen (die Uhren laufen nie ganz gleich)
+      positionMs += direction * rate * Math.max(0, delta - deltaMin);
+    }
+    if (running && state.running && state.direction === direction && state.rate === rate && Math.abs(position() - positionMs) < 250) return;      // dieselbe Fahrt (die Meldung jede Sekunde): nichts aendern
+    epoch += 1;
+    state = { running, direction, rate, position_ms: positionMs, epoch, source: next.source === "midi" ? "midi" : (next.source === "ltc" ? "ltc" : "") };
     receivedAt = performance.now();
     listeners.forEach((fn) => { try { fn(state); } catch (e) { console.error(e); } });
   }
@@ -219,7 +240,7 @@
       bPause.classList.toggle("tcp__btn--on", !running && !atZero);
       bReset.classList.toggle("tcp__btn--on", atZero);
       dot.className = "tcp__dot" + (running ? " tcp__dot--run" : (atZero ? "" : " tcp__dot--pause"));
-      statusText.textContent = running ? t(state.direction < 0 ? "TC_STATE_REVERSE" : "TC_STATE_RUNNING") : t(atZero ? "TC_STATE_STOPPED" : "TC_STATE_PAUSED");
+      statusText.textContent = running ? t(state.direction < 0 ? "TC_STATE_REVERSE" : (state.source === "midi" ? "TC_STATE_MIDI" : (state.source === "ltc" ? "TC_STATE_LTC" : "TC_STATE_RUNNING"))) : t(atZero ? "TC_STATE_STOPPED" : "TC_STATE_PAUSED");
       if (document.activeElement !== select) select.value = String(RATES.includes(state.rate) ? state.rate : 1);
       if (!RATES.includes(state.rate)) {
         let custom = select.querySelector("option[data-custom]");

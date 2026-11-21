@@ -1,3 +1,5 @@
+# Copyright (C) 2026 Samuel Zenker
+# SPDX-License-Identifier: GPL-3.0-or-later
 """
 fixture_manager.py
 Verwaltung verfuegbarer Fixture-Typen fuer OpenCue.
@@ -154,6 +156,7 @@ def _parse_gdtf(path: Path) -> Dict[str, Any]:
             "name": fixture.name or path.stem,
             "manufacturer": fixture.manufacturer or path.stem.split("@")[0].strip(),
             "short_name": (fixture.short_name or fixture.name or path.stem)[:8],
+            "long_name": fixture.long_name or "",
             "channel_count": modes[0]["channel_count"],
             "modes": modes,
             "source": "gdtf",
@@ -208,17 +211,97 @@ def get_fixture_types() -> List[Dict[str, Any]]:
     _fixture_types_cache_key = cache_key
     # Wheels-Cache mitinvalidieren, wenn sich GDTF-Dateien geaendert haben.
     _fixture_wheels_cache.clear()
+    _fixture_channel_info_cache.clear()
     _fixture_shutter_cache.clear()
     _fixture_beamfx_cache.clear()
     return result
 
 
+_by_id: Dict[str, Any] = {"stamp": None, "checked": 0.0, "index": {}}
+
+
 def get_fixture_type_by_id(fixture_type_id: str) -> Optional[Dict[str, Any]]:
-    """Einen Fixture-Typ nach seiner ID zurueckgeben."""
-    return next((ft for ft in get_fixture_types() if ft["id"] == fixture_type_id), None)
+    """Einen Fixture-Typ nach seiner ID zurueckgeben. Heisser Pfad (jede Fader-Bewegung, jeder Blackout, je Scheinwerfer): ein Index statt einer Suche ueber alle Typen, und ob sich
+    GDTF-Dateien geaendert haben, wird hoechstens einmal je Sekunde geprueft (get_fixture_types() prueft jede Datei). Ein unbekannter Typ wird sofort frisch nachgeschlagen."""
+    import time as _time
+    now = _time.monotonic()
+    cache = _by_id
+    if not cache["index"] or now - cache["checked"] > 1.0:
+        types = get_fixture_types()
+        if cache["stamp"] is not types:
+            cache["index"] = {ft["id"]: ft for ft in types}
+            cache["stamp"] = types
+        cache["checked"] = now
+    found = cache["index"].get(fixture_type_id)
+    if found is None and now - cache["checked"] > 0.0:
+        types = get_fixture_types()
+        cache["index"] = {ft["id"]: ft for ft in types}
+        cache["stamp"] = types
+        cache["checked"] = now
+        found = cache["index"].get(fixture_type_id)
+    return found
 
 
 _fixture_wheels_cache: Dict[str, List[Dict[str, Any]]] = {}
+_fixture_channel_info_cache: Dict[str, Dict[str, List[Dict[str, Any]]]] = {}
+
+
+def _coarse(value: Any) -> Optional[int]:
+    """DMX-Wert einer GDTF-Angabe als 8-Bit-Wert (bei 16/24 Bit das hoechste Byte)."""
+    raw = getattr(value, "value", None)
+    if raw is None:
+        return None
+    try:
+        count = max(1, int(getattr(value, "byte_count", 1) or 1))
+        return max(0, min(255, int(raw) >> (8 * (count - 1))))
+    except (TypeError, ValueError):
+        return None
+
+
+def _closed_ranges(items: List[Dict[str, Any]]) -> None:
+    """Setzt bei jedem Eintrag das Ende (bis zum Anfang des naechsten - 1, der letzte bis 255)."""
+    items.sort(key=lambda it: it["from"])
+    for index, item in enumerate(items):
+        item["to"] = max(item["from"], items[index + 1]["from"] - 1) if index + 1 < len(items) else 255
+
+
+def get_fixture_channel_info(fixture_id: str) -> Dict[str, List[Dict[str, Any]]]:
+    """Lesbare Kanal-Beschreibung je Modus (Detail-Ansicht im DMX-Direct-Regler): Kanal-Offset, Attribut, schoener Attributname, Funktionen mit DMX-Bereichen und deren benannte Stufen."""
+    if fixture_id in _fixture_channel_info_cache:
+        return _fixture_channel_info_cache[fixture_id]
+    result: Dict[str, List[Dict[str, Any]]] = {}
+    path = next((p for p in gdtf_paths() if p.stem == fixture_id), None)
+    if path is not None:
+        try:
+            fixture = pygdtf.FixtureType(str(path))
+            fixture.__exit__(None, None, None)
+            pretty = {str(a.name): str(a.pretty or "") for a in fixture.attributes}
+            for mode in fixture.dmx_modes:
+                rows: List[Dict[str, Any]] = []
+                for ch in mode.dmx_channels:
+                    if not ch.offset or not ch.logical_channels:
+                        continue
+                    logical = ch.logical_channels[0]
+                    functions: List[Dict[str, Any]] = []
+                    for cf in (logical.channel_functions or [])[:40]:
+                        start = _coarse(cf.dmx_from)
+                        sets: List[Dict[str, Any]] = []
+                        for cs in (cf.channel_sets or [])[:64]:
+                            s_from = _coarse(cs.dmx_from)
+                            if s_from is not None and str(cs.name or "").strip():
+                                sets.append({"name": str(cs.name).strip(), "from": s_from})
+                        _closed_ranges(sets)
+                        functions.append({"name": str(cf.name or "").strip(), "attribute": str(cf.attribute or ""), "from": 0 if start is None else start, "sets": sets})
+                    _closed_ranges(functions)
+                    attr = str(logical.attribute)
+                    rows.append({"offset": int(ch.offset[0]) - 1, "attribute": attr, "pretty": pretty.get(attr, ""), "bytes": len(ch.offset),
+                                 "default": _coarse(ch.default), "functions": functions})
+                rows.sort(key=lambda r: r["offset"])
+                result[mode.name or "default"] = rows
+        except Exception:
+            result = {}
+    _fixture_channel_info_cache[fixture_id] = result
+    return result
 
 
 def get_fixture_wheels(fixture_id: str) -> List[Dict[str, Any]]:

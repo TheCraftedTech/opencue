@@ -1,0 +1,1058 @@
+{
+ "_info": "Dialoge und Funktionen, die der Wegweiser als Schaltflaeche im Chat anbieten darf. 'path' sind Schluessel der Sprachdateien (static/locales): so stimmt der Menuepfad immer mit der Oberflaeche ueberein. 'click' sagt, welchen Menuepunkt / Knopf die Schaltflaeche ausloest. Es wird nur geoeffnet oder umgeschaltet - nie etwas gespeichert oder geloescht.",
+ "targets": [
+  {
+   "id": "settings",
+   "kind": "dialog",
+   "path": [
+    "SETTINGS"
+   ],
+   "click": {
+    "action": "open-settings-modal"
+   },
+   "keywords": {
+    "de": [
+     "einstellungen",
+     "zahnrad",
+     "optionen",
+     "konfiguration"
+    ],
+    "en": [
+     "settings",
+     "gear",
+     "options",
+     "configuration",
+     "preferences"
+    ]
+   },
+   "about": {
+    "de": "Der Dialog Einstellungen (Zahnrad oben rechts) hat die Gruppen Programm (Allgemein, Darstellung), Ausgabe (DMX-Ausgabe), Netzwerk (Fernzugriff, REST-API), Sprache & Audio (Triggerwort, Diktieren), Assistent (KI-Assistent) und Erweitert (Standardwerte, Ein- & Ausgänge). Netzwerk, Sprache, Assistent und Erweitert erscheinen nur am Konsolenrechner selbst. Wichtige Kategorien haben oben einen großen An/Aus-Schalter; Änderungen gelten erst nach Speichern.",
+    "en": "The Settings dialog (gear at the top right) has the groups Program (General, Appearance), Output (DMX output), Network (Remote access, REST API), Speech & audio (Wake word, Dictation), Assistant (AI assistant) and Advanced (Defaults, Inputs & outputs). Network, Speech, Assistant and Advanced only appear at the console computer itself. Important categories have a big on/off switch at the top; changes only apply after Save."
+   }
+  },
+  {
+   "id": "settings:general",
+   "kind": "dialog",
+   "path": [
+    "SETTINGS",
+    "SETTINGS_CATEGORY_GENERAL"
+   ],
+   "click": {
+    "action": "open-settings-modal",
+    "category": "general"
+   },
+   "keywords": {
+    "de": [
+     "allgemein",
+     "sprache",
+     "update",
+     "updates",
+     "datenordner",
+     "speicherort",
+     "skalierung"
+    ],
+    "en": [
+     "general",
+     "language",
+     "update",
+     "updates",
+     "data folder",
+     "storage",
+     "scale"
+    ]
+   },
+   "about": {
+    "de": "Allgemein enthält Sprache & Anzeige, Verhalten, Updates (Automatisch nach Updates suchen), Internet-Verbindung (Knopf Verbindung testen: zeigt, ob Update-Server und GDTF Share erreichbar sind und woran es hakt) sowie Datenordner & Dateiverwaltung (hier änderst du den Speicherort der Daten).",
+    "en": "General contains Language & display, Behaviour, Updates (Check for updates automatically), Internet connection (button Test connection: shows whether the update server and GDTF Share are reachable and what is in the way) and Data folder & file management (here you change where the data is stored)."
+   }
+  },
+  {
+   "id": "settings:appearance",
+   "kind": "dialog",
+   "path": [
+    "SETTINGS",
+    "SETTINGS_CATEGORY_APPEARANCE"
+   ],
+   "click": {
+    "action": "open-settings-modal",
+    "category": "appearance"
+   },
+   "keywords": {
+    "de": [
+     "darstellung",
+     "farben",
+     "farbe",
+     "theme",
+     "design",
+     "dunkel",
+     "hell",
+     "farbprofil",
+     "eckenradius",
+     "schlagschatten",
+     "hintergrund"
+    ],
+    "en": [
+     "appearance",
+     "colors",
+     "colours",
+     "color",
+     "theme",
+     "dark",
+     "light",
+     "profile",
+     "corners",
+     "shadow",
+     "background"
+    ]
+   },
+   "about": {
+    "de": "Darstellung enthält die Farben des Programms (Theme: dunkel, hell oder eigene Farbprofile) und die Voreinstellungen für neue Panels (Hintergrund, Text, Header, Schlagschatten, Eckenradius).",
+    "en": "Appearance contains the colours of the program (theme: dark, light or your own colour profiles) and the defaults for new panels (background, text, header, drop shadow, corner radius)."
+   }
+  },
+  {
+   "id": "settings:dmx-network",
+   "kind": "dialog",
+   "path": [
+    "SETTINGS",
+    "SETTINGS_CATEGORY_DMX"
+   ],
+   "click": {
+    "action": "open-settings-modal",
+    "category": "dmx-network"
+   },
+   "keywords": {
+    "de": [
+     "dmx",
+     "art-net",
+     "artnet",
+     "sacn",
+     "usb",
+     "enttec",
+     "netzwerk",
+     "ausgabe",
+     "schnittstelle",
+     "com-port",
+     "universum"
+    ],
+    "en": [
+     "dmx",
+     "art-net",
+     "artnet",
+     "sacn",
+     "usb",
+     "enttec",
+     "network",
+     "output",
+     "interface",
+     "com port",
+     "universe"
+    ]
+   },
+   "about": {
+    "de": "DMX-Ausgabe: Art-Net (Ziel-IP, Bind-IP), sACN (E1.31), USB DMX (Enttec DMX USB Pro: COM-Port und Universum) und 'DMX-Schnittstellen neu initialisieren'. Jedes Protokoll hat einen eigenen Hauptschalter; beim ersten Start ist alles aus.",
+    "en": "DMX output: Art-Net (target IP, bind IP), sACN (E1.31), USB DMX (Enttec DMX USB Pro: COM port and universe) and 'Reinitialise DMX interfaces'. Each protocol has its own master switch; everything is off on the first start."
+   }
+  },
+  {
+   "id": "settings:remote",
+   "kind": "dialog",
+   "path": [
+    "SETTINGS",
+    "SETTINGS_CATEGORY_REMOTE"
+   ],
+   "click": {
+    "action": "open-settings-modal",
+    "category": "remote"
+   },
+   "keywords": {
+    "de": [
+     "fernzugriff",
+     "fernsteuerung",
+     "remote",
+     "tablet",
+     "handy",
+     "ipad",
+     "qr",
+     "passwort"
+    ],
+    "en": [
+     "remote",
+     "remote access",
+     "tablet",
+     "phone",
+     "ipad",
+     "qr",
+     "password"
+    ]
+   },
+   "about": {
+    "de": "Fernzugriff: Hauptschalter, HTTP / HTTPS, Passwort (beim ersten Einschalten wird ein eigenes verlangt), Adressen mit QR-Code und der Netzwerk-Name opencue.local. Nur am Konsolenrechner sichtbar.",
+    "en": "Remote access: master switch, HTTP / HTTPS, password (your own is required when first switching on), addresses with QR code and the network name opencue.local. Only visible at the console computer."
+   }
+  },
+  {
+   "id": "settings:api",
+   "kind": "dialog",
+   "path": [
+    "SETTINGS",
+    "API_CATEGORY"
+   ],
+   "click": {
+    "action": "open-settings-modal",
+    "category": "api"
+   },
+   "keywords": {
+    "de": [
+     "api",
+     "rest",
+     "token",
+     "tokens",
+     "schnittstelle"
+    ],
+    "en": [
+     "api",
+     "rest",
+     "token",
+     "tokens",
+     "interface"
+    ]
+   },
+   "about": {
+    "de": "REST-API: Hauptschalter, Erreichbar von (nur dieser PC oder im Netzwerk), Tokens anlegen und was ein Token darf. Änderungen an Tokens gelten erst nach Speichern. Nur am Konsolenrechner sichtbar.",
+    "en": "REST API: master switch, Reachable from (this computer only or the network), create tokens and what a token may do. Token changes only apply after Save. Only visible at the console computer."
+   }
+  },
+  {
+   "id": "settings:voice",
+   "kind": "dialog",
+   "path": [
+    "SETTINGS",
+    "VOICE_CATEGORY"
+   ],
+   "click": {
+    "action": "open-settings-modal",
+    "category": "voice"
+   },
+   "keywords": {
+    "de": [
+     "triggerwort",
+     "weckwort",
+     "sprachsteuerung",
+     "mikrofon",
+     "sprache"
+    ],
+    "en": [
+     "wake word",
+     "trigger word",
+     "voice control",
+     "microphone",
+     "speech"
+    ]
+   },
+   "about": {
+    "de": "Triggerwort: Sprachsteuerung mit eigenem Mikrofon, Weckwort (Standard OpenCue) und Empfindlichkeit. Hauptschalter oben.",
+    "en": "Wake word: voice control with its own microphone, wake word (default OpenCue) and sensitivity. Master switch at the top."
+   }
+  },
+  {
+   "id": "settings:dictation",
+   "kind": "dialog",
+   "path": [
+    "SETTINGS",
+    "DICT_CATEGORY"
+   ],
+   "click": {
+    "action": "open-settings-modal",
+    "category": "dictation"
+   },
+   "keywords": {
+    "de": [
+     "diktieren",
+     "diktat",
+     "whisper",
+     "sprachmodell",
+     "mikrofon"
+    ],
+    "en": [
+     "dictation",
+     "dictate",
+     "whisper",
+     "speech model",
+     "microphone"
+    ]
+   },
+   "about": {
+    "de": "Diktieren: Mikrofon und Sprachmodell (schnell oder genau, mit Knopf Jetzt laden) für das Diktieren im KI-Chat.",
+    "en": "Dictation: microphone and speech model (fast or accurate, with a Load now button) for dictating in the AI chat."
+   }
+  },
+  {
+   "id": "settings:ai",
+   "kind": "dialog",
+   "path": [
+    "SETTINGS",
+    "AI_CATEGORY"
+   ],
+   "click": {
+    "action": "open-settings-modal",
+    "category": "ai"
+   },
+   "keywords": {
+    "de": [
+     "ki",
+     "assistent",
+     "ollama",
+     "modell",
+     "berechtigungen",
+     "sprachmodell"
+    ],
+    "en": [
+     "ai",
+     "assistant",
+     "ollama",
+     "model",
+     "permissions",
+     "language model"
+    ]
+   },
+   "about": {
+    "de": "KI-Assistent: Hauptschalter, Verbindung (Server Ollama, Modell), Verhalten, Berechtigungen und Erweitertes. Nur am Konsolenrechner sichtbar.",
+    "en": "AI assistant: master switch, connection (Ollama server, model), behaviour, permissions and advanced values. Only visible at the console computer."
+   }
+  },
+  {
+   "id": "settings:defaults",
+   "kind": "dialog",
+   "path": [
+    "SETTINGS",
+    "DEFAULTS_CATEGORY"
+   ],
+   "click": {
+    "action": "open-settings-modal",
+    "category": "defaults"
+   },
+   "keywords": {
+    "de": [
+     "standardwerte",
+     "vorgaben",
+     "neue cues",
+     "clear clear",
+     "startwerte"
+    ],
+    "en": [
+     "defaults",
+     "new cues",
+     "clear clear",
+     "start values"
+    ]
+   },
+   "about": {
+    "de": "Standardwerte: Vorgaben für neue Cues (Abspielart, Zeiten, MIB), Grundzustand nach Clear Clear und Startwerte (Grand Master, Blackout, Executor).",
+    "en": "Defaults: defaults for new cues (play mode, times, MIB), base state after Clear Clear and start values (grand master, blackout, executor)."
+   }
+  },
+  {
+   "id": "settings:io",
+   "kind": "dialog",
+   "path": [
+    "SETTINGS",
+    "IO_CATEGORY"
+   ],
+   "click": {
+    "action": "open-settings-modal",
+    "category": "io"
+   },
+   "keywords": {
+    "de": [
+     "ein- & ausgänge",
+     "eingänge",
+     "ausgänge",
+     "reichweite",
+     "übersicht",
+     "verbindungen"
+    ],
+    "en": [
+     "inputs & outputs",
+     "inputs",
+     "outputs",
+     "reach",
+     "overview",
+     "connections"
+    ]
+   },
+   "about": {
+    "de": "Ein- & Ausgänge: Anzeige aller Verbindungen, wofür sie dienen und wie weit sie reichen (nur dieser PC, lokales Netzwerk, Internet), mit Link zur passenden Einstellung.",
+    "en": "Inputs & outputs: display of every connection, what it is for and how far it reaches (this PC only, local network, Internet), with a link to the matching setting."
+   }
+  },
+  {
+   "id": "file-manager",
+   "kind": "dialog",
+   "path": [
+    "FILE",
+    "FM_MENU"
+   ],
+   "click": {
+    "action": "file-manager"
+   },
+   "keywords": {
+    "de": [
+     "dateimanager",
+     "dateien",
+     "verwalten",
+     "import",
+     "export",
+     "zip",
+     "sichern",
+     "backup"
+    ],
+    "en": [
+     "file manager",
+     "files",
+     "manage",
+     "import",
+     "export",
+     "zip",
+     "backup"
+    ]
+   },
+   "about": {
+    "de": "Der Dateimanager verwaltet Shows, Layouts, 3D-Bühnen und Effekte (auch Import und Export als ZIP, um eine Show auf einen anderen Computer zu bringen).",
+    "en": "The file manager manages shows, layouts, 3D stages and effects (including import and export as ZIP, to move a show to another computer)."
+   }
+  },
+  {
+   "id": "file-manager:shows",
+   "kind": "dialog",
+   "path": [
+    "LIBRARY",
+    "FM_MENU_SHOWS"
+   ],
+   "click": {
+    "action": "file-manager",
+    "fm_kind": "shows"
+   },
+   "keywords": {
+    "de": [
+     "shows",
+     "showfiles",
+     "showfile",
+     "shows verwalten"
+    ],
+    "en": [
+     "shows",
+     "showfiles",
+     "showfile",
+     "manage shows"
+    ]
+   },
+   "about": {
+    "de": "Der Dateimanager mit der Liste der gespeicherten Shows.",
+    "en": "The file manager with the list of saved shows."
+   }
+  },
+  {
+   "id": "file-manager:layouts",
+   "kind": "dialog",
+   "path": [
+    "LIBRARY",
+    "FM_MENU_LAYOUTS"
+   ],
+   "click": {
+    "action": "file-manager",
+    "fm_kind": "layouts"
+   },
+   "keywords": {
+    "de": [
+     "layouts",
+     "layout",
+     "layouts verwalten",
+     "panel-anordnung"
+    ],
+    "en": [
+     "layouts",
+     "layout",
+     "manage layouts",
+     "panel arrangement"
+    ]
+   },
+   "about": {
+    "de": "Der Dateimanager mit der Liste der Layouts (auch unter Bearbeiten → Layouts verwalten…).",
+    "en": "The file manager with the list of layouts (also under Edit → Manage layouts...)."
+   }
+  },
+  {
+   "id": "file-manager:stages",
+   "kind": "dialog",
+   "path": [
+    "LIBRARY",
+    "FM_MENU_STAGES"
+   ],
+   "click": {
+    "action": "file-manager",
+    "fm_kind": "stages"
+   },
+   "keywords": {
+    "de": [
+     "bühnen",
+     "buehnen",
+     "3d-bühnen",
+     "3d"
+    ],
+    "en": [
+     "stages",
+     "3d stages",
+     "3d"
+    ]
+   },
+   "about": {
+    "de": "Der Dateimanager mit der Liste der 3D-Bühnen.",
+    "en": "The file manager with the list of 3D stages."
+   }
+  },
+  {
+   "id": "file-manager:models",
+   "kind": "dialog",
+   "path": [
+    "LIBRARY",
+    "FM_MENU_MODELS"
+   ],
+   "click": {
+    "action": "file-manager",
+    "fm_kind": "models"
+   },
+   "keywords": {
+    "de": [
+     "3d-modelle",
+     "modelle",
+     "modell",
+     "stl",
+     "obj",
+     "3d-modell importieren"
+    ],
+    "en": [
+     "3d models",
+     "models",
+     "model",
+     "stl",
+     "obj",
+     "import 3d model"
+    ]
+   },
+   "about": {
+    "de": "Der Dateimanager mit den eigenen 3D-Modellen (STL oder OBJ) für die 3D-Simulation. Auf die Bühne kommen sie im Panel 3D-Simulation unter Bauen → 3D-Modell …",
+    "en": "The file manager with your own 3D models (STL or OBJ) for the 3D simulation. They go on the stage in the 3D Simulation panel under Build → 3D model …"
+   }
+  },
+  {
+   "id": "file-manager:effects",
+   "kind": "dialog",
+   "path": [
+    "LIBRARY",
+    "FM_MENU_EFFECTS"
+   ],
+   "click": {
+    "action": "file-manager",
+    "fm_kind": "effects"
+   },
+   "keywords": {
+    "de": [
+     "effekte",
+     "effekt-skripte",
+     "fx"
+    ],
+    "en": [
+     "effects",
+     "effect scripts",
+     "fx"
+    ]
+   },
+   "about": {
+    "de": "Der Dateimanager mit der Liste der Effekt-Skripte.",
+    "en": "The file manager with the list of effect scripts."
+   }
+  },
+  {
+   "id": "fixture-library",
+   "kind": "dialog",
+   "path": [
+    "LIBRARY",
+    "FXLIB_MENU"
+   ],
+   "click": {
+    "action": "fixture-library"
+   },
+   "keywords": {
+    "de": [
+     "scheinwerfer-bibliothek",
+     "bibliothek",
+     "gdtf",
+     "geräte",
+     "geraete",
+     "gerätetypen",
+     "patchen",
+     "fixture"
+    ],
+    "en": [
+     "fixture library",
+     "library",
+     "gdtf",
+     "fixture types",
+     "patch",
+     "fixture"
+    ]
+   },
+   "about": {
+    "de": "Die Scheinwerfer-Bibliothek zeigt die installierten GDTF-Scheinwerfer, die Typen dieser Show und Online (GDTF Share) zum Herunterladen.",
+    "en": "The fixture library shows the installed GDTF fixtures, the types of this show and Online (GDTF Share) to download from."
+   }
+  },
+  {
+   "id": "open-show",
+   "kind": "dialog",
+   "path": [
+    "FILE",
+    "FILE_OPEN"
+   ],
+   "click": {
+    "action": "open-show"
+   },
+   "keywords": {
+    "de": [
+     "show öffnen",
+     "showfile öffnen",
+     "laden",
+     "öffnen"
+    ],
+    "en": [
+     "open show",
+     "open showfile",
+     "load",
+     "open"
+    ]
+   },
+   "about": {
+    "de": "Öffnet eine gespeicherte Show.",
+    "en": "Opens a saved show."
+   }
+  },
+  {
+   "id": "save-show-as",
+   "kind": "dialog",
+   "path": [
+    "FILE",
+    "FILE_SAVE_AS"
+   ],
+   "click": {
+    "action": "save-show-as"
+   },
+   "keywords": {
+    "de": [
+     "speichern unter",
+     "show speichern",
+     "neuer name",
+     "kopie speichern"
+    ],
+    "en": [
+     "save as",
+     "save show",
+     "new name",
+     "save a copy"
+    ]
+   },
+   "about": {
+    "de": "Speichert die Show unter einem neuen Namen (Strg+Umschalt+S).",
+    "en": "Saves the show under a new name (Ctrl+Shift+S)."
+   }
+  },
+  {
+   "id": "import-show",
+   "kind": "dialog",
+   "path": [
+    "FILE",
+    "FM_MENU_IMPORT"
+   ],
+   "click": {
+    "action": "import-show"
+   },
+   "keywords": {
+    "de": [
+     "import",
+     "show importieren",
+     "zip importieren"
+    ],
+    "en": [
+     "import",
+     "import show",
+     "import zip"
+    ]
+   },
+   "about": {
+    "de": "Importiert eine Show aus einer ZIP-Datei samt der Scheinwerfer und Effekte, die sie braucht.",
+    "en": "Imports a show from a ZIP file together with the fixtures and effects it needs."
+   }
+  },
+  {
+   "id": "export-show",
+   "kind": "dialog",
+   "path": [
+    "FILE",
+    "FM_MENU_EXPORT"
+   ],
+   "click": {
+    "action": "export-show"
+   },
+   "keywords": {
+    "de": [
+     "export",
+     "show exportieren",
+     "zip exportieren",
+     "sichern",
+     "backup"
+    ],
+    "en": [
+     "export",
+     "export show",
+     "export zip",
+     "backup"
+    ]
+   },
+   "about": {
+    "de": "Exportiert eine Show als ZIP samt der Scheinwerfer und Effekte, die sie braucht.",
+    "en": "Exports a show as ZIP together with the fixtures and effects it needs."
+   }
+  },
+  {
+   "id": "gui-scale",
+   "kind": "dialog",
+   "path": [
+    "VIEW",
+    "GUI_SCALE_MENU"
+   ],
+   "click": {
+    "action": "open-gui-scale-modal"
+   },
+   "keywords": {
+    "de": [
+     "gui-skalierung",
+     "skalierung",
+     "größe",
+     "groesse",
+     "größer",
+     "zoom",
+     "touchscreen"
+    ],
+    "en": [
+     "gui scale",
+     "scale",
+     "size",
+     "bigger",
+     "zoom",
+     "touchscreen"
+    ]
+   },
+   "about": {
+    "de": "Die GUI-Skalierung macht alles größer oder kleiner (zum Beispiel für Touchscreens); sie wird pro Gerät gespeichert.",
+    "en": "The GUI scale makes everything bigger or smaller (for example for touchscreens); it is stored per device."
+   }
+  },
+  {
+   "id": "shortcuts",
+   "kind": "dialog",
+   "path": [
+    "HELP",
+    "HELP_SHORTCUTS"
+   ],
+   "click": {
+    "action": "open-shortcuts-modal"
+   },
+   "keywords": {
+    "de": [
+     "tastenkürzel",
+     "tastenkuerzel",
+     "shortcuts",
+     "tastatur",
+     "kürzel"
+    ],
+    "en": [
+     "keyboard shortcuts",
+     "shortcuts",
+     "keyboard",
+     "keys"
+    ]
+   },
+   "about": {
+    "de": "Zeigt alle Tastenkürzel (auch mit der Taste ?).",
+    "en": "Shows all keyboard shortcuts (also with the ? key)."
+   }
+  },
+  {
+   "id": "about",
+   "kind": "dialog",
+   "path": [
+    "HELP",
+    "HELP_ABOUT"
+   ],
+   "click": {
+    "action": "open-about-modal"
+   },
+   "keywords": {
+    "de": [
+     "über opencue",
+     "version",
+     "info"
+    ],
+    "en": [
+     "about opencue",
+     "version",
+     "info"
+    ]
+   },
+   "about": {
+    "de": "Zeigt Informationen über OpenCue, zum Beispiel die Version.",
+    "en": "Shows information about OpenCue, for example the version."
+   }
+  },
+  {
+   "id": "check-updates",
+   "kind": "dialog",
+   "path": [
+    "HELP",
+    "HELP_CHECK_UPDATES"
+   ],
+   "click": {
+    "action": "check-updates"
+   },
+   "keywords": {
+    "de": [
+     "updates",
+     "update",
+     "aktualisieren",
+     "neue version"
+    ],
+    "en": [
+     "updates",
+     "update",
+     "upgrade",
+     "new version"
+    ]
+   },
+   "about": {
+    "de": "Prüft, ob es eine neue Version gibt, und bietet die Installation an.",
+    "en": "Checks whether there is a new version and offers to install it."
+   }
+  },
+  {
+   "id": "edit-mode",
+   "kind": "toggle",
+   "path": [
+    "EDIT",
+    "EDIT_PANELS"
+   ],
+   "click": {
+    "action": "toggle-edit-mode"
+   },
+   "keywords": {
+    "de": [
+     "panels bearbeiten",
+     "bearbeitungsmodus",
+     "panels verschieben",
+     "größe ändern",
+     "layout bearbeiten"
+    ],
+    "en": [
+     "edit panels",
+     "edit mode",
+     "move panels",
+     "resize",
+     "edit layout"
+    ]
+   },
+   "about": {
+    "de": "Schaltet den Bearbeitungsmodus ein oder aus (Strg+E): Panels verschieben und in der Größe ändern, ihre Eigenschaften anpassen, kopieren und einfügen.",
+    "en": "Switches edit mode on or off (Ctrl+E): move and resize panels, adjust their properties, copy and paste them."
+   }
+  },
+  {
+   "id": "add-panel",
+   "kind": "dialog",
+   "path": [
+    "EDIT",
+    "ADD_PANEL"
+   ],
+   "click": {
+    "action": "open-add-panel-modal",
+    "needs": "edit-mode"
+   },
+   "keywords": {
+    "de": [
+     "panel hinzufügen",
+     "neues panel",
+     "panel anlegen"
+    ],
+    "en": [
+     "add panel",
+     "new panel"
+    ]
+   },
+   "about": {
+    "de": "Panel hinzufügen… öffnet die Auswahl der Panel-Typen. Es geht nur im Bearbeitungsmodus (Strg+E).",
+    "en": "Add Panel... opens the choice of panel types. It only works in edit mode (Ctrl+E)."
+   }
+  },
+  {
+   "id": "fullscreen",
+   "kind": "toggle",
+   "path": [
+    "VIEW",
+    "FULLSCREEN"
+   ],
+   "click": {
+    "action": "toggle-fullscreen"
+   },
+   "keywords": {
+    "de": [
+     "vollbild",
+     "fullscreen",
+     "f11"
+    ],
+    "en": [
+     "fullscreen",
+     "full screen",
+     "f11"
+    ]
+   },
+   "about": {
+    "de": "Schaltet das Vollbild ein oder aus (F11).",
+    "en": "Switches fullscreen on or off (F11)."
+   }
+  },
+  {
+   "id": "language",
+   "kind": "toggle",
+   "path": [
+    "LANGUAGE",
+    "LANGUAGE_TOGGLE"
+   ],
+   "click": {
+    "action": "toggle-language"
+   },
+   "keywords": {
+    "de": [
+     "sprache wechseln",
+     "englisch",
+     "deutsch",
+     "language"
+    ],
+    "en": [
+     "switch language",
+     "english",
+     "german",
+     "language"
+    ]
+   },
+   "about": {
+    "de": "Wechselt zwischen Englisch und Deutsch (Strg+Umschalt+L).",
+    "en": "Switches between English and German (Ctrl+Shift+L)."
+   }
+  },
+  {
+   "id": "command-window",
+   "kind": "dialog",
+   "path": [
+    "VIEW",
+    "PANELWIN_CMDLINE"
+   ],
+   "click": {
+    "action": "open-command-window"
+   },
+   "keywords": {
+    "de": [
+     "befehlszeile",
+     "kommandozeile",
+     "befehl eingeben",
+     "befehls-konsole",
+     "ziffernblock",
+     "strg+f"
+    ],
+    "en": [
+     "command line",
+     "command console",
+     "type a command",
+     "keypad",
+     "ctrl+f"
+    ]
+   },
+   "about": {
+    "de": "Öffnet die Befehls-Konsole (auch mit Strg+F): Befehlszeile, Ziffernblock und Befehlstasten in einem Fenster, ohne dass diese Panels im Layout liegen.",
+    "en": "Opens the command console (also with Ctrl+F): command line, keypad and command keys in one window, without these panels in the layout."
+   }
+  },
+  {
+   "id": "restore-backup",
+   "kind": "dialog",
+   "path": [
+    "FILE",
+    "BACKUP_MENU"
+   ],
+   "click": {
+    "action": "restore-backup"
+   },
+   "keywords": {
+    "de": [
+     "sicherung",
+     "backup",
+     "wiederherstellen",
+     "absturz",
+     "wiederherstellung",
+     "ungespeichert",
+     "verloren"
+    ],
+    "en": [
+     "backup",
+     "restore",
+     "recover",
+     "recovery",
+     "crash",
+     "unsaved",
+     "lost"
+    ]
+   },
+   "about": {
+    "de": "OpenCue sichert die Show im Hintergrund (auch ungespeicherte Änderungen). Hier lässt sich eine Sicherung als ungespeicherte Show wiederherstellen; die Show-Datei bleibt unverändert.",
+    "en": "OpenCue backs up the show in the background (unsaved changes too). Here you can restore a backup as an unsaved show; the show file itself stays unchanged."
+   }
+  },
+  {
+   "id": "open-log-folder",
+   "kind": "dialog",
+   "path": [
+    "HELP",
+    "HELP_OPEN_LOGS"
+   ],
+   "click": {
+    "action": "open-log-folder"
+   },
+   "keywords": {
+    "de": [
+     "log",
+     "protokoll",
+     "logdatei",
+     "fehlerbericht",
+     "problem melden"
+    ],
+    "en": [
+     "log",
+     "log file",
+     "error report",
+     "report a problem"
+    ]
+   },
+   "about": {
+    "de": "Öffnet den Ordner mit der Protokolldatei opencue.log (für Fehlerberichte; Hilfe → Problem melden legt die Diagnose in die Zwischenablage).",
+    "en": "Opens the folder with the log file opencue.log (for error reports; Help → Report a problem copies the diagnostics to the clipboard)."
+   }
+  }
+ ]
+}

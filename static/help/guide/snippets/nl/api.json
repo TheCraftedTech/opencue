@@ -1,0 +1,875 @@
+[
+ {
+  "id": "api-001",
+  "page": "api",
+  "path": [
+   "REST-API"
+  ],
+  "title": "REST-API",
+  "keywords": [],
+  "text": "Met de **REST-API** kunnen andere programma's de status van OpenCue **lezen** en het **bedienen en bewerken** – scripts, een showcontroller, domotica, een webpagina voor de stagemanager, een tablet-app of uw eigen tool. Ze spreekt gewoon **HTTP** en antwoordt in **JSON**. Er is geen extra software nodig en ze werkt volledig offline binnen uw netwerk.\n\nDe toegang wordt beschermd door **tokens** die u in OpenCue aanmaakt. Elk token heeft zijn eigen **rechten**, zodat een tablet-app misschien alleen mag lezen terwijl een andere tool ook cues mag triggeren en een derde hele shows mag bouwen."
+ },
+ {
+  "id": "api-002",
+  "page": "api",
+  "path": [
+   "REST-API",
+   "1. Het idee in één minuut"
+  ],
+  "title": "1. Het idee in één minuut",
+  "keywords": [],
+  "text": "- De API staat onder **`/api/v1/`** op hetzelfde adres en dezelfde poort als OpenCue zelf (bijvoorbeeld `http://127.0.0.1:8000/api/v1/`).\n- U **maakt een token** in *Instellingen → API* en stuurt het met elk verzoek mee.\n- **Lees**verzoeken (`GET`) geven de status terug: projectoren, cuelijsten, cues, variabelen, effecten, het DMX-signaal, de tijdcode, de programmer.\n- **Bedienings**verzoeken (`POST` / `PUT`) laten de show draaien: opdrachten, cues, tijdcode, blackout, audio, de programmer.\n- **Bewerk**verzoeken wijzigen de show zelf: cuelijsten en cues, variabelen, effecten en effectscripts maken en wijzigen, projectoren patchen, showbestanden opslaan en laden, media uploaden.\n- De eigen **knoppen, faders en schakelaars** van de console kunnen van buitenaf worden ingedrukt, verschoven en omgeschakeld.\n- Alles wat een operator in het venster doet, verschijnt **meteen in alle open vensters** – ook wat de API wijzigt.\n- Een **live-stroom** (`GET /events`) meldt wijzigingen op het moment dat ze gebeuren, zodat een dashboard niet steeds hoeft te vragen.\n- Voor **hardware** (een ESP32 met joystick, draaiknoppen, knoppen, microfoon) is er een **WebSocket** (`/api/v1/ws`): joystick relatief of absoluut, waarden absoluut of relatief instellen, DMX en live waarden, tijdcode verzenden en ontvangen, audiowaarden en audiogegevens in beide richtingen (paragraaf 10). Voor eenvoudige apparaten zonder eigen interface zijn er **statusweergaven** als afbeelding of webpagina (paragraaf 11).\n- Elke functie vraagt **één recht**. Een token zonder dat recht krijgt `403`. De bewerkrechten staan **standaard uit**.\n- De API is een eigen, stabiele interface. De interne routes die het programmavenster gebruikt, maken er *geen* deel van uit."
+ },
+ {
+  "id": "api-003",
+  "page": "api",
+  "path": [
+   "REST-API",
+   "2. Snel aan de slag"
+  ],
+  "title": "2. Snel aan de slag",
+  "keywords": [],
+  "text": "1. Open **Instellingen → REST-API** (ook mogelijk vanaf een aangemeld apparaat op afstand). Standaard is er **geen token** en antwoordt de API alleen op **deze computer**.\n2. Klik op **Nieuw token**, geef het een naam, kies de rechten (of een voorinstelling) en klik op **Token aanmaken**. Een **nieuw token wordt meteen aangemaakt** (zonder *Opslaan*) en daarna getoond.\n3. **Kopieer het token nu.** Het wordt maar één keer getoond; daarna zijn alleen de eerste tekens zichtbaar. Raakt het kwijt, maak dan een nieuw token of gebruik *Nieuw token genereren*.\n4. Probeer het:\n\n```\ncurl -H \"Authorization: Bearer oc_xxxxxxxx\" http://127.0.0.1:8000/api/v1/status\n```\n\nHet antwoord is een JSON-object met de shownaam, blackout, grand master, tijdcode en meer (zie paragraaf 6).\n\nHet adres in de voorbeelden (`127.0.0.1:8000`) is de console zelf. Voor het adres vanaf andere apparaten zie paragraaf 8. Een pagina met elke route, doorzoekbaar en offline leesbaar, staat op `/api/v1/docs`."
+ },
+ {
+  "id": "api-004",
+  "page": "api",
+  "path": [
+   "REST-API",
+   "3. Tokens en rechten",
+   "Tokens beheren"
+  ],
+  "title": "Tokens beheren",
+  "keywords": [],
+  "text": "In **Instellingen → REST-API** kunt u:"
+ },
+ {
+  "id": "api-005",
+  "page": "api",
+  "path": [
+   "REST-API",
+   "3. Tokens en rechten",
+   "Tokens beheren"
+  ],
+  "title": "Tokens beheren (2)",
+  "keywords": [],
+  "text": "| Actie | Betekenis |\n|---|---|\n| **REST-API aan/uit** | De hoofdschakelaar. Staat hij uit, dan wordt elk verzoek beantwoord met `403 api_disabled`. |\n| **Bereikbaar vanaf** | *Alleen deze computer* (standaard) of *Het netwerk*. Andere apparaten hebben ook **toegang op afstand** nodig; de pagina meldt het anders (met een link). Van buitenaf antwoordt de API `403 api_local_only` als *Alleen deze computer* is ingesteld. |\n| **Webpagina's op andere adressen toestaan** | Browserpagina's die vanaf een ander adres zijn geopend, mogen de API aanroepen (CORS, paragraaf 8). Standaard aan. |\n| **Statusweergaven (afbeelding / web)** | Schakelaar voor de weergaven van paragraaf 11. Standaard aan (elk vraagt een token). |\n| **Nu verbonden (WebSocket)** | Lijst van de apparaten die nu via de WebSocket verbonden zijn (token, adres, wat ze ontvangen, joystick actief, berichten per seconde) – live, met **Verbinding verbreken**. |\n| **Nieuw token** | Maakt een token. Een breed venster laat u de rechten in drie kolommen kiezen: *Lezen*, *Bedienen*, *De show bewerken*. |\n| **Bewerken** | Naam en rechten wijzigen. |\n| **Actief-schakelaar** | Zet één token uit en weer aan zonder het te verwijderen (`403 token_disabled` zolang het uit staat). |\n| **Nieuw token genereren** (in *Bewerken*) | Vervangt het geheim. Het oude token werkt niet meer zodra u opslaat. |\n| **Verwijderen** | Vraagt in een eigen venster (uit te zetten, zie *Standaardwaarden → Verwijderen*) en verwijdert het token daarna **meteen**. |\n| **Laatst gebruikt** | Toont wanneer een token voor het laatst is gebruikt. |"
+ },
+ {
+  "id": "api-006",
+  "page": "api",
+  "path": [
+   "REST-API",
+   "3. Tokens en rechten",
+   "Tokens beheren"
+  ],
+  "title": "Tokens beheren (3)",
+  "keywords": [],
+  "text": "Een **nieuw token** wordt meteen aangemaakt en getoond, een **verwijdering** geldt meteen na de vraag. Al het andere is een **concept** zoals in alle instellingen (schakelaar, bewerken, opnieuw genereren): gewijzigde rijen worden gemarkeerd en geteld, alleen **Opslaan** past alles toe (het venster blijft open), *Sluiten* verwerpt na een vraag. Tokens kunnen alleen op de consolecomputer zelf worden beheerd, niet vanaf apparaten op afstand.\n\nAlleen een **hash** van het token wordt op schijf opgeslagen, nooit het token zelf."
+ },
+ {
+  "id": "api-007",
+  "page": "api",
+  "path": [
+   "REST-API",
+   "3. Tokens en rechten",
+   "De rechten"
+  ],
+  "title": "De rechten",
+  "keywords": [],
+  "text": "**Lezen**\n\n| Recht | Staat toe | Standaard |\n|---|---|---|\n| **Status** | Status: shownaam, blackout, grand master, tijdcode, selectie, programmer, audio-analyse, uitgangen, de live gebeurtenissenstroom | aan |\n| **Showgegevens** | Projectoren, projectortypen, groepen, variabelen, effecten, effectscripts, showbestanden, cuelijsten en cues, media, indelingen | aan |\n| **DMX-uitgang** | Actuele DMX-waarden en de live toestand van elke projector | aan |\n\n**Bedienen**"
+ },
+ {
+  "id": "api-008",
+  "page": "api",
+  "path": [
+   "REST-API",
+   "3. Tokens en rechten",
+   "De rechten"
+  ],
+  "title": "De rechten (2)",
+  "keywords": [],
+  "text": "| Recht | Staat toe | Standaard |\n|---|---|---|\n| **Consoleopdrachten** | Elke opdracht van de opdrachtregel uitvoeren (kan ook showgegevens wijzigen en verwijderen) – *kritiek* | aan |\n| **Cuelijsten** | Go, Back, naar een cue springen, pauze, hervatten, stop, fader | aan |\n| **Tijdcode** | Start, pauze, stop, zoeken, snelheid | aan |\n| **Blackout en master** | Blackout schakelen, grand master instellen | aan |\n| **Audio** | De audiobron openen / sluiten, haar instellingen wijzigen, het tempo tikken | aan |\n| **Programmer en selectie** | Projectoren selecteren, waarden en variabelen live instellen, de programmer leegmaken | aan |\n| **Console-knoppen, -faders, -schakelaars** | De eigen Knop-, Fader- en Schakelaar-panelen van de console indrukken, verschuiven en omschakelen (ze voeren de daarin ingestelde opdrachten uit) | aan |\n| **DMX direct instellen** | DMX-kanalen schrijven – overschrijft de lopende show – *kritiek* | **uit** |\n\n**De show bewerken**"
+ },
+ {
+  "id": "api-009",
+  "page": "api",
+  "path": [
+   "REST-API",
+   "3. Tokens en rechten",
+   "De rechten"
+  ],
+  "title": "De rechten (3)",
+  "keywords": [],
+  "text": "| Recht | Staat toe | Standaard |\n|---|---|---|\n| **Cuelijsten en cues** | Cuelijsten en cues maken, wijzigen, kopiëren, hernummeren en verwijderen; de programmer als cue opslaan | **uit** |\n| **Variabelen** | Variabelen en variabelegroepen maken, wijzigen en verwijderen | **uit** |\n| **Effecten** | Effecten en effectgroepen maken, wijzigen en verwijderen; effecten op projectoren starten en stoppen | **uit** |\n| **Effectscripts** | Effecttypen (scriptbestanden) controleren, opslaan en verwijderen | **uit** |\n| **Patch en projectorgroepen** | Projectoren patchen, wijzigen en verwijderen; projectorgroepen beheren; GDTF-projectortypen installeren en verwijderen – *kritiek* | **uit** |\n| **Showbestanden** | Showbestanden nieuw, laden, opslaan, hernoemen, kopiëren en verwijderen – *kritiek* | **uit** |\n| **Media** | Video- en audiobestanden uploaden, hernoemen en verwijderen | **uit** |\n| **Indelingen** | Een opgeslagen paneelindeling in het consolevenster tonen | **uit** |\n| **DMX-uitgangen en taal** | Art-Net, sACN en USB-DMX schakelen, adressen, standaarduniversum en taal wijzigen – *kritiek* | **uit** |"
+ },
+ {
+  "id": "api-010",
+  "page": "api",
+  "path": [
+   "REST-API",
+   "3. Tokens en rechten",
+   "De rechten"
+  ],
+  "title": "De rechten (4)",
+  "keywords": [],
+  "text": "**Voorinstellingen** in het venster: *Alleen lezen* (de drie leesrechten), *Bedienen* (lezen plus cuelijsten, tijdcode, blackout/master, audio, programmer en de knoppen / faders / schakelaars van de console – geen opdrachten, geen DMX direct), *Show bewerken* (Bedienen plus cuelijsten en cues, variabelen, effecten), *Volledige toegang* en *Standaard*."
+ },
+ {
+  "id": "api-011",
+  "page": "api",
+  "path": [
+   "REST-API",
+   "4. Regels voor alle verzoeken"
+  ],
+  "title": "4. Regels voor alle verzoeken",
+  "keywords": [],
+  "text": "- **Aanmelden:** stuur het token als `Authorization: Bearer oc_…`. De header `X-API-Key: oc_…` werkt ook.\n- **Formaat:** verzoeken met een body gebruiken JSON en `Content-Type: application/json`. Antwoorden zijn altijd JSON (behalve de gebeurtenissenstroom en bestandsdownloads).\n- **Dingen kiezen:**\n  - een *projector* op zijn **nummer (FID)**, zijn id of een ondubbelzinnige naam; een *groep* projectoren op zijn naam;\n  - een *cuelijst* op zijn **naam** of id; een *cue* op zijn **nummer** (bijvoorbeeld `1.5`) of id;\n  - een *variabele*, een *effect* of een *showbestand* op zijn **naam** (hoofdletters / kleine letters maken niet uit) of id.\n  - Namen met spaties moeten in het pad als URL worden gecodeerd (`Par%20links`).\n- **Meerdere projectoren kiezen** in een body: `\"fixtures\": [1, 2, \"Front\"]`, `\"fixture\": 3` en / of `\"group\": \"Wash\"`. Voor de programmer-aanroepen betekent `\"selection\": true` de op de console geselecteerde projectoren, en een aanroep zonder een van deze gebruikt de selectie.\n- **Procent en bytes:** dimmer, positie en dergelijke worden in **procenten (0–100)** gegeven, ruwe DMX-kanalen in **0–255**, kleuren als `\"#rrggbb\"`, `[r, g, b]` of `{\"r\": …, \"g\": …, \"b\": …}` (0–255).\n- **Tijden** in seconden; de tijdcode als seconden of tekst (`00:01:04.300`).\n- **Zorgvuldige invoercontrole:** een veld dat niet bestaat wordt geweigerd (`422`), een verkeerde waarde of naam geeft `400`, een naam die al bezet is geeft `409 duplicate`. Er wordt niets geraden of stilzwijgend genegeerd.\n- **Gecontroleerd voordat iets verandert:** een aanroep met een verkeerde waarde, naam of projector wordt als geheel geweigerd – een cue met één verkeerde projector wordt niet half opgeslagen."
+ },
+ {
+  "id": "api-012",
+  "page": "api",
+  "path": [
+   "REST-API",
+   "4. Regels voor alle verzoeken",
+   "Fouten"
+  ],
+  "title": "Fouten",
+  "keywords": [],
+  "text": "Fouten zien er altijd hetzelfde uit:\n\n```json\n{ \"error\": { \"code\": \"not_found\", \"message\": \"No fixture '99' (use the fixture number, id or an unambiguous name).\" } }\n```"
+ },
+ {
+  "id": "api-013",
+  "page": "api",
+  "path": [
+   "REST-API",
+   "4. Regels voor alle verzoeken",
+   "Fouten"
+  ],
+  "title": "Fouten (2)",
+  "keywords": [],
+  "text": "| HTTP | `code` | Betekenis |\n|---|---|---|\n| 400 | `bad_request` | Het verzoek is fout (een waarde buiten het bereik, een onbekend attribuut, een lege opdracht …) |\n| 401 | `unauthorized` | Token ontbreekt of is ongeldig |\n| 403 | `forbidden` | Het token heeft het recht voor deze functie niet |\n| 403 | `token_disabled` / `api_disabled` | Het token of de hele API staat uit |\n| 404 | `not_found` | Projector, cuelijst, cue, variabele, effect, showbestand … bestaat niet |\n| 409 | `duplicate` | De naam is bezet (cuelijst, variabele, effect, groep …) |\n| 409 | `cue_exists` | Een cue met dit nummer bestaat – stuur `on_conflict` (`merge` / `overwrite`) |\n| 409 | `address_conflict` | De DMX-adressen overlappen een andere projector – `allow_overlap: true` patcht toch |\n| 409 | `unsaved_changes` | De show heeft niet-opgeslagen wijzigingen – sla hem op, of stuur `force: true` |\n| 409 | `exists` / `in_use` / `never_saved` | Een showbestand of script met die naam bestaat / het showbestand is het geladen bestand / de show heeft nog geen bestand |\n| 409 | `no_active_cue` / `programmer_empty` | *Update* zonder actieve cue of met een lege programmer |\n| 409 | `audio_failed` | De audiobron kon niet worden geopend (de reden staat in het bericht) |\n| 415 | `invalid_type` | Een media-upload die geen ondersteund video- / audiobestand is |\n| 422 | `invalid` | Een veld ontbreekt, is onbekend of heeft een verkeerd type |\n| 422 | `invalid_script` | Een script compileert niet of mislukt zijn proefrun (met de regel) |\n| 429 | `rate_limited` | Te veel verkeerde tokens vanaf dit adres – wacht de tijd in `Retry-After` af |"
+ },
+ {
+  "id": "api-014",
+  "page": "api",
+  "path": [
+   "REST-API",
+   "4. Regels voor alle verzoeken",
+   "Fouten"
+  ],
+  "title": "Fouten (3)",
+  "keywords": [],
+  "text": "Een **afgewezen consoleopdracht** (bijvoorbeeld een typfout) is *geen* HTTP-fout: het antwoord is `200` met `\"success\": false` en het bericht van de opdrachtregel."
+ },
+ {
+  "id": "api-015",
+  "page": "api",
+  "path": [
+   "REST-API",
+   "5. Overzicht van de eindpunten"
+  ],
+  "title": "5. Overzicht van de eindpunten",
+  "keywords": [],
+  "text": "Alle paden beginnen met `/api/v1`. Het recht in de rechterkolom is wat het token nodig heeft. In de paden is `{list}` een cuelijst, `{cue}` een cue, `{fixture}` een projector, `{ref}` een variabele / effect / naam."
+ },
+ {
+  "id": "api-016",
+  "page": "api",
+  "path": [
+   "REST-API",
+   "5. Overzicht van de eindpunten",
+   "Lezen"
+  ],
+  "title": "Lezen",
+  "keywords": [],
+  "text": "| Methode | Pad | Geeft terug | Recht |\n|---|---|---|---|\n| GET | `/` | Index: versie, links, wat dit token mag | Status |\n| GET | `/status` | Totale status: show, blackout, master, tijdcode, selectie, actieve cuelijst, DMX-uitgangen, aantallen | Status |\n| GET | `/blackout` · `/master` · `/timecode` · `/selection` | Eén deel van de status | Status |\n| GET | `/system` | Versie, taal, DMX-uitgangen (Art-Net, sACN, USB), universa, toegang op afstand, gegevensmap | Status |\n| GET | `/showfile` | Naam van de geladen show, of hij niet-opgeslagen wijzigingen en een bestand heeft | Status |\n| GET | `/programmer` | Selectie, de met de hand ingestelde waarden (procent, kleur + hex, ruwe kanalen), de variabelen die ze volgen, lopende effecten | Status |\n| GET | `/audio` · `/audio/devices` | De live audio-analyse en de instellingen / elke audio-ingang | Status |\n| GET | `/system/usb-ports` · `/command/suggest?text=` | Seriële poorten voor USB-DMX / aanvullingen voor een opdracht (zoals Tab in de opdrachtregel) | Status |\n| GET | `/events` | **Live-stroom** van wijzigingen (Server-Sent Events, paragraaf 6) | Status |\n| GET | `/fixtures` | Alle projectoren. Optioneel `?universe=`, `?group=`, `?include_state=true` | Showgegevens |\n| GET | `/fixtures/{fixture}` | Eén projector met elk kanaal (adres, actuele DMX-waarde) en zijn toestand | Showgegevens |\n| GET | `/fixture-types` | De projectorbibliotheek: id, naam, fabrikant, modi met aantal kanalen (`?q=` filtert) | Showgegevens |\n| GET | `/groups` · `/variable-groups` · `/effect-groups` | Projectorgroepen, variabelegroepen, effectgroepen | Showgegevens |\n| GET | `/variables` · `/variables/{ref}` | Alle variabelen / één (met hoeveel cue-items hem gebruiken) | Showgegevens |\n| GET | `/effects` · `/effects/{ref}` · `/effects/assignments` | Effecten / één effect met zijn typegegevens / welk effect op welke projector loopt | Showgegevens |\n| GET | `/effect-scripts` · `/effect-scripts/{name}` | Alle effecttypen (categorie, tags, instellingen) / de brontekst van één type | Showgegevens |\n| GET | `/cuelists` · `/cuelists/{list}` | Alle cuelijsten met actieve cue, fader en afspeelstatus / één lijst met al zijn cues | Showgegevens |\n| GET | `/cuelists/{list}/cues` | De cues van een lijst; `?detail=true` voegt **toe wat elke cue wijzigt** | Showgegevens |\n| GET | `/cuelists/{list}/cues/{cue}` | Eén cue in alle details | Showgegevens |\n| GET | `/showfiles` | Namen van opgeslagen showbestanden (en het geladen bestand) | Showgegevens |\n| GET | `/media` · `/media/{id}/file` | De media van de show / er een downloaden | Showgegevens |\n| GET | `/layouts` | Opgeslagen indelingen van de console | Showgegevens |\n| GET | `/widgets` | De Knop-/Fader-/Schakelaar-panelen van de console: opdrachten, faderlimieten en waarde, schakelaarstatus | Showgegevens |\n| GET | `/dmx` · `/dmx/{universe}` | De universa en hun waarden (`?first=&last=`, `?nonzero=true`) | DMX-uitgang |\n| GET | `/fixtures/state` | De live toestand van **elke** projector (wat de console nu uitvoert) | DMX-uitgang |"
+ },
+ {
+  "id": "api-017",
+  "page": "api",
+  "path": [
+   "REST-API",
+   "5. Overzicht van de eindpunten",
+   "Bedienen"
+  ],
+  "title": "Bedienen",
+  "keywords": [],
+  "text": "| Methode | Pad | Body | Recht |\n|---|---|---|---|\n| POST | `/command` | `{\"command\": \"Fixture 1 At 80\"}` | Consoleopdrachten |\n| POST | `/commands` | `{\"commands\": [\"…\", \"…\"], \"stop_on_error\": false}` – tot 100 | Consoleopdrachten |\n| POST | `/cuelists/{list}/go` | optioneel `{\"cue\": \"2\"}` (zonder: de volgende cue) | Cuelijsten |\n| POST | `/cuelists/{list}/back` · `/pause` · `/resume` · `/stop` | – | Cuelijsten |\n| PUT | `/cuelists/{list}/fader` | `{\"value\": 70}` (procent) | Cuelijsten |\n| PUT | `/timecode` | `{\"action\": \"play\" \\| \"pause\" \\| \"stop\" \\| \"seek\" \\| \"rate\", \"position\": …, \"direction\": 1, \"rate\": 1}` | Tijdcode |\n| PUT | `/blackout` | `{\"enabled\": true}` (zonder waarde: omschakelen) | Blackout en master |\n| PUT | `/master` | `{\"value\": 80}` (procent) | Blackout en master |\n| PUT | `/audio` | `{\"running\": true, \"device\": \"demo\", \"settings\": {\"mode\": \"manual\", \"bpm\": 128}}` – elk veld optioneel | Audio |\n| POST | `/audio/tap` | – (één tik van de tempoknop) | Audio |\n| PUT | `/selection` | `{\"fixtures\": [1, 2], \"mode\": \"set\" \\| \"add\" \\| \"remove\" \\| \"clear\"}` (ook `group`) | Programmer en selectie |\n| PUT | `/programmer/values` | `{\"fixtures\": [1, 2], \"values\": {\"dimmer\": 80, \"color\": \"#ff0000\"}}` | Programmer en selectie |\n| POST | `/programmer/variables` | `{\"variable\": \"Warm white\", \"fixtures\": [1, 2]}` – past een variabele toe en koppelt hem | Programmer en selectie |\n| POST | `/widgets/{id}/press` | – (voert de opdracht van een knop uit) | Console-knoppen, -faders, -schakelaars |\n| PUT | `/widgets/{id}/value` | `{\"value\": 70}` (fader; begrensd tot zijn minimum / maximum, afgerond) | Console-knoppen, -faders, -schakelaars |\n| PUT | `/widgets/{id}/state` | `{\"on\": true}` (schakelaar; zonder waarde klapt hij om) | Console-knoppen, -faders, -schakelaars |\n| POST | `/programmer/clear` | `{\"fixtures\": [1]}` vergeet hun waarden; `{\"all\": true}` = *Clear Clear*: alles donker | Programmer en selectie |\n| PUT | `/dmx/{universe}/{channel}` | `{\"value\": 255}` of `{\"percent\": 100}` | DMX direct instellen |\n| PUT | `/dmx/{universe}` | `{\"channels\": {\"1\": 255, \"2\": 0}}` | DMX direct instellen |\n| PUT | `/fixtures/{fixture}/channels/{channel}` | `{\"value\": 128}` of `{\"percent\": 50}`; `{channel}` is het kanaalnummer van de projector (1 = eerste) of zijn naam (`Dimmer`) | DMX direct instellen |"
+ },
+ {
+  "id": "api-018",
+  "page": "api",
+  "path": [
+   "REST-API",
+   "5. Overzicht van de eindpunten",
+   "Bewerken: cuelijsten en cues – recht Cuelijsten en cues"
+  ],
+  "title": "Bewerken: cuelijsten en cues – recht Cuelijsten en cues",
+  "keywords": [],
+  "text": "| Methode | Pad | Body | Wat het doet |\n|---|---|---|---|\n| POST | `/cuelists` | `{\"name\": \"Act 1\"}` | Maakt een cuelijst (201) |\n| PUT | `/cuelists/{list}` | `{\"name\": \"…\", \"active\": true}` | Hernoemt; `active` maakt hem de lijst die cuelijstpanelen tonen |\n| PUT | `/cuelists/order` | `{\"order\": [\"Act 2\", \"Act 1\"]}` | Volgorde van de lijsten |\n| POST | `/cuelists/{list}/duplicate` | `{\"name\": \"Copy\"}` | Kopie met alle cues |\n| DELETE | `/cuelists/{list}` | – | Verwijdert de lijst |\n| POST | `/cuelists/{list}/cues` | zie hieronder | Maakt een cue (201) |\n| PUT | `/cuelists/{list}/cues/{cue}` | zie hieronder | Wijzigt eigenschappen en / of inhoud, hernummert |\n| DELETE | `/cuelists/{list}/cues/{cue}` | – | Verwijdert een cue |\n| POST | `/cuelists/{list}/cues/delete` | `{\"cues\": [\"1\", \"2.5\"]}` | Verwijdert er meerdere (alle of geen) |\n| POST | `/cuelists/{list}/cues/{cue}/duplicate` | `{\"number\": 9, \"name\": \"…\"}` | Kopieert een cue |\n| POST | `/cuelists/{list}/update-active` | `{\"mode\": \"normal\" \\| \"only\"}` | Neemt de programmer over in de actieve cue (zoals *Update*) |\n\n**Cue-body** (aanmaken en wijzigen; elk veld optioneel bij wijzigen):"
+ },
+ {
+  "id": "api-019",
+  "page": "api",
+  "path": [
+   "REST-API",
+   "5. Overzicht van de eindpunten",
+   "Bewerken: cuelijsten en cues – recht Cuelijsten en cues"
+  ],
+  "title": "Bewerken: cuelijsten en cues – recht Cuelijsten en cues (2)",
+  "keywords": [],
+  "text": "| Veld | Betekenis |\n|---|---|\n| `number` | Cuenummer, decimalen toegestaan. Weggelaten bij aanmaken: het volgende vrije nummer. |\n| `name`, `fade`, `delay` | Naam en de algemene tijden in seconden |\n| `trigger` | `go` · `follow` · `timecode` · `audio` · `midi` · `clock` |\n| `timecode` | Voor `timecode`: seconden of `1:04.300` |\n| `audio` | Voor `audio`: `{\"source\": \"beat\" \\| \"kick\" \\| \"snare\" \\| \"hat\" \\| \"level\" \\| \"bass\" \\| \"mid\" \\| \"high\" \\| \"b1\" … \"b8\", \"value\": 4}` (elke n-de slag, of een drempel in %) |\n| `midi` | Voor `midi`: `{\"type\": \"note\" \\| \"cc\" \\| \"pc\", \"number\": 60, \"channel\": 0, \"value\": 64}` – de cue gaat af als dit signaal binnenkomt terwijl hij de volgende cue van een lopende lijst is; `channel` 0 = elk (1–16 = één kanaal), `value` = de drempel van een `cc` (1–127) |\n| `clock` | Voor `clock`: `{\"time\": \"19:30\", \"days\": \"Mon-Fri\"}` (of `\"days\": [0,1,2,3,4]`, maandag = 0; leeg = elke dag) – de cue wacht als volgende cue van een lopende lijst op dit tijdstip van de wandklok. |\n| `mib`, `command` | Move in black (`Off` / `Auto` / `On`); consoleopdrachten die met de cue lopen |\n| `times` | Eigen tijden per groep: `{\"color\": {\"fade\": 2, \"delay\": 0}, \"position\": {…}, \"beam\": {…}, \"zoom\": {…}}`; `null` = weer de algemene tijd gebruiken |\n| `effect_fade` | `{\"in\": 1, \"out\": 2}` |\n| `changes` | Wat de cue wijzigt (hieronder) |\n| `effects` | De effecten die de cue start: `[{\"fixtures\": [2, 3], \"effects\": {\"dimmer\": \"Strobe\"}}]` (categorie → effectnaam) |\n| `from_programmer` | *(aanmaken)* slaat ook op wat in de programmer staat **en elke wijziging van het beeld ten opzichte van de cue ervoor** (zoals *Store Cue*; is er niets gewijzigd: `409 nothing_changed`); `clear_programmer` leegt hem daarna |\n| `on_conflict` | *(aanmaken / hernummeren)* het nummer bestaat: `merge` (alleen de verstuurde attributen voegen zich bij de bestaande cue) of `overwrite` |\n| `content` | *(wijzigen)* `merge` (standaard) of `replace`: de inhoud van de cue is precies wat wordt verstuurd |"
+ },
+ {
+  "id": "api-020",
+  "page": "api",
+  "path": [
+   "REST-API",
+   "5. Overzicht van de eindpunten",
+   "Bewerken: cuelijsten en cues – recht Cuelijsten en cues"
+  ],
+  "title": "Bewerken: cuelijsten en cues – recht Cuelijsten en cues (3)",
+  "keywords": [],
+  "text": "`changes` is een lijst; elk item noemt projectoren en wat ze krijgen:\n\n```json\n{ \"fixtures\": [2, 3], \"values\": { \"dimmer\": 80, \"color\": \"#00ff00\", \"pan\": 40 }, \"variables\": { \"color\": \"Warm white\" } }\n```\n\n`values`: `dimmer`, `pan`, `tilt`, `strobe`, `gobo`, `gobo_spin`, `gobo2`, `gobo2_spin`, `prism`, `focus`, `zoom` in procenten, `color`, ruwe kanalen `ch<N>` (0–255). `variables` koppelt een type (`dimmer`, `position`, `color`, `focus`, `zoom`, `gobo`) aan een variabele: de cue **verwijst dan naar de variabele** (een plaatshouder, live opgelost als de cue loopt) in plaats van de waarde op te slaan."
+ },
+ {
+  "id": "api-021",
+  "page": "api",
+  "path": [
+   "REST-API",
+   "5. Overzicht van de eindpunten",
+   "Bewerken: variabelen – recht Variabelen"
+  ],
+  "title": "Bewerken: variabelen – recht Variabelen",
+  "keywords": [],
+  "text": "| Methode | Pad | Body | Wat het doet |\n|---|---|---|---|\n| POST | `/variables` | `{\"name\": \"Warm white\", \"type\": \"color\", \"group\": \"Colours\", \"values\": {\"hex\": \"#ffb060\"}}` | Maakt aan |\n| PUT | `/variables/{ref}` | `{\"name\": \"…\", \"group\": \"…\", \"values\": {…}}` | Wijzigt; het type kan niet veranderen. Een nieuwe waarde bereikt de programmer, lopende cues en **elke cue die de variabele gebruikt** |\n| DELETE | `/variables/{ref}` | – | Verwijdert (koppelingen van de programmer worden vrijgegeven) |\n| POST · DELETE | `/variable-groups` · `/variable-groups/{name}` | `{\"name\": \"Colours\"}` | Maakt / verwijdert een groep (zijn variabelen blijven) |\n\n`values` per type: `dimmer`, `focus`, `zoom`: `{\"level\": 0-100}` · `position`: `{\"pan\": 0-100, \"tilt\": 0-100}` · `color`: `{\"r\",\"g\",\"b\"}` of `{\"hex\": \"#ff8000\"}` · `gobo`: `{\"level\", \"spin\", \"gobo2\", \"gobo2_spin\"}`."
+ },
+ {
+  "id": "api-022",
+  "page": "api",
+  "path": [
+   "REST-API",
+   "5. Overzicht van de eindpunten",
+   "Bewerken: effecten – recht Effecten"
+  ],
+  "title": "Bewerken: effecten – recht Effecten",
+  "keywords": [],
+  "text": "| Methode | Pad | Body | Wat het doet |\n|---|---|---|---|\n| POST | `/effects` | `{\"script\": \"strobe\", \"name\": \"Blink\", \"group\": \"…\", \"params\": {\"rate_hz\": 8}}` | Maakt een effect van een effecttype (`GET /effect-scripts`); `params` worden getoetst aan de grenzen van het type |\n| PUT | `/effects/{ref}` | `{\"name\", \"group\", \"params\"}` | Wijzigt (het type kan niet veranderen) |\n| DELETE | `/effects/{ref}` | – | Verwijdert; het stopt overal |\n| POST | `/effects/{ref}/assign` | `{\"fixtures\": [2, 3]}` (ook `group`) | **Start** het effect op projectoren (de volgorde verdeelt golven) |\n| POST | `/effects/release` | `{\"fixtures\": [2], \"categories\": [\"dimmer\"]}` | **Stopt** effecten op projectoren (de waarden blijven) |\n| POST · DELETE | `/effect-groups` · `/effect-groups/{name}` | `{\"name\": \"…\"}` | Maakt / verwijdert een groep |"
+ },
+ {
+  "id": "api-023",
+  "page": "api",
+  "path": [
+   "REST-API",
+   "5. Overzicht van de eindpunten",
+   "Bewerken: effectscripts – recht Effectscripts"
+  ],
+  "title": "Bewerken: effectscripts – recht Effectscripts",
+  "keywords": [],
+  "text": "| Methode | Pad | Body | Wat het doet |\n|---|---|---|---|\n| POST | `/effect-scripts/check` | `{\"text\": \"…\"}` | Compileert en test een script zonder op te slaan: `{ok, line, message}` |\n| POST | `/effect-scripts/preview` | `{\"text\": \"…\", \"count\": 3, \"duration\": 4, \"bpm\": 120, \"params\": {…}}` | Simuleert de curven zonder projectoren |\n| PUT | `/effect-scripts/{name}` | `{\"text\": \"…\", \"overwrite\": false}` | Slaat op als bestand in de effectenmap van de gebruiker – **alleen als het compileert en draait** (`422 invalid_script` met de regel). Een bestaande naam vraagt `overwrite` |\n| DELETE | `/effect-scripts/{name}` | – | Verwijdert een script uit de gebruikersmap; effecten van dit type stoppen |\n\nDe scripttaal wordt beschreven in de handleiding *Effectenstudio*."
+ },
+ {
+  "id": "api-024",
+  "page": "api",
+  "path": [
+   "REST-API",
+   "5. Overzicht van de eindpunten",
+   "Bewerken: patch en projectorgroepen – recht Patch en projectorgroepen"
+  ],
+  "title": "Bewerken: patch en projectorgroepen – recht Patch en projectorgroepen",
+  "keywords": [],
+  "text": "| Methode | Pad | Body | Wat het doet |\n|---|---|---|---|\n| POST | `/fixtures` | `{\"type\": \"Generic RGBW LED Par\", \"mode\": \"…\", \"name\": \"Par\", \"quantity\": 4, \"universe\": 1, \"address\": 11, \"group\": \"Wash\"}` | Patcht een of meer projectoren achter elkaar. De adressen worden gecontroleerd (ze moeten in 512 passen en mogen niet overlappen – `allow_overlap: true` forceert) |\n| PUT | `/fixtures/{fixture}` | `{\"name\", \"universe\", \"address\", \"sort_index\", \"group\", \"allow_overlap\"}` | Wijzigt; `\"group\": \"\"` haalt hem uit zijn groep |\n| DELETE | `/fixtures/{fixture}` · POST `/fixtures/delete` | `{\"fixtures\": [1, 2]}` | Verwijdert (cues behouden hun items voor de ontbrekende projector, zoals in het venster) |\n| POST | `/groups` | `{\"name\": \"Wash\", \"fixtures\": [2, 3]}` | Maakt een projectorgroep |\n| POST | `/fixture-types` | het ruwe `.gdtf`-bestand; header `X-Filename` (URL-gecodeerd) | Installeert een projectortype (tot 30 MB; gecontroleerd vóór de installatie) |\n| DELETE | `/fixture-types/{id}` | – | Verwijdert een geïnstalleerd type (`409 in_use` zolang de show het gebruikt) |\n| PUT · DELETE | `/groups/{name}` | `{\"name\": \"…\", \"fixtures\": […]}` | Hernoemt / stelt de leden in (vervangt de lijst) / verwijdert (de projectoren blijven) |"
+ },
+ {
+  "id": "api-025",
+  "page": "api",
+  "path": [
+   "REST-API",
+   "5. Overzicht van de eindpunten",
+   "Bewerken: showbestanden – recht Showbestanden"
+  ],
+  "title": "Bewerken: showbestanden – recht Showbestanden",
+  "keywords": [],
+  "text": "| Methode | Pad | Body | Wat het doet |\n|---|---|---|---|\n| POST | `/showfile/new` | `{\"force\": false}` | Start een nieuwe, lege show |\n| POST | `/showfile/save` | – | Slaat op onder de huidige naam (`409 never_saved` als er nog geen bestand is) |\n| POST | `/showfile/save-as` | `{\"name\": \"Concert\", \"overwrite\": false}` | Slaat op onder een naam (tekens die in bestandsnamen niet zijn toegestaan, worden verwijderd) |\n| POST | `/showfile/load` | `{\"name\": \"Concert\", \"force\": false}` | Laadt een opgeslagen show – vervangt de lopende |\n| POST | `/showfiles/{name}/rename` | `{\"new_name\": \"…\", \"overwrite\": false}` | Hernoemt een opgeslagen bestand |\n| POST | `/showfiles/{name}/duplicate` | – | Kopieert een opgeslagen bestand |\n| DELETE | `/showfiles/{name}` | `?force=true` voor het geladen bestand | Verwijdert een opgeslagen bestand |\n\n**Nieuw** en **Laden** vervangen de lopende show. Bij niet-opgeslagen wijzigingen worden ze geweigerd met `409 unsaved_changes` tot u eerst opslaat of `\"force\": true` stuurt."
+ },
+ {
+  "id": "api-026",
+  "page": "api",
+  "path": [
+   "REST-API",
+   "5. Overzicht van de eindpunten",
+   "Bewerken: media – recht Media"
+  ],
+  "title": "Bewerken: media – recht Media",
+  "keywords": [],
+  "text": "| Methode | Pad | Body | Wat het doet |\n|---|---|---|---|\n| POST | `/media` | het ruwe bestand; header `X-Filename` (URL-gecodeerd) | Uploadt een video- / audiobestand (tot 1 GB; hetzelfde bestand twee keer is één item) |\n| PUT | `/media/{id}` | `{\"name\": \"…\"}` | Hernoemt |\n| DELETE | `/media/{id}` | – | Haalt uit de show en verwijdert de kopie |"
+ },
+ {
+  "id": "api-027",
+  "page": "api",
+  "path": [
+   "REST-API",
+   "5. Overzicht van de eindpunten",
+   "Bewerken: indelingen en instellingen – rechten Indelingen en DMX-uitgangen en taal"
+  ],
+  "title": "Bewerken: indelingen en instellingen – rechten Indelingen en DMX-uitgangen en taal",
+  "keywords": [],
+  "text": "| Methode | Pad | Body | Wat het doet |\n|---|---|---|---|\n| POST | `/layouts/{filename}/load` | – | Toont een opgeslagen indeling (`Name.json` zoals in `GET /layouts`) in het consolevenster; niet-opgeslagen indelingswijzigingen gaan daar verloren |\n| PUT | `/system` | `{\"artnet\": {\"enabled\": true, \"ip\": \"2.255.255.255\", \"bind_ip\": \"\"}, \"sacn\": {\"enabled\": true}, \"enttec\": {\"enabled\": false, \"port\": \"COM3\", \"universe\": 1}, \"default_universe\": 1, \"language\": \"de\"}` – elk veld optioneel | Schakelt de DMX-uitgangen en wijzigt taal / standaarduniversum; het antwoord is `GET /system` |\n| POST | `/system/dmx/reinitialize` | – | Herstart de DMX-uitgangen zonder het programma te herstarten |"
+ },
+ {
+  "id": "api-028",
+  "page": "api",
+  "path": [
+   "REST-API",
+   "5. Overzicht van de eindpunten",
+   "Documentatie (geen token)"
+  ],
+  "title": "Documentatie (geen token)",
+  "keywords": [],
+  "text": "| Methode | Pad | Geeft terug |\n|---|---|---|\n| GET | `/docs` | Een leesbaar, doorzoekbaar overzicht van alle routes (werkt offline) |\n| GET | `/openapi.json` | De machineleesbare beschrijving (OpenAPI 3.1); elke route noemt zijn recht als `x-capability` |"
+ },
+ {
+  "id": "api-029",
+  "page": "api",
+  "path": [
+   "REST-API",
+   "6. Voorbeelden met echte antwoorden",
+   "Status"
+  ],
+  "title": "Status",
+  "keywords": [],
+  "text": "```\nGET /api/v1/status\n```\n\n```json\n{\n  \"app\": { \"name\": \"OpenCue\", \"version\": \"1.0.0\" },\n  \"show\": { \"name\": \"Concert\", \"unsaved_changes\": true },\n  \"blackout\": false,\n  \"grand_master\": 100.0,\n  \"timecode\": { \"running\": false, \"direction\": 1, \"rate\": 1.0, \"position_ms\": 0.0, \"position\": \"00:00:00.000\" },\n  \"selection\": { \"fixture_ids\": [\"228a68e5-…\"], \"fids\": [2] },\n  \"active_cuelist\": { \"id\": \"7e5d274f-…\", \"name\": \"Show\" },\n  \"dmx\": { \"universes\": [1], \"artnet\": true, \"sacn\": false, \"usb\": false },\n  \"counts\": { \"fixtures\": 2, \"groups\": 1, \"variables\": 0, \"effects\": 0, \"cuelists\": 1, \"cues\": 2 }\n}\n```"
+ },
+ {
+  "id": "api-030",
+  "page": "api",
+  "path": [
+   "REST-API",
+   "6. Voorbeelden met echte antwoorden",
+   "Welke projectoren zitten in de show, en welke kleur hebben ze?"
+  ],
+  "title": "Welke projectoren zitten in de show, en welke kleur hebben ze?",
+  "keywords": [],
+  "text": "```\nGET /api/v1/fixtures?include_state=true\nGET /api/v1/fixtures/state\n```\n\n```json\n{\n  \"fixtures\": [\n    { \"id\": \"9ea4feaa-…\", \"fid\": 1, \"name\": \"Front\", \"state\": { \"dimmer\": 80.0 } },\n    { \"id\": \"228a68e5-…\", \"fid\": 2, \"name\": \"Par left\",\n      \"state\": { \"dimmer\": 100.0, \"color\": { \"r\": 255, \"g\": 0, \"b\": 0, \"hex\": \"#ff0000\" } } }\n  ]\n}\n```\n\n`state` bevat precies wat de console nu uitvoert, gelezen uit de DMX-buffer: `dimmer`, `pan`, `tilt`, `zoom`, `focus` … in procenten en `color` als r/g/b. Attributen die een projector niet heeft, ontbreken. (Bij grand master 0 of blackout kan de dimmer niet worden gereconstrueerd en blijft weg.)"
+ },
+ {
+  "id": "api-031",
+  "page": "api",
+  "path": [
+   "REST-API",
+   "6. Voorbeelden met echte antwoorden",
+   "Eén projector met alle kanalen"
+  ],
+  "title": "Eén projector met alle kanalen",
+  "keywords": [],
+  "text": "```\nGET /api/v1/fixtures/2\n```\n\n```json\n{\n  \"id\": \"228a68e5-…\", \"fid\": 2, \"name\": \"Par left\", \"type\": \"Generic RGBW LED Par\", \"manufacturer\": \"Generic\",\n  \"universe\": 1, \"start_channel\": 11, \"end_channel\": 14, \"channel_count\": 4, \"mode\": \"default\", \"group\": \"Wash\",\n  \"channels\": [\n    { \"channel\": 1, \"name\": \"ColorAdd_R\", \"address\": 11, \"value\": 255 },\n    { \"channel\": 2, \"name\": \"ColorAdd_G\", \"address\": 12, \"value\": 0 },\n    { \"channel\": 3, \"name\": \"ColorAdd_B\", \"address\": 13, \"value\": 0 },\n    { \"channel\": 4, \"name\": \"ColorAdd_W\", \"address\": 14, \"value\": 0 }\n  ],\n  \"state\": { \"color\": { \"r\": 255, \"g\": 0, \"b\": 0, \"hex\": \"#ff0000\" } }\n}\n```"
+ },
+ {
+  "id": "api-032",
+  "page": "api",
+  "path": [
+   "REST-API",
+   "6. Voorbeelden met echte antwoorden",
+   "Wat wijzigt een cue?"
+  ],
+  "title": "Wat wijzigt een cue?",
+  "keywords": [],
+  "text": "```\nGET /api/v1/cuelists/Show/cues/1\n```\n\n```json\n{\n  \"id\": \"700571ee-…\", \"number\": 1, \"name\": \"Auf\", \"active\": false,\n  \"trigger\": \"go\", \"timecode_ms\": null, \"timecode\": null, \"audio\": null, \"midi\": null, \"clock\": null,\n  \"fade\": 2.0, \"delay\": 0.0,\n  \"times\": { \"color\": { \"fade\": null, \"delay\": null }, \"position\": { \"fade\": null, \"delay\": null },\n             \"beam\": { \"fade\": null, \"delay\": null }, \"zoom\": { \"fade\": null, \"delay\": null } },\n  \"effect_fade\": { \"in\": 0.0, \"out\": 0.0 }, \"mib\": \"Off\", \"command\": \"\", \"fixture_count\": 2,\n  \"changes\": [\n    { \"fixture_id\": \"9ea4feaa-…\", \"fid\": 1, \"name\": \"Front\", \"values\": { \"dimmer\": 50 }, \"variables\": {} },\n    { \"fixture_id\": \"228a68e5-…\", \"fid\": 2, \"name\": \"Par left\",\n      \"values\": { \"dimmer\": 100, \"color\": { \"r\": 255, \"g\": 0, \"b\": 0, \"hex\": \"#ff0000\" } }, \"variables\": {} }\n  ],\n  \"effects\": [],\n  \"cuelist\": { \"id\": \"7e5d274f-…\", \"name\": \"Show\" }\n}\n```"
+ },
+ {
+  "id": "api-033",
+  "page": "api",
+  "path": [
+   "REST-API",
+   "6. Voorbeelden met echte antwoorden",
+   "Wat wijzigt een cue?"
+  ],
+  "title": "Wat wijzigt een cue? (2)",
+  "keywords": [],
+  "text": "- `fade` / `delay` zijn de algemene tijden; `times` bevat de optionele tijden per attribuutgroep (`null` = gebruikt de algemene tijd).\n- `changes[].values` zijn de vaste waarden die in de cue zijn opgeslagen. `variables` toont de variabelen (plaatshouders) waarnaar de cue verwijst, op type en naam – een variabele wordt live opgelost als de cue loopt.\n- `effects` toont de effecten die de cue start, per projector.\n- Alle cues van een lijst tegelijk met hun details: `GET /api/v1/cuelists/Show/cues?detail=true`."
+ },
+ {
+  "id": "api-034",
+  "page": "api",
+  "path": [
+   "REST-API",
+   "6. Voorbeelden met echte antwoorden",
+   "Het DMX-signaal"
+  ],
+  "title": "Het DMX-signaal",
+  "keywords": [],
+  "text": "```\nGET /api/v1/dmx/1?first=1&last=14\nGET /api/v1/dmx/1?nonzero=true\n```\n\n```json\n{ \"universe\": 1, \"first\": 1, \"last\": 14, \"values\": [0,0,0,0,0,0,0,0,0,0,255,0,0,0] }\n{ \"universe\": 1, \"first\": 1, \"last\": 512, \"channels\": { \"11\": 255 } }\n```"
+ },
+ {
+  "id": "api-035",
+  "page": "api",
+  "path": [
+   "REST-API",
+   "6. Voorbeelden met echte antwoorden",
+   "Een consoleopdracht uitvoeren"
+  ],
+  "title": "Een consoleopdracht uitvoeren",
+  "keywords": [],
+  "text": "```\nPOST /api/v1/command\n{ \"command\": \"Fixture 1 Thru 4 At 80\" }\n```\n\n```json\n{ \"command\": \"Fixture 1 Thru 4 At 80\", \"success\": true, \"message\": \"OK: 4 fixtures selected; At 80 applied\" }\n```\n\nAlle opdrachten van de opdrachtregel werken, ook gekoppeld met `;` (zie de handleiding *Opdrachtenreferentie*)."
+ },
+ {
+  "id": "api-036",
+  "page": "api",
+  "path": [
+   "REST-API",
+   "6. Voorbeelden met echte antwoorden",
+   "Een cue triggeren"
+  ],
+  "title": "Een cue triggeren",
+  "keywords": [],
+  "text": "```\nPOST /api/v1/cuelists/Show/go            { \"cue\": \"2\" }\n```\n\n```json\n{ \"cuelist\": { \"id\": \"7e5d274f-…\", \"name\": \"Show\" }, \"command\": \"Cuelist \\\"Show\\\" Go Cue 2\", \"success\": true, \"message\": \"OK: Go Cue 2 [Show]\" }\n```\n\nZonder body start `go` de volgende cue. Let op: een cuelijst waarvan de **naam een aanhalingsteken bevat**, kan op deze manier niet worden aangesproken; hernoem hem."
+ },
+ {
+  "id": "api-037",
+  "page": "api",
+  "path": [
+   "REST-API",
+   "6. Voorbeelden met echte antwoorden",
+   "Tijdcode"
+  ],
+  "title": "Tijdcode",
+  "keywords": [],
+  "text": "```\nPUT /api/v1/timecode   { \"action\": \"seek\", \"position\": \"1:04.300\" }\nPUT /api/v1/timecode   { \"action\": \"play\", \"position\": 10 }\nGET /api/v1/timecode\n```\n\n```json\n{ \"running\": false, \"direction\": 1, \"rate\": 1.0, \"position_ms\": 64300.0, \"position\": \"00:01:04.300\" }\n```\n\n`position` is een getal in **seconden** of tekst zoals `1:04.300` of `00:00:04.300`. `play` mag vanaf een `position` starten en met `\"direction\": -1` achteruit lopen; `rate` is de snelheid tussen 0,1 en 8. Springen met `seek` laat tijdcodecues niet afgaan."
+ },
+ {
+  "id": "api-038",
+  "page": "api",
+  "path": [
+   "REST-API",
+   "6. Voorbeelden met echte antwoorden",
+   "DMX-kanalen instellen"
+  ],
+  "title": "DMX-kanalen instellen",
+  "keywords": [],
+  "text": "```\nPUT /api/v1/dmx/1/200                      { \"value\": 255 }\nPUT /api/v1/dmx/1                          { \"channels\": { \"201\": 10, \"202\": 20 } }\nPUT /api/v1/fixtures/Front/channels/Dimmer { \"percent\": 50 }\n```\n\n```json\n{ \"universe\": 1, \"channel\": 1, \"value\": 128, \"fixture\": { \"fid\": 1, \"name\": \"Front\" }, \"channel_of_fixture\": 1 }\n```\n\nEen kanaal dat bij een **projector** hoort, wordt ingesteld zoals de *DMX direct*-fader van de programmer: het wordt een handmatige waarde die lopende cues niet meer mengen. Andere kanalen worden rechtstreeks naar de uitvoer geschreven. Dit recht staat **standaard uit**."
+ },
+ {
+  "id": "api-039",
+  "page": "api",
+  "path": [
+   "REST-API",
+   "6. Voorbeelden met echte antwoorden",
+   "Audio: lezen en bedienen"
+  ],
+  "title": "Audio: lezen en bedienen",
+  "keywords": [],
+  "text": "```\nGET  /api/v1/audio/devices                    -> { \"devices\": [ { \"id\": \"demo\", \"kind\": \"demo\", \"name\": \"Demo beat\" }, ... ] }\nPUT  /api/v1/audio    { \"device\": \"demo\" }    open that source (`running` false closes it)\nPUT  /api/v1/audio    { \"settings\": { \"mode\": \"manual\", \"bpm\": 128, \"sensitivity\": 0.7 } }\nPOST /api/v1/audio/tap                        tap the tempo (about 4 taps in a row set it, the tempo switches to manual)\nGET  /api/v1/audio                            level, bands, kick / snare / hat, bpm, beat_phase ... and the settings\n```\n\n`PUT /audio` past eerst de `settings` toe, opent dan (`running: true`, of een `device`) of sluit (`running: false`) de bron en antwoordt zoals `GET /audio`. Kan de bron niet worden geopend, dan is het antwoord `409 audio_failed` met de reden. Instellingen: `gain`, `auto_gain`, `sensitivity`, `smoothing`, `latency_ms`, `mode` (`auto` | `manual`), `bpm` (handmatig tempo), `phase_follow`, `demo_bpm`, `autostart`; onbekende sleutels worden genegeerd en getallen worden tot hun bereik begrensd."
+ },
+ {
+  "id": "api-040",
+  "page": "api",
+  "path": [
+   "REST-API",
+   "6. Voorbeelden met echte antwoorden",
+   "Een cue bouwen"
+  ],
+  "title": "Een cue bouwen",
+  "keywords": [],
+  "text": "```\nPOST /api/v1/cuelists/Show/cues\n{\n  \"number\": 3, \"name\": \"Blue wash\", \"fade\": 3,\n  \"changes\": [\n    { \"group\": \"Wash\", \"values\": { \"dimmer\": 80, \"color\": \"#0000ff\" } },\n    { \"fixtures\": [1], \"values\": { \"dimmer\": 20 } }\n  ],\n  \"effects\": [ { \"fixtures\": [2, 3], \"effects\": { \"dimmer\": \"Blink\" } } ]\n}\n```\n\n```json\n{ \"status\": \"created\", \"cuelist\": { \"id\": \"7e5d274f-…\", \"name\": \"Show\" },\n  \"cue\": { \"id\": \"5c0b…\", \"number\": 3, \"name\": \"Blue wash\", \"fade\": 3.0, \"changes\": [ … ], \"effects\": [ … ], … } }\n```\n\nHet antwoord is de hele cue zoals `GET …/cues/3` hem zou tonen. Bestaat cue 3 al, dan krijgt u `409 cue_exists`; stuur `\"on_conflict\": \"merge\"` om de verstuurde attributen eraan toe te voegen, of `\"overwrite\"` om zijn inhoud te vervangen (status `merged` / `overwritten`).\n\nHetzelfde vanuit de programmer, zoals *Store Cue*:\n\n```\nPUT  /api/v1/programmer/values   { \"fixtures\": [2, 3], \"values\": { \"color\": \"#ff8000\", \"dimmer\": 100 } }\nPOST /api/v1/cuelists/Show/cues  { \"number\": 4, \"name\": \"Orange\", \"from_programmer\": true, \"clear_programmer\": true }\n```"
+ },
+ {
+  "id": "api-041",
+  "page": "api",
+  "path": [
+   "REST-API",
+   "6. Voorbeelden met echte antwoorden",
+   "Cues wijzigen en verwijderen"
+  ],
+  "title": "Cues wijzigen en verwijderen",
+  "keywords": [],
+  "text": "```\nPUT    /api/v1/cuelists/Show/cues/3   { \"name\": \"Deep blue\", \"fade\": 5, \"times\": { \"color\": { \"fade\": 8 } } }\nPUT    /api/v1/cuelists/Show/cues/3   { \"changes\": [ { \"fixtures\": [1], \"values\": { \"dimmer\": 0 } } ] }                       (adds to the content)\nPUT    /api/v1/cuelists/Show/cues/3   { \"content\": \"replace\", \"changes\": [ { \"fixtures\": [1], \"values\": { \"dimmer\": 0 } } ] } (content = exactly this)\nPUT    /api/v1/cuelists/Show/cues/3   { \"number\": 2.5 }                                                                          (renumber)\nDELETE /api/v1/cuelists/Show/cues/3\n```\n\nAlleen wat u verstuurt, verandert. Een wijziging aan een cue die loopt, werkt bij zijn volgende *Go*."
+ },
+ {
+  "id": "api-042",
+  "page": "api",
+  "path": [
+   "REST-API",
+   "6. Voorbeelden met echte antwoorden",
+   "Variabelen en effecten"
+  ],
+  "title": "Variabelen en effecten",
+  "keywords": [],
+  "text": "```\nPOST /api/v1/variables  { \"name\": \"Warm white\", \"type\": \"color\", \"values\": { \"hex\": \"#ffb060\" } }\nPUT  /api/v1/variables/Warm white   { \"values\": { \"hex\": \"#ffa040\" } }      -> every cue that uses it is warmer now\nPOST /api/v1/effects    { \"script\": \"strobe\", \"name\": \"Blink\", \"params\": { \"rate_hz\": 8 } }\nPOST /api/v1/effects/Blink/assign   { \"fixtures\": [2, 3] }                  -> it runs now\nPOST /api/v1/effects/release        { \"fixtures\": [2, 3] }                  -> stop it\n```\n\n`GET /api/v1/effect-scripts` toont de effecttypen met hun instellingen (`variables`: naam, soort, grenzen, standaard, labels in beide talen)."
+ },
+ {
+  "id": "api-043",
+  "page": "api",
+  "path": [
+   "REST-API",
+   "6. Voorbeelden met echte antwoorden",
+   "Uw eigen effecttype schrijven"
+  ],
+  "title": "Uw eigen effecttype schrijven",
+  "keywords": [],
+  "text": "```\nPOST /api/v1/effect-scripts/check   { \"text\": \"…\" }                  -> { \"ok\": false, \"line\": 3, \"message\": \"…\" }\nPUT  /api/v1/effect-scripts/my_wave { \"text\": \"…\", \"overwrite\": true }\nPOST /api/v1/effects                { \"script\": \"my_wave\" }\n```\n\nEen script wordt alleen opgeslagen als het compileert en draait. De taal is gedocumenteerd in de handleiding *Effectenstudio*."
+ },
+ {
+  "id": "api-044",
+  "page": "api",
+  "path": [
+   "REST-API",
+   "6. Voorbeelden met echte antwoorden",
+   "Projectoren patchen"
+  ],
+  "title": "Projectoren patchen",
+  "keywords": [],
+  "text": "```\nGET  /api/v1/fixture-types?q=par\nPOST /api/v1/fixtures  { \"type\": \"Generic RGBW LED Par\", \"quantity\": 4, \"name\": \"Par\", \"universe\": 1, \"address\": 11, \"group\": \"Wash\" }\n```\n\n```json\n{ \"created\": [ { \"fid\": 4, \"name\": \"Par 1\", \"universe\": 1, \"start_channel\": 11, \"end_channel\": 14, … },\n               { \"fid\": 5, \"name\": \"Par 2\", \"universe\": 1, \"start_channel\": 15, … }, … ] }\n```\n\nAdressen die andere projectoren overlappen, worden geweigerd (`409 address_conflict`); `\"allow_overlap\": true` patcht toch."
+ },
+ {
+  "id": "api-045",
+  "page": "api",
+  "path": [
+   "REST-API",
+   "6. Voorbeelden met echte antwoorden",
+   "De programmer"
+  ],
+  "title": "De programmer",
+  "keywords": [],
+  "text": "```\nGET  /api/v1/programmer\nPUT  /api/v1/selection            { \"group\": \"Wash\" }\nPUT  /api/v1/programmer/values    { \"values\": { \"dimmer\": 100, \"color\": [255, 0, 0] } }       (without fixtures: the selection)\nPOST /api/v1/programmer/variables { \"variable\": \"Warm white\" }\nPOST /api/v1/programmer/clear     { \"fixtures\": [2] }          forget their values (the output stays)\nPOST /api/v1/programmer/clear     { \"all\": true }              Clear Clear: every fixture dark, effects end\n```\n\nZo ingestelde waarden gedragen zich als de faders van het programmervenster: de uitvoer verandert meteen, ze tellen als aangeraakt en de volgende *Store Cue* neemt ze over."
+ },
+ {
+  "id": "api-046",
+  "page": "api",
+  "path": [
+   "REST-API",
+   "6. Voorbeelden met echte antwoorden",
+   "Relatieve waarden (bijsturen in plaats van instellen)"
+  ],
+  "title": "Relatieve waarden (bijsturen in plaats van instellen)",
+  "keywords": [],
+  "text": "```\ncurl -X PUT -H \"Authorization: Bearer oc_xxxxxxxx\" -H \"Content-Type: application/json\" \\\n  -d '{\"group\": \"Front\", \"mode\": \"relative\", \"values\": {\"pan\": 2.5, \"dimmer\": -10}}' \\\n  http://127.0.0.1:8000/api/v1/programmer/values\n```\n\nMet `\"mode\": \"relative\"` zijn de getallen **wijzigingen in procentpunten** (−100 tot 100); elke projector begint bij zijn eigen waarde en wordt bij 0 / 100 % begrensd. Kleuren en ruwe kanalen bestaan alleen als absolute waarden. Voor snelle reeksen wijzigingen (draaiknoppen, joystick) is de WebSocket (paragraaf 10) beter."
+ },
+ {
+  "id": "api-047",
+  "page": "api",
+  "path": [
+   "REST-API",
+   "6. Voorbeelden met echte antwoorden",
+   "Showbestanden"
+  ],
+  "title": "Showbestanden",
+  "keywords": [],
+  "text": "```\nPOST /api/v1/showfile/save-as  { \"name\": \"Concert\" }\nPOST /api/v1/showfile/load     { \"name\": \"Concert\", \"force\": false }\nPOST /api/v1/showfile/new      { \"force\": true }\n```\n\nZonder `force` stoppen *load* en *new* met `409 unsaved_changes` als de lopende show niet-opgeslagen wijzigingen heeft. `GET /api/v1/showfile` meldt of dat zo is."
+ },
+ {
+  "id": "api-048",
+  "page": "api",
+  "path": [
+   "REST-API",
+   "6. Voorbeelden met echte antwoorden",
+   "Knoppen, faders en schakelaars van de console"
+  ],
+  "title": "Knoppen, faders en schakelaars van de console",
+  "keywords": [],
+  "text": "```\nGET /api/v1/widgets\nPOST /api/v1/widgets/b1/press\nPUT  /api/v1/widgets/f1/value   { \"value\": 70 }\nPUT  /api/v1/widgets/t1/state   { \"on\": true }\n```\n\n`GET /widgets` toont de panelen met hun `id`, `label`, opdracht en de huidige waarde (faders) of status (schakelaars). Indrukken, verschuiven of omschakelen voert de in het paneel ingestelde opdracht uit – dezelfde die een operator triggert – en de panelen op elk apparaat volgen (een ingedrukte knop pulseert, faders en schakelaars met dezelfde opdracht bewegen mee). Een faderwaarde wordt tot zijn minimum / maximum begrensd. Een paneel zonder opdracht antwoordt `409 no_command` (een schakelaar zonder opdrachten schakelt alleen om). De panelen zijn die van de indeling van de **console**; apparaten op afstand hebben eigen indelingen."
+ },
+ {
+  "id": "api-049",
+  "page": "api",
+  "path": [
+   "REST-API",
+   "6. Voorbeelden met echte antwoorden",
+   "Uitgangen en indelingen"
+  ],
+  "title": "Uitgangen en indelingen",
+  "keywords": [],
+  "text": "```\nPUT  /api/v1/system   { \"artnet\": { \"ip\": \"192.168.1.255\" }, \"sacn\": { \"enabled\": false } }\nPOST /api/v1/layouts/Concert.json/load\nPOST /api/v1/fixture-types   (raw .gdtf file, header X-Filename: my_fixture.gdtf)\n```"
+ },
+ {
+  "id": "api-050",
+  "page": "api",
+  "path": [
+   "REST-API",
+   "6. Voorbeelden met echte antwoorden",
+   "Een medium uploaden"
+  ],
+  "title": "Een medium uploaden",
+  "keywords": [],
+  "text": "```\ncurl -X POST -H \"Authorization: Bearer oc_xxxxxxxx\" -H \"Content-Type: application/octet-stream\" \\\n     -H \"X-Filename: intro.mp4\" --data-binary @intro.mp4 http://127.0.0.1:8000/api/v1/media\n```"
+ },
+ {
+  "id": "api-051",
+  "page": "api",
+  "path": [
+   "REST-API",
+   "6. Voorbeelden met echte antwoorden",
+   "Live-gebeurtenissen (stroom)"
+  ],
+  "title": "Live-gebeurtenissen (stroom)",
+  "keywords": [],
+  "text": "```\ncurl -N -H \"Authorization: Bearer oc_xxxxxxxx\" \"http://127.0.0.1:8000/api/v1/events?events=cue,blackout,command\"\n```\n\n```\nevent: hello\ndata: {\"app\": \"OpenCue\", \"events\": [\"blackout\", \"cue\", \"command\"]}\n\nevent: cue\ndata: {\"cuelists\": [{\"id\": \"7e5d…\", \"name\": \"Show\", \"active_cue\": {\"id\": \"700…\", \"number\": 2, \"name\": \"Blue\", …}}]}\n\nevent: command\ndata: {\"command\": \"Fixture 1 At 10\", \"success\": true, \"message\": \"OK: …\", \"time\": \"21:14:03\"}\n```\n\nDe verbinding blijft open. Eerst komen `hello` en één bericht per soort met de **huidige toestand**, daarna elke wijziging. Soorten: `cue` (actieve cue van een lijst gewijzigd), `cuelists` (lijsten / cues toegevoegd, verwijderd, hernoemd), `blackout`, `master`, `timecode` (gestart, gestopt, snelheid), `selection`, `effects`, `fixtures`, `variables`, `show` (naam / niet-opgeslagen wijzigingen), `command` (een consoleopdracht liep, van waar ook), `audio` (bron geopend / gesloten, tempo, signaal aanwezig). Alleen op verzoek (`?events=beat,hit`): `beat` (elke beat, met het tempo) en `hit` (elke slag van basdrum / snare / hi-hat: `{\"drum\": \"kick\", \"strength\": 0.9}`). `?events=` beperkt de stroom. Wijzigingen worden binnen ongeveer 0,1 s opgemerkt. Elke 15 s komt een commentaarregel (`: keep-alive`); er lopen hoogstens 20 stromen tegelijk. Vraagt het recht *Status*."
+ },
+ {
+  "id": "api-052",
+  "page": "api",
+  "path": [
+   "REST-API",
+   "6. Voorbeelden met echte antwoorden",
+   "Live-gebeurtenissen (stroom)"
+  ],
+  "title": "Live-gebeurtenissen (stroom) (2)",
+  "keywords": [],
+  "text": "In een browser kan `EventSource` geen headers versturen: gebruik dan `?access_token=<token>`, of `fetch()` met een header en lees de stroom. Het token verschijnt dan in het adres, geef zo'n pagina dus een eigen token met alleen *Status*."
+ },
+ {
+  "id": "api-053",
+  "page": "api",
+  "path": [
+   "REST-API",
+   "7. Kleine programma's"
+  ],
+  "title": "7. Kleine programma's",
+  "keywords": [],
+  "text": "Python, met de bibliotheek `requests` (elke HTTP-bibliotheek werkt):\n\n```python\nimport requests\n\nBASE = \"http://127.0.0.1:8000/api/v1\"\nHEAD = {\"Authorization\": \"Bearer oc_xxxxxxxx\"}\n\n# What is the colour of every fixture?\nfor fx in requests.get(f\"{BASE}/fixtures/state\", headers=HEAD).json()[\"fixtures\"]:\n    color = fx[\"state\"].get(\"color\")\n    print(fx[\"fid\"], fx[\"name\"], color[\"hex\"] if color else \"-\")\n\n# Dim the front lights, then start the next cue\nrequests.post(f\"{BASE}/command\", headers=HEAD, json={\"command\": \"Fixture 1 At 30\"})\nrequests.post(f\"{BASE}/cuelists/Show/go\", headers=HEAD)\n```\n\nEen kleine show bouwen (vraagt de bewerkrechten):\n\n```python\nrequests.post(f\"{BASE}/fixtures\", headers=HEAD, json={\"type\": \"Generic RGBW LED Par\", \"quantity\": 4, \"name\": \"Par\", \"address\": 1, \"group\": \"Wash\"})\nrequests.post(f\"{BASE}/variables\", headers=HEAD, json={\"name\": \"Warm\", \"type\": \"color\", \"values\": {\"hex\": \"#ffb060\"}})\nrequests.post(f\"{BASE}/cuelists\", headers=HEAD, json={\"name\": \"Show\"})\nrequests.post(f\"{BASE}/cuelists/Show/cues\", headers=HEAD, json={\n    \"number\": 1, \"name\": \"Warm\", \"fade\": 3,\n    \"changes\": [{\"group\": \"Wash\", \"values\": {\"dimmer\": 80}, \"variables\": {\"color\": \"Warm\"}}]})\nrequests.post(f\"{BASE}/showfile/save-as\", headers=HEAD, json={\"name\": \"From the API\"})\n```"
+ },
+ {
+  "id": "api-054",
+  "page": "api",
+  "path": [
+   "REST-API",
+   "7. Kleine programma's"
+  ],
+  "title": "7. Kleine programma's (2)",
+  "keywords": [],
+  "text": "Een webpagina die de actieve cue live toont (JavaScript in de browser; de pagina mag van elk adres komen, zie paragraaf 8):\n\n```javascript\nconst res = await fetch(\"http://192.168.1.20:8000/api/v1/events?events=cue\", { headers: { Authorization: \"Bearer oc_xxxxxxxx\" } });\nconst reader = res.body.pipeThrough(new TextDecoderStream()).getReader();\nfor (;;) {\n  const { value, done } = await reader.read();\n  if (done) break;\n  console.log(value);          // \"event: cue\\ndata: {...}\\n\\n\"\n}\n```"
+ },
+ {
+  "id": "api-055",
+  "page": "api",
+  "path": [
+   "REST-API",
+   "8. Andere apparaten en beveiliging"
+  ],
+  "title": "8. Andere apparaten en beveiliging",
+  "keywords": [],
+  "text": "- **Vanaf een andere computer of tablet** is de API bereikbaar zodra **Toegang via HTTP toestaan** (Instellingen → Toegang op afstand) aan staat. Gebruik het adres van de console (op die pagina getoond) in plaats van `127.0.0.1`, bijvoorbeeld `http://192.168.1.20:8000/api/v1/status`. Staat toegang op afstand uit, dan is de poort voor het netwerk gesloten. Het **token vervangt daar het wachtwoord** – aanmelden is niet nodig.\n- Tokens geven echte controle over de lampen. Geef elk programma zijn **eigen token met alleen de rechten die het nodig heeft** en verwijder tokens die u niet meer gebruikt.\n- De **bewerkrechten staan standaard uit** en kunnen showgegevens wijzigen of vernietigen: *Patch*, *Showbestanden* en *Consoleopdrachten* zijn als **kritiek** gemarkeerd. *Laden* en *Nieuw* weigeren niet-opgeslagen wijzigingen weg te gooien zonder `force`.\n- Het verkeer is gewoon HTTP binnen uw netwerk. Stel de poort niet bloot aan internet.\n- **Webpagina's op andere adressen** (uw eigen dashboard, een webtool in de browser) mogen de API rechtstreeks aanroepen: de antwoorden dragen de headers voor toegang tussen herkomsten (CORS) en het preflight-verzoek van de browser (`OPTIONS`, dat geen token kan dragen) wordt beantwoord. De pagina heeft nog steeds een token in de `Authorization`-header nodig en moet het token voor zichzelf houden (zet geen krachtig token in een openbare webpagina). Zet het uit in *Instellingen → API → Webpagina's op andere adressen toestaan* als u het niet nodig hebt; browsers blokkeren zulke pagina's dan weer (programma's en scripts worden niet geraakt).\n- De API wijzigt de show **in het geheugen**, zoals het venster. Er wordt niets op schijf bewaard tot de show wordt opgeslagen (`POST /showfile/save`, of *Opslaan* in het venster)."
+ },
+ {
+  "id": "api-056",
+  "page": "api",
+  "path": [
+   "REST-API",
+   "9. Als iets niet werkt"
+  ],
+  "title": "9. Als iets niet werkt",
+  "keywords": [],
+  "text": "| Probleem | Controleer |\n|---|---|\n| `401 unauthorized` | Header geschreven als `Authorization: Bearer oc_…` met het volledige token? Token verwijderd of opnieuw gegenereerd? |\n| `403 forbidden` | Het token mist dit recht – open het token in *Instellingen → API* en zet het aan (het bericht noemt het). |\n| `403 api_disabled` | De hoofdschakelaar in *Instellingen → API* staat uit. |\n| `403 remote access disabled` | U roept aan vanaf een ander apparaat terwijl *Toegang via HTTP toestaan* uit staat. |\n| `404 not_found` | Controleer het projectornummer, de naam van de cuelijst (precies) en het cuenummer. |\n| `409 duplicate` | De naam is bezet (hoofdletters / kleine letters maken niet uit). Kies een andere naam of wijzig de bestaande met `PUT`. |\n| `409 cue_exists` | Een cue met dit nummer staat in de lijst: `on_conflict` of `PUT`. |\n| `409 unsaved_changes` | Sla eerst op (`POST /showfile/save`) of stuur `force: true`. |\n| `409 no_command` / `409 wrong_type` | Een paneel heeft geen opdracht ingesteld / u drukte op een fader, verschoof een knop … (zie `GET /widgets` voor het type). |\n| `422` | Een veld dat niet bestaat (typfout?) of een verkeerd type – het bericht noemt het veld. |\n| `422 invalid_script` | Het script bevat een fout – het bericht noemt de regel. `POST /effect-scripts/check` test zonder op te slaan. |\n| `200` maar `\"success\": false` | De opdracht is afgewezen – lees `message`. |\n| `429` | Te veel verkeerde tokens vanaf dit adres. Wacht `Retry-After` seconden. |\n| Browserpagina: \"geblokkeerd door CORS\" | *Instellingen → API → Webpagina's op andere adressen toestaan* staat uit, of het verzoek heeft geen token (het foutantwoord van de API draagt de headers, dus de echte reden is zichtbaar). |\n| Helemaal geen antwoord | Draait OpenCue en is de poort goed (Instellingen → Toegang op afstand toont hem)? |"
+ },
+ {
+  "id": "api-057",
+  "page": "api",
+  "path": [
+   "REST-API",
+   "10. Hardware en snelle bediening: de WebSocket-stroom"
+  ],
+  "title": "10. Hardware en snelle bediening: de WebSocket-stroom",
+  "keywords": [],
+  "text": "Voor **hardware** (ESP32, Arduino, Raspberry Pi, een zelfgebouwd bureau) en elke toepassing die **veel kleine waarden snel verstuurt of ontvangt**, is er naast de HTTP-routes een **WebSocket**: `ws://<console>:8000/api/v1/ws`. Eén verbinding blijft open en beide kanten sturen kleine **JSON-berichten** (tekstframes) – zonder de kosten van een nieuw HTTP-verzoek per waarde. Er is geen extra recht nodig: elk bericht vraagt **hetzelfde recht als de bijbehorende HTTP-route** (tabel hieronder). Met de voorinstelling *Bedienen* werkt alles behalve ruwe DMX."
+ },
+ {
+  "id": "api-058",
+  "page": "api",
+  "path": [
+   "REST-API",
+   "10. Hardware en snelle bediening: de WebSocket-stroom",
+   "Verbinden en aanmelden"
+  ],
+  "title": "Verbinden en aanmelden",
+  "keywords": [],
+  "text": "Het token kan op drie manieren worden verstuurd (microcontrollers vinden het adres het gemakkelijkst):\n\n1. in het adres: `ws://opencue.local:8000/api/v1/ws?access_token=oc_xxxxxxxx`\n2. in de header: `Authorization: Bearer oc_xxxxxxxx` (of `X-API-Key`)\n3. als **eerste bericht** binnen 5 s: `{\"op\": \"auth\", \"token\": \"oc_xxxxxxxx\"}`\n\nDaarna stuurt OpenCue `{\"op\": \"hello\", ...}` met de toegestane rechten, bewerkingen, onderwerpen en limieten. Fouten sluiten de verbinding met een code: `4401` (token ontbreekt / fout), `4403` (API uit, alleen deze pc, toegang op afstand uit, token uitgeschakeld), `4429` (te veel mislukte pogingen / te veel verbindingen). Dezelfde regels als voor HTTP gelden: *REST-API aan*, *Bereikbaar vanaf*, uitsluiting na mislukte pogingen. Er zijn hoogstens 10 verbindingen tegelijk open.\n\nElk bericht is een JSON-object met `\"op\"`. Een optionele **`\"id\"`** (elk getal of elke tekst) komt terug in het antwoord: `{\"op\": \"ack\", \"id\": 7, ...}` bij succes, `{\"op\": \"error\", \"id\": 7, \"code\": \"...\", \"message\": \"...\"}` bij een fout. Zonder `id` worden alleen fouten beantwoord. Een foutief bericht beëindigt de verbinding nooit."
+ },
+ {
+  "id": "api-059",
+  "page": "api",
+  "path": [
+   "REST-API",
+   "10. Hardware en snelle bediening: de WebSocket-stroom",
+   "Berichten van de hardware"
+  ],
+  "title": "Berichten van de hardware",
+  "keywords": [],
+  "text": "| `op` | Recht | Wat het doet |\n|---|---|---|\n| `joystick` | Programmer | Een joystick – zie hieronder |\n| `set` | Programmer | Waarden instellen, **absoluut** of **relatief** – zie hieronder |\n| `select` | Programmer | De selectie wijzigen: `{\"op\":\"select\",\"mode\":\"set\",\"fixtures\":[1,2]}` (`mode`: `set`, `add`, `remove`, `clear`) |\n| `cmd` | Opdrachten | Consoleopdracht: `{\"op\":\"cmd\",\"line\":\"Cuelist Main Go\"}` (antwoord: `success`, `message`) |\n| `cue` | Cues | `{\"op\":\"cue\",\"list\":\"Main\",\"action\":\"go\"}`; `action`: `go` (met `\"cue\": 5` springt hij), `back`, `pause`, `resume`, `stop`, `fader` (met `\"value\"`) |\n| `master`, `blackout` | Blackout / Master | `{\"op\":\"master\",\"value\":70}`, `{\"op\":\"blackout\",\"on\":true}` |\n| `dmx` | DMX-kanalen | `{\"op\":\"dmx\",\"universe\":1,\"channels\":{\"1\":255,\"2\":0}}` – ruwe kanaalwaarden zoals `PUT /dmx/{universe}` |\n| `tap` | Audio | Het tempo tikken (een knop op de ESP32) |\n| `timecode` | Tijdcode | De tijdcode bedienen: `{\"op\":\"timecode\",\"action\":\"play\"}` (ook `pause`, `stop`, `seek`, `rate`) – of `{\"op\":\"timecode\",\"action\":\"sync\",\"position\":12345,\"running\":true}`: OpenCue **volgt** een externe klok (positie in ms of `\"0:12.345\"`; afwijkingen onder 60 ms worden niet gecorrigeerd zodat de klok niet jittert; een sprong verplaatst hem zonder cues te laten afgaan) |\n| `audio_in` | Audio | Audio **in** – zie hieronder |\n| `subscribe`, `unsubscribe` | per onderwerp | **Abonneren** op live waarden – zie hieronder |\n| `ping` | – | Antwoord `{\"op\":\"pong\",\"t\":<uw t>,\"server_ms\":...}`: de rondreistijd meten, klokken vergelijken |"
+ },
+ {
+  "id": "api-060",
+  "page": "api",
+  "path": [
+   "REST-API",
+   "10. Hardware en snelle bediening: de WebSocket-stroom",
+   "Berichten van de hardware"
+  ],
+  "title": "Berichten van de hardware (2)",
+  "keywords": [],
+  "text": "Doelen (`set`, `joystick`, `select`) heten zoals in de HTTP-routes: `\"fixtures\": [1, 2, \"Front 3\"]`, `\"fixture\": 5`, `\"group\": \"Front\"` en / of `\"selection\": true` (de selectie van de console). Zonder een van deze wordt de selectie gebruikt."
+ },
+ {
+  "id": "api-061",
+  "page": "api",
+  "path": [
+   "REST-API",
+   "10. Hardware en snelle bediening: de WebSocket-stroom",
+   "Waarden instellen: absoluut en relatief"
+  ],
+  "title": "Waarden instellen: absoluut en relatief",
+  "keywords": [],
+  "text": "```json\n{\"op\": \"set\", \"fixtures\": [1, 2], \"values\": {\"dimmer\": 80, \"pan\": 25, \"color\": \"#ff8800\"}}\n{\"op\": \"set\", \"group\": \"Front\", \"mode\": \"relative\", \"values\": {\"pan\": 2.5, \"dimmer\": -10}}\n```\n\n- **absoluut** (standaard): de waarden zijn de nieuwe waarden – procent 0–100, kleur als `#rrggbb` / `[r,g,b]`, ruwe kanalen als `ch<N>` (0–255).\n- **relatief** (`\"mode\": \"relative\"`): de getallen zijn **wijzigingen in procentpunten** (−100 tot 100); elke projector begint bij **zijn eigen** waarde en wordt bij 0 / 100 % begrensd. Dat past bij draaiknoppen en \"een beetje verder\"-knoppen. Kleuren en ruwe kanalen kunnen niet relatief zijn.\n\nHTTP heeft hetzelfde: `PUT /programmer/values` met `\"mode\": \"relative\"`. Pan en tilt worden met de volledige **16-bitresolutie** (grof en fijn) ingesteld."
+ },
+ {
+  "id": "api-062",
+  "page": "api",
+  "path": [
+   "REST-API",
+   "10. Hardware en snelle bediening: de WebSocket-stroom",
+   "Joystick"
+  ],
+  "title": "Joystick",
+  "keywords": [],
+  "text": "```json\n{\"op\": \"joystick\", \"selection\": true, \"x\": 0.35, \"y\": -0.8}\n```\n\n`x` en `y` lopen van −1 tot 1 (rechts / omhoog positief). Standaard stuurt hij pan (`x`) en tilt (`y`) van de geselecteerde projectoren aan; `\"axes\": {\"x\": \"pan\", \"y\": \"zoom\"}` wijst elk attribuut toe (`dimmer`, `zoom`, `focus`, `strobe`, `gobo`, `prism` ...). Twee modi (`\"mode\"`):\n\n- **`rate`** (standaard, **relatief**): de uitslag bepaalt de **snelheid**, niet de positie – zoals de joystick in de programmer. Kleine uitslagen zijn zeer nauwkeurig (dicht bij het midden ongeveer 1° per seconde), grote snel (helemaal buiten loopt het hele bereik in enkele seconden door); de curve is exponentieel. OpenCue integreert de beweging **zelf op 40 Hz** uit de laatst gemelde uitslag – het apparaat hoeft alleen wijzigingen en de huidige waarde elke 20–50 ms te sturen; wifi-jitter maakt de beweging niet schokkerig. Meerdere geselecteerde projectoren bewegen evenveel vanaf **hun** beginwaarde; aan het einde van het bereik stoppen ze. Bij `x = y = 0` (of binnen de dode zone) is de stok losgelaten: **de projectoren blijven waar ze zijn**.\n- **`position`** (**absoluut**): de uitslag is de positie – `x = −1` is pan 0 %, `x = 1` pan 100 %. Niet nuttig voor een veerbelaste stok, wel voor een encoder of een schuif."
+ },
+ {
+  "id": "api-063",
+  "page": "api",
+  "path": [
+   "REST-API",
+   "10. Hardware en snelle bediening: de WebSocket-stroom",
+   "Joystick"
+  ],
+  "title": "Joystick (2)",
+  "keywords": [],
+  "text": "Meer velden: `stick` (een naam als een apparaat meerdere stokken heeft; standaard `main`, tot 4), `speed` (factor 0,05–4 voor de snelheid, standaard 1), `deadzone` (0–0,5, standaard 0,04), `timeout_ms` (100–5000, standaard 500), `invert_y`, `release: true` (meteen loslaten). De doelen worden vastgelegd als de stok voor het eerst wordt aangeraakt en bewaard tot hij wordt losgelaten.\n\n**Dodemansschakelaar:** komt er langer dan `timeout_ms` geen bericht (kabel eruit, wifi weg, apparaat hangt), dan stopt de stok en meldt OpenCue `{\"op\":\"joystick\",\"stick\":\"main\",\"state\":\"timeout\"}`. Valt de verbinding weg, dan blijven alle projectoren waar ze zijn."
+ },
+ {
+  "id": "api-064",
+  "page": "api",
+  "path": [
+   "REST-API",
+   "10. Hardware en snelle bediening: de WebSocket-stroom",
+   "Abonneren op live waarden"
+  ],
+  "title": "Abonneren op live waarden",
+  "keywords": [],
+  "text": "`{\"op\":\"subscribe\",\"topic\":\"<topic>\",\"hz\":30}` – `hz` is de hoogste frequentie (1–60, standaard 30). OpenCue stuurt alleen wat **gewijzigd** is. `unsubscribe` met `\"topic\"` beëindigt het abonnement.\n\n| `topic` | Recht | Berichten |\n|---|---|---|\n| `audio` | Status | `{\"op\":\"audio\",\"t\":ms,\"running\":true,\"v\":{\"a_level\":0.62,\"a_bass\":0.9,\"a_bpm\":124,...}}` – de audiovariabelen van de audio-analyse; `\"keys\": [\"a_level\",\"a_bass\"]` beperkt ze |\n| `dmx` | DMX | `\"universes\": [1]` (tot 8): eerst `{\"op\":\"dmx\",\"universe\":1,\"full\":true,\"values\":[512 numbers]}`, daarna alleen `{\"op\":\"dmx\",\"universe\":1,\"changes\":{\"17\":255}}` (kanaal → waarde) |\n| `fixtures` | DMX | `{\"op\":\"fixtures\",\"values\":{\"3\":{\"pan\":12.5,\"tilt\":50,\"dimmer\":100,\"color\":{...}}}}` – live waarden per projector**nummer**, alleen de gewijzigde |\n| `timecode` | Status | `{\"op\":\"timecode\",\"ms\":83400,\"text\":\"00:01:23.400\",\"running\":true,\"direction\":1,\"rate\":1}` – terwijl de klok loopt bij elke tik (tot 60 Hz), anders alleen bij een wijziging (start, stop, sprong, snelheid) |\n| `events` | Status | zoals `GET /events`: `{\"op\":\"event\",\"event\":\"cue\",\"data\":{...}}`; `\"events\": [\"cue\",\"blackout\"]` kiest (standaard: de standaardsoorten; `beat` en `hit` alleen op verzoek). De huidige toestand komt eerst |"
+ },
+ {
+  "id": "api-065",
+  "page": "api",
+  "path": [
+   "REST-API",
+   "10. Hardware en snelle bediening: de WebSocket-stroom",
+   "Audio in: een microfoon op de ESP32"
+  ],
+  "title": "Audio in: een microfoon op de ESP32",
+  "keywords": [],
+  "text": "Met de audiobron **\"Netwerk (API-stroom)\"** analyseert OpenCue audio die een apparaat verstuurt – niveau, banden, kick / snare / hi-hat, tempo en beat bestaan dan als `a_`-variabelen voor **effecten, cuetriggers en het Audio-paneel** zoals gewoonlijk.\n\n1. Open de bron: kies *Netwerk (API-stroom)* in het Audio-paneel, of `PUT /audio` met `{\"device\": \"network\"}`, of doe het met het bericht van stap 2 (`\"open\": true`).\n2. `{\"op\":\"audio_in\",\"rate\":16000,\"open\":true}` – kondigt PCM aan (`rate` 8000–48000 Hz, **16 bit signed little endian, mono**).\n3. Stuur daarna **binaire frames** (WebSocket binair) met de samples, bijv. 20 ms per keer (640 bytes bij 16 kHz). Hoogstens 64 KB per frame.\n\nIs de bron niet open, dan antwoordt OpenCue (hoogstens één keer per seconde) met de fout `audio_source`. Zonder gegevens blijft de analyse op stilte doorlopen."
+ },
+ {
+  "id": "api-066",
+  "page": "api",
+  "path": [
+   "REST-API",
+   "10. Hardware en snelle bediening: de WebSocket-stroom",
+   "Grenzen en bescherming"
+  ],
+  "title": "Grenzen en bescherming",
+  "keywords": [],
+  "text": "**De DMX-uitvoer heeft altijd voorrang**: ze draait in een eigen thread (iets hogere prioriteit) en de stroom is beperkt – hardware kan de console dus nooit vertragen. Hoogstens 300 berichten per seconde per verbinding (pieken tot 600) en 1200 in totaal – meer krijgt `rate_limited` en wordt weggegooid; tekstberichten tot 8 KB, binaire frames tot 64 KB; 10 verbindingen; een joystick verandert hoogstens met 40 Hz. Een verbinding die zich niet aanmeldt, wordt na 5 s gesloten."
+ },
+ {
+  "id": "api-067",
+  "page": "api",
+  "path": [
+   "REST-API",
+   "10. Hardware en snelle bediening: de WebSocket-stroom",
+   "Voorbeeld: ESP32 met een joystick (Arduino)"
+  ],
+  "title": "Voorbeeld: ESP32 met een joystick (Arduino)",
+  "keywords": [],
+  "text": "```cpp\n#include <WiFi.h>\n#include <WebSocketsClient.h>          // Bibliothek \"WebSockets\" von Markus Sattler (arduinoWebSockets)\n\nconst char* WIFI_SSID = \"MeinWLAN\";\nconst char* WIFI_PASS = \"geheim\";\nconst char* TOKEN     = \"oc_xxxxxxxx\";      // Token mit \"Programmer\" (write.programmer)\nconst int PIN_X = 34, PIN_Y = 35;           // die beiden Achsen des Joysticks (ADC)\n\nWebSocketsClient ws;\nint centerX = 2048, centerY = 2048;\n\nfloat norm(int raw, int center) {           // 0..4095 -> -1..1\n  float f = (raw - center) / 2048.0f;\n  return f < -1 ? -1 : (f > 1 ? 1 : f);\n}\n\nvoid onEvent(WStype_t type, uint8_t* payload, size_t length) {\n  if (type == WStype_CONNECTED) Serial.println(\"OpenCue verbunden\");\n  if (type == WStype_TEXT)      Serial.printf(\"%s\\n\", payload);       // hello, Fehler, Rueckmeldungen\n}\n\nvoid setup() {\n  Serial.begin(115200);\n  WiFi.begin(WIFI_SSID, WIFI_PASS);\n  while (WiFi.status() != WL_CONNECTED) delay(200);\n  delay(300);\n  centerX = analogRead(PIN_X);              // Ruhelage beim Start merken\n  centerY = analogRead(PIN_Y);\n  String path = String(\"/api/v1/ws?access_token=\") + TOKEN;\n  ws.begin(\"opencue.local\", 8000, path);    // oder die IP-Adresse der Konsole\n  ws.onEvent(onEvent);\n  ws.setReconnectInterval(2000);\n  ws.enableHeartbeat(15000, 3000, 2);\n}"
+ },
+ {
+  "id": "api-068",
+  "page": "api",
+  "path": [
+   "REST-API",
+   "10. Hardware en snelle bediening: de WebSocket-stroom",
+   "Voorbeeld: ESP32 met een joystick (Arduino)"
+  ],
+  "title": "Voorbeeld: ESP32 met een joystick (Arduino) (2)",
+  "keywords": [],
+  "text": "void loop() {\n  ws.loop();\n  static uint32_t last = 0;\n  if (ws.isConnected() && millis() - last >= 20) {      // 50 Mal pro Sekunde\n    last = millis();\n    float x = norm(analogRead(PIN_X), centerX);\n    float y = -norm(analogRead(PIN_Y), centerY);        // nach oben = Tilt mehr\n    char msg[128];\n    snprintf(msg, sizeof msg, \"{\\\"op\\\":\\\"joystick\\\",\\\"selection\\\":true,\\\"x\\\":%.3f,\\\"y\\\":%.3f}\", x, y);\n    ws.sendTXT(msg);\n  }\n}\n```\n\nHet apparaat blijft in rust `x = 0, y = 0` sturen – dat schaadt niet (de stok telt als losgelaten). De selectie op de console bepaalt wat beweegt; met `\"fixtures\": [1, 2]` of `\"group\"` in plaats van `\"selection\": true` ligt het doel vast."
+ },
+ {
+  "id": "api-069",
+  "page": "api",
+  "path": [
+   "REST-API",
+   "10. Hardware en snelle bediening: de WebSocket-stroom",
+   "Voorbeeld: Python"
+  ],
+  "title": "Voorbeeld: Python",
+  "keywords": [],
+  "text": "```python\nimport asyncio, json, websockets            # pip install websockets\n\nasync def main():\n    async with websockets.connect(\"ws://127.0.0.1:8000/api/v1/ws?access_token=oc_xxxxxxxx\") as ws:\n        print(json.loads(await ws.recv()))                           # hello\n        await ws.send(json.dumps({\"op\": \"set\", \"fixtures\": [1, 2], \"values\": {\"dimmer\": 80}}))\n        await ws.send(json.dumps({\"op\": \"subscribe\", \"topic\": \"audio\", \"hz\": 30, \"keys\": [\"a_level\", \"a_bass\"]}))\n        async for text in ws:\n            frame = json.loads(text)\n            if frame[\"op\"] == \"audio\":\n                print(frame[\"v\"])\n\nasyncio.run(main())\n```\n\nEen referentie van alle berichten staat ook op de pagina `/api/v1/docs`."
+ },
+ {
+  "id": "api-070",
+  "page": "api",
+  "path": [
+   "REST-API",
+   "11. Statusweergaven: afbeeldingen en webpagina's voor eenvoudige apparaten"
+  ],
+  "title": "11. Statusweergaven: afbeeldingen en webpagina's voor eenvoudige apparaten",
+  "keywords": [],
+  "text": "Voor apparaten die alleen **een afbeelding kunnen ophalen** of een **gewone pagina** kunnen tonen – een ESP32 met een display, een oude tablet als wandscherm, een browsertabblad op de foyermonitor – zijn er **statusweergaven**. Ze zijn **alleen-lezen** (geen bediening), hebben **geen bibliotheek** op het apparaat nodig en OpenCue rendert ze zelf: de inhoud is hetzelfde als afbeelding of als pagina.\n\n| Weergave | Toont | Recht |\n|---|---|---|\n| `status` | show, blackout, master, tijdcode, de actieve cue van elke lijst, tempo | Status |\n| `timecode` | de klok, groot, \"loopt / stilstaand\" | Status |\n| `dmx` | de 512 kanalen van een universum als raster (`?universe=1`), helderheid = waarde | DMX |\n| `cue` | de actieve cue van een lijst (`?list=Main`) en de volgende | Status |\n| `audio` | niveau, de acht banden, tempo | Status |\n\nElke weergave bestaat in meerdere vormen (`GET /api/v1/views/<name>…`):"
+ },
+ {
+  "id": "api-071",
+  "page": "api",
+  "path": [
+   "REST-API",
+   "11. Statusweergaven: afbeeldingen en webpagina's voor eenvoudige apparaten"
+  ],
+  "title": "11. Statusweergaven: afbeeldingen en webpagina's voor eenvoudige apparaten (2)",
+  "keywords": [],
+  "text": "| Adres | Resultaat |\n|---|---|\n| `/views/status` | **webpagina** die zichzelf ververst (`?refresh=2` seconden); zonder JavaScript via meta refresh |\n| `/views/status.png` | **PNG-afbeelding** (`?w=320&h=240&theme=dark`; grootte 64×48 tot 800×600; `theme`: `dark` of `light`) |\n| `/views/status.bmp` | 24-bits **BMP** – elke kleine decoder begrijpt het |\n| `/views/status.rgb565` | **ruwe pixels**, elk 16 bit (5-6-5, hoge byte eerst); de grootte staat in de headers `X-Width` / `X-Height`: geef ze rechtstreeks aan een TFT (geen decoder nodig) |\n| `/views/status.json` | het weergavemodel (onderdelen: titel, rijen, balken, raster) – voor wie zelf wil tekenen |\n| `/views` | lijst van alle weergaven met hun parameters |"
+ },
+ {
+  "id": "api-072",
+  "page": "api",
+  "path": [
+   "REST-API",
+   "11. Statusweergaven: afbeeldingen en webpagina's voor eenvoudige apparaten"
+  ],
+  "title": "11. Statusweergaven: afbeeldingen en webpagina's voor eenvoudige apparaten (3)",
+  "keywords": [],
+  "text": "Meld u aan zoals gewoonlijk. Een browser of apparaat dat geen header kan versturen, voegt het token toe (`access_token`, `token` werkt ook; spaties en aanhalingstekens die bij het kopiëren zijn meegenomen, maken niet uit). Het bericht zegt of het token **ontbreekt** of **ongeldig / verwijderd** is; de console logt elke geweigerde aanmelding. Blijft het eerste laden van `opencue.local` hangen (Windows lost `.local`-namen de eerste keer soms langzaam op), gebruik dan het **IP-adres** – dat staat in *Instellingen → REST-API* (om te kopiëren): `…/views/status?access_token=oc_xxxxxxxx` (het token is dan deel van het adres – maak daarvoor een apart token **met alleen \"Status\" en \"DMX\"**). De schakelaar **Statusweergaven** in *Instellingen → REST-API* zet alles uit (antwoord `403 views_disabled`).\n\n**Kleur:** `?color=green` (of `amber`, `red`, `blue`, `cyan`, `white`, `magenta`, `violet`, `orange`, `yellow`, of `#rrggbb`) wijzigt de accentkleur; de DMX-monitor is standaard **groen**."
+ },
+ {
+  "id": "api-073",
+  "page": "api",
+  "path": [
+   "REST-API",
+   "11. Statusweergaven: afbeeldingen en webpagina's voor eenvoudige apparaten"
+  ],
+  "title": "11. Statusweergaven: afbeeldingen en webpagina's voor eenvoudige apparaten (4)",
+  "keywords": [],
+  "text": "**Fouten zijn zichtbaar:** is er iets mis (verkeerd token, weergaven uit, geen recht), dan komt er een **afbeelding** (`.png` / `.bmp` / `.rgb565`) terug met de juiste statuscode (401, 403 ...) **als beeld met het bericht** – een display toont het gewoon (\"TOKEN MISSING OR WRONG\", \"STATUS VIEWS ARE OFF\" ...); de **webpagina** toont een pagina met het bericht en herlaadt elke 5 s. Is OpenCue na het openen van de pagina niet meer bereikbaar, dan toont de pagina bovenaan **\"Geen verbinding met OpenCue\"** en dimt het laatste beeld tot het weer werkt. `.json` behoudt het JSON-foutbericht.\n\n**De DMX-uitvoer heeft altijd voorrang:** afbeeldingen worden hoogstens elke 0,4 s per weergave en grootte opnieuw berekend (veel apparaten delen één afbeelding), in een achtergrondthread, en nooit meer dan vier tegelijk. Een afbeelding van 320×240 kost ongeveer 6 ms. De DMX-uitvoerthread draait bovendien met een iets hogere prioriteit."
+ },
+ {
+  "id": "api-074",
+  "page": "api",
+  "path": [
+   "REST-API",
+   "11. Statusweergaven: afbeeldingen en webpagina's voor eenvoudige apparaten",
+   "ESP32 met een TFT: om de twee seconden een afbeelding"
+  ],
+  "title": "ESP32 met een TFT: om de twee seconden een afbeelding",
+  "keywords": [],
+  "text": "```cpp\n#include <WiFi.h>\n#include <HTTPClient.h>\n#include <TFT_eSPI.h>                       // 320 x 240 display\n\nTFT_eSPI tft;\nuint16_t frame[320 * 240];                  // 150 KB: on an ESP32 without PSRAM ask for 160 x 120 instead\n\nvoid loop() {\n  HTTPClient http;\n  http.begin(\"http://opencue.local:8000/api/v1/views/status.rgb565?w=320&h=240&access_token=oc_xxxxxxxx\");\n  if (http.GET() == 200) {\n    WiFiClient* s = http.getStreamPtr();\n    s->readBytes((uint8_t*)frame, sizeof frame);\n    tft.setSwapBytes(true);\n    tft.pushImage(0, 0, 320, 240, frame);\n  }\n  http.end();\n  delay(2000);\n}\n```\n\nVoor apparaten met weinig geheugen: kies een kleinere afmeting (`w=160&h=120`) of geef de stroom regel voor regel aan het display door."
+ }
+]

@@ -1,0 +1,166 @@
+[
+ {
+  "id": "audio-001",
+  "page": "audio",
+  "path": [
+   "Audio: Lichter, die auf Musik reagieren"
+  ],
+  "title": "Audio: Lichter, die auf Musik reagieren",
+  "keywords": [],
+  "text": "OpenCue kann Musik **mithören** und Lichter darauf reagieren lassen: heller mit dem Bass, ein Blitz bei jeder Bassdrum, Farben, die im Beat wechseln, ein Lauflicht im Takt. Die Analyse läuft live auf der Konsole, braucht kein Internet und belegt nur wenige Prozent eines Prozessorkerns."
+ },
+ {
+  "id": "audio-002",
+  "page": "audio",
+  "path": [
+   "Audio: Lichter, die auf Musik reagieren",
+   "1. Die Idee in einer Minute"
+  ],
+  "title": "1. Die Idee in einer Minute",
+  "keywords": [],
+  "text": "- Das **Audio-Panel** nimmt eine Tonquelle und analysiert sie: Lautstärke, ein Spektrum, die Schläge von **Bassdrum, Snare und Hi-Hat**, das **Tempo (BPM)** und die Position im Beat.\n- Die Ergebnisse stehen Effekten als **Variablen** zur Verfügung (`a_level`, `a_bass`, `a_kick`, `a_beat_phase` ...). Ein **Audio-Effekt** ist ein normales Effekt-Skript, das sie liest. Er funktioniert wie jeder andere Effekt: im Programmer Scheinwerfern zuweisen, in Cues speichern, ein- und ausblenden.\n- 33 fertige Audio-Effekte gehören zum Programm. Sie tragen das Schlagwort **Audio** (wird automatisch gesetzt, sobald ein Effekt Audiowerte liest) – im Dialog zur Effekttyp-Wahl lässt sich danach filtern.\n- Ohne laufende Quelle sind alle Audiowerte `0`: Ein Audio-Effekt bleibt dann einfach dunkel oder auf seinem Ruhewert.\n- Auch Cues können **zur Musik** starten: der Cue-Auslöser *Audio* (Abschnitt 8).\n- Die eigenen Buttons, Fader und Toggles der Konsole können der Musik folgen (Abschnitt 9), und die REST-API kann das Audio lesen und steuern (Abschnitt 10)."
+ },
+ {
+  "id": "audio-003",
+  "page": "audio",
+  "path": [
+   "Audio: Lichter, die auf Musik reagieren",
+   "2. Schnellstart"
+  ],
+  "title": "2. Schnellstart",
+  "keywords": [],
+  "text": "1. Das Panel hinzufügen: **Bearbeiten → Panel hinzufügen…** → Kategorie *Medien & Zeit* → **Audio**.\n2. In der Quellenliste **Demo-Beat** wählen und **Start** drücken. Ein Schlagzeug-Loop mit 120 BPM wird analysiert – du siehst das Spektrum, die Lampen *Kick / Snare / Hi-Hat / Beat* blitzen, und das Tempo erscheint.\n3. Im Programmer einige Scheinwerfer wählen, den Reiter **Effekte** öffnen und auf **Effekt hinzufügen** klicken, den Effekttyp **Kick Flash** (oder *Bass Dimmer*, *Beat Chase* ... – Tipp: nach dem Schlagwort *Audio* filtern) wählen und erstellen. Die Scheinwerfer blitzen jetzt mit dem Demo-Beat.\n4. Die Quelle auf die echte Musik umstellen (nächster Abschnitt).\n\nBestehende Installationen bekommen die neuen Effekte im **Dateimanager** (Liste *Effekte*) über **Standard-Effekte wiederherstellen**. Das legt nur *fehlende* Dateien an und überschreibt nie: Hast du früher schon eine ältere Fassung wiederhergestellt, lösche zuerst die alten `audio_*.fx` im Dateimanager und stelle dann erneut wieder her."
+ },
+ {
+  "id": "audio-004",
+  "page": "audio",
+  "path": [
+   "Audio: Lichter, die auf Musik reagieren",
+   "3. Die Quelle wählen"
+  ],
+  "title": "3. Die Quelle wählen",
+  "keywords": [],
+  "text": "Die Liste zeigt alles, was Windows kennt:\n\n| Gruppe | Was es ist | Typischer Einsatz |\n|---|---|---|\n| **Systemton** | Was dieser Computer über Lautsprecher oder Kopfhörer abspielt („Loopback“). Ein Eintrag je Ausgabegerät. | Musik vom selben Computer (DJ-Software, Spotify, Browser). Kein Kabel, kein Mikrofon. |\n| **Eingänge** | Mikrofone, Line-In-Buchsen und USB-Audio-Interfaces. | Musik von einem Mischpult oder Handy: das Kabel in den **Line-In** oder das Interface stecken. Ein Laptop mit nur einer kombinierten Headset-Buchse behandelt sie als *Mikrofon*: Das Signal ist schwächer, dann die **Eingangsverstärkung** erhöhen. Ein Mikrofon im Raum geht ebenfalls, aber die Musik muss laut und klar sein. |\n| **Test** | Der Demo-Beat. | Effekte ohne Musik ausprobieren. |\n\nEinträge mit *(Standard)* sind die, die Windows standardmäßig verwendet. **Neu suchen** (der Pfeile-Knopf) sucht die Geräte erneut, nachdem etwas angesteckt wurde.\n\n**Start** drücken. Die Quelle bleibt offen, bis du **Stopp** drückst; beim nächsten Programmstart öffnet sie sich von selbst wieder. Lässt sich eine Quelle nicht öffnen, sagt das Panel, warum (von einem anderen Programm belegt, in den Windows-Datenschutzeinstellungen *Mikrofon* gesperrt, abgezogen)."
+ },
+ {
+  "id": "audio-005",
+  "page": "audio",
+  "path": [
+   "Audio: Lichter, die auf Musik reagieren",
+   "4. Was das Panel zeigt"
+  ],
+  "title": "4. Was das Panel zeigt",
+  "keywords": [],
+  "text": "- **Spektrum:** 32 Balken von 30 Hz bis 16 kHz (tiefe Töne links). Der Rahmen glimmt bei jedem Beat.\n- **Lampen:** *Kick*, *Snare*, *Hi-Hat* leuchten bei jedem Schlag; *Beat* bei jedem Beat des Tempos.\n- **Pegel** mit einer Marke *Übersteuert*: leuchtet, wenn das Signal abgeschnitten wird (am Eingang zu laut; Lautstärke oder Verstärkung senken).\n- **Tempo:** die BPM in großen Ziffern, eine Beat-LED, ein Balken mit der Position im Beat und ein dünner Balken für die Sicherheit der Erkennung."
+ },
+ {
+  "id": "audio-006",
+  "page": "audio",
+  "path": [
+   "Audio: Lichter, die auf Musik reagieren",
+   "5. Tempo: automatisch, getippt oder fest"
+  ],
+  "title": "5. Tempo: automatisch, getippt oder fest",
+  "keywords": [],
+  "text": "- **Auto** erkennt das Tempo aus der Musik (70 - 180 BPM). Es braucht einige Sekunden und einen gleichmäßigen Beat; es folgt Tempowechseln.\n- **Tap:** den Knopf im Takt der Musik antippen (auch der Befehl `Tap`). Ab dem zweiten Tipp wird das Tempo aus deinen Tipps gesetzt, und der Beat beginnt genau auf dem Tipp. Das Tempo ist dann *Manuell*.\n- **÷2 / ×2:** wenn die Erkennung das halbe oder doppelte Tempo gefunden hat (typisch bei sehr langsamer oder sehr schneller Musik).\n- **Manuell:** das Tempo ist fest; ins Feld eintippen. Mit *Manuelles Tempo: der Beat folgt der Musik* passt sich die Beat-Position weiter sanft den Schlägen an. Ohne Musik läuft ein festes Tempo wie ein **Metronom** – Effekte mit `a_beat_phase` laufen weiter im Takt.\n- **Auto** schaltet zurück auf die Erkennung.\n\nBefehle: `Tap`, `BPM 128`, `BPM Auto`, `BPM Half`, `BPM Double`, `Audio Start`, `Audio Stop`, `Audio Demo`, `Audio Status`."
+ },
+ {
+  "id": "audio-007",
+  "page": "audio",
+  "path": [
+   "Audio: Lichter, die auf Musik reagieren",
+   "6. Einstellungen"
+  ],
+  "title": "6. Einstellungen",
+  "keywords": [],
+  "text": "| Einstellung | Was sie tut |\n|---|---|\n| **Eingangsverstärkung** | Verstärkt (×0,1 bis ×10) ein schwaches Signal, z. B. ein Mikrofon. |\n| **Automatische Verstärkung** | Die Analyse misst gegen die lautesten Stellen der letzten Sekunden; ein leises Lied funktioniert dadurch wie ein lautes. Ausschalten für eine feste Skala (dann wirkt die Verstärkung direkt). |\n| **Beat-Empfindlichkeit** | Höher: auch leise Schläge zählen (Risiko: falsche Schläge). Niedriger: nur deutliche Schläge zählen. |\n| **Glättung** | Wie langsam die Pegel und Bänder zurückfallen. |\n| **Zeitversatz** | −100 bis +200 ms. Positiv: die Lichter reagieren **früher** – hilfreich, wenn Lichter oder Lautsprecher zu spät kommen. |\n\nDie Einstellungen gehören zur Konsole (nicht zu einer Show oder einem Panel) und werden automatisch gespeichert. Jedes Gerät mit einem Audio-Panel zeigt und bedient dieselbe Quelle."
+ },
+ {
+  "id": "audio-008",
+  "page": "audio",
+  "path": [
+   "Audio: Lichter, die auf Musik reagieren",
+   "7. Die fertigen Audio-Effekte"
+  ],
+  "title": "7. Die fertigen Audio-Effekte",
+  "keywords": [],
+  "text": "| Effekt | Kategorie | Was er tut |\n|---|---|---|\n| Band Bars | Dimmer | Jeder Scheinwerfer zeigt ein Frequenzband: der erste die Tiefen, der letzte die Höhen (wiederholt sich bei mehr als 8 Scheinwerfern). |\n| Bass Dimmer | Dimmer | Die Helligkeit folgt dem Bass der Musik. |\n| Beat Chase | Dimmer | Ein Lauflicht, das bei jedem Beat (oder jedem n-ten) weiterspringt. |\n| Beat Pulse | Dimmer | Die Helligkeit pulsiert im Takt der Musik: hell auf dem Beat, dann weich abklingend. |\n| Beat Strobe | Dimmer | Stroboskop im Takt der Musik: mult Blitze pro Beat, phasenstarr zum Tempo. |\n| Beat Toggle | Dimmer | Schaltet bei jedem Beat (oder jedem n-ten) zwischen zwei Gruppen um, hart oder überblendet (soft). |\n| Hi-Hat Sparkle | Dimmer | Bei jedem Hi-Hat-Schlag funkeln zufällig ausgewählte Scheinwerfer auf. |\n| Kick Chase | Dimmer | Ein Lauflicht, das bei jedem Bassdrum-Schlag (statt im Beat) weiterspringt. |\n| Kick Flash | Dimmer | Bei jedem Bassdrum-Schlag blitzen die Scheinwerfer auf und klingen ab. |\n| Level Dimmer | Dimmer | Die Helligkeit folgt der Gesamtlautstärke. |\n| Snare Flash | Dimmer | Bei jedem Snare-Schlag (oder Klatschen) blitzen die Scheinwerfer auf und klingen ab. |\n| Beat Color | Farbe | Die Farbe wechselt bei jedem Beat (oder jedem n-ten) und leuchtet auf dem Beat am hellsten. |\n| Beat Color Chase | Farbe | Ein farbiges Licht (A) läuft über eine Hintergrundfarbe (B), ein Schritt pro Beat (oder jedem n-ten). |\n| Beat Color Fade | Farbe | Blendet im Takt der Musik zwischen zwei Farben. |\n| Beat Color Strobe | Farbe | Ein farbiges Stroboskop im Takt der Musik: mult Blitze pro Beat, abwechselnd in Farbe A und B. |\n| Color Blend | Farbe | Blendet von Farbe A (leise) zu Farbe B (laut). |\n| Color Hit | Farbe | Die Grundfarbe blitzt bei jedem Schlag der gewählten Trommel in die Blitzfarbe. |\n| Hi-Hat Color Sparkle | Farbe | Bei jedem Hi-Hat-Schlag blitzen zufällig ausgewählte Scheinwerfer in einer zufälligen Farbe (im Farbbereich). |\n| Hue Drift | Farbe | Die Farben wandern durch den Farbbereich, ein voller Durchlauf dauert beats Beats. |\n| Kick Color Flash | Farbe | Die Grundfarbe blitzt bei jedem Bassdrum-Schlag in die Blitzfarbe. |\n| Spectrum Color | Farbe | Die Farbe mischt sich aus der Musik: Bass = Rot, Mitten = Grün, Höhen = Blau. |\n| Spectrum Hue | Farbe | Die Farbe folgt dem Klang: bassige Musik zeigt den Anfang des Farbbereichs, helle Klänge sein Ende. |\n| Bass Tilt | Position | Der Tilt folgt dem Bass: leise = nach unten, kräftiger Bass = nach oben (um die Grundposition). |\n| Beat Circle | Position | Die Köpfe fahren im Takt der Musik einen Kreis: eine Umdrehung dauert beats Beats. |\n| Beat Fan | Position | Die Scheinwerfer fächern im Takt der Musik auf und zu. |\n| Kick Tilt Punch | Position | Bei jedem Bassdrum-Schlag schlagen die Köpfe im Tilt aus und setzen sich auf die Grundposition zurück. |\n| Level Spread | Position | Je lauter die Musik, desto weiter fächern die Scheinwerfer auf (symmetrisch um die Grundposition). |\n| Pan/Tilt Sway | Position | Die Köpfe bewegen sich im Takt der Musik. |\n| Snare Pan Snap | Position | Bei jedem Snare-Schlag springt jeder Kopf zur nächsten von vier Pan-Positionen. |\n| Beat Zoom Pulse | Zoom | Der Zoom pulsiert bei jedem Beat: high auf dem Beat, dann zurück auf low. |\n| Kick Zoom Punch | Zoom | Der Zoom schlägt bei jedem Bassdrum-Schlag von low nach high aus und fällt zurück. |\n| Bass Focus | Fokus | Der Fokus folgt dem Bass der Musik. |\n| Beat Gobo Change | Gobo | Das Gobo wechselt bei jedem Beat (oder jedem n-ten). |"
+ },
+ {
+  "id": "audio-009",
+  "page": "audio",
+  "path": [
+   "Audio: Lichter, die auf Musik reagieren",
+   "7. Die fertigen Audio-Effekte"
+  ],
+  "title": "7. Die fertigen Audio-Effekte (2)",
+  "keywords": [],
+  "text": "Fast jeder Effekt hat Optionen, um **Animationen umzuschalten** und ein **Stroboskop** zuzufügen: *strobe* (Blitze pro Sekunde, 0 = aus), *mode* (zum Beispiel alle gemeinsam / gerade-ungerade im Wechsel / zufällig), *direction* (Lauflicht vorwärts, rückwärts, hin und her, zufällig), *every* (nur jeden n-ten Beat wechseln), *soft* (hart umschalten oder überblenden). Es sind normale Effekte: in Cues speichern, variieren, kopieren."
+ },
+ {
+  "id": "audio-010",
+  "page": "audio",
+  "path": [
+   "Audio: Lichter, die auf Musik reagieren",
+   "8. Cue-Auslöser: Audio"
+  ],
+  "title": "8. Cue-Auslöser: Audio",
+  "keywords": [],
+  "text": "Neben *Go*, *Follow*, *Timecode* und *MIDI* (Anleitung *MIDI*) kann ein Cue den Auslöser **Audio** haben: Er feuert dann von selbst **zur Musik**. Im Cue-Dialog den Auslöser *Audio* wählen, **eine Quelle** wählen und bei Bedarf einen Wert – in der Cue-Liste lässt es sich auch tippen (`audio kick`, `audio beat 4`, `audio bass 70`) oder per Befehl setzen: `Cue 2 Trigger Audio Beat 4`.\n\n| Quelle | Wert | Der Cue feuert … |\n|---|---|---|\n| **Beat (Tempo)**, **Bassdrum**, **Snare**, **Hi-Hat** | jeder n-te (1 bis 64, Standard 1) | … bei jedem n-ten Beat bzw. Schlag. |\n| **Gesamtpegel**, **Bass**, **Mitten**, **Höhen** oder eines der **acht Bänder** (in der Liste mit ihrem Hz-Bereich) | Schwelle in % (Standard 70) | … wenn dieser Teil des Klangs die Schwelle **von unten erreicht**. |"
+ },
+ {
+  "id": "audio-011",
+  "page": "audio",
+  "path": [
+   "Audio: Lichter, die auf Musik reagieren",
+   "8. Cue-Auslöser: Audio"
+  ],
+  "title": "8. Cue-Auslöser: Audio (2)",
+  "keywords": [],
+  "text": "So funktioniert es:\n- Der Cue feuert, wenn er der **nächste Cue** einer laufenden Liste ist: Die Liste zuerst mit *Go* starten, dann wartet der folgende Audio-Cue auf sein Ereignis. Nach dem Feuern wartet der Cue dahinter (wenn er ebenfalls den Auslöser *Audio* hat) – so lässt sich eine ganze Folge an die Musik hängen.\n- Der Zähler (*jeder n-te*) beginnt bei 0, sobald ein neuer Cue aktiv wird.\n- Bei einer Schwelle feuert der Cue einmal, wenn der Pegel sie erreicht; erst nachdem der Pegel deutlich darunter gefallen ist (etwa 80 % der Schwelle), ist er wieder scharf. Liegt der Pegel schon darüber, wenn der Cue der nächste wird, wartet er auf den nächsten Anstieg.\n- Nach einem Auslösen gibt es eine kurze Pause (0,25 s), damit ein Schlag nie zwei Cues startet.\n- Das **Audio-Panel muss laufen** (eine Quelle gestartet); ohne Ton feuert nichts. Der Auslöser arbeitet für jede Cue-Liste für sich."
+ },
+ {
+  "id": "audio-012",
+  "page": "audio",
+  "path": [
+   "Audio: Lichter, die auf Musik reagieren",
+   "9. Buttons, Fader und Toggles, die auf die Musik reagieren"
+  ],
+  "title": "9. Buttons, Fader und Toggles, die auf die Musik reagieren",
+  "keywords": [],
+  "text": "Die eigenen **Button-**, **Fader-** und **Toggle-Panels** der Konsole können die Musik als *Signal* benutzen – bei *Folgt dem Zustand von* (ein Fader bewegt sich mit der Musik, ein Toggle schaltet mit dem Signal) und in den **Bedingungen der Regeln** (Farbe, Text oder Befehl, wenn …). Die Signale stehen in der Gruppe **Audio**:\n\n| Signal | Bedeutung |\n|---|---|\n| **Audiosignal vorhanden** | an, solange eine Quelle offen ist und etwas spielt |\n| **Gesamtpegel**, **Bässe**, **Mitten**, **Höhen** | 0–100 % |\n| **Bassdrum**, **Snare**, **Hi-Hat**, **Beat** (Impuls) | springen bei jedem Schlag auf 100 % und klingen ab |\n| **Tempo (BPM)** | das erkannte oder eingestellte Tempo |\n\nBeispiele: ein Fader, der den Bässen folgt, als Pegelanzeige; ein Button, der rot leuchtet, wenn das Tempo zwischen 120 und 130 BPM liegt; ein Toggle, der zeigt, ob Musik ankommt. Die Audioquelle läuft an der Konsole; ein Panel muss nur auf dem Bildschirm irgendeines Geräts stehen – die Messwerte gehen genau so lange an ein Gerät, wie dort so ein Panel (oder das *Audio*-Panel) offen ist."
+ },
+ {
+  "id": "audio-013",
+  "page": "audio",
+  "path": [
+   "Audio: Lichter, die auf Musik reagieren",
+   "10. Audio über die API"
+  ],
+  "title": "10. Audio über die API",
+  "keywords": [],
+  "text": "Die REST-API kann die Analyse lesen (`GET /api/v1/audio`), die Quelle öffnen und schließen, die Einstellungen ändern und das Tempo antippen (`PUT /api/v1/audio`, `POST /api/v1/audio/tap`, Berechtigung *Audio*), und der **Live-Ereignisstrom** (`GET /api/v1/events?events=audio,beat,hit`) meldet die Quelle, jeden Beat und jeden Schlag, sobald er passiert. Siehe die Anleitung *REST-API*."
+ },
+ {
+  "id": "audio-014",
+  "page": "audio",
+  "path": [
+   "Audio: Lichter, die auf Musik reagieren",
+   "11. Einen eigenen Audio-Effekt schreiben"
+  ],
+  "title": "11. Einen eigenen Audio-Effekt schreiben",
+  "keywords": [],
+  "text": "Im **Effekt-Studio** einen Effekt anlegen und die Audio-Variablen lesen – siehe die Anleitung *Effekt-Studio*, Abschnitt *Audio-Variablen*. Ein erstes Beispiel:\n\n```\n#NAME Mein Blitz\n#CATEGORY dimmer\n#RATE 40\n#VAR peak Slider 100 0 100 1\n\nloop() {\n  dimmer = peak * a_kick;\n}\n```\n\nDie Vorschau im Studio spielt einen Beispiel-Takt (120 BPM), du siehst also sofort, wie sich die Kurve verhält."
+ },
+ {
+  "id": "audio-015",
+  "page": "audio",
+  "path": [
+   "Audio: Lichter, die auf Musik reagieren",
+   "12. Wenn etwas nicht klappt"
+  ],
+  "title": "12. Wenn etwas nicht klappt",
+  "keywords": [],
+  "text": "| Problem | Prüfen |\n|---|---|\n| Die Quelle lässt sich nicht öffnen | Ein anderes Programm belegt sie exklusiv; das Mikrofon ist in den Windows-Datenschutzeinstellungen gesperrt (*Einstellungen → Datenschutz → Mikrofon*); das Gerät ist abgezogen. |\n| Das Panel zeigt nichts / alles flach | Ist die Quelle *gestartet*? Bewegt sich der Windows-Lautstärkemesser? **Eingangsverstärkung** erhöhen. Beim *Systemton* muss das Programm wirklich auf diesem Ausgabegerät abspielen. |\n| *Übersteuert* leuchtet | Das Signal ist zu laut: Lautstärke an der Quelle oder die Eingangsverstärkung senken. |\n| Die BPM springen oder sind halb / doppelt | **÷2 / ×2** drücken, das Tempo tippen oder mit *Manuell* festlegen. Musik ohne gleichmäßigen Beat (Klassik, Sprache) hat kein erkennbares Tempo. |\n| Lichter reagieren zu spät | Den **Zeitversatz** nutzen (positive Werte). |\n| Ein Audio-Effekt bleibt dunkel | Keine Quelle läuft, oder die Empfindlichkeit ist für die Musik zu niedrig; den *gain*-Regler des Effekts erhöhen. |"
+ }
+]

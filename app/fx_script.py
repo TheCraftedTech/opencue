@@ -1,3 +1,5 @@
+# Copyright (C) 2026 Samuel Zenker
+# SPDX-License-Identifier: GPL-3.0-or-later
 """
 fx_script.py
 Effekt-Skripte (.fx): Kopfzeilen (#NAME, #CATEGORY, #RATE, #DESCRIPTION, #VAR), Uebersetzung, Probelauf/Vorschau und die Registry der gefundenen Dateien.
@@ -20,6 +22,7 @@ from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 from app import paths as _paths
 from app import fxlang
+from app.audio_vars import demo_vars
 from app.fx_categories import CATEGORIES as _CATEGORY_TABLE
 from app.fx_categories import OUTPUT_NAMES, OUTPUTS_BY_CATEGORY
 from app.fxlang import (  # noqa: F401  (Namen bleiben hier erreichbar)
@@ -58,6 +61,8 @@ class FxVariable:
     maximum: float = 1.0
     step: float = 0.01
     line: int = 0
+    labels: Dict[str, str] = field(default_factory=dict)     # #INFO: Beschriftung je Sprache (en / de); ohne Eintrag gilt das Glossar der Oberflaeche
+    hints: Dict[str, str] = field(default_factory=dict)      # #INFO: Erklaerung (Mouseover) je Sprache
 
 
 @dataclass
@@ -66,7 +71,9 @@ class FxScript:
     label: str                # #NAME
     category: str             # #CATEGORY
     rate: int = RATE_DEFAULT  # #RATE: loop()-Aufrufe pro Sekunde
-    description: str = ""     # #DESCRIPTION
+    description: str = ""     # #DESCRIPTION (ohne Sprache; Rueckfall)
+    descriptions: Dict[str, str] = field(default_factory=dict)       # #DESCRIPTION en|de ...
+    tags: List[str] = field(default_factory=list)       # #TAGS: Schlagworte zum Suchen und Filtern (z. B. strobe, audio)
     variables: List[FxVariable] = field(default_factory=list)
     program: Optional[Program] = None
     source: str = ""
@@ -76,6 +83,15 @@ class FxScript:
     @property
     def ui_variables(self) -> List[FxVariable]:
         return [v for v in self.variables if v.kind != "Internal"]
+
+    @property
+    def uses_audio(self) -> bool:
+        return bool(self.program and self.program.uses_audio)
+
+    @property
+    def all_tags(self) -> List[str]:
+        """Die Schlagworte aus #TAGS plus "audio" automatisch, sobald das Skript eine Audio-Variable liest."""
+        return list(dict.fromkeys(self.tags + (["audio"] if self.uses_audio else [])))
 
     @property
     def used_outputs(self) -> Tuple[str, ...]:
@@ -95,7 +111,25 @@ def _parse_header(name: str, lineno: int, parts: List[str], raw: str, script: Di
     if keyword == "#NAME":
         script["label"] = " ".join(parts[1:]).strip() or name
     elif keyword == "#DESCRIPTION":
-        script["description"] = raw.strip()[len("#DESCRIPTION"):].strip()[:300]
+        text = raw.strip()[len("#DESCRIPTION"):].strip()
+        lang = re.match(r"^(en|de)\s+(.*)$", text, re.DOTALL)
+        if lang:                                                      # #DESCRIPTION en ... / #DESCRIPTION de ...: Beschreibung je Sprache
+            script["descriptions"][lang.group(1)] = lang.group(2).strip()[:400]
+        else:
+            script["description"] = text[:300]
+    elif keyword == "#INFO":
+        # #INFO <variable> <en|de> <Beschriftung> | <Erklaerung>: Name und Mouseover eines Reglers je Sprache
+        match = re.match(r"^#INFO\s+(\S+)\s+(en|de)\s+(.*)$", raw.strip(), re.DOTALL | re.IGNORECASE)
+        if not match:
+            raise FxScriptError(lineno, "#INFO erwartet: #INFO variable en|de Beschriftung | Erklaerung")
+        label, _, hint = match.group(3).partition("|")
+        script["infos"].append((lineno, match.group(1), match.group(2).lower(), label.strip()[:60], hint.strip()[:240]))
+    elif keyword == "#TAGS":
+        words = re.split(r"[,\s]+", raw.strip()[len("#TAGS"):].strip())
+        for word in words:
+            tag = re.sub(r"[^a-z0-9_-]", "", word.lower())[:24]
+            if tag and tag not in script["tags"] and len(script["tags"]) < 8:
+                script["tags"].append(tag)
     elif keyword == "#CATEGORY":
         if len(parts) < 2 or parts[1] not in CATEGORIES:
             raise FxScriptError(lineno, "#CATEGORY erwartet " + ", ".join(CATEGORIES[:-1]) + " oder " + CATEGORIES[-1])
@@ -140,7 +174,7 @@ def _parse_header(name: str, lineno: int, parts: List[str], raw: str, script: Di
 
 def compile_script(name: str, text: str) -> FxScript:
     """Parst und prueft ein Skript. Wirft FxScriptError mit Zeilenangabe."""
-    header: Dict[str, Any] = {"label": name, "category": None, "variables": [], "rate": RATE_DEFAULT, "description": ""}
+    header: Dict[str, Any] = {"label": name, "category": None, "variables": [], "rate": RATE_DEFAULT, "description": "", "descriptions": {}, "tags": [], "infos": []}
     body_lines: List[str] = []
     for lineno, raw in enumerate(text.splitlines(), start=1):
         stripped = raw.strip()
@@ -152,6 +186,17 @@ def compile_script(name: str, text: str) -> FxScript:
     if header["category"] is None:
         raise FxScriptError(1, "#CATEGORY fehlt (" + ", ".join(CATEGORIES[:-1]) + " oder " + CATEGORIES[-1] + ")")
     variables: List[FxVariable] = header["variables"]
+    for line, var_name, lang, label, hint in header["infos"]:
+        var = next((v for v in variables if v.name == var_name and v.kind != "Internal"), None)
+        if var is None:
+            raise FxScriptError(line, f"#INFO: '{var_name}' ist kein Regler (#VAR) dieses Skripts")
+        if label:
+            var.labels[lang] = label
+        if hint:
+            var.hints[lang] = hint
+    descriptions: Dict[str, str] = header["descriptions"]
+    if not header["description"]:
+        header["description"] = descriptions.get("en") or descriptions.get("de") or ""
     params: Dict[str, Any] = {}
     for var in variables:
         if var.kind == "ColorPicker":
@@ -160,8 +205,8 @@ def compile_script(name: str, text: str) -> FxScript:
             params[var.name] = var.default
     internals = {v.name: float(v.default) for v in variables if v.kind == "Internal"}
     program = compile_program("\n".join(body_lines), params, internals, OUTPUTS_BY_CATEGORY[header["category"]])
-    return FxScript(name=name, label=header["label"], category=header["category"], rate=header["rate"], description=header["description"],
-                    variables=variables, program=program, source=text)
+    return FxScript(name=name, label=header["label"], category=header["category"], rate=header["rate"], description=header["description"], descriptions=descriptions,
+                    tags=header["tags"], variables=variables, program=program, source=text)
 
 
 PREVIEW_SLOTS = 8          # ohne Scheinwerfer (Vorschau) gelten acht gleichmaessig verteilte Gobo-Slots
@@ -173,9 +218,10 @@ def even_slots(count: int) -> List[float]:
 
 
 def system_vars(script: FxScript, params: Dict[str, Any], index: int, count: int, t: float, tick: int,
-                info: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
-    """Alle Werte, die loop() lesen darf: Systemvariablen und die Regler (#VAR). `info` = Angaben zum Geraet (`slots`: Liste der Gobo-Slots in Prozent)."""
-    values: Dict[str, float] = {}
+                info: Optional[Dict[str, Any]] = None, audio: Optional[Dict[str, float]] = None) -> Dict[str, Any]:
+    """Alle Werte, die loop() lesen darf: Systemvariablen und die Regler (#VAR). `info` = Angaben zum Geraet (`slots`: Liste der Gobo-Slots in Prozent),
+    `audio` = die Audio-Variablen a_... (app/audio_vars.py; ohne Angabe fehlen sie und lesen sich als 0)."""
+    values: Dict[str, float] = dict(audio) if audio else {}
     for var in script.ui_variables:
         raw = params.get(var.name, var.default)
         if var.kind == "ColorPicker":
@@ -199,10 +245,10 @@ def system_vars(script: FxScript, params: Dict[str, Any], index: int, count: int
 
 
 def run_script(script: FxScript, state: Dict[str, Any], params: Dict[str, Any],
-               index: int, count: int, t: float, tick: int, info: Optional[Dict[str, Any]] = None) -> Dict[str, float]:
+               index: int, count: int, t: float, tick: int, info: Optional[Dict[str, Any]] = None, audio: Optional[Dict[str, float]] = None) -> Dict[str, float]:
     """Fuehrt loop() einmal aus. `state` ist der persistente Speicher dieser Instanz (Fixture x Kategorie x Effekt); ein leerer `state` startet den Effekt neu.
     `t` ist die gemeinsame Systemzeit, `tick` die Nummer des Durchlaufs (elapsed = tick / rate). Gibt die Ausgaben der Kategorie zurueck (0-100 % bzw. 0-255)."""
-    return fxlang.execute(script.program, state, system_vars(script, params, index, count, t, tick, info), OUTPUTS_BY_CATEGORY[script.category], seed=index)
+    return fxlang.execute(script.program, state, system_vars(script, params, index, count, t, tick, info, audio), OUTPUTS_BY_CATEGORY[script.category], seed=index)
 
 
 # ---- Vorschau (Effekt-Studio) ------------------------------------------------
@@ -230,11 +276,16 @@ def _clean_preview_params(script: FxScript, params: Any) -> Dict[str, Any]:
     return values
 
 
-def preview_script(name: str, text: str, params: Any = None, count: Any = 1, duration: Any = 2.0) -> Dict[str, Any]:
+def preview_script(name: str, text: str, params: Any = None, count: Any = 1, duration: Any = 2.0, bpm: Any = 120.0) -> Dict[str, Any]:
     """Rechnet ein Skript ohne Scheinwerfer durch: je Scheinwerfer (index 0..count-1, phase = index/count) die Ausgaben ueber `duration` Sekunden, und zwar genau
     so oft pro Sekunde wie im Betrieb (#RATE): Zeitpunkt des n-ten Durchlaufs = n / rate. Wirft FxScriptError (Zeile) oder FxScriptRuntimeError.
-    Antwort: category, label, description, rate, count, duration, times, series = {ausgabe: [je Scheinwerfer: Werte]}, params (verwendet), variables (UI-Parameter)."""
+    Audio-Effekte sehen dabei einen gleichmaessigen Beispiel-Takt (Bassdrum auf jedem Schlag, Snare auf 2 und 4) mit `bpm` Schlaegen pro Minute.
+    Antwort: category, label, description, rate, count, duration, times, series = {ausgabe: [je Scheinwerfer: Werte]}, params (verwendet), variables (UI-Parameter), audio (nutzt Audio)."""
     script = compile_script(name, text)
+    try:
+        bpm = max(60.0, min(200.0, float(bpm)))
+    except (TypeError, ValueError):
+        bpm = 120.0
     count = max(1, min(16, int(count)))
     duration = max(0.5, min(20.0, float(duration)))
     rate = script.rate
@@ -250,7 +301,7 @@ def preview_script(name: str, text: str, params: Any = None, count: Any = 1, dur
         state: Dict[str, Any] = {}
         rows: Dict[str, List[float]] = {out: [] for out in outputs}
         for step in range(steps):
-            result = run_script(script, state, values, index, count, step / rate, step, info)
+            result = run_script(script, state, values, index, count, step / rate, step, info, demo_vars(step / rate, bpm) if script.uses_audio else None)
             for out in outputs:
                 number = float(result.get(out, 0.0))
                 rows[out].append(round(number, 3) if math.isfinite(number) else 0.0)
@@ -261,21 +312,48 @@ def preview_script(name: str, text: str, params: Any = None, count: Any = 1, dur
     return {
         "category": script.category, "label": script.label, "description": script.description, "count": count, "rate": rate, "duration": duration,
         "times": [round(step / rate, 4) for step in range(steps)],
-        "series": series, "params": values,
-        "variables": [{"name": v.name, "kind": v.kind, "default": v.default, "min": v.minimum, "max": v.maximum, "step": v.step}
+        "series": series, "params": values, "audio": script.uses_audio, "bpm": bpm,
+        "variables": [{"name": v.name, "kind": v.kind, "default": v.default, "min": v.minimum, "max": v.maximum, "step": v.step, "labels": v.labels, "hints": v.hints}
                       for v in script.ui_variables],
     }
 
 
 # ---- Registry ----------------------------------------------------------------
 
+_LEVEL_TAG = re.compile(rb"^(#TAGS )(?:basic|advanced)(?:, )?", re.M)
+
+
+def upgrade_default_effect_levels(source: Path, target: Path) -> List[str]:
+    """Ergaenzt bei Standardeffekten im Benutzerordner das Schlagwort basic / advanced (steht in den mitgelieferten Dateien als erstes in #TAGS).
+    Nur Dateien, die noch GENAU dem alten Standard (= mitgelieferter Inhalt ohne dieses Schlagwort) entsprechen, werden ersetzt - eigene Aenderungen bleiben unberuehrt
+    (und der Effekt gilt weiter als unveraenderter Standard). Gibt die aktualisierten Namen zurueck."""
+    done: List[str] = []
+    if not target.is_dir():
+        return done
+    for path in sorted(source.glob("*.fx")):
+        dest = target / path.name
+        try:
+            if not dest.is_file():
+                continue
+            shipped = path.read_bytes()
+            old = _LEVEL_TAG.sub(rb"\1", shipped, count=1)
+            if old == shipped or dest.read_bytes() != old:
+                continue
+            dest.write_bytes(shipped)
+            done.append(path.stem)
+        except OSError:
+            continue
+    return done
+
+
 def seed_default_effects(source: Path, target: Path) -> None:
     """Erstbefuellung: kopiert die mitgelieferten Effekte einmal in den Benutzerordner.
     Danach gehoert der Ordner dem Benutzer - geloeschte Effekte kommen nicht zurueck.
-    Bereits vorhandene Dateien werden nie ueberschrieben."""
+    Bereits vorhandene Dateien werden nie ueberschrieben (Ausnahme: siehe upgrade_default_effect_levels)."""
     target.mkdir(parents=True, exist_ok=True)
     marker = target / ".defaults_seeded"
     if marker.exists():
+        upgrade_default_effect_levels(source, target)
         return
     for path in sorted(source.glob("*.fx")):
         dest = target / path.name
@@ -399,9 +477,12 @@ class FxScriptRegistry:
                 "outputs": list(script.used_outputs),
                 "attrs": list(script.used_attrs),
                 "description": script.description,
+                "audio": script.uses_audio,
+                "tags": script.all_tags,
+                "descriptions": script.descriptions,
                 "variables": [
                     {"name": v.name, "kind": v.kind, "default": v.default,
-                     "min": v.minimum, "max": v.maximum, "step": v.step}
+                     "min": v.minimum, "max": v.maximum, "step": v.step, "labels": v.labels, "hints": v.hints}
                     for v in script.ui_variables
                 ],
             })

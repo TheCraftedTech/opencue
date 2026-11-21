@@ -1,5 +1,7 @@
 #NAME RGB Steps
-#DESCRIPTION Rot, Grün, Blau nacheinander. speed = Wechsel pro Sekunde.
+#DESCRIPTION en Steps hard through red, green and blue.
+#DESCRIPTION de Schaltet hart durch Rot, Grün und Blau.
+#TAGS advanced, steps
 #CATEGORY color
 #RATE 40
 #VAR speed Slider 1 0.05 8 0.05

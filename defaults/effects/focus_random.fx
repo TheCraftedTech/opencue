@@ -1,5 +1,7 @@
 #NAME Focus Random
-#DESCRIPTION Fährt weich zu zufälligen Fokuswerten.
+#DESCRIPTION en The focus glides to new random values.
+#DESCRIPTION de Der Fokus gleitet zu neuen zufälligen Werten.
+#TAGS advanced, random
 #CATEGORY focus
 #RATE 40
 #VAR speed Slider 1 0.05 8 0.05

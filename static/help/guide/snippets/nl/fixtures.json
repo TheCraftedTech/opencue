@@ -1,0 +1,255 @@
+[
+ {
+  "id": "fixtures-001",
+  "page": "fixtures",
+  "path": [
+   "Projectoren en patchen"
+  ],
+  "title": "Projectoren en patchen",
+  "keywords": [],
+  "text": "Een **projector** is een lamp die u bedient: een dimmer, een LED-par, een moving head. Om hem te bedienen moet OpenCue weten **wat voor apparaat het is** (zijn kanalen) en **waar hij luistert** (zijn DMX-adres). OpenCue beide vertellen heet **patchen**. Deze handleiding leidt u door de projectorbibliotheek, het patchen, groepen en de programmer."
+ },
+ {
+  "id": "fixtures-002",
+  "page": "fixtures",
+  "path": [
+   "Projectoren en patchen",
+   "1. Het idee in één minuut"
+  ],
+  "title": "1. Het idee in één minuut",
+  "keywords": [],
+  "text": "- Een **projectortype** beschrijft een apparaatmodel: hoeveel DMX-kanalen het in welke modus gebruikt en wat elk kanaal doet (dimmer, pan, tilt, kleur, gobo …). OpenCue gebruikt hiervoor het standaardformaat **GDTF** – een klein bestand per apparaat dat de fabrikant publiceert.\n- Een **projector** in uw show is één echt apparaat van zo'n type, met een **nummer** (FID), een **naam**, een **universum** en een **startkanaal** (het DMX-adres dat u op het apparaat instelt).\n- De show slaat de projectoren op (type, modus, adres, naam, groep). De GDTF-bestanden zelf staan in de **projectorbibliotheek** op uw computer.\n- Drie **ingebouwde** projectortypen zijn altijd beschikbaar, ook zonder GDTF-bestand: **Generic Dimmer** (1 kanaal), **Generic RGBW LED Par** (4 kanalen) en **Generic Moving Head Spot 16ch** (16 kanalen, met fijne pan/tilt). Perfect om dingen uit te proberen."
+ },
+ {
+  "id": "fixtures-003",
+  "page": "fixtures",
+  "path": [
+   "Projectoren en patchen",
+   "2. Projectortypen krijgen: de bibliotheek"
+  ],
+  "title": "2. Projectortypen krijgen: de bibliotheek",
+  "keywords": [],
+  "text": "Open **Bibliotheek → Projectorbibliotheek…**. Het grote venster heeft deze tabbladen:\n\n| Tabblad | Wat het toont |\n|---|---|\n| **Geïnstalleerd** | Elk GDTF-bestand op deze computer als kaart: voorbeeldafbeelding, naam, fabrikant, type, modi, aantal kanalen, revisie en *In gebruik (N)* als de show het gebruikt. |\n| **In deze show** | De typen die de geladen show gebruikt, met aantal (\"4× in de show\") en revisie. Ontbreekt het bestand van een type in de bibliotheek, dan toont het tabblad *Ingebouwde vervanging* of *Bestand ontbreekt*. Alleen bekijken. |\n| **Online (GDTF Share)** | Zoek in de officiële GDTF-database (zie hieronder). |\n\nOp het tabblad *Geïnstalleerd* kunt u **zoeken** op naam of fabrikant en filteren op **type** (moving head, LED-bar, PAR / wash, dimmer, strobe / blinder, effect / rook, overig – afgeleid van de echte kanalen) en op **fabrikant**. Elk tabblad houdt zijn eigen filters."
+ },
+ {
+  "id": "fixtures-004",
+  "page": "fixtures",
+  "path": [
+   "Projectoren en patchen",
+   "2. Projectortypen krijgen: de bibliotheek",
+   "Een GDTF-bestand importeren dat u al hebt"
+  ],
+  "title": "Een GDTF-bestand importeren dat u al hebt",
+  "keywords": [],
+  "text": "Klik op **GDTF-bestand importeren…** of **sleep het bestand** gewoon in het venster. Het bestand moet een geldig GDTF-bestand zijn (maximaal 30 MB). Bestanden worden gekopieerd naar de map `fixtures` in de gegevensmap van OpenCue (Instellingen → Opslag toont waar die is)."
+ },
+ {
+  "id": "fixtures-005",
+  "page": "fixtures",
+  "path": [
+   "Projectoren en patchen",
+   "2. Projectortypen krijgen: de bibliotheek",
+   "Downloaden van GDTF Share"
+  ],
+  "title": "Downloaden van GDTF Share",
+  "keywords": [],
+  "text": "GDTF Share (gdtf-share.com) is de officiële, gratis verzameling GDTF-bestanden van fabrikanten en gebruikers.\n\n1. Open het tabblad **Online (GDTF Share)**.\n2. **Meld u aan** met uw GDTF Share-account. Om te downloaden is een gratis account nodig; in het venster staat een link *Gratis account aanmaken*. Uw wachtwoord wordt alleen voor deze sessie in het geheugen bewaard – tenzij u *Aangemeld blijven* aanvinkt, waarmee het **versleuteld op deze computer** wordt opgeslagen.\n3. Zoek, sorteer (naam, nieuwste, best beoordeeld), filter op **bestanden van fabrikanten** / beoordeling. Elke kaart toont of het bestand **door de fabrikant** of **door een gebruiker** is geüpload, hoeveel modi het heeft (met aantallen kanalen) en hoe groot het is.\n4. Klik op **Details** om **een projector te bekijken voordat u hem installeert**: het bestand wordt alleen tijdelijk geladen (niet geïnstalleerd) en opent in dezelfde detailweergave als geïnstalleerde typen – met alle kanalen, wielen en het 3D-model. **Installeren** en **Terug naar zoeken** staan bovenaan. Of klik meteen op **Installeren**.\n5. De kaart toont dan *Geïnstalleerd*. Verschijnt later een nieuwere revisie, dan wordt een knop **Bijwerken** aangeboden."
+ },
+ {
+  "id": "fixtures-006",
+  "page": "fixtures",
+  "path": [
+   "Projectoren en patchen",
+   "2. Projectortypen krijgen: de bibliotheek",
+   "Downloaden van GDTF Share"
+  ],
+  "title": "Downloaden van GDTF Share (2)",
+  "keywords": [],
+  "text": "Dit is de enige plek waar OpenCue internet gebruikt voor projectoren; al het andere werkt offline. OpenCue levert geen GDTF-bestanden van GDTF Share mee, omdat hun voorwaarden herdistributie niet toestaan – u downloadt ze zelf."
+ },
+ {
+  "id": "fixtures-007",
+  "page": "fixtures",
+  "path": [
+   "Projectoren en patchen",
+   "2. Projectortypen krijgen: de bibliotheek",
+   "Details van een projector"
+  ],
+  "title": "Details van een projector",
+  "keywords": [],
+  "text": "Klik op een kaart om zijn **details** te openen:\n\n- **Overzicht** – stamgegevens, optiek per bundel (bundeltype, lamp, vermogen, lichtstroom, kleurtemperatuur, bundel- en veldhoek), connectoren, emitters.\n- **3D-voorbeeld** – de projector als 3D-model. Slepen om te draaien, wiel of twee vingers om te zoomen, met rechts slepen om te verplaatsen, dubbelklikken om te resetten. Knoppen *Schuin / Voor / Zij / Boven*, schakelaars voor de *lichtbundel* en een *raster*, en **Pan / Tilt-schuiven** om een moving head te bewegen. Zonder 3D-bestand in de GDTF tekent OpenCue de basisvormen (cilinder, beugel, kop …) met de opgegeven afmetingen.\n- **DMX-kanalen** – de modusselector en een tabel van alle kanalen met functies en waardebereiken.\n- **Gobo's en kleuren** – elk wiel met zijn slots: gobopatronen als afbeeldingen, kleurslots als kleurvlakken."
+ },
+ {
+  "id": "fixtures-008",
+  "page": "fixtures",
+  "path": [
+   "Projectoren en patchen",
+   "2. Projectortypen krijgen: de bibliotheek",
+   "Verwijderen en bijwerken"
+  ],
+  "title": "Verwijderen en bijwerken",
+  "keywords": [],
+  "text": "- **Verwijderen** (vraagt een tweede keer) haalt een type uit de bibliotheek – maar het wordt **geweigerd zolang de show het nog gebruikt**.\n- **Bijwerken** installeert een nieuwere revisie. Gebruikt de show de oude, dan blijft de oude revisie geïnstalleerd."
+ },
+ {
+  "id": "fixtures-009",
+  "page": "fixtures",
+  "path": [
+   "Projectoren en patchen",
+   "3. Projectoren aan de show toevoegen (patchen)"
+  ],
+  "title": "3. Projectoren aan de show toevoegen (patchen)",
+  "keywords": [],
+  "text": "Projectoren worden gemaakt in het paneel **Projectorlijst**.\n\n1. Klik in het paneel **Projectorlijst** op **Projectoren toevoegen**.\n2. **Projectortype** – kies er een met *Type selecteren...* (fabrikant → apparaat → modus, plus zoeken) of een van de ingebouwde generieke.\n3. **Modus** – de DMX-modus van het apparaat (die bepaalt het aantal kanalen).\n4. **Naam** (optioneel) – bijvoorbeeld \"Kop\"; leeg betekent de typenaam. Bij meerdere projectoren nummert OpenCue de namen.\n5. **Aantal** – hoeveel identieke projectoren u toevoegt. Ze worden **achter elkaar** op opeenvolgende adressen geplaatst.\n6. **Universum** en **Startkanaal** – het adres van de eerste. Dit moet overeenkomen met het adres dat op het apparaat is ingesteld (display of DIP-schakelaars).\n7. Klik op **Projectoren toevoegen**.\n\nHet venster waarschuwt u als de laatste projector voorbij kanaal **512** van een universum zou eindigen (\"eindadres overschrijdt 512 … Verminder het aantal of het startadres\"). Een universum bevat 512 kanalen; gebruik voor meer het volgende universum.\n\nElke projector krijgt een vaste **FID** (projectornummer) die de opdrachtregel gebruikt (`Fixture 1 Thru 5`)."
+ },
+ {
+  "id": "fixtures-010",
+  "page": "fixtures",
+  "path": [
+   "Projectoren en patchen",
+   "3. Projectoren aan de show toevoegen (patchen)",
+   "Veel projectoren tegelijk: een lijst uit CSV of Excel"
+  ],
+  "title": "Veel projectoren tegelijk: een lijst uit CSV of Excel",
+  "keywords": [],
+  "text": "Het venster *Projectoren toevoegen* heeft onderaan **Geavanceerd importeren...** (ook in het menu **Bibliotheek → Projectorlijst importeren**). Daarmee maakt u een hele opstelling uit een tabel:\n\n1. **Bestand kiezen ...** – een `.csv`- of Excelbestand (`.xlsx`). De **eerste rij** bevat de kolomtitels. Alleen het **type** is nodig; *naam*, *modus*, *universum*, *adres*, *nummer* (FID) en *aantal* zijn optioneel. **De huidige patch downloaden als CSV** geeft u een sjabloon.\n2. OpenCue **raadt de kolommen** (titels als *Name*, *Type*, *Device*, *Universe*, *Address*, *Count* ...); u kunt elke toewijzing wijzigen. Een adres mag ook `2.045` of `2/45` zijn (universum 2, adres 45). Ontbreekt het adres, dan gaat het verder achter het vorige apparaat van hetzelfde universum.\n3. De **voorvertoning** toont elke rij – rood met de reden als er iets niet klopt (type onbekend of dubbelzinnig, modus onbekend, past niet in het universum, nummer al gebruikt). **Type wanneer de cel leeg is** en **Universum wanneer ontbrekend** vullen gaten op.\n4. **Importeren** maakt de projectoren aan. Bij problemen vinkt u eerst **Rijen met problemen overslaan** aan. Daarvoor wordt niets aangemaakt."
+ },
+ {
+  "id": "fixtures-011",
+  "page": "fixtures",
+  "path": [
+   "Projectoren en patchen",
+   "3. Projectoren aan de show toevoegen (patchen)",
+   "De projectorlijst en het tabblad Projectoren"
+  ],
+  "title": "De projectorlijst en het tabblad Projectoren",
+  "keywords": [],
+  "text": "Twee plekken tonen uw projectoren:\n\n- Het paneel **Projectorlijst** is de patchtabel: één rij per projector met FID, naam, type, universum, adres en aantal kanalen, plus de knop **Projectoren toevoegen**.\n- Het tabblad **Projectoren** van het paneel **Projectorbediening** toont dezelfde projectoren als raster van tegels (zoals op een lichtconsole) voor snel selecteren.\n\n| Actie | Hoe |\n|---|---|\n| Selecteren | Op een rij of tegel klikken / tikken |\n| Meerdere selecteren | In het tegelraster een **lasso** over de tegels slepen (muis en aanraking) |\n| Eén projector bewerken | Rechtsklik / lang drukken → **Projector bewerken…** |\n| Verwijderen | Selecteren, `Delete` drukken of het contextmenu gebruiken (vraagt om bevestiging) |"
+ },
+ {
+  "id": "fixtures-012",
+  "page": "fixtures",
+  "path": [
+   "Projectoren en patchen",
+   "3. Projectoren aan de show toevoegen (patchen)",
+   "Projector bewerken"
+  ],
+  "title": "Projector bewerken",
+  "keywords": [],
+  "text": "Eén venster wijzigt alles: **Naam**, **Universum**, **Startkanaal**, **Groep** en een vrije **Sorteerindex**.\n\n- De sorteerindex bepaalt waar de tegel verschijnt. Leeg betekent de FID; een getal (decimalen toegestaan, bijvoorbeeld 2,5) plaatst hem dienovereenkomstig.\n- Een projector hoort bij hoogstens **één groep**.\n- Met **meerdere projectoren geselecteerd** biedt het menu ook *N projectoren naar groep verplaatsen…*.\n\nHet adres wijzigen verandert waarheen OpenCue de gegevens stuurt – doe dat dus als u een apparaat naar een ander adres verplaatst."
+ },
+ {
+  "id": "fixtures-013",
+  "page": "fixtures",
+  "path": [
+   "Projectoren en patchen",
+   "4. Groepen"
+  ],
+  "title": "4. Groepen",
+  "keywords": [],
+  "text": "Groepen zijn puur organisatorisch: meerdere projectoren met één klik of opdracht sorteren en selecteren. Ze worden met de show opgeslagen.\n\n- **Aanmaken:** in het tabblad **Projectoren** van het paneel Projectorbediening, rechtsklik / lang drukken op het lege gebied → *Nieuwe groep toevoegen…* en voer een naam in (namen zijn uniek, hoofdletterongevoelig).\n- **Vullen:** het keuzemenu *Groep* in *Projector bewerken…*, of *N projectoren naar groep verplaatsen…* voor een selectie.\n- **Selecteren:** klik op de groep, of gebruik de opdrachtregel: `Group Front`, `Group 1 Thru 4`.\n- **Uit een selectie:** `Store Group \"Front\"` slaat de huidige selectie op als groep (zie *Opdrachtenreferentie*)."
+ },
+ {
+  "id": "fixtures-014",
+  "page": "fixtures",
+  "path": [
+   "Projectoren en patchen",
+   "5. Projectoren bedienen: het paneel Projectorbediening"
+  ],
+  "title": "5. Projectoren bedienen: het paneel Projectorbediening",
+  "keywords": [],
+  "text": "Selecteer projectoren en gebruik dan het paneel **Projectorbediening** (op consoles vaak \"Programmer\" genoemd). Een paneel kan alles tonen (een zijbalk met alle categorieën) of één categorie (*Paneeleigenschappen → Weergave*).\n\n| Categorie | Bediening |\n|---|---|\n| **Projectoren** | Het tegelraster om te selecteren; schakel **Lijst / Layout** (zie hieronder) |\n| **Dimmer** | Fader en snelknoppen |\n| **Positie** | Schakel **Grof / Fijn**. *Grof*: pan/tilt-faders, **Midden / Thuispositie / Spiegelen**, getalvelden in graden. *Fijn*: de fijne kanalen (16 bit) als getalvelden; veeg een getalveld omhoog of omlaag om het fijn te wijzigen. Projectoren zonder fijne kanalen werken als 8 bit. |\n| **Kleur** | **Fader** (HSV, CMY of RGB) of **Kleurkiezer** (kleurenwiel) |\n| **Bundel** | Subpagina's **Shutter/stroboscoop** (open, dicht, langzaam, snel, strobe, puls …), **Gobo** (met miniaturen van het wiel), **Prisma** |\n| **Focus** | Focus en zoom |\n| **DMX direct** | Elk kanaal van de modus als eigen fader (op kanaalnummer, 0–255) |\n\nElk kanaal dat het GDTF-bestand beschrijft krijgt een bediening, zodat u ook ongebruikelijke functies bereikt (frost, iris, kleurenwielen, snelheden)."
+ },
+ {
+  "id": "fixtures-015",
+  "page": "fixtures",
+  "path": [
+   "Projectoren en patchen",
+   "5. Projectoren bedienen: het paneel Projectorbediening"
+  ],
+  "title": "5. Projectoren bedienen: het paneel Projectorbediening (2)",
+  "keywords": [],
+  "text": "**Op een punt richten (3D):** staan de projectoren in de **3D-simulatie**, dan biedt het positiepaneel *Punt instellen in 3D-simulatie*: tik op een doel in de 3D-weergave en de geselecteerde moving heads richten erop. In het focuspaneel stellen *Automatische focus (3D)* en *Automatische zoom (3D)…* focus en zoom in naar de afstand tot dat punt."
+ },
+ {
+  "id": "fixtures-016",
+  "page": "fixtures",
+  "path": [
+   "Projectoren en patchen",
+   "5. Projectoren bedienen: het paneel Projectorbediening",
+   "Wat de kleur van de bediening u vertelt"
+  ],
+  "title": "Wat de kleur van de bediening u vertelt",
+  "keywords": [],
+  "text": "De bediening toont altijd wat op dit moment wordt uitgevoerd (dezelfde waarden als de DMX-monitor) – ook terwijl een cue of effect loopt. Een dun gekleurd streepje naast een projector of een categorietabblad toont wat **is gewijzigd ten opzichte van de actieve cue** – met de hand bediend of door een *Clear* die alles donker maakte. *Store Cue* slaat altijd de wijziging op ten opzichte van de cue die ervoor zou spelen (ook bij invoegen met `2.5`). Na het opslaan is de nieuwe cue de actieve en verdwijnen de streepjes. Bij meerdere cuelijsten telt de actieve cue van de laatst gebruikte lijst."
+ },
+ {
+  "id": "fixtures-017",
+  "page": "fixtures",
+  "path": [
+   "Projectoren en patchen",
+   "5. Projectoren bedienen: het paneel Projectorbediening",
+   "Projectoren: lijst of layout"
+  ],
+  "title": "Projectoren: lijst of layout",
+  "keywords": [],
+  "text": "Bovenaan het tabblad **Projectoren** schakelt u tussen twee weergaven (zoals *Kleur* tussen Fader / Kiezer / Wiel):\n\n- **Lijst:** de tegels geordend op groepen en nummers.\n- **Layout:** elke projector is een **vierkante tegel** op een raster. Rangschik de projectoren zoals ze op het podium hangen en bereik ze sneller. De tegels tonen hetzelfde als in de lijst (nummer, helderheid, voorbeeld van kleur en bundel).\n\nIn de layout:"
+ },
+ {
+  "id": "fixtures-018",
+  "page": "fixtures",
+  "path": [
+   "Projectoren en patchen",
+   "5. Projectoren bedienen: het paneel Projectorbediening",
+   "Projectoren: lijst of layout"
+  ],
+  "title": "Projectoren: lijst of layout (2)",
+  "keywords": [],
+  "text": "- **Selecteren** zoals in de lijst: klik of een **veeg** (lasso) over het lege gebied.\n- **Onbeperkt gebied:** het gaat door in **elke richting** (ook naar links en omhoog; posities mogen negatief zijn). Verplaats de weergave met het muiswiel / schuifbalken / vegen, **sleep met de middelste knop**, of ga naar de rand terwijl u een tegel sleept. **Ctrl + muiswiel** zoomt.\n- **Alles weergeven:** de knop rechtsboven zoomt en centreert zo dat **alle projectoren** in het midden staan.\n- **Weergaven (gebieden):** *Weergave opslaan…* (rechtsklik) slaat het huidige midden en de zoom onder een naam op, bijvoorbeeld \"Podium links\". Bovenaan verschijnt een knop; een klik springt erheen, rechtsklik op de knop: overschrijven, hernoemen, verwijderen. Bij veel projectoren hoeft u niet alles tegelijk in beeld te houden.\n- **Rechtsklik** (aanraking: lang drukken) op het vrije gebied of op een tegel opent het menu: *Bouwmodus*, *Alles weergeven*, *Weergave opslaan…*, *Raster* (hele, halve of kwarttegel), *Tegels mogen overlappen*, *Zoom resetten*, *Alle projectoren opnieuw rangschikken…*.\n- **Bouwmodus:** slepen verplaatst een tegel; zijn er meerdere geselecteerd, dan verplaatsen ze samen. Tegels klikken vast op het raster; zonder *Overlappen* bedekken ze elkaar nooit, met *Overlappen* kunt u ze in elkaar schuiven (de laatst verplaatste ligt bovenop) en dicht verspringen met het fijne raster (1/4). Het lege gebied selecteert nog steeds door te vegen. **Klaar** of **Esc** beëindigt de bouwmodus.\n- **In de show opgeslagen:** de posities, de rasterresolutie, *Overlappen* en de opgeslagen weergaven. **Op uw apparaat** (niet in de show): de zoom, het laatst getoonde midden en de laatst gebruikte subweergave."
+ },
+ {
+  "id": "fixtures-019",
+  "page": "fixtures",
+  "path": [
+   "Projectoren en patchen",
+   "5. Projectoren bedienen: het paneel Projectorbediening",
+   "Projectoren: lijst of layout"
+  ],
+  "title": "Projectoren: lijst of layout (3)",
+  "keywords": [],
+  "text": "**Onthouden weergaven:** overal waar een paneel tussen weergaven wisselt, onthoudt uw apparaat de laatste en herstelt die de volgende keer: in Projectorbediening (Lijst / Layout, Fader / Kiezer / Wiel, Strobe / Gobo / Prisma, Grof / Fijn), in *Variabelen/effecten* (variabelen of effecten, typefilter, sortering), in de *Effectenstudio* (voorvertoning aan / uit), in de *3D-simulatie* (Weergave / Bouwen / Projectoren) en in de effectkiezer (categorie en tags zoals *Basis*)."
+ },
+ {
+  "id": "fixtures-020",
+  "page": "fixtures",
+  "path": [
+   "Projectoren en patchen",
+   "6. Variabelen en effecten (presets)"
+  ],
+  "title": "6. Variabelen en effecten (presets)",
+  "keywords": [],
+  "text": "Het paneel **Variabelen/effecten** bevat herbruikbare waarden: een kleur \"Warm wit\", een positie \"Voor\", een bundel \"Breed\". Een variabele is een **levende verwijzing**: pas hem toe op projectoren en ze volgen hem; wijzig de variabele later en alle projectoren die hem gebruiken veranderen mee – ook cues die hem gebruiken. Effecten zijn kleine programma's die waarden in de tijd veranderen; zie de handleiding *Effectenstudio*."
+ },
+ {
+  "id": "fixtures-021",
+  "page": "fixtures",
+  "path": [
+   "Projectoren en patchen",
+   "7. Projectoren en het showbestand"
+  ],
+  "title": "7. Projectoren en het showbestand",
+  "keywords": [],
+  "text": "- Een showbestand slaat de projectoren **met** hun type, modus, adres en groep op, plus de cues, effecten, variabelen en presets.\n- De GDTF-bestanden staan **niet** in de show – maar als u **een show exporteert** (bestandsbeheer → exporteren), worden de GDTF-bestanden en effectscripts die de show gebruikt in de ZIP gepakt, zodat u de show op een andere computer kunt openen zonder iets te installeren. Bij importeren wordt een lokaal bestand met dezelfde naam nooit vervangen.\n- **Afdrukken / PDF** (menu Bestand): documentatie van de show voor technici – **patchlijst**, **DMX-kanaalkaart** (welke projector welke kanalen van elk universum bezet, overlappingen in rood), **groepen**, **plattegrond (bovenaanzicht)** van de projectoren (uit het 3D-podium, anders uit de layoutweergave) en **cuelijsten**. Het venster toont naast de keuzes een **voorvertoning** van de PDF (die volgt elke wijziging van de keuzes en het papierformaat; op kleine schermen vervalt de voorvertoning). Lange namen worden in de tabellen en in de plattegrond **afgebroken** (een zeer lange naam zonder spaties wordt gesplitst). In de plattegrond draagt elke projector zijn nummer, en een lijst onder de plattegrond vertelt welk nummer welke projector is; namen van podiumobjecten staan binnen hun vorm. *Opslaan als PDF* downloadt het bestand, *Openen om af te drukken* toont het in de PDF-viewer (druk daar af met Ctrl+P).\n- **Showbestand `.ocshow`:** *Bestand → Show exporteren* schrijft een `.ocshow`-bestand (een ZIP met de show en zijn bestanden). Een **dubbelklik** opent het in OpenCue (het installatieprogramma stelt dit in; voor de uitgepakte versie gebruikt u *Instellingen → Algemeen → .ocshow-bestanden met OpenCue openen*). Draait OpenCue al, dan neemt het het bestand over en vraagt eerst wat er met niet-opgeslagen wijzigingen moet gebeuren. **Bestand → Recent openen** toont de laatste shows.\n- **3D-podium als JSON:** schakel in het 3D-paneel (modus *Bouwen* of *Projectoren*) de zijbalk van **Hulpmiddelen** naar **JSON** (schakelaar onder de knop Opslaan; de knop *Bewerken als JSON* helemaal aan het einde van de hulpmiddelen doet hetzelfde). De hulpmiddelen (lichamen toevoegen, lijst, eigenschappen) worden vervangen door de tekst van het podium (ruimte, objecten, projectorposities; meters, graden, Z omhoog; projectoren met hun nummer); podiumnaam, ongedaan maken en **Opslaan** blijven hetzelfde, **Hulpmiddelen** brengt de normale weergave terug. **De breedte van de zijbalk kan worden gewijzigd:** sleep zijn linkerrand (dubbelklik = standaardbreedte); de breedte wordt onthouden als aandeel van het paneel (hoogstens driekwart), zodat ze proportioneel blijft op volledig scherm. Wijzigingen worden gecontroleerd en **live toegepast** (een syntaxisfout noemt de regel en verandert niets); wat u in de 3D-weergave verplaatst, verschijnt in de tekst. *Opslaan* slaat het podium op, *JSON sluiten* brengt de zijbalk terug. Dezelfde tekst is als venster beschikbaar onder *Bibliotheek → 3D-podium bewerken als JSON* (met *Controleren* en *Toepassen*).\n- Gebruikt een show een projectortype waarvan het bestand ontbreekt, dan gebruikt OpenCue een ingebouwde vervanging zodat de show toch werkt; het tabblad *In deze show* toont dit als *Ingebouwde vervanging* of *Bestand ontbreekt*."
+ },
+ {
+  "id": "fixtures-022",
+  "page": "fixtures",
+  "path": [
+   "Projectoren en patchen",
+   "8. Snelle tips"
+  ],
+  "title": "8. Snelle tips",
+  "keywords": [],
+  "text": "- **Begin met een generiek type:** voeg een paar *Generic Dimmer*-projectoren toe om de programmer, cues en de opdrachtregel te leren voordat u echte GDTF-bestanden zoekt.\n- **Laat adressen overeenkomen:** het startkanaal in OpenCue moet gelijk zijn aan het adres op het apparaat. Moving heads hebben meestal een kanaalblok nodig (bijvoorbeeld 16 kanalen), dus de volgende projector begint 16 kanalen later – OpenCue berekent dat voor u als u een aantal toevoegt.\n- **Meerdere modi:** veel apparaten bieden meerdere modi (bijvoorbeeld 8 bit en 16 bit). Kies de modus waarop het apparaat echt is ingesteld.\n- **Ontbreekt een apparaat?** Zoek op GDTF Share op fabrikant; staat het model er niet, begin dan met het dichtstbijzijnde of gebruik *Generic* en maak uw eigen cues."
+ }
+]

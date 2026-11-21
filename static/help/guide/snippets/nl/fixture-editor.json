@@ -1,0 +1,90 @@
+[
+ {
+  "id": "fixture-editor-001",
+  "page": "fixture-editor",
+  "path": [
+   "Eigen projectoren (editor)"
+  ],
+  "title": "Eigen projectoren (editor)",
+  "keywords": [],
+  "text": "De editor maakt apparaten waarvoor geen geschikt GDTF-bestand bestaat – een rookmachine, een gewone dimmer, een RGB-par, een moving head. Het resultaat is een **echt GDTF-bestand** (formaat GDTF 1.2, opgebouwd zoals de bestanden op GDTF Share). Hiervoor heeft u **geen** GDTF Share-account nodig."
+ },
+ {
+  "id": "fixture-editor-002",
+  "page": "fixture-editor",
+  "path": [
+   "Eigen projectoren (editor)",
+   "1. Openen"
+  ],
+  "title": "1. Openen",
+  "keywords": [],
+  "text": "**Bibliotheek → Projectorbibliotheek… → \"Eigen armatuur…\".** Het venster is even groot als de bibliotheek en heeft drie tabbladen: **Algemeen**, **Modi & kanalen**, **Afbeelding & 3D**.\n\n- Een eigen type later wijzigen: klik op **Bewerken** in de lijst met geïnstalleerde typen (alleen voor typen die met de editor zijn gemaakt, gemarkeerd met \"Eigen · ongecontroleerd\").\n- Een bestaand type als uitgangspunt gebruiken (**laden vanuit een andere projector**): in de editor, op het tabblad *Algemeen* bovenaan, de keuze **\"Beginnen met een bestaand armatuur\"**, of op de kaart in de bibliotheek **Meer → Kopie bewerken**. Overgenomen worden: stamgegevens, modi, kanalen, functienamen, bereiken en de profielafbeelding. **Niet** overgenomen: wielen (gobo's, kleurenwielen), de geometrie en 3D-onderdelen; de editor meldt wat is weggelaten."
+ },
+ {
+  "id": "fixture-editor-003",
+  "page": "fixture-editor",
+  "path": [
+   "Eigen projectoren (editor)",
+   "2. Algemeen"
+  ],
+  "title": "2. Algemeen",
+  "keywords": [],
+  "text": "| Veld | Betekenis |\n|---|---|\n| Fabrikant, Naam | Verplicht. De bestandsnaam wordt `Fabrikant@Naam@Eigen.gdtf`. Bestaat het type al, dan meldt de editor dat. |\n| Korte naam | Optioneel, maximaal 8 tekens. |\n| Categorie | Moving head, LED-bar, par, dimmer, strobe, effect, overig – of \"Automatisch\" (herkend aan de kanalen). U kunt de bibliotheek op categorie filteren. |\n| Gewicht, Beschrijving | Optioneel. |\n| Tags | Typ en druk op **Enter**. De bibliotheek doorzoekt ze ook (bijv. \"rook\", \"buiten\", \"12 V\"). |\n| Sjabloon | Alleen voor nieuwe typen: rookmachine, dimmer, RGB, RGB + dimmer, moving head. |"
+ },
+ {
+  "id": "fixture-editor-004",
+  "page": "fixture-editor",
+  "path": [
+   "Eigen projectoren (editor)",
+   "3. Modi & kanalen"
+  ],
+  "title": "3. Modi & kanalen",
+  "keywords": [],
+  "text": "Een **modus** is één kanaalindeling (veel apparaten hebben er meerdere, bijv. \"3 kanalen\" en \"8 kanalen\"). **+ Modus (kopie)** voegt een nieuwe toe als kopie van de gekozen modus; wijzig de naam rechtsboven.\n\nPer **kanaal**:\n\n- **Attribuut** – wat het kanaal doet. De lijst is gesorteerd in intensiteit, kleur, positie, bundel, effecten (rook, haze, ventilator) en besturing. Helemaal onderaan, apart: **Eigen naam …** voor alles wat niet in de lijst staat (bijv. \"Bellen\").\n- **Label** – vrije tekst, bijv. \"Rookuitvoer\". Het verschijnt in het detailpaneel van DMX direct.\n- **8 / 16 bit** – een 16-bitkanaal gebruikt twee DMX-adressen (grof + fijn).\n- **Standaardwaarde** (0–255) – de waarde die het apparaat heeft als het niet wordt aangestuurd.\n- **Bereiken** – benoemde stappen, bijv. vanaf 0 \"Uit\", vanaf 10 \"Rook\". Het eerste bereik begint altijd bij 0; elk ander eindigt vlak voor het begin van het volgende. Bij pan, tilt en zoom voert u ook het hoekbereik in graden in.\n\nMet de pijlen wijzigt u de volgorde; de DMX-adressen worden daaruit berekend (links van elke rij)."
+ },
+ {
+  "id": "fixture-editor-005",
+  "page": "fixture-editor",
+  "path": [
+   "Eigen projectoren (editor)",
+   "3. Modi & kanalen",
+   "CSV-import"
+  ],
+  "title": "CSV-import",
+  "keywords": [],
+  "text": "**CSV importeren…** leest een kanalenlijst: één regel per kanaal, met een kopregel. Kolommen (in willekeurige volgorde, gescheiden door `;`, `,` of tab): `Attribute`, `Label`, `Bit`, `Default`, `Ranges`. Schrijf bereiken als `0 Off; 10 Fog` of `0-9 Off; 10-255 Fog` – bevat de cel het scheidingsteken, zet haar dan tussen aanhalingstekens:\n\n```\nAttribute;Label;Bit;Default;Ranges\nFog1;Fog output;8;0;\"0 Off; 10 Fog\"\nControl1;Fan;8;0;\"0-9 Off; 10-255 On\"\n```"
+ },
+ {
+  "id": "fixture-editor-006",
+  "page": "fixture-editor",
+  "path": [
+   "Eigen projectoren (editor)",
+   "4. Afbeelding & 3D"
+  ],
+  "title": "4. Afbeelding & 3D",
+  "keywords": [],
+  "text": "- **Profielafbeelding** – elke afbeelding; ze wordt als PNG in het bestand geschreven (maximaal 512 pixels) en verschijnt in de bibliotheek.\n- **3D-model** – optioneel een `.glb`-, `.3ds`-, `.stl`- of `.obj`-bestand (maximaal 25 MB en 250.000 driehoeken; STL en OBJ worden naar GLB omgezet) voor **vaste** apparaten; de afmeting in meters bepaalt hoe groot het op het 3D-podium verschijnt. Moving heads (pan/tilt) krijgen voet, beugel en kop als standaardonderdelen."
+ },
+ {
+  "id": "fixture-editor-007",
+  "page": "fixture-editor",
+  "path": [
+   "Eigen projectoren (editor)",
+   "5. Het bestand doorgeven"
+  ],
+  "title": "5. Het bestand doorgeven",
+  "keywords": [],
+  "text": "Elke kaart in de bibliotheek heeft **Meer → Bestand exporteren (.gdtf)** en **Tonen in map** (alleen op de computer waarop het programma draait). Het bestand kan worden gekopieerd en op een andere computer worden toegevoegd met **GDTF-bestand importeren…** – of in elke andere GDTF-software worden geopend. De beschrijving van de editor wordt als extra bestand erin opgeslagen; andere programma's negeren die."
+ },
+ {
+  "id": "fixture-editor-008",
+  "page": "fixture-editor",
+  "path": [
+   "Eigen projectoren (editor)",
+   "6. Goed om te weten"
+  ],
+  "title": "6. Goed om te weten",
+  "keywords": [],
+  "text": "- Eigen typen zijn **ongecontroleerd**: controleer de kanaalindeling op het echte apparaat.\n- Wijzigt u een type dat de show gebruikt, dan gelden de wijzigingen meteen. Verandert het **aantal kanalen van een gebruikte modus** (of wordt zo'n modus verwijderd of hernoemd), dan toont de editor een **opmerking** – die verhindert niets; controleer daarna de DMX-adressen.\n- **Annuleren vraagt eerst bevestiging:** als u iets hebt gewijzigd, openen *Annuleren*, het kruisje × en Escape het venster \"Niet-opgeslagen wijzigingen\" (*Verder bewerken*, *Wijzigingen verwerpen* of *Opslaan*). Zonder wijzigingen sluit de editor meteen.\n- **Verwijderen vraagt eerst bevestiging:** een modus, kanaal, bereik, profielafbeelding of 3D-model wordt pas na bevestiging verwijderd.\n- Grand master en blackout werken alleen op de **dimmer** (of op de kleur als er geen dimmerkanaal is) – een rookkanaal blijft ongestoord doorlopen.\n- Rook, haze en dergelijke bedient u in de projectorbediening op het tabblad **DMX direct**. Met de muis boven het label, klikken op het label of rechtsklikken op een fader ziet u de functienamen en bereiken van het kanaal."
+ }
+]

@@ -1,5 +1,7 @@
 #NAME Zoom Chase
-#DESCRIPTION Eine Zoom-Welle läuft über die Scheinwerfer (spread = Versatz).
+#DESCRIPTION en A zoom wave runs across the fixtures.
+#DESCRIPTION de Eine Zoom-Welle läuft über die Scheinwerfer.
+#TAGS advanced, chase, wave
 #CATEGORY zoom
 #RATE 40
 #VAR speed Slider 1 0.05 8 0.05

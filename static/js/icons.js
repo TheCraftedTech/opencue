@@ -1,3 +1,5 @@
+// Copyright (C) 2026 Samuel Zenker
+// SPDX-License-Identifier: GPL-3.0-or-later
 /* Gemeinsame SVG-Symbole der Oberflaeche (immer SVG, nie Emoji/Unicode-Symbole: sehen auf jedem Geraet gleich aus).
  * Nutzung: Icons.svg("play") liefert ein <svg class="ico">-Element (Farbe = currentColor, Groesse = 1em);
  * Icons.markup("play") dasselbe als Zeichenkette fuer statisches HTML. Die Pfade sind feste, eigene Zeichenketten. */
@@ -26,7 +28,14 @@ const Icons = (() => {
     collapse: '<path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5"/>',
     upload: '<path d="M12 16V4M7 9l5-5 5 5M5 20h14"/>',
     trash: '<path d="M5 7h14M9 7V4.5h6V7M7 7l1 13h8l1-13"/>',
+    midi: '<circle cx="12" cy="12" r="8.5"/><path d="M7.4 10.4v.01M12 7.6v.01M16.6 10.4v.01M9.2 15.4v.01M14.8 15.4v.01" stroke-width="2.4"/>',
+    keyboard: '<rect x="2.5" y="6" width="19" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M7.5 14h9"/>',
     film: '<rect x="3.5" y="4.5" width="17" height="15" rx="2"/><path d="M3.5 9h17M3.5 15h17M8 4.5v15M16 4.5v15"/>',
+    audio: '<path d="M3.5 12h2M8 7.5v9M12 4.5v15M16 8.5v7M20.5 11v2"/>',
+    list: '<path d="M9 6.5h11M9 12h11M9 17.5h11M4.5 6.5h.01M4.5 12h.01M4.5 17.5h.01"/>',
+    dots: '<path d="M5 12h.01M12 12h.01M19 12h.01"/>',
+    sidebar: '<rect x="3.5" y="4.5" width="17" height="15" rx="2"/><path d="M9.5 4.5v15"/>',
+    chat: '<path d="M4.5 6.5a2 2 0 012-2h11a2 2 0 012 2v8a2 2 0 01-2 2H11l-4.5 3.5V16.5h0a2 2 0 01-2-2z"/><path d="M8.5 9.5h7M8.5 12.5h4.5"/>',
     music: '<path d="M9 18V6l10-2v12"/><circle cx="6.5" cy="18" r="2.5"/><circle cx="16.5" cy="16" r="2.5"/>',
     clock: '<circle cx="12" cy="12" r="8.5"/><path d="M12 7v5l3.5 2"/>',
     loop: '<path d="M4 12a5 5 0 015-5h9M15 4l3 3-3 3M20 12a5 5 0 01-5 5H6M9 20l-3-3 3-3"/>',
@@ -57,9 +66,24 @@ const Icons = (() => {
     keys: '<rect x="3" y="7" width="18" height="10" rx="2"/><path d="M7 11v.01M11 11v.01M15 11v.01M8 14h8"/>',
     button: '<rect x="3.5" y="7.5" width="17" height="9" rx="4.5"/><circle cx="12" cy="12" r="2"/>',
     fader: '<path d="M6 4v16M12 4v16M18 4v16"/><rect x="4" y="13" width="4" height="3" rx="1"/><rect x="10" y="7" width="4" height="3" rx="1"/><rect x="16" y="10" width="4" height="3" rx="1"/>',
+    toggle: '<rect x="2.5" y="7.5" width="19" height="9" rx="4.5"/><circle cx="16.5" cy="12" r="2.5" fill="currentColor"/>',
     lock: '<rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 018 0v3"/>',
+    unlock: '<rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 017.6-1.7"/>',
     info: '<circle cx="12" cy="12" r="8.5"/><path d="M12 11v5.5M12 7.7v.01"/>',
     target: '<circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><path d="M12 12v.01M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3"/>',
+    mic: '<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0"/><path d="M12 17.5V21"/><path d="M9 21h6"/>',
+    model: '<path d="M12 3l7.8 4.5v9L12 21l-7.8-4.5v-9z"/><path d="M12 8.5l3.6 6.2H8.4z"/><path d="M12 3v5.5M19.8 16.5l-4.2-1.8M4.2 16.5l4.2-1.8"/>',
+    joystick: '<circle cx="12" cy="8" r="3.5"/><path d="M12 11.5V16"/><rect x="5" y="16" width="14" height="4.5" rx="2"/>',
+    rewind: { fill: true, d: '<path d="M11.5 5v14L2.5 12zM21.5 5v14L12.5 12z"/>' },
+    forward: { fill: true, d: '<path d="M12.5 5v14l9-7zM2.5 5v14l9-7z"/>' },
+    "marker-prev": '<path d="M5 4.5v15M19 6.5L9 12l10 5.5z"/>',
+    "marker-next": '<path d="M19 4.5v15M5 6.5L15 12 5 17.5z"/>',
+    "zoom-in": '<circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5M11 8.2v5.6M8.2 11h5.6"/>',
+    "zoom-out": '<circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5M8.2 11h5.6"/>',
+    fit: '<path d="M4 8V4h4M20 8V4h-4M4 16v4h4M20 16v4h-4M9 12h6M9 12l2-2M9 12l2 2M15 12l-2-2M15 12l-2 2"/>',
+    follow: '<path d="M4 12h12M12 7l5 5-5 5M20 5v14"/>',
+    record: { fill: true, d: '<circle cx="12" cy="12" r="6"/>' },
+    timeline: '<path d="M3.5 6.5h17M3.5 12h17M3.5 17.5h17"/><path d="M8 4.5v4M15 10v4M11 15.5v4" stroke-width="2.4"/>',
     cube: '<path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z"/><path d="M12 12l8-4.5M12 12L4 7.5M12 12v9"/>',
     wheel: '<circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="2.2"/><path d="M12 3.5v4.3M12 16.2v4.3M3.5 12h4.3M16.2 12h4.3"/>',
     gear: '<circle cx="12" cy="12" r="3"/><path d="M12 3v2.5M12 18.5V21M3 12h2.5M18.5 12H21M5.6 5.6l1.8 1.8M16.6 16.6l1.8 1.8M18.4 5.6l-1.8 1.8M7.4 16.6l-1.8 1.8"/>',
@@ -68,8 +92,13 @@ const Icons = (() => {
     redo: '<path d="M15 5l5 5-5 5"/><path d="M20 10h-9.5a5 5 0 000 10H15"/>',
     sphere: '<circle cx="12" cy="12" r="8.5"/><ellipse cx="12" cy="12" rx="8.5" ry="3"/>',
     wedge: '<path d="M4 19h16L4 8z"/><path d="M4 8v11"/>',
+    signpost: '<path d="M12 3v18M8.5 21h7"/><path d="M12 5h6.5l2 2.3-2 2.3H12z"/><path d="M12 12h-6.5l-2 2.3 2 2.3H12z"/>',
     help: '<circle cx="12" cy="12" r="8.5"/><path d="M9.6 9.4a2.5 2.5 0 114 2c-.9.6-1.6 1.1-1.6 2.1M12 16.8v.01"/>',
     bulb: '<path d="M9 18h6M10 21h4M12 3a6 6 0 00-3.5 10.9c.6.5 1 1.2 1 2.1h5c0-.9.4-1.6 1-2.1A6 6 0 0012 3z"/>',
+    vr: '<path d="M3.5 8.5a2 2 0 012-2h13a2 2 0 012 2v6a2 2 0 01-2 2h-3.6l-1.5-2.4h-2.8l-1.5 2.4H5.5a2 2 0 01-2-2z"/><circle cx="8" cy="11.2" r="0.9" fill="currentColor"/><circle cx="16" cy="11.2" r="0.9" fill="currentColor"/>',
+    image: '<rect x="3.5" y="5" width="17" height="14" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="M4 17l5-5 4 4 3-3 4 4"/>',
+    screen: '<rect x="3" y="4.5" width="18" height="12" rx="1.5"/><path d="M8 20h8M12 16.5V20"/><path d="M6.5 13l3-3.2 2.5 2.4 2.2-2.6 3.3 3.4"/>',
+    present: '<rect x="3" y="4" width="18" height="11.5" rx="1.5"/><path d="M12 15.5V20M8 20h8M10.4 7.6v4.4l3.8-2.2z"/>',
     stage: '<path d="M3.5 19l3.5-5.5h10l3.5 5.5z"/><path d="M7 13.5V5.5h10v8M12 5.5V3"/>',
     "bulb-off": '<path d="M9 18h6M10 21h4M12 3a6 6 0 00-3.5 10.9c.6.5 1 1.2 1 2.1h5c0-.9.4-1.6 1-2.1A6 6 0 0012 3z"/><path d="M4 4l16 16"/>',
     palette: '<path d="M12 3.5a8.5 8.5 0 100 17c1.3 0 2-.8 2-1.7 0-1.2-1-1.6-1-2.6 0-.9.7-1.5 1.7-1.5H17a3.5 3.5 0 003.5-3.5C20.5 6.7 16.7 3.5 12 3.5z"/><circle cx="7.8" cy="11" r="1"/><circle cx="10.5" cy="7.3" r="1"/><circle cx="15" cy="7.8" r="1"/>',
@@ -87,6 +116,7 @@ const Icons = (() => {
     "bookmark-plus": '<path d="M7 4h10v16l-5-4-5 4z"/><path d="M12 8v5M9.5 10.5h5"/>',
     attach: '<path d="M6 4v8a6 6 0 0012 0V4"/><path d="M6 8h3M15 8h3"/>',
     save: '<path d="M5 4h11l3 3v13H5z"/><path d="M8 4v5h7V4M8 20v-6h8v6"/>',
+    timecode: '<rect x="2.5" y="7" width="19" height="10" rx="2"/><path d="M6.5 10.5v3M9.5 10.5v3M14.5 10.5v3M17.5 10.5v3M12 10.7v.01M12 13.3v.01"/>',
   };
   const NS = "http://www.w3.org/2000/svg";
 

@@ -1,3 +1,5 @@
+# Copyright (C) 2026 Samuel Zenker
+# SPDX-License-Identifier: GPL-3.0-or-later
 """
 fxlang.py
 Die Skriptsprache der Effekte: C++/Arduino-aehnlich, nur Zahlen (float, int, bool), ohne Fremdzugriff.
@@ -31,12 +33,13 @@ import re
 from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, List, Optional, Sequence, Set, Tuple
 
+from app.audio_vars import AUDIO_VARS                 # Audio-Systemvariablen a_... (Beschreibung: app/audio_vars.py)
 from app.fx_categories import OUTPUT_NAMES          # Ausgabe-Variablen aller Kategorien (Tabelle: app/fx_categories.py)
 
 MAX_STEPS = 60000            # Schleifendurchlaeufe + Funktionsaufrufe je loop()-Aufruf
 MAX_DEPTH = 24               # Schachtelungstiefe eigener Funktionen (Rekursion)
 
-SYSTEM_VARS = ("t", "elapsed", "dt", "tick", "loop_count", "rate", "index", "count", "phase", "slots", "slots2")
+SYSTEM_VARS = ("t", "elapsed", "dt", "tick", "loop_count", "rate", "index", "count", "phase", "slots", "slots2") + AUDIO_VARS
 CONSTANTS: Dict[str, float] = {
     "PI": math.pi, "TWO_PI": 2 * math.pi, "HALF_PI": math.pi / 2, "E": math.e,
     "true": 1.0, "false": 0.0, "HIGH": 1.0, "LOW": 0.0,
@@ -487,6 +490,7 @@ class Program:
     loop: Optional[Callable] = None
     globals_declared: Set[str] = field(default_factory=set)
     assigned_outputs: Set[str] = field(default_factory=set)      # Ausgaben, denen das Skript irgendwo einen Wert zuweist (hsv() zaehlt als r, g, b)
+    uses_audio: bool = False                                     # liest mindestens eine Audio-Variable (a_...): "Audio-Effekt"
 
 
 class _Compiler:
@@ -503,6 +507,7 @@ class _Compiler:
         self.scopes: List[Dict[str, Tuple[str, bool]]] = []     # Compile-Zeit: Name -> (Typ, const)
         self.loop_depth = 0
         self.current: Optional[_Func] = None
+        self.uses_audio = False
 
     # -- Namensaufloesung
     def _name_problem(self, name: str) -> Optional[str]:
@@ -561,6 +566,8 @@ class _Compiler:
                 value = CONSTANTS[name]
                 return lambda rt: value
             if where in ("sys", "param"):
+                if where == "sys" and name in AUDIO_VARS:
+                    self.uses_audio = True
                 return lambda rt: rt.sys.get(name, 0.0)
             if where == "out":
                 return lambda rt: rt.outs.get(name, 0.0)
@@ -1003,6 +1010,7 @@ class _Compiler:
             if name not in program.globals_declared:
                 program.init.append((name, None))
                 program.globals_declared.add(name)
+        program.uses_audio = self.uses_audio
         return program
 
 

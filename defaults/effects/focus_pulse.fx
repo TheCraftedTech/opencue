@@ -1,5 +1,7 @@
 #NAME Focus Pulse
-#DESCRIPTION Schlagartig scharf, dann langsam unscharf. speed = Schläge pro Sekunde.
+#DESCRIPTION en A hard focus pulse: sharp at the beat, then drifting away.
+#DESCRIPTION de Ein harter Fokus-Puls: scharf auf dem Beat, dann wegdriftend.
+#TAGS advanced, pulse
 #CATEGORY focus
 #RATE 40
 #VAR speed Slider 1 0.05 8 0.05

@@ -1,3 +1,5 @@
+# Copyright (C) 2026 Samuel Zenker
+# SPDX-License-Identifier: GPL-3.0-or-later
 """
 fx_engine.py
 Echtzeit-Effekt-Engine (FX) von OpenCue.
@@ -6,6 +8,11 @@ FX-Definitionen (Name, Gruppe, Skript-Art, Parameter) liegen wie Presets in der
 Show (state.fx_effects, state.fx_groups). Die Art ist der Name eines Skripts aus
 app/fx_script.py (Registry). Im Programmer wird einer Fixture je Attribut-
 Kategorie (Dimmer, Farbe, Position) eine FX-ID zugewiesen (state.fx_assignments).
+
+Die Skripte selbst laufen im RECHENKERN (app/fx_runner.py): im Normalbetrieb im EIGENEN PROZESS der DMX-Ausgabe (app/dmx_output.py) - unabhaengig vom Server, auf
+einem anderen Prozessorkern -, ohne diesen Prozess (Tests, Rueckfall) in einem Thread dieses Moduls. Diese Engine haelt die Definitionen und Zuweisungen (Show-Zustand),
+schickt dem Rechenkern bei jeder Aenderung eine vollstaendige Konfiguration (`_snapshot`), spiegelt dessen Kanalwerte in den DMX-Puffer (der Puffer bleibt die Wahrheit fuer die
+Anzeige) und nimmt die Ausgabewerte fuer die Vorschau entgegen.
 
 Der FX-Thread laeuft im Takt der DMX-Ausgabe (40 Hz). Jedes Skript legt mit `#RATE`
 fest, wie oft pro Sekunde sein loop() laeuft (1-40): jede Instanz hat einen eigenen
@@ -21,24 +28,29 @@ nach einem Cue-Start schreiben.
 
 from __future__ import annotations
 
+import itertools
+import json
 import logging
 import threading
 import time
 import uuid
 from typing import Any, Dict, List, Optional, Set, Tuple
 
+from app.audio_engine import audio_engine
 from app.dmx_engine import OUTPUT_FPS, dmx_engine
-from app.dmx_resolve import apply_abstract_values, current_abstract_values, fixture_channel_offsets
+from app.dmx_resolve import current_abstract_values, fixture_channel_offsets
 from app.fx_categories import ATTR_CATEGORY, CATEGORIES, CATEGORY_ATTRS  # noqa: F401  (ATTR_CATEGORY/CATEGORY_ATTRS: auch fuer cue_engine)
-from app.fx_script import FxScript, registry, run_script
+from app.fx_runner import FXRunner, SLOW_RUN_SECONDS, _abstract, _blend, _mix, _neutral  # noqa: F401  (Hilfen des Rechenkerns, hier weiter erreichbar)
+from app.fx_script import FxScript, registry
 from app.state_manager import state
 
 logger = logging.getLogger("opencue.fx")
 
 # Gleicher Takt wie die DMX-Ausgabe, damit Effektberechnung und Versand nicht schweben.
 FX_HZ = OUTPUT_FPS
-# Ein Durchlauf, der laenger dauert, haelt den FX-Thread (und die Sperre) fuer alle anderen Effekte auf: so ein Effekt wird abgeschaltet.
-SLOW_RUN_SECONDS = 0.05
+# Ausblenden eines Effekts (Out-Rampe): so lange nach ihrem Ende bleibt die Zuweisung noch, damit der Rechenkern den Endwert (Neutralwert) sicher ausgegeben und gespiegelt hat.
+RAMP_FINISH_GRACE = 0.08
+RAMP_KEEP_AFTER_IN = 0.5
 # UI-Vorschau und DMX-Monitor laufen mit 25 Hz, unabhaengig vom FX-Takt.
 UI_UPDATE_INTERVAL = 0.04
 
@@ -83,27 +95,6 @@ def normalize_fx(data: Dict[str, Any], current: Optional[Dict[str, Any]] = None)
     }
 
 
-def _abstract(category: str, out: Dict[str, float], script: Optional[Any] = None) -> Dict[str, Any]:
-    """Ausgabe des Skripts -> abstrakte Werte fuer apply_abstract_values (pct_values=True); Tabelle: app/fx_categories.py.
-    Mit `script` nur die Ausgaben, die es wirklich setzt: ein Effekt, der nur `pan` schreibt, laesst `tilt` in Ruhe."""
-    return CATEGORIES[category].to_abstract(out, script.used_outputs if script is not None else None)
-
-
-def _neutral(category: str, script: Optional[Any] = None) -> Dict[str, Any]:
-    return CATEGORIES[category].neutral(script.used_outputs if script is not None else None)
-
-
-def _mix(a: Any, b: Any, f: float) -> Any:
-    """Linearer Mix zweier abstrakter Werte (Zahl oder {r,g,b}-Dict)."""
-    if isinstance(a, dict) and isinstance(b, dict):
-        return {k: float(a.get(k, 0.0)) + (float(b.get(k, 0.0)) - float(a.get(k, 0.0))) * f for k in b}
-    return float(a) + (float(b) - float(a)) * f
-
-
-def _blend(frm: Dict[str, Any], to: Dict[str, Any], f: float) -> Dict[str, Any]:
-    return {k: _mix(frm.get(k, v), v, f) for k, v in to.items()}
-
-
 class FXEngine:
     def __init__(self, st, dmx) -> None:
         self._state = st
@@ -114,22 +105,25 @@ class FXEngine:
         self._thread: Optional[threading.Thread] = None
         self._offsets: Dict[str, Tuple[tuple, Dict[str, int]]] = {}
         self._touched_universes: Set[int] = set()
-        # (fixture_id, kategorie) -> letzter Ausgabewert (abstrakt).
-        self._last_output: Dict[Tuple[str, str], Dict[str, Any]] = {}
-        # (fixture_id, kategorie, fx_id) -> persistenter Speicher des Skripts.
-        self._instances: Dict[Tuple[str, str, str, str], Dict[str, Any]] = {}
-        self._runs: Dict[Tuple[str, str, str, str], int] = {}
-        # Fahrplan je Instanz: Zeitpunkt des naechsten loop()-Aufrufs und der zuletzt gelieferte Ausgabewert (Skript-Ausgabe, nicht abstrakt)
-        self._next_due: Dict[Tuple[str, str, str, str], float] = {}
-        self._held: Dict[Tuple[str, str, str, str], Dict[str, float]] = {}
-        # Instanzen, die mit einem Fehler oder zu langsam waren: ruhen, bis das Skript neu gespeichert wird (Wert = Programm-Nummer, die versagt hat)
-        self._failed: Dict[Tuple[str, str, str, str], int] = {}
+        # (fixture_id, kategorie) -> letzter Ausgabewert (abstrakt) - vom Rechenkern gemeldet (Vorschau, Start-Wert eines Cue-Fades).
+        self._live: Dict[Tuple[str, str], Dict[str, Any]] = {}
         self._slot_cache: Dict[str, Dict[str, List[float]]] = {}          # Geraetetyp -> Gobo-Slots beider Raeder in Prozent
         self._t0 = time.monotonic()
         # (fixture_id, kategorie) -> Ein-/Ausblend-Rampe der Effekt-Amplitude:
-        # {"kind": "in"|"out", "start": monotonic, "dur": s, "base": abstrakte Werte}
+        # {"rid": Nummer, "kind": "in"|"out", "start": monotonic, "dur": s, "base": abstrakte Werte}
         self._ramps: Dict[Tuple[str, str], Dict[str, Any]] = {}
+        self._ramp_ids = itertools.count(1)
         self._assignments_changed = False
+        # Rechenkern: im eigenen Prozess (mode "process") oder hier im Hauptprogramm (mode "local")
+        self.mode = "local"
+        self._epoch = 0                                                    # wird bei Show-Wechsel erhoeht: der Rechenkern verwirft seinen Laufzeit-Zustand
+        self._runner: Optional[FXRunner] = None
+        self._sig: Optional[str] = None                                    # Konfiguration, die der Rechenkern gerade hat
+        self._sig_id = 0                                                   # Nummer der zuletzt an den Prozess geschickten Konfiguration
+        self._master_sent: Optional[float] = None
+        self._sent_at = 0.0
+        self._live_seq = -1
+        self.stats = {"mode": "local", "configs": 0, "mirror_skips": 0}
 
     def start(self) -> None:
         if self._thread is None or not self._thread.is_alive():
@@ -151,18 +145,22 @@ class FXEngine:
         with self.lock:
             return any(i != exclude_id and str(d.get("name", "")).strip().lower() == wanted for i, d in self._state.fx_effects.items())
 
-    def _generated_name(self, category: str) -> str:
-        """Eindeutiger Vorgabename je Kategorie: Position_1, Position_2 ... (Aufrufer haelt self.lock)."""
-        base = (category or "Effekt").capitalize()
+    def _generated_name(self, kind: str) -> str:
+        """Vorgabename eines neuen Effekts ohne eigenen Namen: der Name des Effekttyps (#NAME des Skripts), bei Bedarf mit Zaehler: "Kick Flash", "Kick Flash 2" ...
+        (Aufrufer haelt self.lock)."""
+        script = registry.get(kind)
+        base = (script.label if script is not None and script.label else kind or "Effect").strip()[:70]
         taken = {str(d.get("name", "")).strip().lower() for d in self._state.fx_effects.values()}
-        n = 1
-        while f"{base}_{n}".lower() in taken:
+        if base.lower() not in taken:
+            return base
+        n = 2
+        while f"{base} {n}".lower() in taken:
             n += 1
-        return f"{base}_{n}"
+        return f"{base} {n}"
 
     def save_definition(self, fx_id: Optional[str], data: Dict[str, Any]) -> Optional[str]:
         """Legt einen Effekt an (fx_id None) oder aendert ihn. Namen sind eindeutig: ein vergebener Name wird abgelehnt (None), ein leerer bekommt
-        einen erzeugten (Kategorie_1 ...; beim Aendern bleibt der alte). Die Art eines vorhandenen Effekts laesst sich nicht aendern."""
+        den Namen des Effekttyps (mit Zaehler, wenn vergeben; beim Aendern bleibt der alte). Die Art eines vorhandenen Effekts laesst sich nicht aendern."""
         with self.lock:
             current = self._state.fx_effects.get(fx_id) if fx_id else None
             if fx_id and current is None:
@@ -178,7 +176,7 @@ class FXEngine:
             elif current is not None:
                 normalized["name"] = current["name"]
             else:
-                normalized["name"] = self._generated_name(registry.category(normalized["kind"]) or "")
+                normalized["name"] = self._generated_name(normalized["kind"])
             new_id = fx_id or str(uuid.uuid4())
             self._state.fx_effects[new_id] = normalized
             return new_id
@@ -300,26 +298,18 @@ class FXEngine:
         """Verwirft Skript-Zustaende, Ausgabewerte und Ein-/Ausblendungen (Show gewechselt),
         ohne die Zuweisungen der geladenen Show anzutasten."""
         with self.lock:
-            self._last_output.clear()
-            self._instances.clear()
-            self._runs.clear()
-            self._next_due.clear()
-            self._held.clear()
-            self._failed.clear()
+            self._live.clear()
             self._ramps.clear()
+            self._epoch += 1
 
     def clear_all(self) -> List[str]:
         """Entfernt alle Zuweisungen (Clear Clear). Gibt die betroffenen Fixtures zurueck."""
         with self.lock:
             fixture_ids = list(self._state.fx_assignments)
             self._state.fx_assignments.clear()
-            self._last_output.clear()
-            self._instances.clear()
-            self._runs.clear()
-            self._next_due.clear()
-            self._held.clear()
-            self._failed.clear()
+            self._live.clear()
             self._ramps.clear()
+            self._epoch += 1
             return fixture_ids
 
     def release_categories(self, fixture_id: str, categories, fade_out: float = 0.0) -> bool:
@@ -333,7 +323,7 @@ class FXEngine:
                 if fade_out > 0:
                     ramp = self._ramps.get((fixture_id, cat))
                     if not (ramp and ramp["kind"] == "out"):
-                        self._ramps[(fixture_id, cat)] = {"kind": "out", "start": now, "dur": fade_out,
+                        self._ramps[(fixture_id, cat)] = {"rid": next(self._ramp_ids), "kind": "out", "start": now, "dur": fade_out,
                                                           "base": _neutral(cat, self._script_of(assigned[cat]["fx_id"]))}
                     released = True
                     continue
@@ -373,11 +363,11 @@ class FXEngine:
                         if fx is not None:
                             script = self._script_of(fx_id)
                             mine = set(script.used_attrs) if script is not None else set(CATEGORY_ATTRS[cat])
-                            base = self._last_output.get((fid, cat)) or {
+                            base = self._live.get((fid, cat)) or {
                                 k: v for k, v in current_abstract_values(fx).items()
                                 if k in mine}
                             base = {**_neutral(cat, script), **base}
-                            self._ramps[(fid, cat)] = {"kind": "in", "start": now, "dur": fade_in, "base": base}
+                            self._ramps[(fid, cat)] = {"rid": next(self._ramp_ids), "kind": "in", "start": now, "dur": fade_in, "base": base}
                 self.assign(fixture_ids, cat, fx_id)
                 started = True
         return started
@@ -388,7 +378,6 @@ class FXEngine:
         zurueck (inkl. laufender Ein-/Ausblendung) - der Cue blendet exakt von dort aus."""
         attrs = set(attrs)
         categories = {ATTR_CATEGORY[a] for a in attrs if a in ATTR_CATEGORY}
-        now = time.monotonic()
         with self.lock:
             assigned = self._state.fx_assignments.get(fixture_id, {})
             from_values: Dict[str, Any] = {}
@@ -398,16 +387,9 @@ class FXEngine:
                 if not (mine & attrs):
                     continue                                # der Cue setzt nur Attribute, die dieser Effekt nicht steuert
                 a = assigned.pop(cat)
-                last = self._last_output.get((fixture_id, cat))
+                last = self._live.get((fixture_id, cat))
                 if last:
-                    from_values.update(last)
-                else:
-                    definition = self._state.fx_effects.get(a["fx_id"])
-                    script = registry.get(definition["kind"]) if definition else None
-                    if script is not None and fixture_id in self._state.fixtures:
-                        out = self._execute(fixture_id, cat, a, script, definition, now)
-                        if out:
-                            from_values.update(_abstract(cat, out, script))
+                    from_values.update(last)                  # ohne Ausgabewert (Effekt eben erst zugewiesen) startet der Cue vom aktuellen DMX-Stand
                 self._forget(fixture_id, cat)
                 released = True
             if fixture_id in self._state.fx_assignments and not assigned:
@@ -420,7 +402,7 @@ class FXEngine:
             live: Dict[str, Dict[str, Any]] = {}
             for fid, cats in self._state.fx_assignments.items():
                 for cat in cats:
-                    output = self._last_output.get((fid, cat))
+                    output = self._live.get((fid, cat))
                     if output:
                         live.setdefault(fid, {}).update(output)
             return live
@@ -444,14 +426,8 @@ class FXEngine:
     # ---- Skript-Ausfuehrung --------------------------------------------------------
 
     def _forget(self, fixture_id: str, category: str) -> None:
-        self._last_output.pop((fixture_id, category), None)
+        self._live.pop((fixture_id, category), None)
         self._ramps.pop((fixture_id, category), None)
-        for key in [k for k in self._instances if k[0] == fixture_id and k[1] == category]:
-            self._instances.pop(key, None)
-            self._runs.pop(key, None)
-            self._next_due.pop(key, None)
-            self._held.pop(key, None)
-            self._failed.pop(key, None)
 
     def _gobo_info(self, fixture_id: str) -> Dict[str, List[float]]:
         """Die festen Gobo-Slots der beiden Gobo-Raeder eines Geraets als Wert in Prozent (Mitte des DMX-Bereichs): {"slots": Rad 1, "slots2": Rad 2}; leer ohne Angaben."""
@@ -475,29 +451,6 @@ class FXEngine:
     def _gobo_slots(self, fixture_id: str) -> List[float]:
         return self._gobo_info(fixture_id)["slots"]
 
-    def _execute(self, fid: str, cat: str, a: Dict[str, Any], script: FxScript,
-                 definition: Dict[str, Any], now: float) -> Dict[str, float]:
-        key = (fid, cat, a["fx_id"], definition["kind"])
-        if self._failed.get(key) == script.program.uid:
-            return {}                                       # ruht (Fehler/zu langsam), bis das Skript neu gespeichert wird
-        instance = self._instances.setdefault(key, {})
-        runs = self._runs.get(key, 0)
-        self._runs[key] = runs + 1
-        started = time.perf_counter()
-        try:
-            info = self._gobo_info(fid) if cat == "gobo" else None
-            out = run_script(script, instance, definition.get("params", {}),
-                             a["index"], a["count"], now - self._t0, runs, info)
-        except Exception:  # Ein Laufzeitfehler stoppt nur diesen Effekt, nie den Thread
-            logger.exception("FX-Skript '%s' fehlgeschlagen - der Effekt ruht bis zum naechsten Speichern", script.name)
-            self._failed[key] = script.program.uid
-            return {}
-        if time.perf_counter() - started > SLOW_RUN_SECONDS:
-            logger.warning("FX-Skript '%s' braucht zu lange pro Durchlauf (mehr als %.0f ms) - der Effekt ruht bis zum naechsten Speichern",
-                           script.name, SLOW_RUN_SECONDS * 1000)
-            self._failed[key] = script.program.uid
-        return out
-
     def _offsets_for(self, fx) -> Dict[str, int]:
         # fixture_channel_offsets() durchsucht bei jedem Aufruf den GDTF-Ordner -
         # die Offsets werden deshalb je Fixture gecacht.
@@ -509,8 +462,53 @@ class FXEngine:
         self._offsets[fx.id] = (signature, offsets)
         return offsets
 
-    # ---- FX-Thread -----------------------------------------------------------------
+    # ---- Konfiguration fuer den Rechenkern -----------------------------------------------------------------------------
+    def _snapshot(self) -> Dict[str, Any]:
+        """Alles, was der Rechenkern zum Rechnen braucht, als reine Daten (JSON-faehig): Zuweisungen, Effekt-Definitionen, Geraete (Adresse, Kanaltabelle, Gobo-Slots), Ein-/Ausblendungen.
+        Aendert sich der Inhalt, schickt `_tick` eine neue Konfiguration - sonst nichts. Aufrufer haelt self.lock."""
+        assign: List[list] = []
+        fixtures: Dict[str, list] = {}
+        types: Dict[str, Dict[str, int]] = {}
+        defs: Dict[str, Dict[str, Any]] = {}
+        kinds: Dict[str, int] = {}
+        audio = False
+        for fid, cats in self._state.fx_assignments.items():
+            fx = self._state.fixtures.get(fid)
+            if fx is None:
+                continue
+            for cat, a in cats.items():
+                definition = self._state.fx_effects.get(a["fx_id"])
+                script = registry.get(definition["kind"]) if definition else None
+                if script is None:
+                    continue
+                assign.append([fid, cat, a["fx_id"], int(a.get("index", 0)), int(a.get("count", 1))])
+                defs[a["fx_id"]] = {"kind": definition["kind"], "params": definition.get("params", {})}
+                kinds[definition["kind"]] = script.program.uid
+                audio = audio or script.uses_audio
+                entry = fixtures.get(fid)
+                if entry is None:
+                    key = f"{fx.fixture_type}|{fx.mode}"
+                    types[key] = self._offsets_for(fx)
+                    entry = fixtures[fid] = [fx.universe, fx.start_channel, key, [], []]
+                if cat == "gobo":
+                    info = self._gobo_info(fid)
+                    entry[3], entry[4] = info["slots"], info["slots2"]
+        ramps = [[fid, cat, r["rid"], r["kind"], r["start"], r["dur"], r["base"]] for (fid, cat), r in self._ramps.items()
+                 if any(a[0] == fid and a[1] == cat for a in assign)]
+        return {"epoch": self._epoch, "assign": assign, "defs": defs, "fixtures": fixtures, "types": types, "kinds": kinds, "ramps": ramps, "audio": audio}
 
+    @staticmethod
+    def _signature(snap: Dict[str, Any]) -> str:
+        return json.dumps({k: v for k, v in snap.items() if k != "types"}, sort_keys=True, default=str)
+
+    def _config(self, snap: Dict[str, Any], now: float) -> Dict[str, Any]:
+        """Die Nachricht an den Rechenkern: der Schnappschuss, dazu die Quelltexte der benutzten Skripte; Rampen mit Alter statt absoluter Zeit (jeder Prozess hat seine eigene Uhr)."""
+        cfg = {k: v for k, v in snap.items() if k not in ("kinds", "audio")}
+        cfg["scripts"] = {kind: registry.get(kind).source for kind in snap["kinds"] if registry.get(kind) is not None}
+        cfg["ramps"] = [[fid, cat, rid, kind, max(0.0, now - start), dur, base] for fid, cat, rid, kind, start, dur, base in snap["ramps"]]
+        return cfg
+
+    # ---- FX-Thread -----------------------------------------------------------------------------------------------------
     def _loop(self) -> None:
         period = 1.0 / FX_HZ
         next_tick = time.monotonic()
@@ -528,75 +526,95 @@ class FXEngine:
 
     def _tick(self, now: float) -> None:
         with self.lock:
-            self._tick_locked(now)
-
-    def _tick_locked(self, now: float) -> None:
-        jobs = []
-        active: Set[Tuple[str, str, str, str]] = set()
-        for fid, cats in self._state.fx_assignments.items():
-            fx = self._state.fixtures.get(fid)
-            if fx is None:
-                continue
-            for cat, a in cats.items():
-                definition = self._state.fx_effects.get(a["fx_id"])
-                script = registry.get(definition["kind"]) if definition else None
-                if script is not None:
-                    active.add((fid, cat, a["fx_id"], definition["kind"]))
-                    jobs.append((fx, cat, a, script, definition))
-        for key in [k for k in self._instances if k not in active]:
-            self._instances.pop(key, None)
-            self._runs.pop(key, None)
-            self._next_due.pop(key, None)
-            self._held.pop(key, None)
-            self._failed.pop(key, None)
-        if not jobs:
-            return
-
-        batches: Dict[int, Dict[int, int]] = {}
-        finished: List[Tuple[str, str]] = []
-        for fx, cat, a, script, definition in jobs:
-            key = (fx.id, cat, a["fx_id"], definition["kind"])
-            ramp = self._ramps.get((fx.id, cat))
-            due = self._next_due.get(key)
-            if due is None or now >= due - 0.002:            # loop() ist dran (#RATE-mal pro Sekunde)
-                period = 1.0 / script.rate
-                nxt = (due if due is not None else now) + period
-                self._next_due[key] = nxt if nxt > now - 3 * period else now + period      # weit im Rueckstand: neu aufsetzen statt aufholen
-                out = self._execute(fx.id, cat, a, script, definition, now)
-                if out:
-                    self._held[key] = out
+            proc = self._dmx.fx_process()
+            if proc is None:
+                if self.mode != "local":                            # Rueckfall: der Ausgabe-Prozess ist weg, hier weiterrechnen (frisch begonnen)
+                    self.mode = self.stats["mode"] = "local"
+                    self._sig = None
+                    self._runner = None
+                    logger.warning("FX: Der Rechenkern laeuft jetzt im Hauptprogramm")
+                self._tick_local(now)
             else:
-                out = self._held.get(key)
-                if ramp is None:
-                    continue                                 # nichts Neues: der Kanal behaelt den letzten Wert
-            if not out:
-                continue
-            abstract = _abstract(cat, out, script)
-            if ramp is not None:
-                f = min(1.0, (now - ramp["start"]) / ramp["dur"]) if ramp["dur"] > 0 else 1.0
-                if ramp["kind"] == "in":
-                    abstract = _blend(ramp["base"], abstract, f)
-                    if f >= 1.0:
-                        self._ramps.pop((fx.id, cat), None)
-                else:
-                    abstract = _blend(abstract, ramp["base"], f)
-                    if f >= 1.0:
-                        finished.append((fx.id, cat))
-            self._last_output[(fx.id, cat)] = abstract
-            apply_abstract_values(
-                fx, abstract, self._offsets_for(fx), batches,
-                pct_values=True, grand_master=self._state.effective_master(fx.id),
-            )
+                if self.mode != "process":
+                    self.mode = self.stats["mode"] = "process"
+                    self._sig = None
+                    self._master_sent = None
+                    self._runner = None
+                    logger.info("FX: Der Rechenkern laeuft im Prozess der DMX-Ausgabe")
+                self._tick_remote(now, proc)
+            self._finish_ramps(now)
+
+    def _tick_local(self, now: float) -> None:
+        snap = self._snapshot()
+        sig = self._signature(snap)
+        runner = self._runner
+        if runner is None:
+            runner = self._runner = FXRunner()
+            runner.t0 = self._t0
+        if sig != self._sig:
+            runner.apply_config(self._config(snap, now), now)
+            self._sig = sig
+            self.stats["configs"] += 1
+        if not snap["assign"]:
+            return
+        runner.master = self._state.effective_master("")
+        batches, live = runner.tick(now, audio_engine.values() if snap["audio"] else None)
         for universe, channels in batches.items():
             self._dmx.commit_batch(universe, channels)
         self._touched_universes.update(batches.keys())
-        for fid, cat in finished:  # Ausblenden beendet: Effekt endet auf dem Neutralwert
-            assigned = self._state.fx_assignments.get(fid, {})
-            assigned.pop(cat, None)
-            if not assigned:
-                self._state.fx_assignments.pop(fid, None)
-            self._forget(fid, cat)
-            self._assignments_changed = True
+        self._live.update(live)
+
+    def _tick_remote(self, now: float, proc) -> None:
+        snap = self._snapshot()
+        sig = self._signature(snap)
+        changed = sig != self._sig
+        if changed:
+            nxt = self._sig_id + 1
+            if proc.send_fx(nxt, self._config(snap, now)):
+                self._sig_id = nxt
+                self._sig = sig
+                self._sent_at = now
+                self.stats["configs"] += 1
+        master = self._state.effective_master("")
+        if master != self._master_sent and proc.send({"cmd": "fxgm", "gm": master}):
+            self._master_sent = master
+        if snap["audio"]:
+            proc.send({"cmd": "fxaudio", "a": audio_engine.values()})
+        if not snap["assign"]:
+            return
+        if changed or sig != self._sig:
+            self.stats["mirror_skips"] += 1                          # die Konfiguration ist noch unterwegs: der Rechenkern hat den alten Stand (nichts spiegeln, was veraltet ist)
+            return
+        applied, overlay = proc.read_overlay()
+        if applied != self._sig_id:
+            self.stats["mirror_skips"] += 1
+            again = proc.fx_message_again() if now - self._sent_at > 1.5 else None
+            if again is not None:                                            # nicht quittiert (Nachricht verloren / Prozess eben neu gestartet): noch einmal schicken
+                proc.send(again)
+                self._sent_at = now
+            return
+        for universe, (values, mask) in overlay.items():
+            if self._dmx.mirror_overlay(universe, values, mask):
+                self._touched_universes.add(universe)
+        seq = proc.fx_live_seq
+        if seq != self._live_seq:
+            self._live_seq = seq
+            for fid, cat, abstract in proc.fx_live:
+                self._live[(fid, cat)] = abstract
+
+    def _finish_ramps(self, now: float) -> None:
+        """Ausblenden beendet: der Effekt endet auf dem Neutralwert (Zuweisung faellt weg). Eingeblendete Rampen werden nach kurzer Zeit vergessen."""
+        for (fid, cat), ramp in list(self._ramps.items()):
+            end = ramp["start"] + ramp["dur"]
+            if ramp["kind"] == "out" and now >= end + RAMP_FINISH_GRACE:
+                assigned = self._state.fx_assignments.get(fid, {})
+                assigned.pop(cat, None)
+                if not assigned:
+                    self._state.fx_assignments.pop(fid, None)
+                self._forget(fid, cat)
+                self._assignments_changed = True
+            elif ramp["kind"] == "in" and now >= end + RAMP_KEEP_AFTER_IN:
+                self._ramps.pop((fid, cat), None)
 
 
 fx_engine = FXEngine(state, dmx_engine)

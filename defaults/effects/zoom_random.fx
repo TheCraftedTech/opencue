@@ -1,5 +1,7 @@
 #NAME Zoom Random
-#DESCRIPTION Springt zu zufälligen Zoom-Werten und fährt weich dorthin.
+#DESCRIPTION en The zoom glides to new random values.
+#DESCRIPTION de Der Zoom gleitet zu neuen zufälligen Werten.
+#TAGS advanced, random
 #CATEGORY zoom
 #RATE 40
 #VAR speed Slider 1 0.05 8 0.05

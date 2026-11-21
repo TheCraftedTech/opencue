@@ -1,0 +1,89 @@
+[
+ {
+  "id": "whatsnew-001",
+  "page": "whatsnew",
+  "path": [
+   "Nouveautés"
+  ],
+  "title": "Nouveautés",
+  "keywords": [],
+  "text": "Les changements les plus importants de cette version en un coup d'œil. La liste complète se trouve dans `CHANGELOG.md` ; chaque sujet a son propre guide (Aide → Guides)."
+ },
+ {
+  "id": "whatsnew-002",
+  "page": "whatsnew",
+  "path": [
+   "Nouveautés",
+   "Un nouveau cœur DMX"
+  ],
+  "title": "Un nouveau cœur DMX",
+  "keywords": [],
+  "text": "- **La sortie DMX tourne dans son propre processus** – avec les effets et les fondus de cues. Une fenêtre occupée ou une tablette lente ne peut plus perturber un fondu : un régulier 40 images par seconde, même sous forte charge.\n- **Entrée DMX :** recevoir Art-Net et sACN d'une autre console, les transmettre et les mélanger, utiliser des canaux comme déclencheurs (*Contrôles → Entrée DMX…*). OpenCue se signale aussi comme appareil Art-Net."
+ },
+ {
+  "id": "whatsnew-003",
+  "page": "whatsnew",
+  "path": [
+   "Nouveautés",
+   "Un accès distant qui sait tout faire"
+  ],
+  "title": "Un accès distant qui sait tout faire",
+  "keywords": [],
+  "text": "- Une tablette a **les mêmes droits que la console, tous les paramètres compris**, et son propre **Explorateur OpenCue** pour les fichiers. **Mode serveur** sans fenêtre (`--no-ui`) avec icône dans la zone de notification et démarrage avec Windows."
+ },
+ {
+  "id": "whatsnew-004",
+  "page": "whatsnew",
+  "path": [
+   "Nouveautés",
+   "Commande depuis l'extérieur"
+  ],
+  "title": "Commande depuis l'extérieur",
+  "keywords": [],
+  "text": "- **MIDI** entrant et sortant, **OSC**, une **API REST** avec flux WebSocket, des **raccourcis clavier personnalisés**, une **planification** et la **commande vocale** hors ligne."
+ },
+ {
+  "id": "whatsnew-005",
+  "page": "whatsnew",
+  "path": [
+   "Nouveautés",
+   "Frise et timecode"
+  ],
+  "title": "Frise et timecode",
+  "keywords": [],
+  "text": "- Un **éditeur de frise** avec formes d'onde et pistes de commandes, **LTC** entrant et sortant, **timecode MIDI**."
+ },
+ {
+  "id": "whatsnew-006",
+  "page": "whatsnew",
+  "path": [
+   "Nouveautés",
+   "Projecteurs"
+  ],
+  "title": "Projecteurs",
+  "keywords": [],
+  "text": "- Un **éditeur de projecteurs** personnel, un **aperçu des projecteurs GDTF Share** avant l'installation et l'**import d'une liste de patch depuis CSV ou Excel**."
+ },
+ {
+  "id": "whatsnew-007",
+  "page": "whatsnew",
+  "path": [
+   "Nouveautés",
+   "Shows sûrs"
+  ],
+  "title": "Shows sûrs",
+  "keywords": [],
+  "text": "- **Annuler / Rétablir**, **sauvegardes** en arrière-plan avec restauration après plantage, un **verrou** pour les shows terminés, un **enregistrement sûr** et une question avant que quoi que ce soit puisse être perdu."
+ },
+ {
+  "id": "whatsnew-008",
+  "page": "whatsnew",
+  "path": [
+   "Nouveautés",
+   "Aspect et aide"
+  ],
+  "title": "Aspect et aide",
+  "keywords": [],
+  "text": "- **Six langues**, fenêtres en cinq tailles homogènes, **paramètres** avec une recherche dans toutes les catégories et des explications derrière un petit **(i)**, thèmes de couleurs où chaque couleur peut être changée, et **guides** avec `F1`.\n\nTout reste désactivé par défaut ; c'est vous qui décidez ce qui est activé."
+ }
+]

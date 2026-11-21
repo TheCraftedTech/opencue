@@ -1,3 +1,5 @@
+// Copyright (C) 2026 Samuel Zenker
+// SPDX-License-Identifier: GPL-3.0-or-later
 /* Vollbild fuer Panels (Video/Audio-Player, Livestream, Timecode).
  * Das echte Vollbild (Fullscreen API) gibt es nicht ueberall: auf iPad/iPhone nicht fuer beliebige Elemente und in einer als PWA installierten
  * App gar nicht. Deshalb ist das Vollbild hier ein EIGENES: das Panel-Element wird in die Seite verschoben und legt sich ueber die ganze

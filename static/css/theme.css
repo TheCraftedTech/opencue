@@ -10,6 +10,13 @@
  * --radius-sm/md/lg gemeinsam und proportional skaliert.
  */
 
+/* Schriften liegen im Programm (static/fonts/, SIL Open Font License 1.1 - siehe *-OFL.txt): die Oberflaeche sieht auch ohne Internet gleich aus.
+   Variable Schriften (eine Datei fuer alle Staerken), aufgeteilt in Latein und erweitertes Latein; der Browser laedt nur, was er braucht. */
+@font-face { font-family: "Inter"; font-style: normal; font-weight: 100 900; font-display: swap; src: url("/static/fonts/inter-latin-ext.woff2") format("woff2"); unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF; }
+@font-face { font-family: "Inter"; font-style: normal; font-weight: 100 900; font-display: swap; src: url("/static/fonts/inter-latin.woff2") format("woff2"); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+@font-face { font-family: "JetBrains Mono"; font-style: normal; font-weight: 100 900; font-display: swap; src: url("/static/fonts/jetbrains-mono-latin-ext.woff2") format("woff2"); unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF; }
+@font-face { font-family: "JetBrains Mono"; font-style: normal; font-weight: 100 900; font-display: swap; src: url("/static/fonts/jetbrains-mono-latin.woff2") format("woff2"); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+
 :root {
   color-scheme: dark;
 
@@ -44,6 +51,7 @@
   --warn:  #ffb000;
   --error: #ff4d43;
   --live:  #ff4d43;           /* "auf Sendung" / aktive DMX-Ausgabe */
+  --modified: #a98bff;        /* "ungespeicherte Aenderung" im Programmer (Tab-Streifen, Fader): Violett - weder Fehler-Rot noch Auswahl-Gelb */
   --error-soft: color-mix(in srgb, var(--error) 16%, transparent);
   --ok-soft:    color-mix(in srgb, var(--ok) 16%, transparent);
 
@@ -94,9 +102,21 @@
   --highlight-color:   var(--accent);
   --toolbar-text:      var(--text-1);
   --toolbar-icon:      var(--text-2);
-  --edit-mode-color:   #a855f7;
+  --edit-mode-color:   var(--modified);
   --base-radius:       var(--radius-md);
   --menubar-height:    2.5rem;
+
+  /* Namen, die im CSS benutzt werden, aber frueher nirgends definiert waren (dort galt ein fest eingetragener Ersatzwert und das Farbprofil wirkte nicht): jetzt folgen sie den Tokens. */
+  --text-dim:          var(--text-2);
+  --radius:            var(--radius-md);
+  --warning:           var(--warn);
+  --success:           var(--ok);
+  --success-color:     var(--ok);
+  --error-color:       var(--error);
+  --surface:           var(--surface-1);
+  --surface-0:         var(--bg);
+  --accent-contrast:   var(--accent-ink);
+  --sp-7:              2rem;
 }
 
 /* ---------------------------------------------------------------------------------------------
@@ -128,6 +148,7 @@
   --warn:  #a35f00;
   --error: #d92d20;
   --live:  #d92d20;
+  --modified: #6d4bd6;
 
   --toolbar-bg:      #ffffff;
   --menu-bg:         #ffffff;

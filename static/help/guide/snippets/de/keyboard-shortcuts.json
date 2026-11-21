@@ -1,0 +1,254 @@
+[
+ {
+  "id": "keyboard-shortcuts-001",
+  "page": "keyboard-shortcuts",
+  "path": [
+   "Tastenkürzel und Gesten"
+  ],
+  "title": "Tastenkürzel und Gesten",
+  "keywords": [],
+  "text": "Alle Tastenkürzel und Touch-Gesten von OpenCue an einer Stelle. Im Programm steht dieselbe Liste unter **Hilfe → Tastenkürzel** und **Steuerung → Tastenkürzel …** – und dort lassen sich die Kürzel des Programms auch **ändern** (Abschnitt 11b).\n\nAuf einer Mac-Tastatur (oder in einem Browser darauf) wirkt `Cmd` wie `Strg`."
+ },
+ {
+  "id": "keyboard-shortcuts-002",
+  "page": "keyboard-shortcuts",
+  "path": [
+   "Tastenkürzel und Gesten",
+   "1. Überblick"
+  ],
+  "title": "1. Überblick",
+  "keywords": [],
+  "text": "Die meisten Kürzel sind **global**: Sie wirken, egal wo der Fokus steht – mit einer Regel: **Während du in ein Textfeld tippst, bleiben nur wenige Kürzel aktiv**: `Strg+S`, `Strg+Umschalt+S`, `Strg+F`, `F1`, `F5`, `Strg+F5`, `F11` und `Strg+L`. Alles andere (`Strg+N`, `Strg+O`, `Strg+Q`, `Strg+E`, Pfeiltasten, `Strg+1–9`, Skalierungs-, Zwischenablage- und Rückgängig-Kürzel) bleibt still, damit das Tippen nie gestört wird."
+ },
+ {
+  "id": "keyboard-shortcuts-003",
+  "page": "keyboard-shortcuts",
+  "path": [
+   "Tastenkürzel und Gesten",
+   "2. Showfile"
+  ],
+  "title": "2. Showfile",
+  "keywords": [],
+  "text": "| Kürzel | Aktion |\n|---|---|\n| `Strg+N` | Neues Showfile (fragt zuerst nach, wenn es ungespeicherte Änderungen gibt) |\n| `Strg+O` | Showfile öffnen (öffnet den Dateimanager bei *Shows*) |\n| `Strg+M` | Dateimanager (alle Dateien: Shows, Layouts, Bühnen, Modelle, Medien, Effekte …) |\n| `Strg+L` | **Bildschirm sperren** (Menü *Steuerung → Bildschirm sperren*; braucht *Einstellungen → Sicherheit → Sichermodus verwenden*; an einem Fernzugriffs-Gerät: abmelden; im Bedienmodus: fragt das Passwort zum Verlassen) |\n| `Strg+S` | Showfile **und** Layout dieser Konsole speichern (eine Show ohne Namen öffnet *Speichern unter*) |\n| `Strg+Umschalt+S` | Showfile unter neuem Namen speichern |\n| `Strg+Q` | OpenCue beenden (fragt vorher nach dem Speichern) |\n\n`Strg+S` funktioniert auch, während du in ein Namensfeld tippst, zum Beispiel im Dialog *Speichern unter*."
+ },
+ {
+  "id": "keyboard-shortcuts-004",
+  "page": "keyboard-shortcuts",
+  "path": [
+   "Tastenkürzel und Gesten",
+   "3. Ansicht und Oberfläche"
+  ],
+  "title": "3. Ansicht und Oberfläche",
+  "keywords": [],
+  "text": "| Kürzel | Aktion |\n|---|---|\n| `?` | **Diese Übersicht aller Tastenkürzel ein- / ausblenden** (nicht beim Tippen in ein Feld und nicht über einem anderen Dialog) |\n| `F1` | **Anleitungen** öffnen (alle Handbücher im Programm, auch offline). Darin sucht `Strg+F`, `Enter` / `Umschalt+Enter` springen zum nächsten / vorigen Treffer, `Esc` löscht die Suche |\n| `F5` | **Layout neu laden**: das aktuelle Layout wird wie bei einem Layout-Wechsel noch einmal geladen und **alle Panels werden neu aufgebaut** (hilft, wenn nach dem Start etwas – zum Beispiel die 3D-Simulation – nicht richtig erschienen ist). Bei ungespeicherten Layout-Änderungen wird nichts aus der Datei geholt: die Panels werden nur neu aufgebaut, deine Änderungen bleiben. Auch unter *Ansicht → Layout neu laden* |\n| `Strg+F5` | **Ganze Oberfläche neu laden** (wie das Neuladen einer Webseite; das Gerät bekommt danach sein Layout zurück). Auch unter *Ansicht → Oberfläche neu laden* |\n| `F11` | Vollbild (Konsolenfenster oder Browser dieses Geräts) |\n| `Strg +` / `Strg =` | Oberfläche vergrößern (GUI-Skalierung, Schritte von 5 %) |\n| `Strg -` | Oberfläche verkleinern |\n| `Strg+0` | Skalierung auf 100 % zurücksetzen |\n| `Strg+Umschalt+L` | Sprache wechseln (der Reihe nach: Englisch, Deutsch, Französisch, Niederländisch, Italienisch, Spanisch) |\n| `Strg+F` | **Befehls-Konsole** öffnen / schließen: Befehlszeile mit Ziffernblock und Befehlstasten in einem Fenster – auch ohne diese Panels im Layout; der Cursor steht sofort im Eingabefeld |\n| `Esc` | Oberstes Dialogfenster, Panel-Fenster oder Menü schließen / abbrechen – ein Druck schließt **einen** Dialog (die Einstellungen fragen bei Änderungen nach) |"
+ },
+ {
+  "id": "keyboard-shortcuts-005",
+  "page": "keyboard-shortcuts",
+  "path": [
+   "Tastenkürzel und Gesten",
+   "3. Ansicht und Oberfläche"
+  ],
+  "title": "3. Ansicht und Oberfläche (2)",
+  "keywords": [],
+  "text": "Die GUI-Skalierung (50–200 %) wird **pro Gerät** gespeichert: ein Tablet kann groß sein, während die Konsole klein bleibt.\n\n**Panel als Fenster:** Unter **Ansicht → Panel als Fenster öffnen** lässt sich jedes Panel (außer Knopf, Fader und Schalter) kurz als Fenster öffnen, ohne dass es im Layout liegt. Jedes Fenster hat dieselbe Größe und steht in der Mitte; `Esc`, das × oder ein Klick daneben schließen es. Solange ein Panel-Fenster offen ist, wechseln die Pfeiltasten kein Layout."
+ },
+ {
+  "id": "keyboard-shortcuts-006",
+  "page": "keyboard-shortcuts",
+  "path": [
+   "Tastenkürzel und Gesten",
+   "4. Layouts"
+  ],
+  "title": "4. Layouts",
+  "keywords": [],
+  "text": "| Kürzel | Aktion |\n|---|---|\n| `Strg+1` … `Strg+9` | Layout 1 bis 9 laden (Favoriten zuerst, dann A–Z) |\n| `←` / `→` | Vorheriges / nächstes Layout (nicht in Textfeldern, Dialogen, Menüs oder im Bearbeitungsmodus) |\n| Horizontal wischen | Vorheriges / nächstes Layout auf Touch-Geräten (*Einstellungen → Allgemein → Layout per Wischgeste wechseln*, pro Gerät) |\n\nBeim Laden eines Layouts gehen ungespeicherte Änderungen des aktuellen verloren. Die Reihenfolge ist dieselbe wie unter **Ansicht → Layouts**."
+ },
+ {
+  "id": "keyboard-shortcuts-007",
+  "page": "keyboard-shortcuts",
+  "path": [
+   "Tastenkürzel und Gesten",
+   "5. Panel-Bearbeitungsmodus"
+  ],
+  "title": "5. Panel-Bearbeitungsmodus",
+  "keywords": [],
+  "text": "Im Bearbeitungsmodus (**Bearbeiten → Panels bearbeiten**) lassen sich Panels verschieben, in der Größe ändern und einstellen.\n\n| Kürzel | Aktion |\n|---|---|\n| `Strg+E` | Bearbeitungsmodus ein- / ausschalten |\n| Klick auf ein Panel | Markiert es (dünner Akzentrahmen) |\n| `Umschalt`/`Strg` + Klick | Panel zur Markierung hinzufügen / daraus entfernen |\n| Klick auf leere Arbeitsfläche | Hebt die Markierung auf |\n| `Strg+C` / `Strg+X` / `Strg+V` | Markierte Panels kopieren / ausschneiden / einfügen (die Zwischenablage überlebt einen Layoutwechsel) |\n| `Strg+Z` | Letzte Panel-Änderung rückgängig |\n| `Strg+Y` oder `Strg+Umschalt+Z` | Wiederholen |\n| Rechtsklick → *Duplizieren* | Kopiert die markierten (oder angeklickten) Panels mit kleinem Versatz |\n\nIm **Bearbeitungsmodus** gelten `Strg+Z` / `Strg+Y` für die Anordnung der Panels. **Außerhalb** davon machen sie Änderungen am **Inhalt der Show** rückgängig (siehe unten, *Rückgängig und Wiederholen*).\n\nBeim Verlassen des Bearbeitungsmodus mit ungespeicherten Änderungen fragt OpenCue: **Speichern**, **Änderungen verwerfen** (lädt das gespeicherte Layout neu) oder **Weiter bearbeiten**."
+ },
+ {
+  "id": "keyboard-shortcuts-008",
+  "page": "keyboard-shortcuts",
+  "path": [
+   "Tastenkürzel und Gesten",
+   "6. Scheinwerferliste und Programmer"
+  ],
+  "title": "6. Scheinwerferliste und Programmer",
+  "keywords": [],
+  "text": "| Aktion | So geht's |\n|---|---|\n| Einen Scheinwerfer auswählen | Klick / Tippen auf die Kachel |\n| Mehrere auswählen | **Lasso**: einen Rahmen über die Kacheln ziehen (Maus und Touch); das Lasso bleibt im eigenen Panel |\n| Ausgewählte Scheinwerfer löschen | `Entf` oder `Rücktaste` (fragt nach) |\n| Pan-/Tilt-Wert fein ändern | Auf dem Zahlenfeld nach oben/unten **wischen** (grob: 2 px pro Schritt, fein: 4 px pro Feinschritt); Tippen zum Eintippen |\n| Kontextmenü öffnen | Rechtsklick (Maus) oder langes Drücken (Touch) auf einen Scheinwerfer oder freien Platz |"
+ },
+ {
+  "id": "keyboard-shortcuts-009",
+  "page": "keyboard-shortcuts",
+  "path": [
+   "Tastenkürzel und Gesten",
+   "7. Befehlszeile"
+  ],
+  "title": "7. Befehlszeile",
+  "keywords": [],
+  "text": "| Taste | Wirkung |\n|---|---|\n| `Enter` | Befehl ausführen |\n| `↑` / `↓` | Älterer / neuerer Befehl aus dem Verlauf (nach unten zurück zum Entwurf) |\n| `Tab` | Ersten Vorschlag übernehmen; jeder weitere `Tab` wechselt zum nächsten |\n| `Umschalt+Tab` | Rückwärts durch die Vorschläge |\n| `Esc` | Vorschlagsliste schließen (in der Befehls-Konsole: die Konsole schließen) |\n\nMit `Strg+F` erscheint die **Befehls-Konsole**: oben die Befehlszeile, darunter Ziffernblock und Befehlstasten – zum schnellen Tippen per Tastatur oder Hand. Was du tippst, steht auch in jeder anderen Befehlszeile (gemeinsamer Eingabepuffer).\n\nEinzelheiten zu den Befehlen: *Befehlsreferenz*."
+ },
+ {
+  "id": "keyboard-shortcuts-010",
+  "page": "keyboard-shortcuts",
+  "path": [
+   "Tastenkürzel und Gesten",
+   "8. Effekt-Studio"
+  ],
+  "title": "8. Effekt-Studio",
+  "keywords": [],
+  "text": "| Kürzel | Aktion |\n|---|---|\n| `Strg+S` | Effekt speichern (**nicht** die Show), solange der Cursor im Skript steht |\n| `Tab` | Fügt zwei Leerzeichen ein |\n| `Enter` | Neue Zeile mit der Einrückung der vorigen (nach `{` zwei Leerzeichen mehr) |"
+ },
+ {
+  "id": "keyboard-shortcuts-011",
+  "page": "keyboard-shortcuts",
+  "path": [
+   "Tastenkürzel und Gesten",
+   "9. 3D-Simulation – Bearbeitungsmodus"
+  ],
+  "title": "9. 3D-Simulation – Bearbeitungsmodus",
+  "keywords": [],
+  "text": "Diese Kürzel wirken in der 3D-Simulation nur beim Bauen (Modi *Bauen* / *Scheinwerfer*), nicht im Modus *Ansicht*.\n\n| Kürzel | Aktion |\n|---|---|\n| `Strg+C` / `Strg+X` / `Strg+V` | Objekte kopieren / ausschneiden / einfügen |\n| `Strg+D` | Gewähltes Objekt duplizieren (nochmals drücken wiederholt den Versatz) |\n| `Entf` / `Rücktaste` | Gewähltes Objekt löschen (fragt nach); im Scheinwerfer-Modus: Scheinwerfer von der Bühne nehmen |\n| `Esc` | Auswahl aufheben |\n| `Umschalt` + Klick | Objekt zur Auswahl hinzufügen / daraus entfernen |\n| Pfeiltasten | Auswahl verschieben (mit `Umschalt` fünfmal so weit); solange etwas gewählt ist, wechseln die Pfeile kein Layout |\n| `Strg+Z` | Rückgängig |\n| `Strg+Y` oder `Strg+Umschalt+Z` | Wiederholen |\n\nScheinwerfer gibt es auf einer Bühne nur einmal, deshalb sind Kopieren, Ausschneiden und Duplizieren im Scheinwerfer-Modus abgeschaltet.\n\nSolange du zielst („Punkt in 3D-Simulation setzen“ in der Scheinwerfer-Steuerung), beendet `Esc` das Zielen."
+ },
+ {
+  "id": "keyboard-shortcuts-012",
+  "page": "keyboard-shortcuts",
+  "path": [
+   "Tastenkürzel und Gesten",
+   "10. Touch-Gesten"
+  ],
+  "title": "10. Touch-Gesten",
+  "keywords": [],
+  "text": "| Geste | Entspricht |\n|---|---|\n| Langes Drücken | Rechtsklick (Kontextmenü) |\n| Langes Drücken auf ein Element mit Tooltip | Zeigt den Tooltip |\n| Doppeltippen | Doppelklick |\n| Horizontal wischen (wenn eingeschaltet) | Vorheriges / nächstes Layout |\n| Wischen auf einem Pan-/Tilt-Zahlenfeld | Wert ändern (grob / fein) |\n\nPanel-Griffe und Werkzeugleisten-Knöpfe haben eine Touch-Fläche von mindestens 44 × 44 px. Die Layout-Wischgeste wird an der Richtung der ersten Bewegung erkannt (höchstens 25° von der Waagerechten, mindestens 40 % der Breite) und startet nie auf Elementen mit eigener Ziehfunktion (Fader, Lasso-Kacheln, Wisch-Zahlenfelder, Eingabefelder, Farbrad, Spalten- und Panel-Griffe). Senkrechtes Scrollen bleibt Scrollen."
+ },
+ {
+  "id": "keyboard-shortcuts-013",
+  "page": "keyboard-shortcuts",
+  "path": [
+   "Tastenkürzel und Gesten",
+   "11. Eigene Tastaturbelegung"
+  ],
+  "title": "11. Eigene Tastaturbelegung",
+  "keywords": [],
+  "text": "Eine eigene Taste oder Tastenkombination kann einen **Befehl der Befehlszeile** auslösen – zum Beispiel `Strg+H` für `Blackout` oder die Leertaste für `Cuelist Main Go`. Du öffnest die Liste über **Steuerung → Eigene Tastaturbelegung …** oder über den Knopf unten im Dialog *Tastenkürzel*.\n\n**Eine Taste für den nächsten Cue:** oben im Dialog unter *Schnellstart* auf **Nächster Cue (Go)** klicken (oder *Voriger Cue*, *Pause*, *Blackout*): Es erscheint eine neue Zeile mit dem Befehl `Go`; dann in ihr Tastenfeld klicken und die Taste drücken – zum Beispiel die Leertaste oder eine Taste einer zweiten Tastatur / eines Ziffernblocks (im Dialog *Taste festlegen* **Nur diese Tastatur** wählen). `Go` startet den nächsten Cue der aktiven Cue-Liste; `Cuelist Main Go` immer den dieser Liste.\n\nJede Zeile hat von links nach rechts:"
+ },
+ {
+  "id": "keyboard-shortcuts-014",
+  "page": "keyboard-shortcuts",
+  "path": [
+   "Tastenkürzel und Gesten",
+   "11. Eigene Tastaturbelegung"
+  ],
+  "title": "11. Eigene Tastaturbelegung (2)",
+  "keywords": [],
+  "text": "| Feld | Bedeutung |\n|---|---|\n| **Aktiv** | Schaltet die Zeile ein oder aus, ohne sie zu löschen. |\n| **Taste** | Zeigt die Taste oder Kombination. Ein Klick darauf oder auf den **Tastatur-Knopf** daneben öffnet den Dialog **Taste festlegen**: Dort hast du **10 Sekunden** Zeit, die Taste oder Kombination zu drücken (z. B. `Strg` und `H` zusammen) – aufgenommen wird vom ersten Druck, bis alles wieder losgelassen ist. `Esc` bricht ab, der Knopf neben dem Feld nimmt neu auf. Darunter wählst du, wofür sie gilt: **Alle Tastaturen** oder **Nur diese Tastatur**. Nur über diesen Dialog bekommt eine Zeile ihre Taste. |\n| **Befehl** | Der Befehl, wie du ihn in die Befehlszeile tippen würdest. |\n| **Ausführen** | An: der Befehl läuft sofort. Aus: er wird nur in die Befehlszeile **geschrieben** (du bestätigst selbst). |\n| **Im Verlauf** | An: der Befehl erscheint im Verlauf der Befehlszeile. |\n| Mülleimer | Löscht die Zeile (nach einer Rückfrage). |\n\nMit **Neue Tastenkombination** unten kommen beliebig viele leere Zeilen dazu (ohne Aufnahme). Änderungen gelten sofort und auf allen Geräten, an denen eine Tastatur hängt (auch am iPad)."
+ },
+ {
+  "id": "keyboard-shortcuts-015",
+  "page": "keyboard-shortcuts",
+  "path": [
+   "Tastenkürzel und Gesten",
+   "11. Eigene Tastaturbelegung"
+  ],
+  "title": "11. Eigene Tastaturbelegung (3)",
+  "keywords": [],
+  "text": "**Sichern und weitergeben:** Unten im Dialog speichert **Exportieren …** die Belegung als Datei (`opencue-keyboard-mapping.json`), **Importieren …** liest eine solche Datei ein. Die Zeilen kommen **neu dazu**; Tasten, die das Programm oder eine andere Zeile schon belegt, werden übersprungen (die Meldung nennt die Zahl).\n\n**Gut zu wissen**"
+ },
+ {
+  "id": "keyboard-shortcuts-016",
+  "page": "keyboard-shortcuts",
+  "path": [
+   "Tastenkürzel und Gesten",
+   "11. Eigene Tastaturbelegung"
+  ],
+  "title": "11. Eigene Tastaturbelegung (4)",
+  "keywords": [],
+  "text": "- Kombinationen, die das Programm oder der Browser schon benutzt (`Strg+S`, `Strg+1…9`, `←`/`→`, `F5` …), werden beim Aufnehmen abgelehnt; jede Kombination kann nur einmal vergeben werden.\n- Beim **Tippen in einem Eingabefeld** gelten nur Kombinationen mit `Strg`. Bei offenem Dialog lösen einfache Tasten nichts aus, und bei offenem Dialog *Eigene Tastaturbelegung* gar nichts.\n- Der Befehl läuft beim **Drücken** der Taste (nicht beim Loslassen). Eine gehaltene Taste löst ihn nur **einmal** aus.\n- Eine Kombination darf **mehrere Haupttasten** haben, z. B. `Strg+H+J`: sie gilt, sobald alle gedrückt sind (die Reihenfolge ist egal). Gibt es zusätzlich `Strg+H`, wartet diese kürzere Kombination einen Moment, ob noch `J` dazukommt.\n- Ist eine Kombination schon vom Programm oder vom Browser belegt (auch als Teil einer längeren, z. B. `Strg+S+J`), nimmt OpenCue sie nicht an und zeigt oben im Dialog eine Meldung.\n- Die Tasten werden unabhängig von der Tastaturbelegung gespeichert (die Taste `Z` bleibt die Taste an derselben Stelle). Der Ziffernblock heißt `Num1` … `Num9`.\n\n**Taste einer bestimmten Tastatur (z. B. Macropad, nur Windows)**"
+ },
+ {
+  "id": "keyboard-shortcuts-017",
+  "page": "keyboard-shortcuts",
+  "path": [
+   "Tastenkürzel und Gesten",
+   "11. Eigene Tastaturbelegung"
+  ],
+  "title": "11. Eigene Tastaturbelegung (5)",
+  "keywords": [],
+  "text": "Im Dialog **Taste festlegen** (Tastatur-Knopf einer Zeile) drückst du die Taste auf der gewünschten Tastatur. An der Konsole unter Windows erkennt OpenCue, von **welcher** Tastatur sie kommt (der Name steht unter dem Feld), und du wählst **Alle Tastaturen** oder **Nur diese Tastatur**. Auf einem Tablet oder ohne Windows nimmt der Browser auf und es gilt immer „Alle Tastaturen“. Eine Taste gilt entweder für alle Tastaturen oder für bestimmte – nicht beides gleichzeitig. Eine Zeile „nur diese Tastatur“ löst nur aus, wenn die Taste auf genau dieser Tastatur gedrückt wird – auch wenn OpenCue nicht im Vordergrund ist. Die Zeile zeigt die Tastatur darunter an."
+ },
+ {
+  "id": "keyboard-shortcuts-018",
+  "page": "keyboard-shortcuts",
+  "path": [
+   "Tastenkürzel und Gesten",
+   "11. Eigene Tastaturbelegung"
+  ],
+  "title": "11. Eigene Tastaturbelegung (6)",
+  "keywords": [],
+  "text": "- Das geht nur **an der Konsole selbst** unter Windows, nicht von einem Tablet aus.\n- OpenCue **hört nur mit, solange** es mindestens eine eingeschaltete Zeile für eine bestimmte Tastatur gibt (oder beim Aufnehmen). Es wertet nur die Tastaturen aus, die in der Liste stehen; alles andere wird sofort verworfen und nie gespeichert.\n- Windows meldet die Taste nur, es **blockiert** sie nicht: Sie erreicht trotzdem auch das gerade aktive Programm (z. B. als Zeichen in einem Textfeld). Für ein Macropad am besten Tasten wählen, die sonst nichts tun – etwa `F13` bis `F24` oder den Ziffernblock.\n- Manche Tastaturen melden sich als mehrere Geräte (z. B. Tasten und Mediatasten getrennt). Das erkennt OpenCue beim Aufnehmen von selbst.\n- Zwei verschiedene Tastaturen dürfen dieselbe Taste unterschiedlich belegen. Eine doppelte Meldung desselben Tastendrucks (innerhalb von 80 ms) löst nur einmal aus."
+ },
+ {
+  "id": "keyboard-shortcuts-019",
+  "page": "keyboard-shortcuts",
+  "path": [
+   "Tastenkürzel und Gesten",
+   "11b. Die Kürzel des Programms ändern"
+  ],
+  "title": "11b. Die Kürzel des Programms ändern",
+  "keywords": [],
+  "text": "Die Kürzel, die das Programm schon hat (`Strg+S`, `F11`, `Strg+E` …), lassen sich auf andere Tasten legen oder abschalten. Öffne **Steuerung → Tastenkürzel …** und klicke unten auf **Kürzel bearbeiten**:\n\n1. Jede änderbare Zeile hat einen gestrichelten Rahmen um ihre Taste. **Die Taste anklicken**, die neue Kombination drücken und **loslassen** – sie ist sofort gesetzt (während du hältst, steht *Tasten drücken …* da). `Esc` bricht ab.\n2. Das **Kreuz** neben einer Zeile schaltet das Kürzel **ab**, der **Pfeil** stellt die Standardtaste wieder her. **Alle Standardtasten wiederherstellen** setzt alles zurück. **Fertig** beendet das Bearbeiten.\n3. Geänderte Tasten stehen in der Akzentfarbe hier, in den Menüs (zum Beispiel *Datei → Showfile speichern*) und im Dialog *Eigene Tastaturbelegung*, der vergebene Tasten ablehnt.\n\nOpenCue lehnt eine Kombination ab, die schon benutzt wird (von einem anderen Kürzel, einer eigenen Tastenbelegung oder vom Browser / von Windows – zum Beispiel `Strg+W`). Ein Programm-Kürzel hat **eine Haupttaste plus Strg, Alt oder Umschalt**; ein einzelner Buchstabe oder eine Ziffer wird abgelehnt, weil sie das Tippen blockieren würde – Funktionstasten (`F1` … `F24`) gehen allein. Die Änderung gilt für **alle Geräte** der Konsole."
+ },
+ {
+  "id": "keyboard-shortcuts-020",
+  "page": "keyboard-shortcuts",
+  "path": [
+   "Tastenkürzel und Gesten",
+   "11b. Die Kürzel des Programms ändern"
+  ],
+  "title": "11b. Die Kürzel des Programms ändern (2)",
+  "keywords": [],
+  "text": "Nicht änderbar (sie hängen von der Situation ab): `Esc`, `Strg+C / X / V` für Panels, `Strg+1 … 9` für Layouts, die Pfeiltasten und die Tasten der 3D-Bearbeitung."
+ },
+ {
+  "id": "keyboard-shortcuts-021",
+  "page": "keyboard-shortcuts",
+  "path": [
+   "Tastenkürzel und Gesten",
+   "Rückgängig und Wiederholen (Inhalt der Show)"
+  ],
+  "title": "Rückgängig und Wiederholen (Inhalt der Show)",
+  "keywords": [],
+  "text": "Außerhalb des Bearbeitungsmodus der Panels machen `Strg+Z` und `Strg+Y` (oder `Strg+Umschalt+Z`) – sowie *Bearbeiten → Rückgängig / Wiederholen* – alles rückgängig, was **in der Showfile gespeichert wird**, und die Bedienung davor:\n\n- **Cues und Cue-Listen:** speichern, aktualisieren, Zeiten / Auslöser / Namen ändern (auch mehrere auf einmal), kopieren, löschen, Listen anlegen, umbenennen, ordnen, löschen;\n- **Variablen** und ihre Gruppen, **Scheinwerfer-Gruppen**, das **Patch** (Scheinwerfer anlegen, löschen, umadressieren, umbenennen, anordnen), **Effekte** (Definitionen und Gruppen), **Zeitplan** und **Timeline-Befehlsspuren**;\n- die **Auswahl** der Scheinwerfer;\n- **Programmer-Werte** (Farbe, Position, Helligkeit, Beam …) – ein Fader-Zug oder ein Befehl wie `At 80` ist **ein** Schritt; auch der DMX-Stand der betroffenen Scheinwerfer geht zurück;\n- **laufende Effekte:** einen Effekt auf Scheinwerfer anwenden oder abwählen;\n- der **Executor-Fader** einer Cue-Liste (ein Zug = ein Schritt).\n\nEine kurze Meldung nennt, was rückgängig gemacht wurde. Schnelle gleichartige Änderungen (zum Beispiel eine Wischgeste auf einer Zeit oder ein Fader-Zug) zählen als **ein** Schritt; der Verlauf hält die letzten 100 Schritte. Ein neuer Show-Start (*Neu*, *Öffnen*) leert ihn."
+ },
+ {
+  "id": "keyboard-shortcuts-022",
+  "page": "keyboard-shortcuts",
+  "path": [
+   "Tastenkürzel und Gesten",
+   "Rückgängig und Wiederholen (Inhalt der Show)"
+  ],
+  "title": "Rückgängig und Wiederholen (Inhalt der Show) (2)",
+  "keywords": [],
+  "text": "**Go und Back (Schalter):** Ob auch **Go / Back / Springen** (und ein `Go` per Befehl) rückgängig gemacht werden – dann springt `Strg+Z` zum vorigen Cue zurück. Vorgabe: **aus**, damit du in einer Aufführung nie versehentlich einen Cue zurücknimmst. Den Schalter findest du als Symbol (Rückgängig-Pfeil mit Play-Dreieck) in der Toolbar **und** unter *Einstellungen → Weitere Optionen → Schnellschalter* – dort geht er auch, wenn das Symbol in der Toolbar ausgeblendet ist.\n\n**Nicht dabei:** Einstellungen, Go über MIDI / OSC / Timecode und Änderungen über die REST-Schnittstelle. In einem offenen Dialog und in Textfeldern tun die Kürzel nichts. Die Tasten lassen sich unter *Tastenkürzel → Kürzel bearbeiten* umbelegen."
+ },
+ {
+  "id": "keyboard-shortcuts-023",
+  "page": "keyboard-shortcuts",
+  "path": [
+   "Tastenkürzel und Gesten",
+   "12. Spickzettel"
+  ],
+  "title": "12. Spickzettel",
+  "keywords": [],
+  "text": "```\nStrg+N  Neue Show          Strg+O  Show öffnen        Strg+S  Speichern     Strg+Umschalt+S  Speichern unter\nStrg+E  Panels bearbeiten  Strg+Z / Strg+Y  Rückgängig / Wiederholen (Panels im Bearbeitungsmodus, sonst Show-Inhalt)\nStrg+C / X / V  Panels kopieren / ausschneiden / einfügen (Bearbeitungsmodus)\nStrg+1…9  Layout laden     ← / →  Vorheriges / nächstes Layout\nStrg +  Strg -  Strg+0     GUI-Skalierung größer / kleiner / 100 %\nStrg+Umschalt+L  Sprache   F11  Vollbild        Strg+Q  Beenden      Esc  Dialog schließen\nStrg+F  Befehls-Konsole (Befehlszeile + Ziffernblock + Tasten)\n```"
+ }
+]

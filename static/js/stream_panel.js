@@ -1,3 +1,5 @@
+// Copyright (C) 2026 Samuel Zenker
+// SPDX-License-Identifier: GPL-3.0-or-later
 /* Livestream-Panel (Kamera) - Client-Seite.
  *  - OCStreams: die Stream-Quellen dieses Computers (Name, Adresse, Typ, Zugangsdaten). Das Passwort bleibt auf dem Server (verschluesselt);
  *    die Clients sehen nur 'hat Passwort'. Quellen mit Passwort laufen immer ueber den Server (/api/streams/<id>/...).

@@ -1,0 +1,91 @@
+[
+ {
+  "id": "show-safety-001",
+  "page": "show-safety",
+  "path": [
+   "Sicherungen, Sperre und sicheres Beenden"
+  ],
+  "title": "Sicherungen, Sperre und sicheres Beenden",
+  "keywords": [],
+  "text": "Du hast die Show vor der Veranstaltung programmiert und speicherst jetzt **mit Absicht nicht mehr** – nichts soll aus Versehen überschrieben werden. OpenCue schützt dich auf vier Wegen: **Sicherungen im Hintergrund**, **Wiederherstellung** nach einem Absturz, eine **Sperre** für fertige Shows und einen **vorsichtigen Beenden-Dialog**. Diese Anleitung erklärt alle vier und wie man ein Problem meldet."
+ },
+ {
+  "id": "show-safety-002",
+  "page": "show-safety",
+  "path": [
+   "Sicherungen, Sperre und sicheres Beenden",
+   "1. Sicherungen im Hintergrund"
+  ],
+  "title": "1. Sicherungen im Hintergrund",
+  "keywords": [],
+  "text": "OpenCue schreibt regelmäßig den **aktuellen Stand deiner Show** – auch Änderungen, die du *nicht* gespeichert hast – in einen versteckten Ordner. Du siehst ihn nie, bis du ihn brauchst. Eine Sicherung **ersetzt niemals deine Show-Datei**.\n\n- **Wann:** standardmäßig alle **15 Minuten**, aber **nur**, wenn die Show ungespeicherte Änderungen hat und sich seit der letzten Sicherung etwas geändert hat. Nichts geändert = nichts geschrieben.\n- **Außerdem:** beim Beenden ohne Speichern, wenn das Speichern gescheitert ist (zum Beispiel weil die Show gesperrt ist) und kurz bevor du eine andere Show öffnest oder neu beginnst, obwohl die jetzige noch ungespeicherte Änderungen hat.\n- **Wie viele:** die neuesten **10** je Show bleiben erhalten, insgesamt höchstens 100; ältere werden automatisch gelöscht.\n- **Wo:** der Ordner `backups` im Datenordner (`%LOCALAPPDATA%\\OpenCue\\backups`). Eine Sicherung ist eine ganz normale Show-Datei."
+ },
+ {
+  "id": "show-safety-003",
+  "page": "show-safety",
+  "path": [
+   "Sicherungen, Sperre und sicheres Beenden",
+   "1. Sicherungen im Hintergrund",
+   "Einstellungen"
+  ],
+  "title": "Einstellungen",
+  "keywords": [],
+  "text": "**Einstellungen → Allgemein → Sicherungen der Show**:\n\n| Einstellung | Bedeutung |\n|---|---|\n| **Show im Hintergrund sichern** | Die ganze Funktion ein- oder ausschalten (Standard: an). |\n| **Alle (Minuten)** | Das Intervall, 1 bis 240 (Standard 15). |\n| **Behalten je Show** | Wie viele Sicherungen einer Show bleiben, 1 bis 50 (Standard 10). |\n| **Sicherung wiederherstellen …** / **Ordner öffnen** | Öffnet den Wiederherstellen-Dialog (Abschnitt 2) oder den Ordner im Explorer. |\n\nDie Einstellungen gelten für das ganze Programm und lassen sich von jedem Gerät aus ändern, auch von einem Fernsteuer-Gerät."
+ },
+ {
+  "id": "show-safety-004",
+  "page": "show-safety",
+  "path": [
+   "Sicherungen, Sperre und sicheres Beenden",
+   "2. Eine Sicherung wiederherstellen"
+  ],
+  "title": "2. Eine Sicherung wiederherstellen",
+  "keywords": [],
+  "text": "**Datei → Sicherung wiederherstellen …** (oder der Knopf in den Einstellungen) listet alle Sicherungen, die neueste zuerst: Show-Name, Zeitpunkt, Anlass (automatisch, beim Beenden, von Hand, vor einer Wiederherstellung, Speichern gescheitert) und Größe.\n\n- **Wiederherstellen** lädt die Sicherung als **ungespeicherte Show**. Die Show-Datei auf der Platte bleibt genau wie sie ist, auch wenn sie gesperrt ist. Danach **Speichern** (oder **Showfile speichern unter...**), wenn du zufrieden bist.\n- Der Stand von vorher wird zuerst gesichert – auch eine Wiederherstellung kann nichts verlieren.\n- **Jetzt sichern** macht sofort eine Sicherung; **Löschen** entfernt eine. Das geht alles auch von einem Fernsteuer-Gerät (*Ordner öffnen* zeigt dort den OpenCue-Explorer).\n- Shows, Layouts, Bühnen und Einstellungen werden **sicher** geschrieben: erst in eine Nachbardatei, dann ausgetauscht – ein Absturz oder Stromausfall mitten im Speichern kann die vorhandene Datei nicht zerstören."
+ },
+ {
+  "id": "show-safety-005",
+  "page": "show-safety",
+  "path": [
+   "Sicherungen, Sperre und sicheres Beenden",
+   "2. Eine Sicherung wiederherstellen",
+   "Nach einem Absturz"
+  ],
+  "title": "Nach einem Absturz",
+  "keywords": [],
+  "text": "Wurde OpenCue nicht sauber beendet (Absturz, Stromausfall, Prozess beendet), bietet es beim nächsten Start **die letzte Sicherung dieser Sitzung an**: *„OpenCue wurde nicht sauber beendet … Wiederherstellen?“* – **Wiederherstellen**, **Alle Sicherungen zeigen** oder **Jetzt nicht** (die Sicherungen bleiben unter *Datei → Sicherung wiederherstellen …* erhalten)."
+ },
+ {
+  "id": "show-safety-006",
+  "page": "show-safety",
+  "path": [
+   "Sicherungen, Sperre und sicheres Beenden",
+   "3. Eine Show sperren"
+  ],
+  "title": "3. Eine Show sperren",
+  "keywords": [],
+  "text": "Eine fertige Show lässt sich **sperren**, damit niemand sie aus Versehen ändert. Im **Dateimanager** (*Datei → Dateimanager...*, Art *Shows*) auf das **Schloss-Symbol** in der Zeile der Show klicken; noch einmal klicken hebt die Sperre auf.\n\nEine gesperrte Show:\n\n- ist in der Liste mit **Gesperrt** markiert und zeigt neben dem Show-Namen in der oberen Leiste ein kleines **Schloss**, solange sie geladen ist,\n- lässt sich **nicht überschreiben, umbenennen oder löschen** – beim Speichern kommt *„Nicht gespeichert: … ist gesperrt“*,\n- lässt sich weiter **laden**, **duplizieren** (die Kopie ist nicht gesperrt) und unter **anderem Namen** mit *Showfile speichern unter...* speichern.\n\nDie Sperre schützt vor Versehen, nicht vor Kopieren: die Datei selbst lässt sich mit jedem anderen Programm ändern."
+ },
+ {
+  "id": "show-safety-007",
+  "page": "show-safety",
+  "path": [
+   "Sicherungen, Sperre und sicheres Beenden",
+   "4. Sicher beenden"
+  ],
+  "title": "4. Sicher beenden",
+  "keywords": [],
+  "text": "**Datei → Beenden** (oder der Schließen-Knopf) fragt: **Schließen mit Speichern**, **Schließen ohne Speichern** oder **Abbrechen**.\n\nLässt sich die Show **nicht speichern**, hat aber Änderungen – sie ist gesperrt, die Datei schreibgeschützt, der Ordner nicht beschreibbar oder das letzte Speichern ist gescheitert –, sieht der Dialog anders aus:\n\n- Eine **orange Box** oben sagt *„Diese Show kann nicht gespeichert werden“* und nennt die Gründe. Sie sagt auch, ob eine Sicherungskopie deiner Änderungen erhalten bleibt.\n- **Als Kopie speichern und beenden …** ersetzt *Schließen mit Speichern*: du wählst einen neuen Namen, die Show wird dort gespeichert, dann beendet sich OpenCue.\n- **Schließen ohne Speichern** braucht **zwei Klicks**: der erste färbt den Knopf rot (*„Noch einmal klicken: beenden, Änderungen gehen verloren“*), erst der zweite beendet.\n\nAuch dann wird beim Beenden noch eine Sicherung deiner Änderungen geschrieben (wenn die Sicherungen an sind); *Datei → Sicherung wiederherstellen …* holt sie zurück."
+ },
+ {
+  "id": "show-safety-008",
+  "page": "show-safety",
+  "path": [
+   "Sicherungen, Sperre und sicheres Beenden",
+   "5. Ein Problem melden"
+  ],
+  "title": "5. Ein Problem melden",
+  "keywords": [],
+  "text": "- **Hilfe → Log-Ordner öffnen** öffnet den Ordner mit `opencue.log`.\n- **Hilfe → Problem melden …** legt die **Diagnose** (Version, System, die letzten Protokollzeilen – ohne Zugangsschlüssel oder Passwörter) in die Zwischenablage und öffnet die Meldeseite des Projekts im Browser. Beschreibe, was du getan hast, und füge die Diagnose ein.\n- Fehler der Oberfläche stehen im Protokoll als **OC-3601**, eine Sicherung, die sich nicht schreiben ließ, als **OC-3701** (siehe die Anleitung *Fehlercodes*)."
+ }
+]

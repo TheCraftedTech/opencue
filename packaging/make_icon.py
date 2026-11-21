@@ -1,3 +1,5 @@
+# Copyright (C) 2026 Samuel Zenker
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Erzeugt packaging/OpenCue.ico aus den Pixel-Logos in packaging/icon-src/ (nur fuer die Entwicklung, gehoert nicht ins Programm).
 
 Die Groessen 256 / 128 / 64 zeigen das ganze Logo mit Schrift (OpenCue-full.svg), die kleinen 48 / 32 / 24 / 16 nur die Lampe (OpenCue-lamp.svg) - die Schrift waere dort

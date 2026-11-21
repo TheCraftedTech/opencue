@@ -1,0 +1,256 @@
+[
+ {
+  "id": "getting-started-001",
+  "page": "getting-started",
+  "path": [
+   "Aan de slag met OpenCue"
+  ],
+  "title": "Aan de slag met OpenCue",
+  "keywords": [],
+  "text": "OpenCue is een lichtbesturingsconsole voor je pc. Deze handleiding brengt je in ongeveer tien minuten van het installatieprogramma naar je eerste lichtcue – zonder aangesloten lampen, want de eerste stappen werken met de ingebouwde demoshow.\n\nAlle handleidingen zitten ook in het programma, zelfs offline: **Help → Handleidingen** (of **F1**) opent ze met een zoekfunctie (`Ctrl+F` binnenin)."
+ },
+ {
+  "id": "getting-started-002",
+  "page": "getting-started",
+  "path": [
+   "Aan de slag met OpenCue",
+   "1. Wat je nodig hebt"
+  ],
+  "title": "1. Wat je nodig hebt",
+  "keywords": [],
+  "text": "- Een pc met **Windows 10 of 11** (64-bit). De **Microsoft Edge WebView2 Runtime** toont het venster van OpenCue; die hoort bij de huidige Windows, en het installatieprogramma installeert hem als hij ontbreekt (daarvoor is eenmalig internet nodig).\n- Voor echte lampen: een DMX-verbinding – via het netwerk (**Art-Net** of **sACN**) of een **USB-DMX-interface** (Enttec DMX USB Pro en compatibele). Zonder hardware kun je toch alles programmeren en bekijken in de **3D-simulatie**.\n- Geen account, geen licentiesleutel, geen internetverbinding tijdens het werken."
+ },
+ {
+  "id": "getting-started-003",
+  "page": "getting-started",
+  "path": [
+   "Aan de slag met OpenCue",
+   "2. Installeren"
+  ],
+  "title": "2. Installeren",
+  "keywords": [],
+  "text": "1. Download `OpenCue-Setup-v<versie>.exe` van de Releases-pagina van het project en start hem.\n2. De setup begint met een welkomstpagina waar je de **taal** kiest (Engels of Duits; dat is ook de taal van OpenCue zelf – andere talen kies je later in het menu *Taal*).\n3. Klik je erdoorheen: **Licentie** (de GNU GPL, om te lezen), **Programmamap**, **Gegevensmap**, **Snelkoppelingen** (Startmenu, bureaublad), het overzicht, **Installeren**.\n4. Rond af en start OpenCue.\n\nDe **gegevensmap** is waar je shows, lay-outs, projectoren en instellingen staan. De standaardlocatie (`%LOCALAPPDATA%\\OpenCue`) is voor de meeste mensen prima; je kunt in de setup een andere kiezen en die later in OpenCue wijzigen onder *Instellingen → Opslag*.\n\nIs OpenCue al geïnstalleerd, dan herkent de setup dat en biedt *Bijwerken*, *Opnieuw installeren* of *Verwijderen* aan – je gegevens blijven altijd staan. OpenCue controleert bij het starten ook op nieuwe versies (uit te schakelen in *Instellingen → Algemeen*) en biedt aan ze te installeren; *Help → Controleren op updates…* doet het op verzoek.\n\nOpenCue vind je via de Windows-zoekfunctie (Windows-toets en typ « OpenCue »)."
+ },
+ {
+  "id": "getting-started-004",
+  "page": "getting-started",
+  "path": [
+   "Aan de slag met OpenCue",
+   "3. De eerste start"
+  ],
+  "title": "3. De eerste start",
+  "keywords": [],
+  "text": "Bij een verse installatie opent OpenCue een kant-en-klare **demoshow** met de naam **Default_1**:\n\n- vijf **Generic Dimmers** (“Dimmer 1” … “Dimmer 5”) in universum 1 op kanaal 1 tot 5,\n- een cuelijst “Default” met twee cues (“Cue 1” en “Cue 2”, elk één seconde fade),\n- een **lay-out** met de panelen die je als eerste nodig hebt: cuelijst, projectorlijst, projectorbediening, executor, opdrachtregel, opdrachtknoppen en numpad.\n\nBij de allereerste start opent een korte **welkomstdialoog**: taal, en dan – alleen als je wilt – het netwerk (Art-Net, toegang op afstand met je eigen wachtwoord, OSC). Hij kan niet worden gesloten, je klikt erdoorheen (of drukt op *Overslaan* op de eerste pagina). Er wordt niets ingeschakeld zonder jouw akkoord; schakel je iets in dat het netwerk gebruikt, dan kan Windows eenmalig vragen of OpenCue het mag gebruiken. Na een update toont **Help → Wat is er nieuw** de wijzigingen (opent één keer vanzelf).\n\nIn de 3D-simulatie bestaat nog geen podium – dat maak je aan als je het nodig hebt. De democbestanden zijn gewone bestanden: wijzig of verwijder ze naar believen."
+ },
+ {
+  "id": "getting-started-005",
+  "page": "getting-started",
+  "path": [
+   "Aan de slag met OpenCue",
+   "4. De interface in een minuut",
+   "Menu's (linksboven)"
+  ],
+  "title": "Menu's (linksboven)",
+  "keywords": [],
+  "text": "| Menu | Inhoud |\n|---|---|\n| **Bestand** | Nieuw / Openen / Opslaan / Opslaan als (showbestanden), Afmelden (alleen apparaten op afstand), Afsluiten |\n| **Bewerken** | **Panelen bewerken** (bewerkmodus), Ongedaan maken / Opnieuw uitvoeren, **Paneel toevoegen…**, Knop / Fader toevoegen, **Lay-outs beheren…** |\n| **Bibliotheek** | **Projectorbibliotheek…**, 3D-podia, en het bestandsbeheer toont *Shows*, *Lay-outs*, *3D-podia*, *Effecten* |\n| **Weergave** | Volledig scherm, GUI-schaal, Lay-outs |\n| **Taal** | English / Deutsch / Français / Nederlands / Italiano / Español |\n| **Help** | Toetsenbordsnelkoppelingen, GitHub-repository, Controleren op updates…, Over OpenCue |"
+ },
+ {
+  "id": "getting-started-006",
+  "page": "getting-started",
+  "path": [
+   "Aan de slag met OpenCue",
+   "4. De interface in een minuut",
+   "Werkbalk (boven)"
+  ],
+  "title": "Werkbalk (boven)",
+  "keywords": [],
+  "text": "De werkbalk toont de huidige **lay-out** en het **podium**, de **showbestandsnaam** (klik erop om het bestandsbeheer te openen), een pulserende **Blackout**-knop (gloeilamp), de **timecode**, een DMX-indicator, het aantal verbonden **apparaten op afstand** en de knop **Instellingen**. Beweeg je de muis over een onderdeel, dan licht het op en een **tooltip** zegt wat het is. Wat er in de balk staat bepaal je zelf onder *Instellingen → Werkbalk en internet* (elk onderdeel apart; alleen voor dit apparaat; het tandwiel is altijd zichtbaar).\n\n**Operatormodus in gewone woorden** (*Weergave → Operatormodus ...*): je geeft de console aan iemand die alleen mag **bedienen** – faders schuiven, knoppen indrukken, cues starten – maar niets mag wijzigen. In operatormodus zijn menu's, instellingen en ombouwen vergrendeld, en is **spraakbesturing uit** (de microfoon blijft dicht). Eruit komt alleen met het **wachtwoord** (hangslot rechtsonder of `Ctrl+L`). Daarvoor is het wachtwoord uit *Instellingen → Beveiliging* nodig. **Scherm vergrendelen** is iets anders (*Bedieningen → Scherm vergrendelen*, `Ctrl+L`): het verduistert alles tot het wachtwoord is ingevoerd – er is dan niets meer te bedienen."
+ },
+ {
+  "id": "getting-started-007",
+  "page": "getting-started",
+  "path": [
+   "Aan de slag met OpenCue",
+   "4. De interface in een minuut",
+   "Panelen"
+  ],
+  "title": "Panelen",
+  "keywords": [],
+  "text": "Al het andere zijn **panelen** die je vrij plaatst. De belangrijkste:"
+ },
+ {
+  "id": "getting-started-008",
+  "page": "getting-started",
+  "path": [
+   "Aan de slag met OpenCue",
+   "4. De interface in een minuut",
+   "Panelen"
+  ],
+  "title": "Panelen (2)",
+  "keywords": [],
+  "text": "| Paneel | Doel |\n|---|---|\n| **Projectorlijst** | De patch: projectoren toevoegen, bewerken en verwijderen |\n| **Projectorbediening** | Dimmer, positie, kleur, bundel, focus en DMX direct voor de geselecteerde projectoren; ook het tegelraster om te selecteren |\n| **Cuelijst** | De cues van een lijst: opslaan, bijwerken, bewerken, verwijderen, afspelen |\n| **Executor** | Afspelen met Go / Pause / Back / Stop en een mixfader |\n| **Opdrachtregel**, **Opdracht-numpad**, **Opdrachtknoppen** | Typen en aanraakinvoer voor opdrachten |\n| **Variabelen/effecten** | Herbruikbare kleuren, posities, bundels en effecten |\n| **Effectenstudio** | Eigen effecten schrijven |\n| **DMX-monitor** | De verzonden waarden zien |\n| **3D-simulatie** | Je podium en lampen live zien |\n| **Timecode**, **Tijdlijn-editor**, **Video/audiospeler**, **Livestream/camera** | Tijd en media (handleiding *Tijdlijn-editor en LTC*) |\n| **Audio** | Live muziekanalyse (spectrum, beat, tempo): lampen en cues kunnen op muziek reageren |\n| **Eenvoudige bediening** | Een eenvoudig bedieningsvlak om uit te lenen: lampen kiezen per tegel, **joystick**, helderheid, kleurveld, zoom, gobo's – zie *Toegang op afstand → Operatormodus* |\n| **Knop**, **Fader**, **Schakelaar** | Eigen knoppen, faders en aan/uit-schakelaars die opdrachten uitvoeren (of ze in de opdrachtregel schrijven) |"
+ },
+ {
+  "id": "getting-started-009",
+  "page": "getting-started",
+  "path": [
+   "Aan de slag met OpenCue",
+   "4. De interface in een minuut",
+   "Panelen"
+  ],
+  "title": "Panelen (3)",
+  "keywords": [],
+  "text": "Panelen voeg je toe met **Bewerken → Paneel toevoegen…**."
+ },
+ {
+  "id": "getting-started-010",
+  "page": "getting-started",
+  "path": [
+   "Aan de slag met OpenCue",
+   "5. Je eerste cue",
+   "Stap 1 – Selecteren"
+  ],
+  "title": "Stap 1 – Selecteren",
+  "keywords": [],
+  "text": "Klik op projectoren op het tabblad **Projectoren** van het paneel Projectorbediening (of in de projectorlijst) – of typ in de opdrachtregel:\n\n```\nFixture 1 Thru 3\n```"
+ },
+ {
+  "id": "getting-started-011",
+  "page": "getting-started",
+  "path": [
+   "Aan de slag met OpenCue",
+   "5. Je eerste cue",
+   "Stap 2 – Een look maken"
+  ],
+  "title": "Stap 2 – Een look maken",
+  "keywords": [],
+  "text": "Gebruik de **Dimmer**-fader – of typ:\n\n```\nAt 80\n```\n\nKies een kleur als je projectoren die hebben (`Color Red`). Gewijzigde projectoren krijgen een rode markering: ze zitten nu in de **programmer**.\n\nBij moving heads heeft **Positie** drie weergaven: **Grof** (faders voor pan en tilt), **Fijn** (één veegstrook per as: veeg omhoog of omlaag, de markeringen volgen je vinger – één stap van het fijne kanaal per 4 pixels) en **Joystick**. De joystick is een ronde knop met twee assen, **relatief**: hoe verder je duwt, hoe sneller de projector beweegt; de binnenste cirkel is heel nauwkeurig, de buitenkant snel. Laat je los, dan springt de knop terug naar het midden en blijft de projector waar hij is. Hij wijzigt de grove en de fijne waarde, en meerdere geselecteerde projectoren bewegen met hetzelfde bedrag (hun verschillen blijven). Muis en aanraking werken allebei."
+ },
+ {
+  "id": "getting-started-012",
+  "page": "getting-started",
+  "path": [
+   "Aan de slag met OpenCue",
+   "5. Je eerste cue",
+   "Stap 3 – Een cue opslaan"
+  ],
+  "title": "Stap 3 – Een cue opslaan",
+  "keywords": [],
+  "text": "Klik op **Cue opslaan** in het paneel Cuelijst. Een dialoog vraagt om de **positie** (aan het einde, na een cue of vrij), het **cuenummer** en een optionele **naam**. Klik op **Opslaan**. Of typ:\n\n```\nStore Cue 3 \"Warm look\"\n```\n\nBestaat het nummer al, dan kies je **Samenvoegen** (alleen de gewijzigde kanalen gaan erin) of **Overschrijven**."
+ },
+ {
+  "id": "getting-started-013",
+  "page": "getting-started",
+  "path": [
+   "Aan de slag met OpenCue",
+   "5. Je eerste cue",
+   "Stap 4 – Afspelen"
+  ],
+  "title": "Stap 4 – Afspelen",
+  "keywords": [],
+  "text": "Druk op **Go** in het paneel Cuelijst of Executor – of typ `Go`. De look komt in over de fadetijd van de cue. `Go Cue 3` springt direct naar een cue; **Back** gaat een cue terug; **Pause** en **Stop** bedienen een lopende fade.\n\nGebruik de **Executor-fader** om te mixen tussen je handmatige waarden (0 %) en de cue (100 %). Voor een grote show voeg je **meerdere Executor-panelen** toe, elk gekoppeld aan een eigen cuelijst (paneelinstellingen → lijst): elk heeft zijn eigen fader en Go / Pause / Back / Stop – samen met de grandmaster (*Master*) werken ze als submasters."
+ },
+ {
+  "id": "getting-started-014",
+  "page": "getting-started",
+  "path": [
+   "Aan de slag met OpenCue",
+   "5. Je eerste cue",
+   "Stap 5 – Opslaan"
+  ],
+  "title": "Stap 5 – Opslaan",
+  "keywords": [],
+  "text": "Druk op `Ctrl+S`. Dit slaat het **showbestand** en je **lay-out** op. Zonder opslaan leven wijzigingen alleen in het geheugen; OpenCue vraagt voor het afsluit."
+ },
+ {
+  "id": "getting-started-015",
+  "page": "getting-started",
+  "path": [
+   "Aan de slag met OpenCue",
+   "6. Echte lampen aansluiten"
+  ],
+  "title": "6. Echte lampen aansluiten",
+  "keywords": [],
+  "text": "1. Open **Instellingen → DMX-uitgang**.\n2. Voor **Art-Net**: het staat bij de eerste start **uit** (het zendt in het netwerk) – schakel het in. **Apparaten automatisch zoeken** staat standaard aan: OpenCue zoekt Art-Net-apparaten in het netwerk (om de paar seconden) en zendt direct naar elk ervan, dus een node die je aansluit werkt gewoon. **Netwerk scannen** toont wat het vond (naam, adres, universa); **Gebruiken** maakt van een apparaat een vast doel. Schakel de automatische modus uit om zelf een vast **doel-IP** in te typen (bijvoorbeeld het Art-Net-broadcastadres) en zo nodig het **bind-IP** (welke netwerkkaart te gebruiken).\n3. Voor **sACN (E1.31)**: schakel het in. Ook dit staat standaard uit, zodat Windows bij de eerste start geen firewallvraag toont.\n4. Voor **USB-DMX** (Enttec DMX USB Pro of compatibel): schakel het in. De **COM-poort** blijft op **Automatisch (aanbevolen)**: OpenCue herkent de adapter zelf als je hem aansluit, verbindt, en verbindt opnieuw nadat je hem loskoppelt en weer aansluit (ook op een andere USB-poort). Kies het **universum**; kies alleen met de hand een COM-poort als je meerdere adapters hebt.\n5. Start een interface niet, gebruik dan **DMX-interfaces opnieuw initialiseren** – geen herstart nodig."
+ },
+ {
+  "id": "getting-started-016",
+  "page": "getting-started",
+  "path": [
+   "Aan de slag met OpenCue",
+   "6. Echte lampen aansluiten"
+  ],
+  "title": "6. Echte lampen aansluiten (2)",
+  "keywords": [],
+  "text": "**Patch** daarna je projectoren (handleiding *Projectoren en patchen*): universum en startkanaal moeten overeenkomen met het adres dat op elk apparaat is ingesteld.\n\nHet paneel **DMX-monitor** toont precies wat wordt verzonden. De knop **Blackout** zet alle helderheid direct op 0; nogmaals klikken brengt de look terug."
+ },
+ {
+  "id": "getting-started-017",
+  "page": "getting-started",
+  "path": [
+   "Aan de slag met OpenCue",
+   "7. De interface naar je hand zetten"
+  ],
+  "title": "7. De interface naar je hand zetten",
+  "keywords": [],
+  "text": "- **Bewerkmodus** (**Bewerken → Panelen bewerken**, `Ctrl+E`): panelen verplaatsen en vergroten of verkleinen (heel klein kan, de inhoud scrolt dan), hun eigenschappen en kleuren wijzigen, kopiëren en plakken. **Rechtsklikken op de lege werkruimte** voegt een paneel, knop, schakelaar of fader toe op de plek van de klik. Het vinkje **Bewerken → Hulplijnen** zet de uitlijnhulplijnen tijdens het verplaatsen aan of uit (houd `Alt` ingedrukt: kortstondig uit).\n- **Lay-outs** zijn bestanden. Bouw er meerdere (bijvoorbeeld een kleine om te programmeren en een grote om af te spelen) en wissel met `Ctrl+1` … `Ctrl+9` of **Weergave → Lay-outs**. Opslaan met `Ctrl+S` of in het bestandsbeheer.\n- **Thema's** (kleurprofielen): *Instellingen → Weergave* – donker, licht of je eigen.\n- **GUI-schaal** (`Ctrl +` / `Ctrl -`): maakt alles groter voor aanraakschermen; wordt per apparaat bewaard.\n- **Taal:** menu *Taal* (English, Deutsch, Français, Nederlands, Italiano, Español) of `Ctrl+Shift+L`. De handleidingen zijn beschikbaar in alle zes de talen."
+ },
+ {
+  "id": "getting-started-018",
+  "page": "getting-started",
+  "path": [
+   "Aan de slag met OpenCue",
+   "7. De interface naar je hand zetten",
+   "Instellingen in één oogopslag"
+  ],
+  "title": "Instellingen in één oogopslag",
+  "keywords": [],
+  "text": "Het tandwiel (**Instellingen**) opent een dialoog met links categorieën, gegroepeerd per taak. Belangrijke categorieën beginnen met een **grote aan/uit-schakelaar**: staat die uit, dan is alles eronder gedimd en vergrendeld. Niets wordt toegepast voordat je op **Opslaan** klikt (de dialoog blijft open); **Sluiten** vraagt het bij niet-opgeslagen wijzigingen. Het veld **Instellingen zoeken ...** vindt ook instellingen in categorieën die je nooit hebt geopend en toont de treffers over **alle categorieën** (*instelling - categorie / sectie*); een klik springt naar de rij. De kleine **(i)** achter een instelling toont de uitleg; de **(i)-knop naast het zoekveld** toont of verbergt alle uitleg (per apparaat onthouden).\n\n**Instellingen veiligstellen:** onderaan *Algemeen* slaat **Instellingen exporteren** alle instellingen op als bestand (`opencue-settings.json`), **Instellingen importeren ...** leest er een terug. Geïmporteerde waarden verschijnen als **wijzigingen** (gemarkeerd en geteld) – alleen **Opslaan** past ze toe, **Sluiten** verwerpt ze. Niet inbegrepen zijn wachtwoorden en toegangssleutels, apparaat- of computerspecifieke waarden (schaal, gegevensmap, microfoons, MIDI-apparaten) en de toetsenbord- en MIDI-toewijzingen – die hebben hun eigen export."
+ },
+ {
+  "id": "getting-started-019",
+  "page": "getting-started",
+  "path": [
+   "Aan de slag met OpenCue",
+   "7. De interface naar je hand zetten",
+   "Instellingen in één oogopslag"
+  ],
+  "title": "Instellingen in één oogopslag (2)",
+  "keywords": [],
+  "text": "| Groep | Categorie | Waarvoor |\n|---|---|---|\n| Programma | **Algemeen** | De basis: taal, GUI-schaal, lay-out wisselen door vegen, starten met Windows, updates, showback-ups, gegevensmap, instellingen veiligstellen |\n| Programma | **Weergave** | Kleuren, thema's, standaardwaarden voor nieuwe panelen |\n| Uitgang | **DMX-uitgang** | Art-Net, sACN, USB-DMX – elk met een eigen schakelaar, **alles staat bij de eerste start uit** |\n| Netwerk | **Toegang op afstand** | Tablet / telefoon als afstandsbediening: hoofdschakelaar, HTTP / HTTPS, wachtwoord, adressen en QR-codes, netwerknaam `opencue.local` |\n| Netwerk | **REST API** | Andere programma's besturen OpenCue: schakelaar, *Bereikbaar vanaf* (alleen deze computer / het netwerk), tokens |\n| Bedieningen | **Toetsenbord** | De sneltoetsen bekijken, **eigen toetstoewijzing** (handleiding *Toetsenbordsnelkoppelingen*) |\n| Bedieningen | **MIDI** | MIDI gebruiken, apparaten en uitgang kiezen, timecode / tempo uit MIDI, **MIDI-toewijzing** (handleiding *MIDI*) |\n| Spraak en audio | **Triggerwoord** | Spraakbesturing met een eigen microfoon: triggerwoord + Engelse opdracht, bijv. “OpenCue, blackout on” (handleiding *Spraakopdrachten*); aan/uit met het microfoonsymbool rechtsboven |\n| Spraak en audio | **Dictatie** | Microfoon en spraakmodel om te dicteren in de AI-chat |\n| Assistent | **AI-assistent** | Hoofdschakelaar, verbinding met Ollama, gedrag, rechten |\n| Geavanceerd | **Meer opties** | **Snelschakelaars** (spraakbesturing, MIDI, blackout, ongedaan maken inclusief Go – ze werken meteen, ook als hun knop in de werkbalk is verborgen), **Scherm wakker houden** (computer en tablets; op de iPad alleen op een beveiligde pagina, https), wat rechtsboven in de balk staat (elk onderdeel apart, per apparaat) en de **internetverbinding** (knop *Verbinding testen*) |\n| Geavanceerd | **Standaardwaarden** | Standaarden voor nieuwe cues, basisstaat na *Clear Clear*, beginwaarden en **Verwijderen**: een bevestiging voor het verwijderen per categorie (cues, projectoren, bibliotheek, bestanden, overig) – standaard aan |\n| Geavanceerd | **Ingangen & uitgangen** | Alleen weergave: elke verbinding, waarvoor ze dient en **hoe ver ze reikt** (*alleen deze pc*, *lokaal netwerk*, *internet*), met een link naar de bijbehorende instelling |"
+ },
+ {
+  "id": "getting-started-020",
+  "page": "getting-started",
+  "path": [
+   "Aan de slag met OpenCue",
+   "7. De interface naar je hand zetten",
+   "Instellingen in één oogopslag"
+  ],
+  "title": "Instellingen in één oogopslag (3)",
+  "keywords": [],
+  "text": "**Bij de eerste start verlaat niets de computer:** toegang op afstand, Art-Net, sACN en de REST API naar buiten zijn uit. Alleen de updatecontrole staat aan (uit te schakelen); die heeft internet nodig. Werkt internet in de browser maar niet in OpenCue (firewall, antivirus, bedrijfsnetwerk), dan toont *Algemeen → Internetverbinding → Verbinding testen* **wat** in de weg zit."
+ },
+ {
+  "id": "getting-started-021",
+  "page": "getting-started",
+  "path": [
+   "Aan de slag met OpenCue",
+   "8. Wat je daarna kunt verkennen"
+  ],
+  "title": "8. Wat je daarna kunt verkennen",
+  "keywords": [],
+  "text": "| Onderwerp | Waar |\n|---|---|\n| Projectoren, GDTF-bibliotheek, patchen, groepen | *Projectoren en patchen* |\n| Alle getypte opdrachten | *Opdrachtenreferentie* |\n| Eigen effecten met een kleine scripttaal | *Effectenstudio* |\n| Tablet en telefoon als afstandsbediening | *Toegang op afstand* |\n| Elke sneltoets en elk gebaar | *Toetsenbordsnelkoppelingen* (ook **Help → Toetsenbordsnelkoppelingen**) |\n| Podium in 3D, moving heads op een punt richten | Paneel **3D-simulatie** (voeg het toe via *Paneel toevoegen*; modi Weergave / Bouwen / Projectoren) |\n| Eigen 3D-modellen (STL of OBJ) op het podium | 3D-simulatie → **Bouwen** → **3D-model …** (importeren of uit de bibliotheek kiezen; de bestandseenheid mm/cm/m/inch bepaalt de oorspronkelijke grootte). **Meerdere bestanden tegelijk importeren** (selecteer ze in het bestandsdialoogvenster of sleep ze vanuit Verkenner op het podium in de modus *Bouwen*): ze worden naast elkaar rond het midden van het beeld geplaatst en samen geselecteerd. Beheerd in het bestandsbeheer onder **3D-modellen** |\n| Een paneel kort gebruiken zonder het in de lay-out te zetten | **Weergave → Paneel als venster openen**; opdrachtregel met numpad en toetsen: **Ctrl+F** (opdrachtconsole) |\n| Cues die op een tijdstip starten | Paneel **Timecode** en cuetrigger *Timecode* |\n| Lampen en cues die op muziek reageren | Paneel **Audio**, effecten met het label *Audio*, cuetrigger *Audio* (handleiding *Audio*) |\n| Cues die wachten op een toets, pad of fader van een MIDI-apparaat | cuetrigger *MIDI* (handleiding *MIDI*, sectie 5c) |\n| OpenCue vanuit andere programma's besturen | **REST API** (Instellingen → API; handleiding *REST API*) |\n| Bestanden: shows, lay-outs, podia, 3D-modellen, effecten | **Bibliotheek → Shows… / Lay-outs… / 3D-podia… / Effecten…** (het bestandsbeheer, met import en export als ZIP; het exportpakket van een show kan ook de 3D-modellen van zijn podium bevatten) |"
+ },
+ {
+  "id": "getting-started-022",
+  "page": "getting-started",
+  "path": [
+   "Aan de slag met OpenCue",
+   "9. Waar je gegevens staan en hoe je ze back-upt"
+  ],
+  "title": "9. Waar je gegevens staan en hoe je ze back-upt",
+  "keywords": [],
+  "text": "Je gegevens zijn gewone bestanden in de gegevensmap (standaard `%LOCALAPPDATA%\\OpenCue`):\n\n| Map | Inhoud |\n|---|---|\n| `showfiles` | Shows (projectoren, groepen, cues, presets, effecten) |\n| `layouts` | Paneel-lay-outs |\n| `themes` | Kleurprofielen |\n| `fixtures` | GDTF-projectorbestanden |\n| `effects` | Effectscripts (`.fx`) |\n| `stages` | 3D-podia |\n| `media` | Video's en audio van je shows |\n| `config` | Instellingen (`app_config.json`, incl. de gekozen audiobron) en de API-tokens (`api_tokens.json`, alleen hashes) |\n\nVoor een back-up kopieer je de map – of gebruik je de **export** van het bestandsbeheer (een show als ZIP inclusief de projectoren en effecten die hij nodig heeft), waarmee je een show ook naar een andere computer verplaatst.\n\nBij het verwijderen van OpenCue wordt gevraagd of deze gegevens ook moeten worden gewist; de standaardkeuze is **Nee**."
+ }
+]

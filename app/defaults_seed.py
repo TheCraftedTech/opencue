@@ -1,3 +1,5 @@
+# Copyright (C) 2026 Samuel Zenker
+# SPDX-License-Identifier: GPL-3.0-or-later
 """
 defaults_seed.py
 Erstbefuellung des Benutzerordners mit den mitgelieferten Vorlagen aus defaults/ (nur lesen, siehe defaults/README.md):

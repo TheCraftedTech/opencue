@@ -1,3 +1,5 @@
+# Copyright (C) 2026 Samuel Zenker
+# SPDX-License-Identifier: GPL-3.0-or-later
 """
 remote_pwa.py
 PWA-Huelle der Remote-Control: Manifest, Service Worker, Offline-Seite, Icons und die Head-Tags fuer iPad/Safari.
@@ -14,7 +16,9 @@ in Safari trotzdem, nur die Offline-Seite fehlt dann.
 
 from __future__ import annotations
 
+import base64
 import hashlib
+import json
 import re
 from pathlib import Path
 from typing import Dict, Optional
@@ -36,8 +40,10 @@ ICON_FILES = {
 }
 
 # Pfade, die ohne Anmeldung ausgeliefert werden (nur die Huelle, keine Show-Daten).
+ROOT_ICON_PATHS = ("/apple-touch-icon.png", "/apple-touch-icon-precomposed.png", "/apple-touch-icon-180x180.png")   # Safari fragt diese Adressen von sich aus ab
 PUBLIC_PATHS = {
-    "/remote/manifest.webmanifest", "/remote/sw.js", "/remote/offline.html", "/remote/ping", "/favicon.ico",
+    "/remote/manifest.webmanifest", "/remote/sw.js", "/remote/offline.html", "/remote/ping", "/favicon.ico", *ROOT_ICON_PATHS,
+    "/remote/zertifikat", "/remote/opencue.mobileconfig", "/remote/opencue-ca.crt",          # Zertifikat der eigenen Stelle (oeffentlich, ohne Geheimnis): muss VOR dem Vertrauen ladbar sein
 }
 PUBLIC_PREFIXES = ("/remote/icons/",)
 
@@ -114,6 +120,10 @@ def manifest() -> Dict[str, object]:
         "name": "OpenCue",
         "short_name": "OpenCue",
         "description": "OpenCue Remote Control",
+        "lang": state.language,
+        "dir": "ltr",
+        "categories": ["utilities", "productivity"],
+        "prefer_related_applications": False,
         "id": REMOTE_SCOPE,
         "start_url": REMOTE_SCOPE,
         "scope": REMOTE_SCOPE,
@@ -133,20 +143,39 @@ def manifest() -> Dict[str, object]:
 
 # ---- Head-Tags (Login-Seite und Remote-Hauptseite) ----------------------------------------
 
+_data_uris: Dict[str, str] = {}
+
+
+def icon_data_uri(name: str) -> str:
+    """Ein Symbol als data:-Adresse (die Dateien sind nur ~1 KB gross). Grund: ueber HTTPS mit einem selbst erstellten Zertifikat holt iOS das Symbol fuer
+    'Zum Home-Bildschirm' in einem eigenen Vorgang OHNE die vom Nutzer bestaetigte Zertifikats-Ausnahme - das Laden der Datei schlaegt dann still fehl
+    und es erscheint ein graues Buchstaben-Symbol. Eine eingebettete Adresse braucht keinen Abruf, sie funktioniert in jedem Fall."""
+    cached = _data_uris.get(name)
+    if cached is None:
+        try:
+            cached = "data:image/png;base64," + base64.b64encode((ICON_DIR / name).read_bytes()).decode("ascii")
+        except OSError:
+            cached = ""
+        _data_uris[name] = cached
+    return cached
+
+
 def head_tags() -> str:
-    """Manifest, Theme-Farbe und die iPad/Safari-Tags: 'Zum Home-Bildschirm' startet eine eigenstaendige App."""
+    """Manifest, Theme-Farbe und die iPad/Safari-Tags: 'Zum Home-Bildschirm' startet eine eigenstaendige App. Die Symbole sind eingebettet (siehe icon_data_uri)."""
     # Dunkles Thema: schwarze Statusleiste ueber dem Inhalt; helles Thema: helle Leiste mit dunkler Schrift.
     status_bar = "default" if state.theme["base"] == "light" else "black"
+    touch, small = icon_data_uri("apple-touch-icon.png"), icon_data_uri("icon-192.png")
     return (
         '<link rel="manifest" href="/remote/manifest.webmanifest">\n'
         f'<meta name="theme-color" content="{theme_color()}">\n'
         '<meta name="apple-mobile-web-app-capable" content="yes">\n'
         '<meta name="mobile-web-app-capable" content="yes">\n'
         '<meta name="apple-mobile-web-app-title" content="OpenCue">\n'
+        '<meta name="application-name" content="OpenCue">\n'
+        '<meta name="format-detection" content="telephone=no">\n'
         f'<meta name="apple-mobile-web-app-status-bar-style" content="{status_bar}">\n'
-        '<link rel="apple-touch-icon" href="/remote/icons/apple-touch-icon.png">\n'
-        '<link rel="icon" type="image/svg+xml" href="/remote/icons/logo.svg">\n'
-        '<link rel="icon" type="image/png" sizes="192x192" href="/remote/icons/icon-192.png">\n'
+        f'<link rel="apple-touch-icon" sizes="180x180" href="{touch or "/remote/icons/apple-touch-icon.png"}">\n'
+        f'<link rel="icon" type="image/png" sizes="192x192" href="{small or "/remote/icons/icon-192.png"}">\n'
     )
 
 
@@ -193,6 +222,18 @@ const PRECACHE = [
   "/remote/icons/apple-touch-icon.png",
 ];
 const NETWORK_WAIT_MS = 3000;   // so lange wartet eine zwischengespeicherte Datei auf das Netz
+const NAV_TIMEOUT_MS = 1500;    // so lange darf der Server auf eine Seite antworten, bevor die Offline-Seite erscheint
+                                // (ohne diese Grenze bleibt der Bildschirm weiss, wenn das WLAN da ist, der Rechner aber nicht antwortet: die Verbindung "haengt" dann minutenlang).
+                                // Antwortet der Server doch (nur langsam), blendet die Offline-Seite sich nach spaetestens ~1 s selbst wieder aus (sie fragt ihn ab).
+
+const NAV_RETRY_TIMEOUT_MS = 20000;   // Aufruf "/remote/?r=1" (die Offline-Seite hat den Server gerade erreicht): hier darf die Seite laenger brauchen - sonst gaebe es bei einem langsamen Gebaeude-Netz eine Schleife
+
+function withTimeout(promise, ms) {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error("timeout")), ms);
+    promise.then((value) => { clearTimeout(timer); resolve(value); }, (error) => { clearTimeout(timer); reject(error); });
+  });
+}
 
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(PRECACHE)).then(() => self.skipWaiting()));
@@ -233,7 +274,10 @@ self.addEventListener("fetch", (event) => {
   if (url.origin !== self.location.origin) return;
   if (request.mode === "navigate") {
     // Seiten kommen immer live vom Server; ist er nicht erreichbar, erscheint die Offline-Seite.
-    event.respondWith(fetch(request).catch(() => caches.match("/remote/offline.html")));
+    event.respondWith(withTimeout(fetch(request), url.searchParams.get("r") ? NAV_RETRY_TIMEOUT_MS : NAV_TIMEOUT_MS).catch(() => caches.match("/remote/offline.html").then((page) => page || new Response(
+      "<!doctype html><meta name=viewport content='width=device-width,initial-scale=1'><body style='font-family:system-ui;padding:2rem;background:#111;color:#eee'>" +
+      "<h2>OpenCue</h2><p>Server not reachable / nicht erreichbar.</p><p><a style='color:#fb0' href='/remote/'>Reload / Neu laden</a></p>",
+      {status: 503, headers: {"Content-Type": "text/html; charset=utf-8"}}))));
     return;
   }
   if (cacheable(url)) {
@@ -245,56 +289,217 @@ self.addEventListener("fetch", (event) => {
 
 
 def service_worker() -> str:
-    return SERVICE_WORKER.replace("__BUILD__", build_id())
+    """Der Kennwert enthaelt auch die (von Python erzeugte) Offline-Seite: aendern sich Sprache, Farben oder ihr Text, aendert sich der Service Worker, und der Browser
+    installiert ihn neu und holt die Offline-Seite frisch in den Zwischenspeicher."""
+    page_hash = hashlib.sha1(offline_page().encode("utf-8")).hexdigest()[:8]
+    return SERVICE_WORKER.replace("__BUILD__", build_id() + "-" + page_hash)
 
 
-# ---- Offline-Seite ------------------------------------------------------------------------
+# ---- Offline-Seite (auch Serverwahl) -----------------------------------------------------
+
+OFFLINE_KEYS = (
+    "SRV_OFFLINE_TITLE", "SRV_OFFLINE_RETRY", "OFFLINE_UNREACHABLE", "OFFLINE_RELOAD", "OFFLINE_OTHER", "OFFLINE_HOST", "OFFLINE_PORT", "OFFLINE_HTTPS", "OFFLINE_CONNECT",
+    "OFFLINE_RECENT", "OFFLINE_CHECKING", "OFFLINE_NOT_FOUND", "OFFLINE_OPEN_ANYWAY", "OFFLINE_HINT", "OFFLINE_THIS", "OFFLINE_REMOVE", "OFFLINE_BAD_ADDRESS",
+)
+
 
 def offline_page() -> str:
+    """Wird gezeigt, wenn der Server nicht erreichbar ist (der Service Worker liefert die Seite aus dem Zwischenspeicher). Neben dem automatischen Wiederholen
+    kann man hier eine andere Adresse eintragen (IP oder Name, Port, HTTPS ja / nein): so bleibt die einmal installierte App dieselbe, auch wenn sich die
+    Adresse des Rechners aendert. Die zuletzt benutzten Adressen merkt sich die Seite im Speicher dieses Geraets (localStorage)."""
     tokens = resolved_tokens()
     colors = {
         "bg": tokens.get("bg", "#0a0a0b"),
         "surface": tokens.get("surface-1", "#151517"),
+        "surface2": tokens.get("surface-2", "#1d1d20"),
         "border": tokens.get("border", "#323237"),
         "text": tokens.get("text-1", "#ededf0"),
         "muted": tokens.get("text-2", "#a2a2aa"),
         "accent": tokens.get("accent", "#ffb000"),
+        "ink": tokens.get("accent-ink", "#1a1200"),
+        "error": tokens.get("error", "#ff6b6b"),
     }
     base = state.theme["base"]
+    from app.languages import tr
+    texts = json.dumps({key: tr(key, state.language) for key in OFFLINE_KEYS}, ensure_ascii=False)
+    touch = icon_data_uri("apple-touch-icon.png")
+    icon = icon_data_uri("icon-192.png")
+    css = """
+  * { box-sizing: border-box; }
+  html, body { margin: 0; min-height: 100%; background: %(bg)s; color: %(text)s; font-family: -apple-system, "Segoe UI", system-ui, sans-serif; }
+  body { min-height: 100dvh; display: flex; align-items: center; justify-content: center;
+    padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(16px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left)); }
+  main { width: min(100%%, 28rem); padding: 26px 22px; background: %(surface)s; border: 1px solid %(border)s; border-radius: 14px; }
+  .head { display: flex; align-items: center; gap: 14px; margin-bottom: 14px; }
+  .head img { width: 52px; height: 52px; border-radius: 12px; flex: none; }
+  h1 { margin: 0; font-size: 1.25rem; line-height: 1.2; }
+  h2 { margin: 22px 0 10px; font-size: .8rem; letter-spacing: .06em; text-transform: uppercase; color: %(muted)s; font-weight: 600; }
+  p { margin: 0; color: %(muted)s; line-height: 1.45; font-size: .95rem; }
+  .addr { margin-top: 10px; padding: 10px 12px; background: %(surface2)s; border: 1px solid %(border)s; border-radius: 10px; font-family: ui-monospace, Menlo, Consolas, monospace; font-size: .9rem; word-break: break-all; }
+  .spin { width: 20px; height: 20px; border: 3px solid %(border)s; border-top-color: %(accent)s; border-radius: 50%%; animation: s 1s linear infinite; flex: none; }
+  .status { display: flex; align-items: center; gap: 10px; margin-top: 14px; }
+  button, input { font: inherit; font-size: 1rem; min-height: 3rem; border-radius: 10px; border: 1px solid %(border)s; }
+  input[type=text], input[type=number] { width: 100%%; padding: 0 12px; background: %(surface2)s; color: %(text)s; }
+  input:focus-visible, button:focus-visible { outline: 2px solid %(accent)s; outline-offset: 1px; }
+  button { padding: 0 16px; background: %(surface2)s; color: %(text)s; cursor: pointer; }
+  button.primary { background: %(accent)s; border-color: %(accent)s; color: %(ink)s; font-weight: 600; }
+  button:active { filter: brightness(.92); }
+  .row { display: grid; grid-template-columns: 1fr 6.5rem; gap: 10px; }
+  .row label, .sw { display: block; font-size: .8rem; color: %(muted)s; margin-bottom: 4px; }
+  .sw { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 12px 0; min-height: 2.75rem; font-size: 1rem; color: %(text)s; }
+  .sw input { appearance: none; -webkit-appearance: none; width: 3rem; min-height: 0; height: 1.7rem; border-radius: 999px; background: %(surface2)s; border: 1px solid %(border)s; position: relative; flex: none; padding: 0; }
+  .sw input::after { content: ""; position: absolute; top: 2px; left: 2px; width: calc(1.7rem - 6px); height: calc(1.7rem - 6px); border-radius: 50%%; background: %(muted)s; transition: transform .18s; }
+  .sw input:checked { background: %(accent)s; border-color: %(accent)s; }
+  .sw input:checked::after { background: #fff; transform: translateX(1.3rem); }
+  .actions { display: flex; gap: 10px; margin-top: 14px; }
+  .actions button { flex: 1; }
+  .msg { min-height: 1.3em; margin-top: 10px; color: %(error)s; font-size: .9rem; }
+  .msg button { min-height: 2.5rem; margin-top: 6px; }
+  .recent { display: flex; flex-direction: column; gap: 8px; }
+  .chip { display: flex; align-items: stretch; gap: 0; }
+  .chip .go { flex: 1; text-align: left; font-family: ui-monospace, Menlo, Consolas, monospace; font-size: .9rem; border-radius: 10px 0 0 10px; overflow: hidden; text-overflow: ellipsis; }
+  .chip .del { width: 3rem; padding: 0; border-left: 0; border-radius: 0 10px 10px 0; color: %(muted)s; }
+  .hint { margin-top: 18px; font-size: .85rem; }
+  @keyframes s { to { transform: rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce) { .spin { animation: none; } }
+"""
+    for name, value in colors.items():
+        css = css.replace("%(" + name + ")s", value)
+    css = css.replace("%%", "%")
+    script = r"""
+(function () {
+  var T = __TEXTS__;
+  var KEY = "opencue.servers";
+  var here = {host: location.hostname, port: location.port || (location.protocol === "https:" ? "443" : "80"), https: location.protocol === "https:"};
+  function $(id) { return document.getElementById(id); }
+  function fmt(s) { return (s.https ? "https" : "http") + "://" + s.host + (s.port && s.port !== (s.https ? "443" : "80") ? ":" + s.port : ""); }
+  function load() { try { var l = JSON.parse(localStorage.getItem(KEY) || "[]"); return Array.isArray(l) ? l.filter(function (s) { return s && s.host; }) : []; } catch (e) { return []; } }
+  function save(l) { try { localStorage.setItem(KEY, JSON.stringify(l.slice(0, 6))); } catch (e) { /* privat */ } }
+  function same(a, b) { return a.host === b.host && String(a.port) === String(b.port) && !!a.https === !!b.https; }
+  function remember(s) { save([s].concat(load().filter(function (x) { return !same(x, s); }))); }
+
+  $("t").textContent = T.OFFLINE_UNREACHABLE;
+  $("m").textContent = T.SRV_OFFLINE_RETRY;
+  $("here").textContent = fmt(here);
+  $("hereLabel").textContent = T.OFFLINE_THIS;
+  $("reload").textContent = T.OFFLINE_RELOAD;
+  $("otherTitle").textContent = T.OFFLINE_OTHER;
+  $("hostLabel").textContent = T.OFFLINE_HOST;
+  $("portLabel").textContent = T.OFFLINE_PORT;
+  $("httpsLabel").textContent = T.OFFLINE_HTTPS;
+  $("connect").textContent = T.OFFLINE_CONNECT;
+  $("recentTitle").textContent = T.OFFLINE_RECENT;
+  $("hint").textContent = T.OFFLINE_HINT;
+  $("host").value = "";
+  $("port").value = here.port;
+  $("https").checked = here.https;
+
+  var pinging = false;
+  function ping() {
+    // eine Abfrage hoechstens 1,5 s lang (ein haengender Server soll sich nicht aufstauen)
+    var ctl = ("AbortController" in window) ? new AbortController() : null;
+    var timer = setTimeout(function () { if (ctl) ctl.abort(); }, 1500);
+    return fetch("/remote/ping", {cache: "no-store", signal: ctl ? ctl.signal : undefined}).then(function (r) { clearTimeout(timer); return r.ok ? r.json() : null; })
+      .then(function (d) { return !!(d && d.ok && d.enabled); }).catch(function () { clearTimeout(timer); return false; });
+  }
+  var manual = /[?&]change=1/.test(location.search);        // "Anderen Server waehlen": bewusst geoeffnet, auch wenn der Server antwortet - nicht automatisch zurueckspringen
+  function check() {
+    if (manual || pinging) return;
+    pinging = true;
+    ping().then(function (ok) { pinging = false; if (ok) location.replace("/remote/?r=1"); });
+  }
+  check();
+  setInterval(check, 700);
+  window.addEventListener("online", check);
+  document.addEventListener("visibilitychange", function () { if (!document.hidden) check(); });
+  $("reload").addEventListener("click", function () { $("status").textContent = T.OFFLINE_CHECKING; ping().then(function (ok) { if (ok) location.replace("/remote/?r=1"); else $("status").textContent = T.SRV_OFFLINE_RETRY; }); });
+
+  function parse() {
+    var raw = $("host").value.trim(), https = $("https").checked, port = $("port").value.trim();
+    if (!raw) return null;
+    if (/^[a-z]+:\/\//i.test(raw)) {                         // ganze Adresse eingegeben: Teile uebernehmen
+      try { var u = new URL(raw); raw = u.hostname; https = u.protocol === "https:"; if (u.port) port = u.port; } catch (e) { return null; }
+    }
+    raw = raw.replace(/\/.*$/, "").replace(/:\d+$/, "");
+    if (!/^[A-Za-z0-9.\-]+$/.test(raw) || +port < 0 || +port > 65535) return null;
+    return {host: raw, port: port || (https ? "443" : "80"), https: https};
+  }
+  function go(s) { remember(s); location.href = fmt(s) + "/remote/"; }
+  function showMsg(text, server) {
+    var m = $("msg");
+    m.textContent = text;
+    if (server) {
+      var b = document.createElement("button");
+      b.type = "button"; b.textContent = T.OFFLINE_OPEN_ANYWAY;
+      b.addEventListener("click", function () { go(server); });
+      m.appendChild(document.createElement("br")); m.appendChild(b);
+    }
+  }
+  function connect(s) {
+    $("msg").textContent = "";
+    if (same(s, here)) { $("reload").click(); return; }
+    var sameProtocol = s.https === here.https;
+    if (!sameProtocol) { go(s); return; }                   // ueber Protokollgrenzen laesst sich nicht vorab pruefen: direkt oeffnen
+    $("status").textContent = T.OFFLINE_CHECKING;
+    var ctl = ("AbortController" in window) ? new AbortController() : null;
+    var timer = setTimeout(function () { if (ctl) ctl.abort(); }, 4500);
+    fetch(fmt(s) + "/remote/ping", {mode: "no-cors", cache: "no-store", signal: ctl ? ctl.signal : undefined})
+      .then(function () { clearTimeout(timer); go(s); })
+      .catch(function () { clearTimeout(timer); $("status").textContent = T.SRV_OFFLINE_RETRY; showMsg(T.OFFLINE_NOT_FOUND, s); });
+  }
+  $("connect").addEventListener("click", function () {
+    var s = parse();
+    if (!s) { showMsg(T.OFFLINE_BAD_ADDRESS); return; }
+    connect(s);
+  });
+  $("host").addEventListener("keydown", function (e) { if (e.key === "Enter") $("connect").click(); });
+  $("https").addEventListener("change", function () {       // Standard-Port folgt dem Schalter, solange man ihn nicht selbst geaendert hat
+    var p = $("port").value;
+    if (p === "80" || p === "443" || p === "") $("port").value = $("https").checked ? "443" : "80";
+  });
+
+  function renderRecent() {
+    var list = load(), box = $("recent");
+    box.textContent = "";
+    $("recentWrap").hidden = !list.length;
+    list.forEach(function (s) {
+      var row = document.createElement("div"); row.className = "chip";
+      var go1 = document.createElement("button"); go1.type = "button"; go1.className = "go"; go1.textContent = fmt(s);
+      go1.addEventListener("click", function () { connect(s); });
+      var del = document.createElement("button"); del.type = "button"; del.className = "del"; del.textContent = "×"; del.setAttribute("aria-label", T.OFFLINE_REMOVE);
+      del.addEventListener("click", function () { save(load().filter(function (x) { return !same(x, s); })); renderRecent(); });
+      row.appendChild(go1); row.appendChild(del); box.appendChild(row);
+    });
+  }
+  remember(here);
+  renderRecent();
+  if (/[?&]change=1/.test(location.search)) $("host").focus();
+})();
+""".replace("__TEXTS__", texts)
     return f"""<!doctype html>
 <html lang="{state.language}" data-theme="{base}"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="{base}">
+<meta name="theme-color" content="{theme_color()}">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="OpenCue">
+<link rel="apple-touch-icon" sizes="180x180" href="{touch}">
+<link rel="icon" type="image/png" href="{icon}">
 <title>OpenCue</title>
-<style>
-  html, body {{ margin: 0; height: 100%; background: {colors['bg']}; color: {colors['text']};
-    font-family: -apple-system, "Segoe UI", system-ui, sans-serif; }}
-  body {{ display: flex; align-items: center; justify-content: center; padding: 16px; box-sizing: border-box; }}
-  main {{ max-width: 26rem; width: 100%; text-align: center; padding: 28px 24px; background: {colors['surface']};
-    border: 1px solid {colors['border']}; }}
-  h1 {{ margin: 0 0 8px; font-size: 1.4rem; }}
-  p {{ margin: 0; color: {colors['muted']}; line-height: 1.5; }}
-  .spin {{ width: 28px; height: 28px; margin: 0 auto 16px; border: 3px solid {colors['border']};
-    border-top-color: {colors['accent']}; border-radius: 50%; animation: s 1s linear infinite; }}
-  @keyframes s {{ to {{ transform: rotate(360deg); }} }}
-  @media (prefers-reduced-motion: reduce) {{ .spin {{ animation: none; }} }}
-</style></head><body>
-<main role="status" aria-live="polite">
-  <div class="spin"></div>
-  <h1 id="t">OpenCue</h1>
-  <p id="m"></p>
+<style>{css}</style></head><body>
+<main>
+  <div class="head"><img src="{touch}" alt="" width="52" height="52"><div><h1 id="t">OpenCue</h1><p id="m"></p></div></div>
+  <h2 id="hereLabel"></h2>
+  <div class="addr" id="here"></div>
+  <div class="status"><div class="spin"></div><span id="status"></span></div>
+  <div class="actions"><button type="button" class="primary" id="reload"></button></div>
+  <h2 id="otherTitle"></h2>
+  <div class="row"><div><label for="host" id="hostLabel"></label><input id="host" type="text" inputmode="url" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="opencue.local"></div>
+    <div><label for="port" id="portLabel"></label><input id="port" type="number" inputmode="numeric" min="1" max="65535"></div></div>
+  <label class="sw"><span id="httpsLabel"></span><input id="https" type="checkbox"></label>
+  <div class="actions"><button type="button" class="primary" id="connect"></button></div>
+  <div class="msg" id="msg" role="alert"></div>
+  <div id="recentWrap" hidden><h2 id="recentTitle"></h2><div class="recent" id="recent"></div></div>
+  <p class="hint" id="hint"></p>
 </main>
-<script>
-  var de = (navigator.language || "{state.language}").toLowerCase().indexOf("de") === 0;
-  document.getElementById("t").textContent = de ? "Keine Verbindung zu OpenCue" : "No connection to OpenCue";
-  document.getElementById("m").textContent = de ? "Es wird automatisch erneut versucht." : "Retrying automatically.";
-  // Sobald der Server wieder antwortet, zurueck zur Remote-Seite.
-  function check() {{
-    fetch("/remote/ping", {{cache: "no-store"}}).then(function (r) {{ return r.ok ? r.json() : null; }})
-      .then(function (d) {{ if (d && d.ok && d.enabled) location.replace("/remote/"); }})
-      .catch(function () {{}});
-  }}
-  setInterval(check, 2000);
-  window.addEventListener("online", check);
-  document.addEventListener("visibilitychange", function () {{ if (!document.hidden) check(); }});
-</script></body></html>"""
+<script>{script}</script></body></html>"""

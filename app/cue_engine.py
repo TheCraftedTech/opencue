@@ -1,3 +1,5 @@
+# Copyright (C) 2026 Samuel Zenker
+# SPDX-License-Identifier: GPL-3.0-or-later
 """
 cue_engine.py
 Cue-Execution-Engine von OpenCue.
@@ -12,7 +14,7 @@ fester Tick-Rate (FADE_FPS), unabhaengig vom DMX-Sendetakt der DMXEngine
 einseitig (cue_engine -> dmx_engine), um einen Zirkelimport zu vermeiden
 (dmx_engine.py kennt cue_engine.py nicht).
 
-ATTRIBUT-ZEITEN (dot2-Stil): Ein Cue traegt eine allgemeine `fade`/`delay`-
+ATTRIBUT-ZEITEN (Lichtpult-Stil): Ein Cue traegt eine allgemeine `fade`/`delay`-
 Zeit (= Dimmer-Zeit) sowie optional eigene Zeiten je Attributgruppe
 (fade_color/delay_color, fade_pos/delay_pos, fade_beam/delay_beam, fade_zoom/delay_zoom). Ist
 eine gruppenspezifische Zeit nicht gesetzt (None), wird die allgemeine
@@ -53,13 +55,16 @@ from __future__ import annotations
 
 import asyncio
 import copy
+import json
 import time
 from dataclasses import dataclass, field
 from typing import Any, Awaitable, Callable, Dict, Optional, Set, Tuple
 
+from app.cue_fade import ATTR_GROUPS, SCALAR_ATTRS, FixtureFade, fade_abstract, fade_to_dict
 from app.fx_engine import ATTR_CATEGORY, CATEGORY_ATTRS, fx_engine
 from app.dmx_resolve import (
     DISCRETE_ATTRS,
+    _offsets_cached,
     apply_abstract_values,
     current_abstract_values,
     fixture_channel_offsets,
@@ -70,24 +75,9 @@ from app.dmx_resolve import (
 FADE_FPS = 40  # Hz - unabhaengig vom DMX-Output-Takt (siehe dmx_engine.OUTPUT_FPS)
 FADE_INTERVAL = 1.0 / FADE_FPS
 
-_SCALAR_ATTRS = ("dimmer", "pan", "tilt", "strobe", "gobo", "gobo_spin", "gobo2", "gobo2_spin", "prism", "focus", "zoom")
-
-# Abstraktes Attribut -> Attributgruppe (bestimmt, welche Cue-Fade/Delay-
-# Zeit gilt - siehe _group_timing()). "color" wird separat behandelt
-# (kein Eintrag in _SCALAR_ATTRS), gehoert aber ebenfalls zur "color"-Gruppe.
-_ATTR_GROUPS: Dict[str, str] = {
-    "dimmer": "dimmer",
-    "pan": "pos",
-    "tilt": "pos",
-    "strobe": "beam",
-    "gobo": "beam",
-    "gobo_spin": "beam",
-    "gobo2": "beam",
-    "gobo2_spin": "beam",
-    "prism": "beam",
-    "focus": "beam",
-    "zoom": "zoom",
-}
+# Attributgruppen, Skalare, Fade-Formeln: app/cue_fade.py (auch vom Ausgabe-Prozess benutzt)
+_SCALAR_ATTRS = SCALAR_ATTRS
+_ATTR_GROUPS = ATTR_GROUPS
 
 _MIB_DARK_THRESHOLD = 1.0  # % - Schwellwert fuer "praktisch dunkel" (MIB "Auto")
 
@@ -113,25 +103,7 @@ def _should_apply_mib(mib: str, current_dimmer: float, target_dimmer: Optional[f
     return False
 
 
-@dataclass
-class _FixtureFade:
-    """Start- und Zielwerte EINER Fixture fuer die laufende Ueberblendung."""
-
-    scalars_from: Dict[str, float] = field(default_factory=dict)
-    scalars_to: Dict[str, float] = field(default_factory=dict)
-    color_from: Optional[Dict[str, float]] = None
-    color_to: Optional[Dict[str, float]] = None
-    # Rohe Kanaele ("ch<Offset>", Byte): werden nie ueberblendet, sondern mit dem Beginn der Beam-Zeit (nach dem Delay) umgeschaltet
-    raw_from: Dict[str, float] = field(default_factory=dict)
-    raw_to: Dict[str, float] = field(default_factory=dict)
-    # MIB-Snap: Position/Farbe/Beam dieser Fixture werden sofort (t=1.0)
-    # angewandt statt ueber die Gruppen-Fade-Zeit zu interpolieren - der
-    # Dimmer selbst ist davon NICHT betroffen (faedet weiterhin regulaer).
-    mib_snap: bool = False
-    # MIB-Vorlauf: Werte des FOLGENDEN Cues, die ab `premove_after` Sekunden (nach Start dieses Cues) sofort angefahren werden,
-    # weil die Fixture dann dunkel ist.
-    premove_to: Dict[str, Any] = field(default_factory=dict)
-    premove_after: float = 0.0
+_FixtureFade = FixtureFade
 
 
 @dataclass
@@ -165,6 +137,10 @@ class CueEngine:
         self._on_cuelists_changed: Optional[Callable[[], Awaitable[None]]] = None
         self._on_broadcast: Optional[Callable[[str, Dict[str, Any]], Awaitable[None]]] = None
         self._on_command_log: Optional[Callable[[str, Dict[str, Any]], Awaitable[None]]] = None
+        # Ausgabe-Prozess: laufende Ueberblendungen gehen zusaetzlich als reine Daten dorthin (er rechnet sie mit eigener Uhr als Ueberlagerung: gleichmaessig auch bei ausgelastetem Server)
+        self._fades_sig: Optional[str] = None
+        self._levels_sent: Optional[Dict[str, float]] = None
+        self._ending: Dict[str, Tuple[Any, float]] = {}          # cuelist_id -> (beendete Transition, Ablaufzeit): der Endwert bleibt kurz in der Ausgabe stehen, bis das Bild des Servers ihn sicher hat
 
     def set_update_callback(self, fn: Callable[[Dict[str, Any]], Any]) -> None:
         """fn({"universes": set[int], "values": {fx_id: abstract}}) wird nach jedem Tick einer
@@ -204,7 +180,8 @@ class CueEngine:
         if self._task is None or self._task.done():
             self._task = asyncio.create_task(self._run())
 
-    def stop(self) -> None:
+    def shutdown(self) -> None:
+        """Beendet den Hintergrund-Takt (beim Programmende); `stop(cuelist_id)` weiter unten stoppt eine Cue-Liste."""
         if self._task is not None:
             self._task.cancel()
             self._task = None
@@ -222,6 +199,7 @@ class CueEngine:
                     delay = 0.0
                 await asyncio.sleep(max(0.0, delay))
                 await self._tick()
+                self._sync_fades()
         except asyncio.CancelledError:
             pass
 
@@ -250,13 +228,21 @@ class CueEngine:
         if cue is None:
             return None
         self._state.active_cue_ids[cuelist_id] = cue.id
+        self._state.last_used_cuelist_id = cuelist_id
+        self._state.note_cue_context()
         await self._start(cuelist_id, cue, allow_follow=True)
         return cue
+
+    def is_fading(self, cuelist_id: str) -> bool:
+        """Laeuft (oder haengt angehalten) gerade eine Ueberblendung dieser Liste? Dann ist die Ausgabe noch nicht der Zielstand des Cues."""
+        return cuelist_id in self._transitions
 
     def reset(self) -> None:
         """Verwirft laufende Ueberblendungen (Show wurde gewechselt). Ohne das schreibt eine
         Transition der alten Show weiter in die DMX-Ausgabe der neuen."""
         self._transitions.clear()
+        self._ending.clear()
+        self._sync_fades()
         self._stopped.clear()
         self._follow_wait.clear()
         for task in self._follow_tasks.values():
@@ -327,6 +313,7 @@ class CueEngine:
             return False
         transition.paused_at = time.monotonic()
         self._emit_playback(cuelist_id)
+        self._sync_fades()
         return True
 
     def resume(self, cuelist_id: str) -> bool:
@@ -336,6 +323,7 @@ class CueEngine:
         transition.started_at += time.monotonic() - transition.paused_at   # Pausenzeit zaehlt nicht mit
         transition.paused_at = None
         self._emit_playback(cuelist_id)
+        self._sync_fades()
         return True
 
     def stop(self, cuelist_id: str) -> bool:
@@ -355,6 +343,8 @@ class CueEngine:
         if task is not None and not task.done():
             task.cancel()
             stopped_something = True
+        self._ending.pop(cuelist_id, None)
+        self._sync_fades()
         if stopped_something:
             self._emit_playback(cuelist_id)
         return stopped_something
@@ -363,8 +353,10 @@ class CueEngine:
         """Die Liste wird geloescht: Ueberblendung, Stopp-Merker und wartender Follow-Trigger entfallen. Die zuletzt
         ausgegebenen DMX-Werte bleiben stehen (nichts springt)."""
         self._transitions.pop(cuelist_id, None)
+        self._ending.pop(cuelist_id, None)
         self._stopped.pop(cuelist_id, None)
         self._cancel_follow(cuelist_id)
+        self._sync_fades()
 
     def _cancel_follow(self, cuelist_id: str) -> None:
         self._follow_wait.pop(cuelist_id, None)
@@ -393,6 +385,19 @@ class CueEngine:
             "zoom": _pick(cue.fade_zoom, cue.delay_zoom),
         }
 
+    def _cue_steps(self, cuelist_id: str, cue) -> Dict[str, Dict[str, Any]]:
+        """Zielwerte eines Cues je Fixture (abstrakt, Variablen live aufgeloest). Tracking: nur die gespeicherten Aenderungen. Absolut: der beim Speichern
+        gesehene Zustand aller Fixtures, darueber die Aenderungen/Variablen des Cues (eine geaenderte Variable wirkt also weiter)."""
+        steps = {fid: self._state.step_values(step) for fid, step in cue.fixture_values.items()}
+        if getattr(cue, "play_mode", "tracking") == "absolute":
+            for fid, values in self._state.cue_absolute(self._state.cuelists.get(cuelist_id), cue).items():
+                if fid not in self._state.fixtures:
+                    continue
+                merged = copy.deepcopy(values)
+                merged.update(steps.get(fid, {}))
+                steps[fid] = merged
+        return steps
+
     async def _start(self, cuelist_id: str, cue, *, allow_follow: bool) -> None:
         """Baut die Fade-Ziele fuer alle Fixtures eines Cues (inkl. Live-
         Aufloesung von Preset-UUIDs, Attribut-Gruppen-Zeiten und MIB) und
@@ -419,11 +424,12 @@ class CueEngine:
         #    Das muss vor Schritt 2 passieren: dort wird sonst der Effekt ohne Wert beendet.
         pending: Dict[str, Tuple[Any, Dict[str, Any], Dict[str, Any]]] = {}
         refs_dropped = False
-        for fx_id, step in cue.fixture_values.items():
+        steps = self._cue_steps(cuelist_id, cue)                 # fixture -> Zielwerte (Tracking: nur die Aenderungen; absolut: der ganze Zustand)
+        absolute_cue = cue.play_mode == "absolute"
+        for fx_id, target in steps.items():
             fx = self._state.fixtures.get(fx_id)
             if fx is None:
                 continue
-            target = self._state.step_values(step)               # feste Werte + live aufgeloeste Variablen
             # Kategorien mit Cue-Effekt werden nicht zusaetzlich statisch ueberblendet.
             fx_blocked = fx_engine.attrs_of_effects(cue_fx.get(fx_id, {}))          # nur Attribute, die der Effekt wirklich steuert (pan-Effekt: tilt bleibt statisch)
             target = {k: v for k, v in target.items() if k not in fx_blocked}
@@ -439,7 +445,7 @@ class CueEngine:
 
         # 2) Kategorien ohne Cue-Effekt verlieren ihre laufenden Effekte sofort.
         #    Cue-Effekte starten erst nach dem Ueberblend-Setup.
-        for fid in set(cue.fixture_values) | set(cue_fx):
+        for fid in set(steps) | set(cue_fx) | (set(self._state.fx_assignments) if absolute_cue else set()):       # absolut: ein Effekt, den der Cue nicht hat, endet auf JEDER Fixture
             missing = set(CATEGORY_ATTRS) - set(cue_fx.get(fid, {}))
             released_any = fx_engine.release_categories(fid, missing, fade_out=cue.fx_fade_out) or released_any
 
@@ -503,6 +509,8 @@ class CueEngine:
             fixtures=fixtures,
             allow_follow=allow_follow,
         )
+        self._ending.pop(cuelist_id, None)
+        self._sync_fades()
         await self._tick_transition(cuelist_id)
         if cuelist_id in self._transitions:
             self._emit_playback(cuelist_id)   # laeuft noch: Balken ab jetzt per CSS ueber "remaining"
@@ -522,11 +530,10 @@ class CueEngine:
             return
         dim_delay, dim_fade = group_timing["dimmer"]
         nxt_fx = nxt.fx or {}
-        for fx_id, step in nxt.fixture_values.items():
+        for fx_id, full in self._cue_steps(cuelist_id, nxt).items():
             fx = self._state.fixtures.get(fx_id)
             if fx is None:
                 continue
-            full = self._state.step_values(step)
             blocked = fx_engine.attrs_of_effects(nxt_fx.get(fx_id, {})) | fx_engine.attrs_of_effects(
                 {cat: a["fx_id"] for cat, a in self._state.fx_assignments.get(fx_id, {}).items()})
             target = {
@@ -573,6 +580,59 @@ class CueEngine:
             out[attr] = float(snapshot[index]) if 0 <= index < len(snapshot) else 0.0
         return out
 
+    def _fade_spec(self, cuelist_id: str, transition) -> Dict[str, Any]:
+        """Eine Ueberblendung als reine Daten (ohne Offsets und Zeit): was der Ausgabe-Prozess zum Abspielen braucht."""
+        fixtures: Dict[str, list] = {}
+        for fx_id, fade in transition.fixtures.items():
+            fx = self._state.fixtures.get(fx_id)
+            if fx is None:
+                continue
+            fixtures[fx_id] = [fx.universe, fx.start_channel, f"{fx.fixture_type}|{fx.mode}", fade_to_dict(fade),
+                               self._state.cue_base.get(cuelist_id, {}).get(fx_id, {})]
+        return {"id": cuelist_id, "timing": transition.group_timing, "total": transition.total_duration, "fixtures": fixtures}
+
+    def _sync_fades(self) -> None:
+        """Schickt dem Ausgabe-Prozess die laufenden Ueberblendungen (nur wenn sie sich geaendert haben; Zeit rechnet er selbst). Ohne eigenen Ausgabe-Prozess tut das nichts."""
+        proc = self._dmx.fx_process() if hasattr(self._dmx, "fx_process") else None
+        if proc is None:
+            self._fades_sig = None
+            self._levels_sent = None
+            return
+        now = time.monotonic()
+        live: Dict[str, Tuple[Any, bool]] = {cid: (tr, tr.paused_at is None) for cid, tr in self._transitions.items()}
+        for cid, (tr, until) in list(self._ending.items()):
+            if now >= until or cid in live:
+                self._ending.pop(cid, None)
+            else:
+                live[cid] = (tr, False)                                    # beendet: haelt den Endwert
+        specs = []
+        for cid, (tr, running) in live.items():
+            spec = self._fade_spec(cid, tr)
+            spec["running"] = running
+            specs.append(spec)
+        sig = json.dumps(specs, default=str)
+        levels = {cid: self._state.mix_level(cid) for cid in live}
+        if levels != self._levels_sent:
+            proc.send_fade_levels(levels)
+            self._levels_sent = levels
+        if sig == self._fades_sig:
+            return
+        self._fades_sig = sig
+        jobs = []
+        types: Dict[str, Dict[str, int]] = {}
+        for spec in specs:
+            tr, _running = live[spec["id"]]
+            ended = spec["id"] not in self._transitions
+            at = tr.paused_at if tr.paused_at is not None else now
+            job = dict(spec)
+            job["elapsed"] = max(tr.total_duration, at - tr.started_at) if ended else max(0.0, at - tr.started_at)
+            for fx_id, entry in spec["fixtures"].items():
+                fx = self._state.fixtures.get(fx_id)
+                if fx is not None:
+                    types[entry[2]] = _offsets_cached(fx)
+            jobs.append(job)
+        proc.send_fades(jobs, types)
+
     async def _tick(self) -> None:
         if not self._transitions:
             return
@@ -587,14 +647,6 @@ class CueEngine:
             return
         elapsed = time.monotonic() - transition.started_at
 
-        def _group_progress(group: str) -> float:
-            delay, duration = transition.group_timing.get(group, (0.0, 0.0))
-            if elapsed < delay:
-                return 0.0
-            if duration <= 0.0:
-                return 1.0
-            return min(1.0, (elapsed - delay) / duration)
-
         universe_batches: Dict[int, Dict[int, int]] = {}
         live_values: Dict[str, Any] = {}
         affected_universes: Set[int] = set()
@@ -603,27 +655,7 @@ class CueEngine:
             fx = self._state.fixtures.get(fx_id)
             if fx is None:
                 continue
-            abstract_now: Dict[str, Any] = {}
-            for attr, to_v in fade.scalars_to.items():
-                from_v = fade.scalars_from.get(attr, to_v)
-                group = _ATTR_GROUPS.get(attr, "dimmer")
-                t_attr = 1.0 if (fade.mib_snap and group != "dimmer") else _group_progress(group)
-                if attr in DISCRETE_ATTRS:                       # Gobo-/Prismenrad, Strobe-Bereich: umschalten, nicht durch die Slots fahren
-                    abstract_now[attr] = to_v if t_attr > 0.0 else from_v
-                else:
-                    abstract_now[attr] = from_v + (to_v - from_v) * t_attr
-            for attr, to_v in fade.raw_to.items():               # rohe Kanaele: Umschalten am Beginn der Beam-Zeit
-                abstract_now[attr] = to_v if (fade.mib_snap or _group_progress("beam") > 0.0) else fade.raw_from.get(attr, to_v)
-            if fade.color_to is not None:
-                from_c = fade.color_from or {"r": 0, "g": 0, "b": 0}
-                t_color = 1.0 if fade.mib_snap else _group_progress("color")
-                abstract_now["color"] = {
-                    k: from_c.get(k, 0) + (fade.color_to.get(k, 0) - from_c.get(k, 0)) * t_color
-                    for k in ("r", "g", "b")
-                }
-            if fade.premove_to and elapsed >= fade.premove_after:       # MIB-Vorlauf: die Fixture ist dunkel, jetzt auf die Position des Folge-Cues
-                for attr, value in fade.premove_to.items():
-                    abstract_now[attr] = copy.deepcopy(value)
+            abstract_now = fade_abstract(fade, elapsed, transition.group_timing)
             layer = self._state.cue_layer.setdefault(cuelist_id, {}).setdefault(fx_id, {})
             for attr, value in abstract_now.items():
                 layer[attr] = copy.deepcopy(value)
@@ -647,7 +679,11 @@ class CueEngine:
         overall_t = 1.0 if transition.total_duration <= 0.0 else min(1.0, elapsed / transition.total_duration)
         finished = overall_t >= 1.0
         if finished:
-            del self._transitions[cuelist_id]
+            if self._transitions.get(cuelist_id) is transition:
+                del self._transitions[cuelist_id]
+                self._ending[cuelist_id] = (transition, time.monotonic() + 0.2)
+            else:
+                finished = False        # ein zweites Go (oder der Takt der Schleife) hat diese Ueberblendung schon beendet / ersetzt: Abschluss und Folge-Cue nicht doppelt ausloesen
 
         if self._on_update is not None and (affected_universes or live_values):
             result = self._on_update({"universes": affected_universes, "values": live_values})
@@ -693,6 +729,7 @@ class CueEngine:
                     else:
                         layer[attr] = copy.deepcopy(value)
                         remix_lists.add(cuelist_id)
+        self._sync_fades()                                            # eine laufende Ueberblendung hat ein neues Ziel
         for cuelist_id in remix_lists:
             await self.remix(cuelist_id)
 

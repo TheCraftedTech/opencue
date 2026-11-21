@@ -1,0 +1,111 @@
+[
+ {
+  "id": "startup-options-001",
+  "page": "startup-options",
+  "path": [
+   "Startopties en servermodus"
+  ],
+  "title": "Startopties en servermodus",
+  "keywords": [],
+  "text": "OpenCue kan met opties worden gestart – in een snelkoppeling, een batchbestand, de Taakplanner of een terminal. Deze handleiding somt ze op, legt de **servermodus zonder venster** (`--no-ui`) uit, **Starten met Windows**, wat **beheerdersrechten** wel en niet veranderen en de regel voor de **Windows Firewall**."
+ },
+ {
+  "id": "startup-options-002",
+  "page": "startup-options",
+  "path": [
+   "Startopties en servermodus",
+   "1. De opties"
+  ],
+  "title": "1. De opties",
+  "keywords": [],
+  "text": "Zet ze achter het programma: `OpenCue.exe --no-ui --open-browser` (vanuit de broncode: `python main.py ...`). In een snelkoppeling: *Eigenschappen → Doel*, na de afsluitende aanhalingstekens van het pad."
+ },
+ {
+  "id": "startup-options-003",
+  "page": "startup-options",
+  "path": [
+   "Startopties en servermodus",
+   "1. De opties"
+  ],
+  "title": "1. De opties (2)",
+  "keywords": [],
+  "text": "| Optie | Wat het doet |\n|---|---|\n| `--no-ui` of `--server-only` | Starten **zonder programmavenster** (paragraaf 2). Impliceert `--no-splash`. |\n| `--open-browser` | Met `--no-ui`: opent bij het starten de standaardbrowser op de console. |\n| `SHOWFILE` of `--show BESTAND` | Laadt deze show in plaats van de laatste. Een showbestand als eerste parameter werkt als een start met dubbelklik; dit geldt ook voor een `.ocshow`-bestand (exportpakket). Draait OpenCue al, dan neemt het draaiende programma het bestand over (en vraagt eerst wat er met niet-opgeslagen wijzigingen moet gebeuren). |\n| `--new-show` | Start met een **lege show** in plaats van de laatste. Er wordt niets verwijderd; de \"laatst gebruikte\" show blijft zoals hij was. |\n| `--port N` | Serverpoort **alleen voor deze keer** (1–65535). De opgeslagen instelling verandert niet. |\n| `--remote` | Zet **netwerktoegang** aan (zoals in *Instellingen → Toegang op afstand*) – deze instelling wordt **opgeslagen**. |\n| `--data-dir MAP` | Gebruikt een andere **gegevensmap** voor deze keer (draagbaar gebruik, tests). Gelijk aan de variabele `OPENCUE_DATA_DIR`. |\n| `--fullscreen` | Start het programmavenster op volledig scherm. |\n| `--priority normal`, `above` of `high` | Procesprioriteit; standaard `above` (boven normaal), zie paragraaf 5. |\n| `--no-splash` | Geen opstartscherm (ook: `OPENCUE_NO_SPLASH=1`). |\n| `--version`, `--help` | Toont de versie of de lijst met opties. |"
+ },
+ {
+  "id": "startup-options-004",
+  "page": "startup-options",
+  "path": [
+   "Startopties en servermodus",
+   "1. De opties"
+  ],
+  "title": "1. De opties (3)",
+  "keywords": [],
+  "text": "Het gebouwde programma heeft geen eigen console: `--help` en `--version` schrijven naar de console waaruit het is gestart (cmd, PowerShell)."
+ },
+ {
+  "id": "startup-options-005",
+  "page": "startup-options",
+  "path": [
+   "Startopties en servermodus",
+   "2. Servermodus zonder venster (--no-ui)"
+  ],
+  "title": "2. Servermodus zonder venster (--no-ui)",
+  "keywords": [],
+  "text": "OpenCue start zoals gewoonlijk – DMX-uitvoer, cues, effecten, MIDI, toegang op afstand, de REST-API – maar er opent **geen programmavenster**. U bedient het vanuit\n\n- **een browser op deze computer:** `http://127.0.0.1:8000` (de poort uit *Instellingen → Toegang op afstand*, of `--port`) – precies dezelfde console als in het venster, of\n- **een tablet of telefoon** via het netwerk (zet **Toegang op afstand** aan in de instellingen of start één keer met `--remote`).\n\nEen **pictogram in het systeemvak** van de taakbalk laat zien dat OpenCue draait: **klik** erop om de console in uw browser te openen; **rechtsklik** voor het menu *OpenCue in de browser openen*, *Logmap openen* en *OpenCue afsluiten*. Heeft de show niet-opgeslagen wijzigingen, dan vraagt afsluiten één keer om bevestiging (er wordt in elk geval een reservekopie opgeslagen).\n\nHet menu toont bovenaan de **naam van de show**, de waarschuwing **⚠ Niet-opgeslagen wijzigingen** als die er zijn (de tooltip van het pictogram ook) en de **adressen** waarop de console bereikbaar is (met toegang op afstand aan ook die in het netwerk) – een klik opent er een in de browser.\n\nAndere manieren om af te sluiten: **Bestand → Afsluiten** in de browser, **Ctrl+C** als het vanuit een terminal is gestart, en afmelden of afsluiten van Windows (OpenCue probeert dan netjes af te sluiten, met de gebruikelijke reservekopie)."
+ },
+ {
+  "id": "startup-options-006",
+  "page": "startup-options",
+  "path": [
+   "Startopties en servermodus",
+   "2. Servermodus zonder venster (--no-ui)"
+  ],
+  "title": "2. Servermodus zonder venster (--no-ui) (2)",
+  "keywords": [],
+  "text": "**OpenCue een tweede keer starten** terwijl de server draait, geeft geen foutmelding: het opent gewoon uw browser op de draaiende console.\n\nWat **niet kan werken** zonder het venster: dingen waarvoor het eigen programmavenster nodig is – bijvoorbeeld de bestandskiezer om een video- of audiobestand te *koppelen*, of de schakelaar voor volledig scherm van het venster. Al het andere is beschikbaar in de browser.\n\nTip: voor een podium-pc die alleen DMX uitvoert, zet u *OpenCue starten wanneer ik me aanmeld bij Windows* + *Starten zonder venster* aan (paragraaf 3)."
+ },
+ {
+  "id": "startup-options-007",
+  "page": "startup-options",
+  "path": [
+   "Startopties en servermodus",
+   "3. Starten met Windows"
+  ],
+  "title": "3. Starten met Windows",
+  "keywords": [],
+  "text": "**Instellingen → Algemeen → Gedrag:**\n\n- **OpenCue starten wanneer ik me aanmeld bij Windows** – een vermelding voor **uw Windows-gebruiker** (geen beheerdersrechten nodig; verwijder haar door de optie uit te zetten).\n- **Starten zonder venster (alleen server)** – start met `--no-ui`.\n\nDit is beschikbaar in het **geïnstalleerde programma**, niet bij starten vanuit de broncode. (Een geëxporteerde show met de extensie `.ocshow` opent daar altijd met een dubbelklik in OpenCue – daar is geen schakelaar voor.) De vermelding verwijst naar het programmabestand: verplaatst of herinstalleert u OpenCue elders, zet de optie dan uit en weer aan."
+ },
+ {
+  "id": "startup-options-008",
+  "page": "startup-options",
+  "path": [
+   "Startopties en servermodus",
+   "4. Beheerdersrechten en de firewall"
+  ],
+  "title": "4. Beheerdersrechten en de firewall",
+  "keywords": [],
+  "text": "**Draait OpenCue als beheerder?** Het logboek (`opencue.log`, eerste regels) en de details van een foutrapport vermelden *\"Administrator: yes\"* of *\"no\"*. Is dat zo, dan schrijft OpenCue ook een opmerking in het logboek.\n\n**U hebt het niet nodig – en moet het niet gebruiken:** Windows blokkeert het **slepen van bestanden uit Verkenner** naar een programma dat als beheerder draait, en een webserver met beheerdersrechten is een groter doelwit. Beheerdersrechten helpen bij **één** ding: het maken van de **Windows Firewall-regel**.\n\n**Firewallregel:** zonder die regel vraagt Windows het de eerste keer dat OpenCue het netwerk gebruikt; een onbeantwoorde of geweigerde vraag blokkeert tablets, sACN en de netwerknaam `opencue.local`. **Instellingen → Toegang op afstand → Windows Firewall → OpenCue toestaan in de firewall** maakt een regel voor precies dit programma, **inkomend, alleen in privé- en domeinnetwerken** (nooit in openbare). Windows vraagt **één keer** toestemming (beheerdersmelding) – alleen dit ene kleine commando wordt met verhoogde rechten gestart, OpenCue zelf blijft gewoon draaien. *De firewallregel verwijderen* verwijdert haar weer. De statusregel toont of de regel bestaat."
+ },
+ {
+  "id": "startup-options-009",
+  "page": "startup-options",
+  "path": [
+   "Startopties en servermodus",
+   "5. Prioriteit en nauwkeurige timing"
+  ],
+  "title": "5. Prioriteit en nauwkeurige timing",
+  "keywords": [],
+  "text": "Bij het starten zet OpenCue de **procesprioriteit** op *boven normaal* en de **timerresolutie op 1 ms** (Windows tikt normaal elke 15,6 ms). Beide houden de 40 Hz-lussen van cues, effecten en DMX soepel als de computer het druk heeft – geen beheerdersrechten nodig. `--priority high` verhoogt het verder (voor een pc die niets anders doet), `--priority normal` schakelt het uit."
+ },
+ {
+  "id": "startup-options-010",
+  "page": "startup-options",
+  "path": [
+   "Startopties en servermodus",
+   "6. Voorbeelden"
+  ],
+  "title": "6. Voorbeelden",
+  "keywords": [],
+  "text": "- Server op een podium-pc, browser opent: `OpenCue.exe --no-ui --open-browser`\n- Een show openen via *Openen met* in Verkenner: `OpenCue.exe \"D:\\Shows\\Concert.json\"`\n- Leeg starten zonder de laatste show aan te raken: `OpenCue.exe --new-show`\n- Testen op een andere poort met eigen gegevens: `OpenCue.exe --port 8080 --data-dir D:\\OpenCueTest`"
+ }
+]

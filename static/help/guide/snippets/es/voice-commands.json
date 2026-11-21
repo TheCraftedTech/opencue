@@ -1,0 +1,196 @@
+[
+ {
+  "id": "voice-commands-001",
+  "page": "voice-commands",
+  "path": [
+   "Comandos de voz"
+  ],
+  "title": "Comandos de voz",
+  "keywords": [],
+  "text": "Con los **comandos de voz** controla OpenCue con la voz: dice la **palabra de activación** (por defecto «OpenCue») y justo después un **comando de la línea de comandos**; OpenCue lo transcribe, lo convierte a la notación de la línea de comandos y lo **ejecuta al instante**, exactamente igual que un comando escrito (también aparece en el historial de comandos y todas las ventanas lo siguen). Todo funciona **sin conexión** en el ordenador de la consola (tras la descarga única de los modelos); no se necesita ninguna IA.\n\nSe habla en **inglés**: los comandos de la línea de comandos (`Fixture`, `At`, `Color`, `Blackout`, `Go` …) están en inglés y el reconocimiento de voz está configurado para escribir palabras inglesas."
+ },
+ {
+  "id": "voice-commands-002",
+  "page": "voice-commands",
+  "path": [
+   "Comandos de voz",
+   "1. Activarlo"
+  ],
+  "title": "1. Activarlo",
+  "keywords": [],
+  "text": "1. El **símbolo del micrófono** arriba a la derecha de la barra de herramientas es un **interruptor de encendido/apagado**:\n   - **verde** = el control por voz escucha la palabra de activación,\n   - **rojo y tachado** = apagado,\n   - **amarillo** = error (micrófono inaccesible, falta el modelo …; la indicación está en la información sobre herramientas).\n2. Una vez se descargan dos modelos (cada uno una sola vez; después todo funciona sin internet): el pequeño **modelo de la palabra de activación** (41 MB: *Ajustes → Palabra de activación → Descargar el modelo de voz*, o ya en el instalador) y el **modelo de habla** para los comandos (*Ajustes → Dictado → Cargar ahora*; es el mismo que para el dictado). El modelo de habla *Preciso* (small) entiende mucho mejor que *Rápido* (base).\n3. El micrófono, la palabra de activación y la sensibilidad se ajustan en *Ajustes → Palabra de activación*.\n\nEl símbolo existe en el ordenador de la consola y también en los dispositivos remotos (iPad): el interruptor activa o desactiva el control por voz del servidor; el micrófono en sí siempre está conectado al ordenador principal."
+ },
+ {
+  "id": "voice-commands-003",
+  "page": "voice-commands",
+  "path": [
+   "Comandos de voz",
+   "2. Cómo hablar"
+  ],
+  "title": "2. Cómo hablar",
+  "keywords": [],
+  "text": "```\n\"OpenCue … Blackout on.\"\n\"OpenCue … Fixture five at seventy nine, color green.\"\n\"OpenCue … Fixtures one through five at full.\"\n```\n\n- Primero la **palabra de activación** y después – de un tirón o tras una breve pausa (hasta unos 2 segundos) – el **comando**.\n- Cuando el comando haya terminado, **espere aproximadamente un segundo**: una breve pausa finaliza la grabación (10 segundos como máximo).\n- En la parte inferior central de la pantalla una burbuja muestra el progreso: **Escuchando …** → **Entendiendo …** → **el comando** con su resultado (verde = hecho, rojo = error o no se entendió nada). Si OpenCue ha corregido una palabra, se muestra detrás («corregido: add → At»).\n- Hable con comandos cortos y claros. Las palabras de relleno («uh», «please», «now», «set») y los tartamudeos se eliminan."
+ },
+ {
+  "id": "voice-commands-004",
+  "page": "voice-commands",
+  "path": [
+   "Comandos de voz",
+   "3. Qué se puede decir"
+  ],
+  "title": "3. Qué se puede decir",
+  "keywords": [],
+  "text": "Los comandos se dicen tal como se escriben en la línea de comandos (véase la guía *Línea de comandos*). Los números se pueden decir con palabras («seventy nine») o con cifras. Varios comandos de un tirón se separan con **«then»**."
+ },
+ {
+  "id": "voice-commands-005",
+  "page": "voice-commands",
+  "path": [
+   "Comandos de voz",
+   "3. Qué se puede decir",
+   "Seleccionar proyectores y brillo"
+  ],
+  "title": "Seleccionar proyectores y brillo",
+  "keywords": [],
+  "text": "| Usted dice | Qué se ejecuta |\n|---|---|\n| Fixture five | `Fixture 5` |\n| Fixtures one through ten | `Fixture 1 Thru 10` |\n| Fixture three and seven | `Fixture 3 + 7` |\n| Fixture five at seventy nine | `Fixture 5 At 79` |\n| Fixture five brightness fifty percent | `Fixture 5 At 50%` (también *dimmer, intensity, level*) |\n| Fixtures one through five at full / at half | `Fixture 1 Thru 5 At Full` / `… At Half` |\n| Fixture five on / full | `Fixture 5 At Full` |\n| Fixture five off / out | `Fixture 5 At 0` |\n| Fixture five at seventy nine point five | `Fixture 5 At 79.5` |\n| At at / Everything on / All lights on | `At At` – **todo encendido** (100 % + blanco): sin selección todos los proyectores, con una selección solo esa selección. Diga antes «Clear» para asegurarse de que sea todo. |\n| Fixtures one through ten minus five (también *except / without*) | `Fixture 1 Thru 10 - 5` (sin el n.º 5) |\n| Next fixture / Previous fixture | `Next` / `Previous` (selecciona el proyector siguiente / anterior) |\n| Group front at full | `Group front At Full` |\n| Group front truss at forty | `Group \"front truss\" At 40` (varias palabras de un nombre van juntas entre comillas) |\n| Light / lamp / spot five | `Fixture 5` |"
+ },
+ {
+  "id": "voice-commands-006",
+  "page": "voice-commands",
+  "path": [
+   "Comandos de voz",
+   "3. Qué se puede decir",
+   "Colores"
+  ],
+  "title": "Colores",
+  "keywords": [],
+  "text": "| Usted dice | Qué se ejecuta |\n|---|---|\n| Fixture five color green | `Fixture 5 Color Green` |\n| Fixture five green | `Fixture 5 Color Green` (se añade la palabra «color») |\n| Fixture five warm white / cool white / light blue | `Fixture 5 Color Warm` / `Cool` / `Lightblue` |\n| RGB two fifty five zero zero | `RGB 255 0 0` |\n| Color two fifty five one twenty eight zero | `Color 255 128 0` («one twenty eight» = 128 tras *color / rgb / bpm*) |\n\nColores como en la línea de comandos: red, green, blue, white, black, yellow, cyan, magenta, orange, pink, purple, amber, lime, teal, violet, light blue, warm, cool."
+ },
+ {
+  "id": "voice-commands-007",
+  "page": "voice-commands",
+  "path": [
+   "Comandos de voz",
+   "3. Qué se puede decir",
+   "Posición y haz"
+  ],
+  "title": "Posición y haz",
+  "keywords": [],
+  "text": "| Usted dice | Qué se ejecuta |\n|---|---|\n| Pan ninety / Pan fifty percent | `Pan 90` / `Pan 50%` |\n| Tilt minus forty five / Pan plus fifteen | `Tilt -45` / `Pan +15` (un signo = relativo) |\n| Fixture five home / center | `Fixture 5 Pan 50% Tilt 50%` |\n| Zoom half / full / minimum / fifty | `Zoom Half` / `Zoom Full` / `Zoom Min` / `Zoom 50` |\n| Focus twenty five | `Focus 25` |\n| Gobo forty / gobo spin thirty | `Gobo 40` / `GoboSpin 30` |\n| Prism one hundred | `Prism 100` |\n| Strobe zero / shutter ten | `Strobe 0` / `Strobe 10` |\n| Channel six one hundred twenty eight | `Channel 6 128` (canal 6 del proyector a DMX 128) |"
+ },
+ {
+  "id": "voice-commands-008",
+  "page": "voice-commands",
+  "path": [
+   "Comandos de voz",
+   "3. Qué se puede decir",
+   "Master y blackout"
+  ],
+  "title": "Master y blackout",
+  "keywords": [],
+  "text": "| Usted dice | Qué se ejecuta |\n|---|---|\n| Blackout | `Blackout` (alternar) |\n| Blackout on / Blackout off | `Blackout On` / `Blackout Off` |\n| Master eighty / Master full / Master minus ten | `Master 80` / `Master Full` / `Master -10` |"
+ },
+ {
+  "id": "voice-commands-009",
+  "page": "voice-commands",
+  "path": [
+   "Comandos de voz",
+   "3. Qué se puede decir",
+   "Listas de cues"
+  ],
+  "title": "Listas de cues",
+  "keywords": [],
+  "text": "| Usted dice | Qué se ejecuta |\n|---|---|\n| Go / Next cue | `Go` |\n| Back / Go back / Previous cue | `Back` |\n| Pause / Resume / Stop | `Pause` / `Resume` / `Stop` |\n| Go to cue five | `Go Cue 5` (también *goto cue five*) |\n| Cue list main go | `Cuelist main Go` |\n| Cue list front of house back | `Cuelist \"front of house\" Back` |\n| Cuelist two go | `Cuelist 2 Go` |\n| Cuelist main fader eighty / Fader fifty | `Cuelist main Fader 80` / `Fader 50` |\n| Cue five fade three / Cue five delay one point five | `Cue 5 Fade 3` / `Cue 5 Delay 1.5` |\n| Store cue five (merge) | `Store Cue 5` (`Merge`) |\n| Update / Clear | `Update` / `Clear` |"
+ },
+ {
+  "id": "voice-commands-010",
+  "page": "voice-commands",
+  "path": [
+   "Comandos de voz",
+   "3. Qué se puede decir",
+   "Timecode y audio"
+  ],
+  "title": "Timecode y audio",
+  "keywords": [],
+  "text": "| Usted dice | Qué se ejecuta |\n|---|---|\n| Timecode play / pause / stop / reset / reverse | `Timecode Play` / `Pause` / `Stop` / `Reset` / `Reverse` |\n| Timecode rate two | `Timecode Rate 2` |\n| Tap | `Tap` (marcar el tempo) |\n| BPM one twenty eight / BPM auto / BPM half | `BPM 128` / `BPM Auto` / `BPM Half` (también *beats per minute*) |\n| Audio start / stop / demo | `Audio Start` / `Stop` / `Demo` |"
+ },
+ {
+  "id": "voice-commands-011",
+  "page": "voice-commands",
+  "path": [
+   "Comandos de voz",
+   "3. Qué se puede decir",
+   "Efectos, variables, programador"
+  ],
+  "title": "Efectos, variables, programador",
+  "keywords": [],
+  "text": "| Usted dice | Qué se ejecuta |\n|---|---|\n| Effect rainbow / Effect off | `Effect rainbow` / `Effect Off` |\n| Variable warm white | `Variable \"warm white\"` |\n| Manual / Manual color | `Manual` / `Manual Color` |"
+ },
+ {
+  "id": "voice-commands-012",
+  "page": "voice-commands",
+  "path": [
+   "Comandos de voz",
+   "3. Qué se puede decir",
+   "Varios comandos"
+  ],
+  "title": "Varios comandos",
+  "keywords": [],
+  "text": "«Fixture one at full **then** fixture two at zero» → `Fixture 1 At Full; Fixture 2 At 0`."
+ },
+ {
+  "id": "voice-commands-013",
+  "page": "voice-commands",
+  "path": [
+   "Comandos de voz",
+   "4. Qué se corrige automáticamente"
+  ],
+  "title": "4. Qué se corrige automáticamente",
+  "keywords": [],
+  "text": "Whisper a veces escribe palabras que suenan igual pero no tienen sentido en el comando («add» en lugar de «at», «true» en lugar de «thru»). OpenCue comprueba **en qué lugar del comando** está la palabra y pone la palabra de comando adecuada, solo donde encaja:"
+ },
+ {
+  "id": "voice-commands-014",
+  "page": "voice-commands",
+  "path": [
+   "Comandos de voz",
+   "4. Qué se corrige automáticamente"
+  ],
+  "title": "4. Qué se corrige automáticamente (2)",
+  "keywords": [],
+  "text": "| Oído / escrito | Se convierte en | Cuándo |\n|---|---|---|\n| add, ad, it, app | At | después de un número, antes de un número («fixture 5 **add** 70») |\n| true, threw, till, through, until, to, too, drew, grew, crew, throw … | Thru | entre dos números («fixtures 1 **true** 5») |\n| **2** (Whisper oye «thru» como el número *two*) | Thru | en una selección justo entre dos números («fixtures one **two** five» = `Fixture 1 Thru 5`; también «fixture 1-5» y «1, 2, 5») |\n| eight (8) | At | en una selección entre dos números («fixture 5 **eight** 70») |\n| halve, calf | Half | siempre; «fixture 3 half» = `Fixture 3 At Half` |\n| chanel, clair, stroke, pawn, tell, fate, delight … | Channel, Clear, Strobe, Pan, Tilt, Fade, Delay | según la posición (antes de un número, o siempre) |\n| oh | 0 | donde debe haber un número («at oh», «master oh») |\n| picture, pitcher, fix sure, fixer | Fixture | siempre («**picture** one to four») |\n| for, to, too, won, ate, tree | 4, 2, 2, 1, 8, 3 | solo donde debe haber un número («fixture **for** at fifty» → Fixture 4 At 50) |\n| collar, caller | Color | siempre |\n| pen, ban, pun | Pan | antes de un número |\n| till, tilted | Tilt | antes de un número («**till** minus ten») |\n| queue, q, cute, cube, key | Cue | antes de un número («go **key** five») |\n| fool | Full | siempre |\n| of, own | Off, On | después de Blackout |\n| prison, prisms | Prism | siempre |\n| strove | Strobe | siempre |\n| paws, pours | Pause | siempre |\n| affect, effects | Effect | siempre |\n| tab | Tap | siempre |\n| read, grin, grain, blew, wait … | Red, Green, Blue, White | después de «color» o como nombre de color |\n| black out, black art, blackouts | Blackout | siempre |\n| time code, cue list, grand master, go bo, b p m | Timecode, Cuelist, Master, Gobo, BPM | expresiones de varias palabras |"
+ },
+ {
+  "id": "voice-commands-015",
+  "page": "voice-commands",
+  "path": [
+   "Comandos de voz",
+   "4. Qué se corrige automáticamente"
+  ],
+  "title": "4. Qué se corrige automáticamente (3)",
+  "keywords": [],
+  "text": "Además:\n\n- **Números con palabras** → cifras («twenty one», «one hundred and five», «two point five», «minus ten percent»).\n- **Comparación fonética:** una palabra desconocida que está donde debe ir una determinada palabra de comando y suena igual se convierte en esa palabra.\n- **Pequeñas faltas de ortografía** de las palabras clave → la palabra de comando más cercana («blakout» → Blackout).\n- **Variantes de la palabra de activación** («open queue», «open Q», «OpenCue») se eliminan al principio, y también todo lo dicho antes de la palabra de activación.\n- **Los nombres** (después de *group, cuelist, effect, variable*) se quedan como se pronunciaron.\n- **El porcentaje** después de Master, Fader, BPM y números de cue se omite («master eighty percent» → `Master 80`), porque la línea de comandos no conoce el porcentaje ahí.\n- La charla introductoria antes del comando («set», «please», todo lo que no se entiende) se omite; el comando debe empezar con una palabra de comando."
+ },
+ {
+  "id": "voice-commands-016",
+  "page": "voice-commands",
+  "path": [
+   "Comandos de voz",
+   "5. Qué no funciona por voz"
+  ],
+  "title": "5. Qué no funciona por voz",
+  "keywords": [],
+  "text": "En el **modo operador** de la consola (*Ver → Modo operador ...*) el control por voz está **desactivado**, de modo que en este PC solo es posible lo que ofrece la superficie de control; al salir vuelve a funcionar si estaba activado.\n\nPor seguridad el control por voz **nunca ejecuta nada que borre o sobrescriba**: `Delete …`, `Clear Clear`, `Overwrite`. La burbuja dice entonces «No por voz». Escriba estos comandos o use la interfaz."
+ },
+ {
+  "id": "voice-commands-017",
+  "page": "voice-commands",
+  "path": [
+   "Comandos de voz",
+   "6. Cuando no funciona"
+  ],
+  "title": "6. Cuando no funciona",
+  "keywords": [],
+  "text": "| Indicación | Qué hacer |\n|---|---|\n| Micrófono amarillo | Lea la información sobre herramientas; *Ajustes → Palabra de activación* (¿el micrófono correcto?) |\n| «Falta el modelo de habla» | *Ajustes → Dictado → Cargar ahora* (y para la palabra de activación: *Ajustes → Palabra de activación → Descargar el modelo de voz*) |\n| «No se entendió nada» | Acérquese al micrófono, hable con más claridad, diga el comando justo después de la palabra de activación |\n| «No se reconoció ningún comando» | El texto no empieza con una palabra de comando; la burbuja muestra lo que se entendió; hable exactamente como en la línea de comandos |\n| Comando rojo (✗) | La línea de comandos dice qué no encaja (por ejemplo el proyector no existe, «esta lista de cues no tiene cues») |\n| No se reconoce la palabra de activación | Suba *Ajustes → Palabra de activación → Sensibilidad* |\n| Una palabra se escribe siempre mal | Anote lo que escribe Whisper (el texto está en el registro); la tabla de correcciones es fácil de ampliar |\n\nLa palabra de activación la reconoce un pequeño modelo sin conexión; el comando que sigue lo transcribe Whisper (de 1 a 3 segundos en un ordenador normal). La música alta o el ruido en la sala empeoran el reconocimiento: un micrófono cerca de la boca ayuda más que nada."
+ }
+]

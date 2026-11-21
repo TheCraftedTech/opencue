@@ -1,0 +1,46 @@
+# Zeitplan, Uhrzeit und OSC
+
+Drei Wege, etwas zu starten, **ohne Go zu drücken**: ein **Zeitplan**, der Befehle zu einer Uhrzeit ausführt, Cues, die **auf eine Uhrzeit warten**, und **OSC**-Nachrichten von anderen Programmen und Geräten. Alle drei stehen im Menü **Steuerung**.
+
+---
+
+## 1. Zeitplan: Befehle zu einer Uhrzeit
+
+**Steuerung → Zeitplan …** listet Befehle, die OpenCue von selbst ausführt – für Fassadenlicht, „Einlass 19:00“, eine Pause, „Cue-Liste um 18:55 starten“.
+
+- **Neuer Eintrag** fügt eine Zeile hinzu. Jede Zeile hat: den **An/Aus**-Schalter, die **Uhrzeit** (`19:00` oder `19:00:30`), die **Wiederholung** (**Jeden Tag** – die Standardeinstellung, kein Datum nötig; **An Wochentagen** – dann die Tag-Knöpfe anklicken, vorgewählt ist Mo–Fr; **Einmalig am Datum** – der Eintrag läuft **einmal** an diesem Tag und schaltet sich danach aus), einen **Namen** und den **Befehl** – jeder Befehl der Befehlszeile, zum Beispiel `Cuelist Main Go`, `Blackout Off` oder `Master 60` (siehe die Anleitung *Befehlszeile*).
+- **nächster: …** zeigt, wann der Eintrag das nächste Mal läuft. **Jetzt ausführen** führt den Befehl sofort aus, zum Ausprobieren. Der Papierkorb löscht den Eintrag – OpenCue fragt vorher nach (eine frische, leere Zeile verschwindet ohne Frage). Der Befehl darf mehrere Befehle enthalten, durch `,` oder `;` getrennt (`Blackout Off; Cuelist Main Go`).
+- Die Uhr im Titel ist die Uhr des Konsolen-Rechners. Ein Eintrag feuert **einmal** zu seiner Zeit, auch über Mitternacht. War der Rechner im Ruhezustand, zählen nur Zeiten der **letzten Minute** – nichts wird „nachgeholt“.
+- Der Zeitplan **gehört zur Show**: er steht in der Show-Datei, ist Teil der Sicherungen, und eine Änderung markiert die Show als ungespeichert. Jeder Lauf steht im Befehlsverlauf und als kurze Meldung.
+
+---
+
+## 2. Ein Cue, der auf eine Uhrzeit wartet
+
+Im Cue-Dialog den Auslöser **Uhrzeit** wählen (oder `clock 19:30` / `clock 20:00 sa,so` in die Auslöser-Zelle tippen, oder den Befehl `Cue 3 Trigger Clock 19:30 Mon-Fri` benutzen). Der Cue verhält sich dann wie die anderen Auslöser (Audio, MIDI, Timecode): ist er der **nächste Cue einer laufenden Liste**, feuert er, sobald die **Uhr diese Zeit erreicht** – an einem der gewählten Tage. Ist seine Zeit schon vorbei, wenn er der nächste Cue wird, wartet er auf das nächste Mal – er feuert nicht sofort.
+
+Typisch: *Cue 1 (Go, Saallicht) – Cue 2 (Uhrzeit 19:30, Showbeginn) – Cue 3 (Follow)*. Der Zeitplan kann die Liste um 18:55 starten, der Uhrzeit-Cue wartet dann auf 19:30.
+
+---
+
+## 3. OSC
+
+**OSC (Open Sound Control)** ist ein Netzwerk-Protokoll, das viele Apps und Geräte sprechen – **TouchOSC** (Fader und Tasten auf Tablet / Handy), **QLab**, **Ableton**, Show-Controller. Damit steuert andere Software OpenCue, und OpenCue kann Nachrichten senden.
+
+**Steuerung → OSC …** (den Schalter und den Port gibt es auch unter **Einstellungen → OSC**; beides wirkt auf dieselbe Einstellung):
+
+1. **OSC empfangen** einschalten. Der **UDP-Port** (Standard `9000`) und die Adressen dieses Rechners werden angezeigt; trage sie in der anderen App ein (`192.168.1.20:9000`). Es ist **aus**, bis du es einschaltest; Windows fragt eventuell einmal wegen der Firewall (*Einstellungen → Fernzugriff → Windows-Firewall* richtet sie ein).
+2. **Eingebaute Adressen** gehen sofort: `/opencue/go`, `/opencue/back`, `/opencue/pause`, `/opencue/resume`, `/opencue/stop`, `/opencue/blackout` (1 = an, 0 = aus, ohne Wert = umschalten), `/opencue/master` und `/opencue/fader` (Wert 0 bis 1), `/opencue/cue/<Nummer>` (springt zu diesem Cue). Eine Taste, die beim Drücken 1 und beim Loslassen 0 schickt, wird richtig behandelt: nur das Drücken zählt.
+3. **Eigene Adressen**: **Neue Zuordnung** – die **Adresse** (`/my/button1`, `*` und `?` sind erlaubt), der **Befehl**, und wann er läuft: **nur beim Drücken** (Wert über 0) oder **bei jeder Nachricht** (für Fader). Im Befehl ist `{value}` der erste Wert der Nachricht, **auf einen Bereich umgerechnet** (Standard 0..1 wird 0..100): `Master {value}` mit einem Fader. **Einlernen** übernimmt die Adresse der nächsten Nachricht – die Taste in der anderen App drücken. *Im Verlauf* zeigt den Befehl im Befehlsverlauf (ein Fader würde ihn fluten). Der Papierkorb löscht die Zuordnung – OpenCue fragt vorher nach. Auch hier darf der Befehl verkettet sein (`Blackout On, Cuelist Main Stop`).
+4. Der **Monitor** unten zeigt jede eingehende Nachricht und was daraus wurde (*built-in*, *mapping*, *no mapping*, *blocked*).
+5. **Eingebaute Adressen** (aufklappen): ganz abschalten, die **Vorsilbe** ändern (aus `/opencue/go` wird zum Beispiel `/licht/go`, wenn ein anderes Programm `/opencue` schon benutzt) und **einzelne** Adressen ausschalten.
+6. **Senden an** legt das Ziel für OpenCues eigene Nachrichten fest: **Testnachricht senden** oder der Befehl `Osc /adresse 0.5` (siehe *Befehlszeile*).
+7. **Zustand zurückmelden (Rückkanal)**: OpenCue meldet seinen Zustand **von selbst** an das Ziel (und, wenn *Auch an jeden Absender* an ist, an jedes Gerät, das ihm in der letzten Stunde eine Nachricht geschickt hat – an den Port des Ziels). Das braucht man für die Anzeigen und Tastenlichter von TouchOSC. Gesendet werden nur **Änderungen**, dazu alles auf einmal beim Einschalten, bei einem neuen Gerät und mit **Jetzt alles senden**. Gemeldet wird (unter derselben Vorsilbe wie die eingebauten Adressen): `/opencue/cuelist` (Name der aktiven Liste), `/opencue/cue` (Nummer des aktiven Cues, `-1` = keiner), `/opencue/cuename`, `/opencue/state` (`running`, `paused`, `stopped`, `done` oder `idle`), `/opencue/fader` und `/opencue/master` (0 bis 1), `/opencue/blackout` (1 / 0) und `/opencue/cue/<Nummer>` = `1` für den aktiven Cue und `0`, wenn er endet (das Licht einer Cue-Taste). Unter **Was gemeldet wird** lassen sich einzelne Meldungen abschalten. Es ist **aus**, bis du es einschaltest.
+
+**Sicherheit:** OSC hat **kein Passwort** – jeder im Netzwerk kann senden. Deshalb ist es standardmäßig aus; **Erlaubte Absender** beschränkt auf Adressen (`192.168.1.` = das ganze Teilnetz, oder eine einzelne Adresse); und eine Flut wird gebremst (300 Nachrichten pro Sekunde). `/opencue/cmd "<Befehl>"` könnte **jeden** Befehl ausführen (auch *Delete*), geht also nur, wenn du **Beliebige Befehle erlauben** einschaltest.
+
+---
+
+## 4. DMX einstecken und es geht
+
+(Auch in der Anleitung *Erste Schritte*, Abschnitt 6.) **Art-Net: Einstellungen → DMX-Ausgabe → Geräte automatisch finden** sucht Geräte im Netzwerk und sendet an jedes. **Netzwerk absuchen** listet sie. **USB DMX**: den COM-Port auf **Automatisch** lassen – Adapter anstecken, er verbindet sich, auch nach Abziehen und Wiederanstecken.

@@ -1,3 +1,5 @@
+# Copyright (C) 2026 Samuel Zenker
+# SPDX-License-Identifier: GPL-3.0-or-later
 """
 updater.py
 Update-Pruefung ueber GitHub-Releases und Installation der neuen Version.
@@ -31,7 +33,7 @@ import urllib.request
 from pathlib import Path
 from typing import Any, Dict, Optional, Tuple
 
-from app import version
+from app import net_diag, version
 
 logger = logging.getLogger("opencue.updater")
 
@@ -126,7 +128,9 @@ async def check(force: bool = False) -> Dict[str, Any]:
     try:
         status, release = await asyncio.to_thread(_fetch_json, api_url())
         result = _evaluate(status, release)
+        net_diag.record("update", True)
     except Exception as exc:                                                    # offline, Zeitueberschreitung, Rate-Limit ...
+        net_diag.record("update", False, exc)                                    # die Einstellungen zeigen die Ursache (Ein- & Ausgaenge)
         code = getattr(exc, "code", None)
         logger.info("[Update] Pruefung nicht moeglich: %s", exc)
         result = {"state": "error", "error": "rate_limit" if code in (403, 429) else "network", "current": version.APP_VERSION_LABEL, "latest": "", "checked_at": int(now)}
@@ -200,7 +204,7 @@ def start_download(installer: Dict[str, Any]) -> bool:
         try:
             download_blocking(installer)
         except Exception as exc:
-            logger.warning("[Update] Download fehlgeschlagen: %s", exc)
+            logger.warning("[Update] OC-3501 Download fehlgeschlagen: %s", exc)
             _set_progress(state="error", error=str(exc) if str(exc) in ("checksum", "too_big", "invalid_installer") else "network")
 
     threading.Thread(target=run, name="opencue-update-download", daemon=True).start()
@@ -242,5 +246,5 @@ def launch_pending_installer() -> bool:
         subprocess.Popen([path, "/SILENT", "/NORESTART", "/CLOSEAPPLICATIONS"], close_fds=True, creationflags=flags)
         return True
     except OSError as exc:
-        logger.error("[Update] Setup konnte nicht gestartet werden: %s", exc)
+        logger.error("[Update] OC-3502 Setup konnte nicht gestartet werden: %s", exc)
         return False

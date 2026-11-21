@@ -1,0 +1,196 @@
+[
+ {
+  "id": "voice-commands-001",
+  "page": "voice-commands",
+  "path": [
+   "Sprachbefehle"
+  ],
+  "title": "Sprachbefehle",
+  "keywords": [],
+  "text": "Mit **Sprachbefehlen** steuerst du OpenCue per Stimme: Du sagst das **Triggerwort** (Standard: „OpenCue“) und gleich danach einen **Befehl der Befehlszeile** – OpenCue schreibt ihn auf, setzt ihn in die Schreibweise der Befehlszeile um und **führt ihn sofort aus**, genau wie einen getippten Befehl (er steht auch im Befehlsverlauf, alle Fenster folgen). Alles läuft **offline** auf dem Konsolenrechner (nach dem einmaligen Laden der Modelle), es ist keine KI nötig.\n\nGesprochen wird **Englisch**: Die Befehle der Befehlszeile (`Fixture`, `At`, `Color`, `Blackout`, `Go` …) sind englisch, und die Spracherkennung ist darauf eingestellt, englische Wörter zu schreiben."
+ },
+ {
+  "id": "voice-commands-002",
+  "page": "voice-commands",
+  "path": [
+   "Sprachbefehle",
+   "1. Einschalten"
+  ],
+  "title": "1. Einschalten",
+  "keywords": [],
+  "text": "1. Das **Mikrofon-Symbol** oben rechts in der Werkzeugleiste ist ein **Ein-/Aus-Schalter**:\n   - **grün** = die Sprachsteuerung hört auf das Triggerwort,\n   - **rot und durchgestrichen** = aus,\n   - **gelb** = Fehler (Mikrofon nicht erreichbar, Modell fehlt …; der Hinweis steht im Tooltip).\n2. Einmalig werden zwei Modelle geladen (jedes nur ein einziges Mal, danach geht alles ohne Internet): das kleine **Triggerwort-Modell** (41 MB: *Einstellungen → Triggerwort → Sprachmodell laden*, oder schon im Installer) und das **Sprachmodell** für die Befehle (*Einstellungen → Diktieren → Jetzt laden*; es ist dasselbe wie beim Diktieren). Das Sprachmodell *Genau* (small) versteht deutlich besser als *Schnell* (base).\n3. Mikrofon, Triggerwort und Empfindlichkeit stellst du unter *Einstellungen → Triggerwort* ein.\n\nDas Symbol gibt es am Konsolenrechner und auch an Fernzugriffs-Geräten (iPad): Der Schalter stellt die Sprachsteuerung des Servers ein oder aus; das Mikrofon hängt aber immer am Hauptrechner."
+ },
+ {
+  "id": "voice-commands-003",
+  "page": "voice-commands",
+  "path": [
+   "Sprachbefehle",
+   "2. So sprichst du"
+  ],
+  "title": "2. So sprichst du",
+  "keywords": [],
+  "text": "```\n„OpenCue … Blackout on.“\n„OpenCue … Fixture five at seventy nine, color green.“\n„OpenCue … Fixtures one through five at full.“\n```\n\n- Erst das **Triggerwort**, dann – im selben Atemzug oder nach einer kurzen Pause (bis etwa 2 Sekunden) – der **Befehl**.\n- Ist der Befehl zu Ende, **warte etwa eine Sekunde**: Eine kurze Pause beendet die Aufnahme (höchstens 10 Sekunden lang).\n- Unten in der Bildschirmmitte zeigt eine Blase den Verlauf: **Ich höre …** → **Verstehe …** → **der Befehl** mit seinem Ergebnis (grün = ausgeführt, rot = Fehler oder nichts verstanden). Hat OpenCue ein Wort korrigiert, steht es dahinter („korrigiert: add → At“).\n- Sprich in kurzen, klaren Befehlen. Füllwörter („uh“, „please“, „now“, „set“) und Stottern werden entfernt."
+ },
+ {
+  "id": "voice-commands-004",
+  "page": "voice-commands",
+  "path": [
+   "Sprachbefehle",
+   "3. Was du sagen kannst"
+  ],
+  "title": "3. Was du sagen kannst",
+  "keywords": [],
+  "text": "Du sagst die Befehle so, wie sie in der Befehlszeile stehen (siehe die Anleitung *Befehlszeile*). Zahlen sagst du als Wörter („seventy nine“) oder als Ziffern. Mehrere Befehle in einem Atemzug trennst du mit **„then“**."
+ },
+ {
+  "id": "voice-commands-005",
+  "page": "voice-commands",
+  "path": [
+   "Sprachbefehle",
+   "3. Was du sagen kannst",
+   "Scheinwerfer wählen und Helligkeit"
+  ],
+  "title": "Scheinwerfer wählen und Helligkeit",
+  "keywords": [],
+  "text": "| Du sagst | Es wird ausgeführt |\n|---|---|\n| Fixture five | `Fixture 5` |\n| Fixtures one through ten | `Fixture 1 Thru 10` |\n| Fixture three and seven | `Fixture 3 + 7` |\n| Fixture five at seventy nine | `Fixture 5 At 79` |\n| Fixture five brightness fifty percent | `Fixture 5 At 50%` (auch *dimmer, intensity, level*) |\n| Fixtures one through five at full / at half | `Fixture 1 Thru 5 At Full` / `… At Half` |\n| Fixture five on / full | `Fixture 5 At Full` |\n| Fixture five off / out | `Fixture 5 At 0` |\n| Fixture five at seventy nine point five | `Fixture 5 At 79.5` |\n| At at / Everything on / All lights on | `At At` – **alles an** (100 % + Weiß): ohne Auswahl alle Scheinwerfer, mit Auswahl nur diese. Vorher „Clear“ sagen = ganz sicher alle. |\n| Fixtures one through ten minus five (auch *except / without*) | `Fixture 1 Thru 10 - 5` (ohne Nr. 5) |\n| Next fixture / Previous fixture | `Next` / `Previous` (nächsten / vorigen Scheinwerfer wählen) |\n| Group front at full | `Group front At Full` |\n| Group front truss at forty | `Group \"front truss\" At 40` (mehrere Namenswörter kommen zusammen in Anführungszeichen) |\n| Light / lamp / spot five | `Fixture 5` |"
+ },
+ {
+  "id": "voice-commands-006",
+  "page": "voice-commands",
+  "path": [
+   "Sprachbefehle",
+   "3. Was du sagen kannst",
+   "Farben"
+  ],
+  "title": "Farben",
+  "keywords": [],
+  "text": "| Du sagst | Es wird ausgeführt |\n|---|---|\n| Fixture five color green | `Fixture 5 Color Green` |\n| Fixture five green | `Fixture 5 Color Green` (das Wort „color“ wird ergänzt) |\n| Fixture five warm white / cool white / light blue | `Fixture 5 Color Warm` / `Cool` / `Lightblue` |\n| RGB two fifty five zero zero | `RGB 255 0 0` |\n| Color two fifty five one twenty eight zero | `Color 255 128 0` („one twenty eight“ = 128 hinter *color / rgb / bpm*) |\n\nFarben wie in der Befehlszeile: red, green, blue, white, black, yellow, cyan, magenta, orange, pink, purple, amber, lime, teal, violet, light blue, warm, cool."
+ },
+ {
+  "id": "voice-commands-007",
+  "page": "voice-commands",
+  "path": [
+   "Sprachbefehle",
+   "3. Was du sagen kannst",
+   "Position und Beam"
+  ],
+  "title": "Position und Beam",
+  "keywords": [],
+  "text": "| Du sagst | Es wird ausgeführt |\n|---|---|\n| Pan ninety / Pan fifty percent | `Pan 90` / `Pan 50%` |\n| Tilt minus forty five / Pan plus fifteen | `Tilt -45` / `Pan +15` (Vorzeichen = relativ) |\n| Fixture five home / center | `Fixture 5 Pan 50% Tilt 50%` |\n| Zoom half / full / minimum / fifty | `Zoom Half` / `Zoom Full` / `Zoom Min` / `Zoom 50` |\n| Focus twenty five | `Focus 25` |\n| Gobo forty / gobo spin thirty | `Gobo 40` / `GoboSpin 30` |\n| Prism one hundred | `Prism 100` |\n| Strobe zero / shutter ten | `Strobe 0` / `Strobe 10` |\n| Channel six one hundred twenty eight | `Channel 6 128` (Kanal 6 des Scheinwerfers auf DMX 128) |"
+ },
+ {
+  "id": "voice-commands-008",
+  "page": "voice-commands",
+  "path": [
+   "Sprachbefehle",
+   "3. Was du sagen kannst",
+   "Master und Blackout"
+  ],
+  "title": "Master und Blackout",
+  "keywords": [],
+  "text": "| Du sagst | Es wird ausgeführt |\n|---|---|\n| Blackout | `Blackout` (umschalten) |\n| Blackout on / Blackout off | `Blackout On` / `Blackout Off` |\n| Master eighty / Master full / Master minus ten | `Master 80` / `Master Full` / `Master -10` |"
+ },
+ {
+  "id": "voice-commands-009",
+  "page": "voice-commands",
+  "path": [
+   "Sprachbefehle",
+   "3. Was du sagen kannst",
+   "Cue-Listen"
+  ],
+  "title": "Cue-Listen",
+  "keywords": [],
+  "text": "| Du sagst | Es wird ausgeführt |\n|---|---|\n| Go / Next cue | `Go` |\n| Back / Go back / Previous cue | `Back` |\n| Pause / Resume / Stop | `Pause` / `Resume` / `Stop` |\n| Go to cue five | `Go Cue 5` (auch *goto cue five*) |\n| Cue list main go | `Cuelist main Go` |\n| Cue list front of house back | `Cuelist \"front of house\" Back` |\n| Cuelist two go | `Cuelist 2 Go` |\n| Cuelist main fader eighty / Fader fifty | `Cuelist main Fader 80` / `Fader 50` |\n| Cue five fade three / Cue five delay one point five | `Cue 5 Fade 3` / `Cue 5 Delay 1.5` |\n| Store cue five (merge) | `Store Cue 5` (`Merge`) |\n| Update / Clear | `Update` / `Clear` |"
+ },
+ {
+  "id": "voice-commands-010",
+  "page": "voice-commands",
+  "path": [
+   "Sprachbefehle",
+   "3. Was du sagen kannst",
+   "Timecode und Audio"
+  ],
+  "title": "Timecode und Audio",
+  "keywords": [],
+  "text": "| Du sagst | Es wird ausgeführt |\n|---|---|\n| Timecode play / pause / stop / reset / reverse | `Timecode Play` / `Pause` / `Stop` / `Reset` / `Reverse` |\n| Timecode rate two | `Timecode Rate 2` |\n| Tap | `Tap` (Tempo antippen) |\n| BPM one twenty eight / BPM auto / BPM half | `BPM 128` / `BPM Auto` / `BPM Half` (auch *beats per minute*) |\n| Audio start / stop / demo | `Audio Start` / `Stop` / `Demo` |"
+ },
+ {
+  "id": "voice-commands-011",
+  "page": "voice-commands",
+  "path": [
+   "Sprachbefehle",
+   "3. Was du sagen kannst",
+   "Effekte, Variablen, Programmer"
+  ],
+  "title": "Effekte, Variablen, Programmer",
+  "keywords": [],
+  "text": "| Du sagst | Es wird ausgeführt |\n|---|---|\n| Effect rainbow / Effect off | `Effect rainbow` / `Effect Off` |\n| Variable warm white | `Variable \"warm white\"` |\n| Manual / Manual color | `Manual` / `Manual Color` |"
+ },
+ {
+  "id": "voice-commands-012",
+  "page": "voice-commands",
+  "path": [
+   "Sprachbefehle",
+   "3. Was du sagen kannst",
+   "Mehrere Befehle"
+  ],
+  "title": "Mehrere Befehle",
+  "keywords": [],
+  "text": "„Fixture one at full **then** fixture two at zero“ → `Fixture 1 At Full; Fixture 2 At 0`."
+ },
+ {
+  "id": "voice-commands-013",
+  "page": "voice-commands",
+  "path": [
+   "Sprachbefehle",
+   "4. Was automatisch korrigiert wird"
+  ],
+  "title": "4. Was automatisch korrigiert wird",
+  "keywords": [],
+  "text": "Whisper schreibt manchmal Wörter, die genauso klingen, aber im Befehl keinen Sinn ergeben („add“ statt „at“, „true“ statt „thru“). OpenCue prüft, **an welcher Stelle im Befehl** das Wort steht, und setzt das passende Befehlswort ein – nur dort, wo es hinpasst:"
+ },
+ {
+  "id": "voice-commands-014",
+  "page": "voice-commands",
+  "path": [
+   "Sprachbefehle",
+   "4. Was automatisch korrigiert wird"
+  ],
+  "title": "4. Was automatisch korrigiert wird (2)",
+  "keywords": [],
+  "text": "| Gehört / geschrieben | Wird | Wann |\n|---|---|---|\n| add, ad, it, app | At | hinter einer Nummer, vor einer Zahl („fixture 5 **add** 70“) |\n| true, threw, till, through, until, to, too, drew, grew, crew, throw … | Thru | zwischen zwei Nummern („fixtures 1 **true** 5“) |\n| **2** (Whisper hört „thru“ als Zahl *two*) | Thru | in einer Auswahl genau zwischen zwei Nummern („fixtures one **two** five“ = `Fixture 1 Thru 5`; auch „fixture 1-5“ und „1, 2, 5“) |\n| eight (8) | At | in einer Auswahl zwischen zwei Nummern („fixture 5 **eight** 70“) |\n| halve, calf | Half | immer; „fixture 3 half“ = `Fixture 3 At Half` |\n| chanel, clair, stroke, pawn, tell, fate, delight … | Channel, Clear, Strobe, Pan, Tilt, Fade, Delay | je nach Stelle (vor einer Zahl bzw. immer) |\n| oh | 0 | dort, wo eine Zahl stehen muss („at oh“, „master oh“) |\n| picture, pitcher, fix sure, fixer | Fixture | immer („**picture** one to four“) |\n| for, to, too, won, ate, tree | 4, 2, 2, 1, 8, 3 | nur dort, wo eine Zahl stehen muss („fixture **for** at fifty“ → Fixture 4 At 50) |\n| collar, caller | Color | immer |\n| pen, ban, pun | Pan | vor einer Zahl |\n| till, tilted | Tilt | vor einer Zahl („**till** minus ten“) |\n| queue, q, cute, cube, key | Cue | vor einer Zahl („go **key** five“) |\n| fool | Full | immer |\n| of, own | Off, On | hinter Blackout |\n| prison, prisms | Prism | immer |\n| strove | Strobe | immer |\n| paws, pours | Pause | immer |\n| affect, effects | Effect | immer |\n| tab | Tap | immer |\n| read, grin, grain, blew, wait … | Red, Green, Blue, White | hinter „color“ oder als Farbname |\n| black out, black art, blackouts | Blackout | immer |\n| time code, cue list, grand master, go bo, b p m | Timecode, Cuelist, Master, Gobo, BPM | Mehrwort-Ausdrücke |"
+ },
+ {
+  "id": "voice-commands-015",
+  "page": "voice-commands",
+  "path": [
+   "Sprachbefehle",
+   "4. Was automatisch korrigiert wird"
+  ],
+  "title": "4. Was automatisch korrigiert wird (3)",
+  "keywords": [],
+  "text": "Außerdem:\n\n- **Zahlwörter** → Ziffern („twenty one“, „one hundred and five“, „two point five“, „minus ten percent“).\n- **Klang-Vergleich:** Ein unbekanntes Wort, das an einer Stelle steht, wo ein bestimmtes Befehlswort stehen muss, und genauso klingt, wird dieses Wort.\n- **Kleine Schreibfehler** bei Schlüsselwörtern → das ähnlichste Befehlswort („blakout“ → Blackout).\n- **Weckwort-Varianten** („open queue“, „open Q“, „OpenCue“) werden am Anfang entfernt, auch Gerede vor dem Weckwort.\n- **Namen** (nach *group, cuelist, effect, variable*) bleiben, wie gesprochen.\n- **Prozentangaben** bei Master, Fader, BPM und Cue-Nummern fallen weg („master eighty percent“ → `Master 80`), weil die Befehlszeile dort keine Prozent kennt.\n- Vorgeplänkel vor dem Befehl („set“, „please“, Unverständliches) wird verworfen; der Befehl muss mit einem Befehlswort beginnen."
+ },
+ {
+  "id": "voice-commands-016",
+  "page": "voice-commands",
+  "path": [
+   "Sprachbefehle",
+   "5. Was nicht per Sprache geht"
+  ],
+  "title": "5. Was nicht per Sprache geht",
+  "keywords": [],
+  "text": "Im **Bedienmodus** an der Konsole (*Ansicht → Bedienmodus …*) ist die Sprachsteuerung **ausgeschaltet**, damit an diesem PC nur das geht, was die Bedienfläche anbietet; nach dem Verlassen läuft sie wieder, wenn sie eingeschaltet war.\n\nAus Sicherheit führt die Sprachsteuerung **nichts aus, was etwas löscht oder überschreibt**: `Delete …`, `Clear Clear`, `Overwrite`. Die Blase sagt dann „Nicht per Sprache“. Tippe diese Befehle oder nutze die Oberfläche."
+ },
+ {
+  "id": "voice-commands-017",
+  "page": "voice-commands",
+  "path": [
+   "Sprachbefehle",
+   "6. Wenn es nicht klappt"
+  ],
+  "title": "6. Wenn es nicht klappt",
+  "keywords": [],
+  "text": "| Anzeige | Was tun |\n|---|---|\n| Mikrofon gelb | Tooltip lesen; *Einstellungen → Triggerwort* (richtiges Mikrofon?) |\n| „Sprachmodell fehlt“ | *Einstellungen → Diktieren → Jetzt laden* (und für das Triggerwort: *Einstellungen → Triggerwort → Sprachmodell laden*) |\n| „Nichts verstanden“ | Näher ans Mikrofon, deutlicher sprechen, den Befehl direkt nach dem Triggerwort sagen |\n| „Kein Befehl erkannt“ | Der Text beginnt nicht mit einem Befehlswort – die Blase zeigt, was verstanden wurde; sprich genau wie in der Befehlszeile |\n| Befehl rot (✗) | Die Befehlszeile meldet, was nicht passt (z. B. den Scheinwerfer gibt es nicht, „this cue list has no cues“) |\n| Das Triggerwort wird nicht erkannt | *Einstellungen → Triggerwort → Empfindlichkeit* erhöhen |\n| Ein Wort wird immer falsch geschrieben | Notiere, was Whisper schreibt (der Text steht im Protokoll) – die Tabelle der Korrekturen lässt sich einfach erweitern |\n\nDas Triggerwort erkennt ein kleines Offline-Modell, den Befehl danach schreibt Whisper auf (etwa 1–3 Sekunden auf einem normalen Rechner). Bei lauter Musik oder Lärm im Raum wird die Erkennung schlechter – ein Mikrofon nah am Mund hilft mehr als alles andere."
+ }
+]

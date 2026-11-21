@@ -1,3 +1,5 @@
+# Copyright (C) 2026 Samuel Zenker
+# SPDX-License-Identifier: GPL-3.0-or-later
 """
 timecode.py
 Globaler Timecode ("die interne Uhr"): ein einziger, vom Server gefuehrter Zaehler in Millisekunden.

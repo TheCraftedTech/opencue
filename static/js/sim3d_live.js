@@ -1,3 +1,5 @@
+// Copyright (C) 2026 Samuel Zenker
+// SPDX-License-Identifier: GPL-3.0-or-later
 /* 3D-Simulation: LIVE-LICHT der Scheinwerfer. Die DMX-Werte der Show (Dimmer, Farbe, Pan/Tilt, Zoom) kommen vom Server als "fixtures_live" (abstrakte Werte je Scheinwerfer, aus dem DMX-Puffer;
  * app.js merkt den letzten Stand in window.__fixturesLive und meldet Aenderungen als Ereignis "fixtures-live-values"); hier wird daraus pro Bild gezeichnet:
  *   - Farbraeder (z. B. Color1): das rohe DMX-Byte kommt als "wheels" im Live-Strom; mit den Slots des Typs (/api/fixture-types/<Typ>/wheels, Bereiche DMX von-bis, Filterfarbe) ergibt
@@ -69,7 +71,9 @@ function makeBeamMaterial() {
         #include <tonemapping_fragment>
         #include <colorspace_fragment>
       }`,
-    transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide,
+    // "Screen"-Mischung statt Addition: dst' = src + dst * (1 - src). Viele sich ueberlagernde Kegel summieren sich nicht ueber 1 hinaus (kein hartes Abschneiden
+    // je Farbkanal, das farbiges Licht ins Weisse zieht), sondern naehern sich weich dem Maximum; ein einzelner Kegel sieht aus wie vorher.
+    transparent: true, depthWrite: false, blending: THREE.CustomBlending, blendEquation: THREE.AddEquation, blendSrc: THREE.OneFactor, blendDst: THREE.OneMinusSrcColorFactor, side: THREE.DoubleSide,
   });
 }
 
@@ -105,6 +109,7 @@ export function createLive(sim, ctx) {
   })();
   let volumes = [];                                                // je Schattenplatz {mesh, material}
   let depthTarget = null;                                          // Tiefenbild der Buehne (halbe Aufloesung, ab Stufe 4 voll): der Nebel endet an sichtbaren Flaechen
+  const eyeTargets = [null, null];                                 // VR: Tiefenbild je Auge (gleiche Technik, je Auge eine eigene Kamera)
   const depthMaterial = new THREE.MeshBasicMaterial({ colorWrite: false });
   const bufferSize = new THREE.Vector2();
   function buildVolumes(count) {
@@ -115,12 +120,64 @@ export function createLive(sim, ctx) {
       mesh.frustumCulled = false;
       mesh.renderOrder = 3;
       mesh.visible = false;
+      mesh.onBeforeRender = (renderer, scene, cam) => {                // VR: jedes Auge hat eigene Projektion, eigenen Bildausschnitt und sein eigenes Tiefenbild
+        if (!cam.viewport || !renderer.xr.isPresenting) return;
+        const u = material.uniforms;
+        u.uProjInv.value.copy(cam.projectionMatrixInverse);
+        u.uVp.value.copy(cam.viewport);
+        const eye = renderer.xr.getCamera().cameras.indexOf(cam);
+        const target = eye >= 0 ? eyeTargets[eye] : null;
+        u.uHasDepth.value = target ? 1 : 0;
+        if (target) u.uDepth.value = target.depthTexture;
+      };
       sim.scene.add(mesh);
       return { mesh, material };
     });
   }
+  /** VR: das Tiefenbild der Buehne je Auge. Die Augen-Kameras kommen aus dem XR-Manager (Lage inkl. Rig); waehrend dieser Zeichnung ist xr.enabled aus, damit render() die uebergebene Kamera benutzt. */
+  function depthPassXR(eyes) {
+    const renderer = sim.renderer;
+    const scene = sim.scene;
+    ctx.targets().forEach((m) => m.layers.enable(1));
+    const saved = { target: renderer.getRenderTarget(), override: scene.overrideMaterial, background: scene.background, fog: scene.fog, shadows: renderer.shadowMap.enabled, xr: renderer.xr.enabled };
+    scene.overrideMaterial = depthMaterial;
+    scene.background = null;
+    scene.fog = null;
+    renderer.shadowMap.enabled = false;
+    renderer.xr.enabled = false;
+    eyes.forEach((eye, i) => {
+      const scale = sim.quality.level >= 4 ? 1 : 0.5;
+      const w = Math.max(1, Math.round(eye.viewport.z * scale));
+      const h = Math.max(1, Math.round(eye.viewport.w * scale));
+      let target = eyeTargets[i];
+      if (!target || target.width !== w || target.height !== h) {
+        if (target) { target.depthTexture.dispose(); target.dispose(); }
+        target = eyeTargets[i] = new THREE.WebGLRenderTarget(w, h, { depthBuffer: true, depthTexture: new THREE.DepthTexture(w, h), minFilter: THREE.NearestFilter, magFilter: THREE.NearestFilter, generateMipmaps: false });
+      }
+      const mask = eye.layers.mask;
+      const auto = eye.matrixWorldAutoUpdate;
+      eye.layers.set(1);
+      eye.matrixWorldAutoUpdate = false;                                 // sonst wuerde render() die Lage ohne die Rig-Gruppe neu berechnen
+      renderer.setRenderTarget(target);
+      renderer.clear();
+      renderer.render(scene, eye);
+      eye.layers.mask = mask;
+      eye.matrixWorldAutoUpdate = auto;
+    });
+    renderer.xr.enabled = saved.xr;
+    renderer.setRenderTarget(saved.target);
+    renderer.shadowMap.enabled = saved.shadows;
+    scene.fog = saved.fog;
+    scene.background = saved.background;
+    scene.overrideMaterial = saved.override;
+    volumes.forEach((v) => { v.material.uniforms.uHasDepth.value = 1; });
+  }
   function depthPass() {
     const renderer = sim.renderer;
+    if (renderer.xr.isPresenting) {
+      const xrCamera = renderer.xr.getCamera();
+      if (xrCamera && xrCamera.cameras && xrCamera.cameras.length) { depthPassXR(xrCamera.cameras); return; }
+    }
     renderer.getDrawingBufferSize(bufferSize);
     const scale = sim.quality.level >= 4 ? 1 : 0.5;
     const w = Math.max(1, Math.round(bufferSize.x * scale));
@@ -679,7 +736,8 @@ export function createLive(sim, ctx) {
       if (entry.data.hidden) { st.cones.forEach((c) => { c.mesh.visible = false; }); continue; }
       const live = cache[id];
       // Zielwerte: ohne Live-Eintrag ist der Scheinwerfer aus; hat das Geraet keinen Dimmer-Kanal (nur Farbe), zaehlt die Farbe
-      const dimTarget = live ? (live.dimmer !== undefined ? live.dimmer / 100 : 1) * gm * blackout : 0;
+      const unit = (v) => (Number.isFinite(v) ? Math.max(0, Math.min(1, v)) : 0);                 // jeder Eingangswert bleibt in 0..1: nichts kann ueber das Maximum hinaus wachsen
+      const dimTarget = live ? unit(live.dimmer !== undefined ? live.dimmer / 100 : 1) * gm * blackout : 0;
       const color = live && live.color ? live.color : null;
       if (entry.modelType && st.wheelsFor !== entry.modelType) {                          // Farbraeder des Typs holen (einmal je Typ)
         st.wheelsFor = entry.modelType;
@@ -697,9 +755,9 @@ export function createLive(sim, ctx) {
         loadBeamfx(typeId).then((data) => { if (entry.modelType === typeId) { entry.beamfx = data && typeof data === "object" ? data : {}; sim.keepAlive(); } });
       }
       wheelTint(entry, live, tint);
-      const rTarget = (color ? color.r / 255 : 1) * tint[0];
-      const gTarget = (color ? color.g / 255 : 1) * tint[1];
-      const bTarget = (color ? color.b / 255 : 1) * tint[2];
+      const rTarget = (color ? unit(color.r / 255) : 1) * tint[0];
+      const gTarget = (color ? unit(color.g / 255) : 1) * tint[1];
+      const bTarget = (color ? unit(color.b / 255) : 1) * tint[2];
       const panTarget = live && live.pan !== undefined ? live.pan : null;
       const tiltTarget = live && live.tilt !== undefined ? live.tilt : null;
       const zoomTarget = live && live.zoom !== undefined ? live.zoom : null;
@@ -960,6 +1018,7 @@ export function createLive(sim, ctx) {
       volumes.forEach((v) => { sim.scene.remove(v.mesh); v.material.dispose(); });
       volumes = [];
       if (depthTarget) { depthTarget.depthTexture.dispose(); depthTarget.dispose(); depthTarget = null; }
+      eyeTargets.forEach((target, i) => { if (target) { target.depthTexture.dispose(); target.dispose(); eyeTargets[i] = null; } });
       depthMaterial.dispose();
       fullscreen.dispose();
       coneGeometry.dispose();

@@ -1,7 +1,9 @@
+// Copyright (C) 2026 Samuel Zenker
+// SPDX-License-Identifier: GPL-3.0-or-later
 /* 3D-Simulation: TEST-SCHEINWERFER. Ein einzelner Scheinwerfer, den man in die Buehne setzt und auf einen Punkt richtet, um Lichtkegel, Lichtkreis und Schatten auf
  * schraegen und gekruemmten Flaechen zu beurteilen. Er gehoert NICHT zur Show und nicht zur Buehne (wird nicht gespeichert, keine DMX-Werte): spaeter kommen die echten
  * Scheinwerfer der Show in eine eigene Datei bzw. einen eigenen Abschnitt, getrennt von den Koerpern.
- * Darstellung (nach der Vorlage _old/3d-Bühne-Vorlage.html): SpotLight mit Schattenkarte (weiche Kante = penumbra), sichtbarer Lichtkegel als Volumen (Nebel wird entlang des
+ * Darstellung: SpotLight mit Schattenkarte (weiche Kante = penumbra), sichtbarer Lichtkegel als Volumen (Nebel wird entlang des
  * Sehstrahls abgetastet, Schatten und Gegenstaende unterbrechen ihn), kleines Scheinwerfer-Modell. Bedienung im Baumodus: den Scheinwerfer ziehen
  * (verschiebt ihn, der Zielpunkt bleibt), die gelbe Kugel ziehen (zielt auf die Flaeche unter dem Finger), oder Zahlenfelder/Regler in der Seitenleiste. */
 import * as THREE from "three";
@@ -21,7 +23,7 @@ export function makeConeMaterial() {
       uColor: { value: new THREE.Color(1, 1, 1) }, uStrength: { value: 0 }, uSteps: { value: 16 },
       uApex: { value: new THREE.Vector3() }, uAxis: { value: new THREE.Vector3(0, 0, 1) }, uK: { value: 0.3 }, uL: { value: 20 },
       uCosOuter: { value: 0.9 }, uCosInner: { value: 0.95 },
-      uDepth: { value: null }, uHasDepth: { value: 0 }, uProjInv: { value: new THREE.Matrix4() }, uRes: { value: new THREE.Vector2(1, 1) },
+      uDepth: { value: null }, uHasDepth: { value: 0 }, uProjInv: { value: new THREE.Matrix4() }, uRes: { value: new THREE.Vector2(1, 1) }, uVp: { value: new THREE.Vector4(0, 0, 0, 0) },
       uShadow: { value: null }, uHasShadow: { value: 0 }, uShadowMat: { value: new THREE.Matrix4() }, uBias: { value: -0.0004 },
       uGobo: { value: null }, uHasGobo: { value: 0 },
       // Plaetze ohne Schattenkarte: der Nebel endet an den Flaechen, die die Strahlproben (Mittelstrahl + Ring) getroffen haben (axialer Abstand je Strahl)
@@ -37,7 +39,7 @@ export function makeConeMaterial() {
       uniform vec3 uColor; uniform float uStrength; uniform int uSteps;
       uniform vec3 uApex; uniform vec3 uAxis; uniform float uK; uniform float uL;
       uniform float uCosOuter; uniform float uCosInner;
-      uniform sampler2D uDepth; uniform float uHasDepth; uniform mat4 uProjInv; uniform vec2 uRes;
+      uniform sampler2D uDepth; uniform float uHasDepth; uniform mat4 uProjInv; uniform vec2 uRes; uniform vec4 uVp;          // uVp: Ausschnitt dieses Auges im Bild (VR; x, y, Breite, Hoehe in Pixeln), 0 = ganzes Bild (uRes)
       uniform sampler2DShadow uShadow; uniform float uHasShadow; uniform mat4 uShadowMat; uniform float uBias;
       uniform sampler2D uGobo; uniform float uHasGobo;                // Lichtkarte des Platzes (Gobo/Prisma), gleiche Abbildung wie die Schattenkarte
       uniform float uCap; uniform float uUseHits; uniform float uHitS[9]; uniform int uRing; uniform vec3 uBasisU; uniform vec3 uBasisV;
@@ -94,7 +96,8 @@ export function makeConeMaterial() {
         vec2 iv = coneInterval(O, d);
         float tIn = max(iv.x, 0.0);
         float tOut = iv.y;
-        vec2 uv = gl_FragCoord.xy / uRes;
+        vec4 vpt = uVp.z > 0.5 ? uVp : vec4(0.0, 0.0, uRes);
+        vec2 uv = (gl_FragCoord.xy - vpt.xy) / vpt.zw;
         if (uHasDepth > 0.5) {
           float dep = texture2D(uDepth, uv).r;
           if (dep < 0.99999) {
@@ -146,7 +149,8 @@ export function makeConeMaterial() {
         #include <tonemapping_fragment>
         #include <colorspace_fragment>
       }`,
-    transparent: true, depthTest: false, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide,
+    // "Screen"-Mischung statt Addition (siehe makeBeamMaterial in sim3d_live.js): ueberlagerte Kegel saturieren weich, ohne je Kanal hart bei 1 abzuschneiden
+    transparent: true, depthTest: false, depthWrite: false, blending: THREE.CustomBlending, blendEquation: THREE.AddEquation, blendSrc: THREE.OneFactor, blendDst: THREE.OneMinusSrcColorFactor, side: THREE.DoubleSide,
   });
 }
 

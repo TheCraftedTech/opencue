@@ -1,8 +1,10 @@
+# Copyright (C) 2026 Samuel Zenker
+# SPDX-License-Identifier: GPL-3.0-or-later
 """
 command_line.py
-dot2-/MA-Lighting-Stil Befehlszeilen-Parser fuer OpenCue.
+Lichtpult-Stil Befehlszeilen-Parser fuer OpenCue.
 
-Syntax-Philosophie (vollstaendige Referenz: documentation/commands.md):
+Syntax-Philosophie (vollstaendige Referenz: static/help/commands.en.md):
     [Aktion/Objekt] [ID/Bereich] [Eigenschaft/Ziel]
 z.B. "Fixture 1 Thru 10", "At 80", "Store Cue 1.5", "Go Cue 3".
 
@@ -35,12 +37,14 @@ die AKTUELLE Selektion wirken.
 
 from __future__ import annotations
 
+import asyncio
 import math
 import re
 import time
 from contextvars import ContextVar
 from typing import Any, Awaitable, Callable, Dict, List, Optional, Set, Tuple
 
+from app import console_defaults
 from app.dmx_engine import DMX_UNIVERSE_SIZE, dmx_engine
 from app.fx_engine import fx_engine
 from app.dmx_resolve import (
@@ -176,6 +180,9 @@ def _parse_id_spec(tokens: List[str]) -> List[int]:
 
 # Zielliste fuer 'Cuelist <name> <Befehl>': gilt nur waehrend dieses einen Befehls (Task-lokal), die aktive Liste bleibt unveraendert.
 _target_list: ContextVar[Optional[str]] = ContextVar("opencue_command_target_list", default=None)
+# 'Fixture 1 At 50' waehlt normalerweise 1 aus. Mit gesetztem keep_selection (Task-lokal, z. B. fuer die Funktionen des KI-Assistenten) bleibt die Auswahl der Oberflaeche
+# unveraendert: die Werte gehen an genau die genannten Geraete (Programmer, DMX, Anzeige), ohne dass jemand sie ausgewaehlt sieht oder eine eigene Auswahl verliert.
+keep_selection: ContextVar[bool] = ContextVar("opencue_command_keep_selection", default=False)
 
 
 def _active_cuelist() -> CueList:
@@ -327,8 +334,8 @@ def _parse_at_clause(tokens: List[str], idx: int) -> Tuple[Dict[str, Any], int, 
         raise _Incomplete("At: missing value (e.g. 'At 80', 'At Full', 'At +10')")
     raw = tokens[idx + 1]
     token = raw.lower()
-    if token == "at":  # "At At" == "At Full"
-        return {"dimmer": ("abs", 100.0)}, 2, "At Full"
+    if token == "at":  # "At At" = alles an: Helligkeit 100 % UND Farbe Weiss (Geraete ohne Farbe ignorieren die Farbe); ohne Auswahl alle Geraete (siehe _cmd_attr)
+        return {"dimmer": ("abs", 100.0), "color": {"r": 255, "g": 255, "b": 255}}, 2, "At At"
     mode, value, _percent = _parse_level(raw)
     return {"dimmer": (mode, value if mode == "rel" else _pct(value))}, 2, f"At {raw}"
 
@@ -575,19 +582,21 @@ def _plan_spec(fixtures: List[Any], spec: Dict[str, Any]) -> Tuple[List[Tuple[An
     return planned, [f"{name} not available on {count} of {len(fixtures)} fixtures" for name, count in missing.items()]
 
 
-async def _apply_attr_spec(spec: Dict[str, Any], broadcast: Broadcast) -> List[str]:
+async def _apply_attr_spec(spec: Dict[str, Any], broadcast: Broadcast, ids: Optional[List[str]] = None) -> List[str]:
     """Wendet ein per _parse_clauses() gebautes Spec auf ALLE aktuell selektierten Fixtures an - schreibt DMX, aktualisiert
     state.programmer_values (fuer "Store Cue") und broadcastet Live-Werte. Gibt Hinweise zurueck (Attribute, die einzelne Geraete
-    nicht haben); ein Attribut, das KEIN selektiertes Geraet hat, ist ein Fehler (dann wird nichts angewendet)."""
-    if not state.selected_fixture_ids:
+    nicht haben); ein Attribut, das KEIN selektiertes Geraet hat, ist ein Fehler (dann wird nichts angewendet). `ids`: stattdessen genau diese Geraete (die Auswahl bleibt unberuehrt)."""
+    chosen = state.selected_fixture_ids if ids is None else ids
+    if not chosen:
         raise _CommandError("No fixtures selected")
-    fixtures_sel = [state.fixtures[i] for i in state.selected_fixture_ids if i in state.fixtures]
+    fixtures_sel = [state.fixtures[i] for i in chosen if i in state.fixtures]
     planned, notes = _plan_spec(fixtures_sel, spec)
 
     universe_batches: Dict[int, Dict[int, int]] = {}
     affected_universes: Set[int] = set()
     live_values: Dict[str, Any] = {}
 
+    await release_effects_for_manual({fx.id: list(abstract) for fx, abstract in planned}, broadcast)      # ein Effekt auf diesen Attributen endet (der feste Wert gewinnt)
     for fx, abstract in planned:
         state.set_programmer_values(fx.id, abstract)
         state.release_layers(fx.id, list(abstract))      # der Programmer uebernimmt: Cue-Listen mischen diese Attribute nicht mehr
@@ -632,12 +641,32 @@ def _parse_selection(tokens: List[str]) -> Tuple[List[int], List[str]]:
     """'1 Thru 10 + 15 + "Front"' -> (sortierte Nummern, Namen). Ein Teil ist 'N', 'N Thru M' oder ein Name (in Anfuehrungszeichen oder ein einzelnes Wort)."""
     numbers: List[int] = []
     names: List[str] = []
-    for grp in _split_on_plus(tokens):
-        if len(grp) == 1 and not (_is_number(grp[0]) and not getattr(grp[0], "quoted", False)):
+    removed_numbers: Set[int] = set()
+    removed_names: Set[str] = set()
+    sign, current = "+", []                                  # '+' fuegt hinzu, ein eigenstaendiges '-' nimmt heraus ("1 Thru 10 - 5")
+    parts: List[Tuple[str, List[str]]] = []
+    for tok in tokens:
+        if tok in ("+", "-") and not getattr(tok, "quoted", False):
+            if current:
+                parts.append((sign, current))
+            sign, current = str(tok), []
+        else:
+            current.append(tok)
+    if current:
+        parts.append((sign, current))
+    for sign, grp in parts:
+        is_name = len(grp) == 1 and not (_is_number(grp[0]) and not getattr(grp[0], "quoted", False))
+        if sign == "-":
+            if is_name:
+                removed_names.add(str(grp[0]).strip().lower())
+            else:
+                removed_numbers.update(_parse_id_spec(grp))
+        elif is_name:
             names.append(str(grp[0]))
         else:
             numbers.extend(_parse_id_spec(grp))
-    return sorted(set(numbers)), names
+    names = [n for n in names if n.strip().lower() not in removed_names]
+    return sorted(set(numbers) - removed_numbers), names
 
 
 def _split_spec(rest: List[str], known_names: Set[str]) -> int:
@@ -646,7 +675,7 @@ def _split_spec(rest: List[str], known_names: Set[str]) -> int:
     nach der ID-Angabe ist ein Kanalname ('Fixture 1 Frost 50')."""
     for i, tok in enumerate(rest):
         low = str(tok).lower()
-        if low in ("+", "thru") or _is_number(tok) or getattr(tok, "quoted", False):
+        if low in ("+", "-", "thru") or _is_number(tok) or getattr(tok, "quoted", False):
             continue
         if _is_clause_keyword(tok):
             return i
@@ -678,15 +707,19 @@ async def _select_and_apply(
     if attr_tokens:
         clauses = _parse_clauses(attr_tokens)              # zuerst pruefen: bei einem Tippfehler aendert sich die Auswahl nicht
         _plan_spec([state.fixtures[i] for i in ids if i in state.fixtures], clauses[0])
-    state.set_selection(ids)
-    await broadcast("selection_changed", {"selected_ids": state.selected_fixture_ids})
-    msg = f"OK: {_fmt_fixture_count(len(state.selected_fixture_ids))} selected"
+    keep = keep_selection.get()
+    if keep:
+        msg = f"OK: {_fmt_fixture_count(len(ids))}"                   # die Auswahl der Oberflaeche bleibt wie sie ist
+    else:
+        state.set_selection(ids)
+        await broadcast("selection_changed", {"selected_ids": state.selected_fixture_ids})
+        msg = f"OK: {_fmt_fixture_count(len(state.selected_fixture_ids))} selected"
     if missing:
         msg += f" ({noun} not found: {', '.join(map(str, missing))})"
 
     if attr_tokens:
         spec, labels = clauses
-        notes = await _apply_attr_spec(spec, broadcast)
+        notes = await _apply_attr_spec(spec, broadcast, list(ids) if keep else None)
         msg += f"; {' '.join(labels)} applied"
         if notes:
             msg += f" ({'; '.join(notes)})"
@@ -709,6 +742,22 @@ async def _cmd_fixture(rest: List[str], broadcast: Broadcast) -> Dict[str, Any]:
 
     known = {fx.name.strip().lower() for fx in state.fixtures.values()}
     return await _select_and_apply(rest, broadcast, resolve_ids=resolve, noun="Fixture", known_names=known)
+
+
+async def _cmd_step_fixture(direction: int, broadcast: Broadcast) -> Dict[str, Any]:
+    """'Next' / 'Previous' : waehlt den naechsten / vorigen Scheinwerfer (nach Fixture-Nummer, am Ende von vorn). Ohne Auswahl: Next = der erste, Previous = der letzte."""
+    ordered = sorted(state.fixtures.values(), key=lambda fx: (fx.fid, fx.id))
+    if not ordered:
+        raise _CommandError("No fixtures patched")
+    chosen = [fx for fx in ordered if fx.id in state.selected_fixture_ids]
+    if not chosen:
+        target = ordered[0] if direction > 0 else ordered[-1]
+    else:
+        pos = ordered.index(chosen[-1] if direction > 0 else chosen[0])
+        target = ordered[(pos + direction) % len(ordered)]
+    state.set_selection([target.id])
+    await broadcast("selection_changed", {"selected_ids": state.selected_fixture_ids})
+    return {"success": True, "message": f"OK: Fixture {target.fid} selected"}
 
 
 async def _cmd_group(rest: List[str], broadcast: Broadcast) -> Dict[str, Any]:
@@ -739,11 +788,18 @@ async def _cmd_group(rest: List[str], broadcast: Broadcast) -> Dict[str, Any]:
 
 async def _cmd_attr(tokens: List[str], broadcast: Broadcast) -> Dict[str, Any]:
     """'At 50', 'Color Red', 'Zoom 30', 'CH3 128', 'Frost 50' ... - eine oder mehrere Klauseln hintereinander auf die Selektion."""
-    if not state.selected_fixture_ids:
+    everything = (not state.selected_fixture_ids and len(tokens) >= 2
+                  and _norm(tokens[0]) == "at" and _norm(tokens[1]) == "at" and not getattr(tokens[1], "quoted", False))
+    if everything:                                         # "At At" ohne Auswahl: ALLE gepatchten Geraete an (Auswahl bleibt leer)
+        if not state.fixtures:
+            raise _CommandError("At At: no fixtures patched")
+    elif not state.selected_fixture_ids:
         raise _CommandError(f"{str(tokens[0]).capitalize()}: no fixtures selected")
     spec, labels = _parse_clauses(tokens)
-    notes = await _apply_attr_spec(spec, broadcast)
-    msg = f"OK: {' '.join(labels)} applied to {_fmt_fixture_count(len(state.selected_fixture_ids))}"
+    target_ids = list(state.fixtures.keys()) if everything else None
+    notes = await _apply_attr_spec(spec, broadcast, target_ids)
+    count = len(target_ids) if everything else len(state.selected_fixture_ids)
+    msg = f"OK: {' '.join(labels)} applied to {'ALL ' if everything else ''}{_fmt_fixture_count(count)}"
     if notes:
         msg += f" ({'; '.join(notes)})"
     return {"success": True, "message": msg}
@@ -840,6 +896,20 @@ def _parse_effect_clause(tokens: List[str], idx: int) -> Tuple[Dict[str, Any], i
 def _parse_manual_clause(tokens: List[str], idx: int) -> Tuple[Dict[str, Any], int, str]:
     cats, used = _take_categories(tokens, idx + 1)
     return {"ops": [("manual", cats)]}, 1 + used, "Manual" + (f" {' '.join(cats)}" if cats else "")
+
+
+async def release_effects_for_manual(attrs_by_fixture: Dict[str, Any], broadcast: Broadcast) -> bool:
+    """Ein manueller Wert (Fader, Befehlszeile, Rohkanal) gewinnt: Effekte, die genau diese Attribute steuern, enden auf dieser Fixture - sonst
+    schreibt der Effekt-Thread sofort wieder darueber (der Fader "springt zurueck") und das Dropdown zeigt einen falschen Zustand.
+    Der neue Wert wird vom Aufrufer direkt danach geschrieben. Gibt zurueck, ob ein Effekt beendet wurde (dann geht fx_changed an alle)."""
+    changed = False
+    for fid, attrs in attrs_by_fixture.items():
+        if fid in state.fixtures and attrs:
+            _values, released = fx_engine.release_for_cue(fid, list(attrs))
+            changed = released or changed
+    if changed:
+        await broadcast("fx_changed", fx_engine.state_payload())
+    return changed
 
 
 async def release_fixtures(fixture_ids: List[str], broadcast: Broadcast) -> None:
@@ -1060,18 +1130,19 @@ _RESET_COVERED_CHANNELS = ("Dimmer", "Pan", "Tilt", "PanFine", "TiltFine",
 
 
 def _full_reset_abstract(fx) -> Dict[str, Any]:
-    """Baseline-Neutralwerte fuer EINE Fixture - der 'kein Programmer-
-    Override, keine Cue aktiv'-Ruhezustand: Dimmer/Beam auf 0 (aus/
-    geschlossen), Farbe geloescht (schwarz), Pan/Tilt auf 0 Grad. Pan/Tilt
-    werden ueber denselben physical_from/physical_to-Bereich wie ein
-    'Pan 0'/'Tilt 0'-Befehl aufgeloest (siehe _degrees_to_pct) - ein fest
-    verdrahteter 50%-Mittelwert waere bei einem asymmetrischen GDTF-Profil
+    """Baseline-Werte fuer EINE Fixture - der 'kein Programmer-Override, keine Cue aktiv'-Ruhezustand. Dimmer, Farbe und Position stehen in den Einstellungen
+    (Standardwerte -> Clear Clear): Vorgabe Dimmer 0 % (dunkel), Farbe Weiss, Position 0 Grad; Beam auf 0 (aus/geschlossen). Geraete OHNE Dimmer-Kanal
+    (reine RGB-Geraete, bei denen die Farbe die Helligkeit ist) bleiben schwarz. 0 Grad wird ueber denselben physical_from/physical_to-Bereich wie ein
+    'Pan 0'/'Tilt 0'-Befehl aufgeloest (siehe _degrees_to_pct) - ein fest verdrahteter 50%-Mittelwert waere bei einem asymmetrischen GDTF-Profil
     (0 Grad != Kanalmitte) falsch."""
+    cfg = state.console_defaults
+    has_dimmer = "Dimmer" in fixture_channel_offsets(fx)
+    center = cfg.get("clear_position") == "center"
     abstract: Dict[str, Any] = {
-        "dimmer": 0.0,
-        "color": {"r": 0, "g": 0, "b": 0},
-        "pan": _degrees_to_pct(fx, "pan", 0.0),
-        "tilt": _degrees_to_pct(fx, "tilt", 0.0),
+        "dimmer": float(cfg.get("clear_dimmer", 0.0)) if has_dimmer else 0.0,
+        "color": console_defaults.clear_rgb(cfg) if has_dimmer else {"r": 0, "g": 0, "b": 0},
+        "pan": 50.0 if center else _degrees_to_pct(fx, "pan", 0.0),
+        "tilt": 50.0 if center else _degrees_to_pct(fx, "tilt", 0.0),
         "strobe": 0.0,
         "gobo": 0.0,
         "gobo_spin": 0.0,
@@ -1266,8 +1337,8 @@ async def set_blackout(enabled: Optional[bool], broadcast: Broadcast) -> bool:
     if target and not state.blackout:
         _remember_unscaled_output()                         # was nur im DMX-Puffer steht, bleibt fuer das Wiederherstellen erhalten
     state.blackout = target
+    await broadcast("blackout_changed", {"enabled": state.blackout})              # ZUERST melden (Knoepfe reagieren sofort) - das Neuberechnen aller Dimmer folgt
     await _rescale_dimmers(broadcast)
-    await broadcast("blackout_changed", {"enabled": state.blackout})
     return state.blackout
 
 
@@ -1424,7 +1495,7 @@ async def _cmd_fader(rest: List[str], broadcast: Broadcast) -> Dict[str, Any]:
     if not tokens:
         raise _Incomplete("Fader: missing value (e.g. 'Fader 50', 'Fader Full', 'Fader +10')")
     mode, value, _percent = _parse_level(tokens[0])
-    value = _pct(state.cuelist_masters.get(cl.id, 100.0) + value if mode == "rel" else value)
+    value = _pct(state.cuelist_master(cl.id) + value if mode == "rel" else value)
     await set_cuelist_master(cl.id, value, broadcast)
     return {"success": True, "message": f"OK: Fader {value:g}%" + _list_suffix()}
 
@@ -1458,7 +1529,7 @@ def _span_label(low: float, high: float, count: int) -> str:
 
 
 async def _cmd_store(rest: List[str], broadcast: Broadcast) -> Dict[str, Any]:
-    """Store Cue <number> ["<Name>"] [Merge|Overwrite]  |  Store Group "<Name>" [Merge|Overwrite]"""
+    """Store Cue <number> ["<Name>"] [Merge|Overwrite] [Absolute|Relative]  |  Store Group "<Name>" [Merge|Overwrite]"""
     if rest and str(rest[0]).lower() == "group":
         return await _cmd_store_group(rest[1:], broadcast)
     if not rest or rest[0].lower() != "cue" or len(rest) < 2:
@@ -1466,21 +1537,27 @@ async def _cmd_store(rest: List[str], broadcast: Broadcast) -> Dict[str, Any]:
     number = _parse_float(rest[1])
     option: Optional[str] = None
     name: Optional[str] = None
+    play_mode: Optional[str] = None
+    protect_next = False
     for tok in rest[2:]:
         low = str(tok).lower()
         if getattr(tok, "quoted", False) and name is None:
             name = str(tok)
+        elif low == "cueonly":
+            protect_next = True
         elif low in ("merge", "overwrite") and option is None:
             option = low
+        elif low in ("absolute", "relative", "tracking") and play_mode is None:
+            play_mode = "absolute" if low == "absolute" else "tracking"
         else:
-            raise _CommandError("Store Cue: expected 'Store Cue <number> [\"<name>\"] [Merge|Overwrite]'")
+            raise _CommandError("Store Cue: expected 'Store Cue <number> [\"<name>\"] [Merge|Overwrite] [Absolute|Relative] [CueOnly]'")
     cl = _active_cuelist()
     fixture_values = state.get_programmer_snapshot()
     fx_map = fx_engine.cue_effects()
-    if not fixture_values and not fx_map:
-        raise _CommandError("Store Cue: programmer is empty - set values or an effect first")
-    status, _cue = state.store_cue(cl.id, fixture_values, number=number, mode=option, fx=fx_map,
-                                   fx_order=fx_engine.cue_effect_order(), name=name)
+    status, _cue = state.store_cue(cl.id, fixture_values, number=number, mode=option, fx=fx_map, fx_order=fx_engine.cue_effect_order(),
+                                   name=name, play_mode=play_mode, live=True, protect_next=protect_next)
+    if status == "empty":
+        raise _CommandError("Store Cue: nothing has changed compared with the cue before - change something first (or use 'Store Cue <n> Absolute' to store the current state)")
     if status == "conflict":
         raise _CommandError(f"Cue {_fmt_num(number)} already exists - use 'Store Cue {_fmt_num(number)} Merge' "
                             f"or 'Store Cue {_fmt_num(number)} Overwrite'")
@@ -1532,6 +1609,7 @@ _CUE_PROPS: Dict[str, Tuple[str, str, str]] = {
     "fxin": ("fx_fade_in", "time", "effect fade-in"), "fxfadein": ("fx_fade_in", "time", "effect fade-in"), "effectin": ("fx_fade_in", "time", "effect fade-in"),
     "fxout": ("fx_fade_out", "time", "effect fade-out"), "fxfadeout": ("fx_fade_out", "time", "effect fade-out"), "effectout": ("fx_fade_out", "time", "effect fade-out"),
     "trigger": ("trigger", "trigger", "trigger"), "mib": ("mib", "mib", "MIB"), "cmd": ("cmd", "text", "CMD"), "name": ("name", "text", "name"),
+    "mode": ("play_mode", "playmode", "play mode"), "playmode": ("play_mode", "playmode", "play mode"),
 }
 _CUE_PROP_FIRST_WORDS = {"color", "colour", "pos", "position", "beam", "zoom", "fx", "effect"}
 
@@ -1549,7 +1627,76 @@ def _match_cue_prop(tokens: List[str], i: int) -> Tuple[Tuple[str, str, str], in
         return _CUE_PROPS[one], i + 1
     if one in _CUE_PROP_FIRST_WORDS:
         raise _Incomplete(f"Cue: expected '{str(tokens[i]).capitalize()} Fade|Delay'" if one != "fx" and one != "effect" else "Cue: expected 'FX In|Out'")
-    raise _CommandError(f"Cue: unknown property '{tokens[i]}' (Fade, Delay, Color/Pos/Beam/Zoom Fade|Delay, FX In|Out, Trigger, MIB, Cmd, Name)")
+    raise _CommandError(f"Cue: unknown property '{tokens[i]}' (Fade, Delay, Color/Pos/Beam/Zoom Fade|Delay, FX In|Out, Trigger, MIB, Mode, Cmd, Name)")
+
+
+def _cue_trigger_midi(tokens: List[str]) -> Tuple[Dict[str, Any], str]:
+    """Cue <n> Trigger Midi Note <0-127 | C4> [Ch <1-16>]  |  CC <0-127> [<Schwelle 1-127>] [Ch <1-16>]  |  PC <0-127> [Ch <1-16>]  ->  (Felder fuer update_cue, Anzeige)."""
+    from app.midi_vars import CUE_MIDI_TYPES, clean_midi_trigger, label as midi_label, note_name  # deferred
+    usage = "e.g. 'Cue 3 Trigger Midi Note 60', 'Cue 3 Trigger Midi Note C4 Ch 2', 'Cue 3 Trigger Midi CC 20 64', 'Cue 3 Trigger Midi PC 5'"
+    if len(tokens) < 2:
+        raise _Incomplete(f"Cue Trigger Midi: missing type (Note, CC or PC), {usage}")
+    kind = str(tokens[1]).lower()
+    kind = {"controller": "cc", "program": "pc"}.get(kind, kind)
+    if kind not in CUE_MIDI_TYPES:
+        raise _CommandError(f"Cue Trigger Midi: unknown type '{tokens[1]}' (Note, CC or PC)")
+    if len(tokens) < 3:
+        raise _Incomplete(f"Cue Trigger Midi {kind.upper() if kind != 'note' else 'Note'}: missing number (0-127{', or a note name such as C4' if kind == 'note' else ''}), {usage}")
+    number_text = str(tokens[2])
+    match = re.fullmatch(r"([a-gA-G])([#b]?)(-?\d)", number_text) if kind == "note" else None
+    if match:
+        semitone = {"c": 0, "d": 2, "e": 4, "f": 5, "g": 7, "a": 9, "b": 11}[match.group(1).lower()] + {"#": 1, "b": -1, "": 0}[match.group(2)]
+        number = (int(match.group(3)) + 1) * 12 + semitone
+    else:
+        try:
+            number = int(float(number_text.replace(",", ".")))
+        except ValueError:
+            raise _CommandError(f"Cue Trigger Midi: invalid number '{number_text}' (0-127)")
+    if not 0 <= number <= 127:
+        raise _CommandError("Cue Trigger Midi: the number must be between 0 and 127")
+    channel, threshold = 0, None
+    rest = [str(t) for t in tokens[3:]]
+    index = 0
+    while index < len(rest):
+        word = rest[index].lower()
+        if word in ("ch", "channel"):
+            if index + 1 >= len(rest):
+                raise _Incomplete("Cue Trigger Midi: missing channel number after Ch (1-16)")
+            try:
+                channel = int(float(rest[index + 1]))
+            except ValueError:
+                raise _CommandError(f"Cue Trigger Midi: invalid channel '{rest[index + 1]}'")
+            if not 1 <= channel <= 16:
+                raise _CommandError("Cue Trigger Midi: the channel must be between 1 and 16")
+            index += 2
+        elif kind == "cc" and threshold is None:
+            try:
+                threshold = int(float(word))
+            except ValueError:
+                raise _CommandError(f"Cue Trigger Midi: unexpected '{rest[index]}' ({usage})")
+            if not 1 <= threshold <= 127:
+                raise _CommandError("Cue Trigger Midi: the threshold must be between 1 and 127")
+            index += 1
+        else:
+            raise _CommandError(f"Cue Trigger Midi: unexpected '{rest[index]}' ({usage})")
+    k, n, c, v = clean_midi_trigger(kind, number, channel, threshold)
+    return {"trigger": "midi", "midi_type": k, "midi_number": n, "midi_channel": c, "midi_value": v}, midi_label(k, n, c, v).replace("MIDI: ", "Midi ").replace("≥", ">=")
+
+
+def _cue_trigger_clock(tokens: List[str]) -> Tuple[Dict[str, Any], str]:
+    """Cue <n> Trigger Clock <HH:MM[:SS]> [Mon-Fri | Sat,Sun | weekdays | weekend | daily ...]  ->  (Felder fuer update_cue, Anzeige): der Cue startet zu dieser Uhrzeit der Wanduhr."""
+    from app import timeofday  # deferred
+    usage = "e.g. 'Cue 3 Trigger Clock 19:30', 'Cue 3 Trigger Clock 19:30 Mon-Fri', 'Cue 3 Trigger Clock 20:00 Sat,Sun'"
+    if len(tokens) < 2:
+        raise _Incomplete(f"Cue Trigger Clock: missing time (HH:MM), {usage}")
+    time_text = timeofday.clean_time(tokens[1])
+    if time_text is None:
+        raise _CommandError(f"Cue Trigger Clock: invalid time '{tokens[1]}' (HH:MM or HH:MM:SS)")
+    days_text = " ".join(str(t) for t in tokens[2:]).strip()
+    days = timeofday.clean_days(days_text) if days_text else []
+    if days_text and not days and days_text.lower() not in ("daily", "everyday", "all", "taeglich", "täglich") and "-" not in days_text and "," not in days_text:
+        raise _CommandError(f"Cue Trigger Clock: unknown days '{days_text}' (Mon-Fri, Sat,Sun, weekdays, weekend, daily)")
+    return {"trigger": "clock", "clock_time": time_text, "clock_days": days}, "Clock " + timeofday.label(time_text, days)
 
 
 def _cue_prop_value(kind: str, tokens: List[str], label: str) -> Tuple[Dict[str, Any], str]:
@@ -1576,7 +1723,31 @@ def _cue_prop_value(kind: str, tokens: List[str], label: str) -> Tuple[Dict[str,
             if parsed is None:
                 raise _CommandError(f"Invalid time: {tokens[1]}")
             return {"trigger": "timecode", "timecode_ms": parsed}, f"Timecode {format_timecode(parsed)}"
-        raise _CommandError("Cue Trigger: expected Go, Follow or Timecode <time>")
+        if low == "audio":
+            from app.audio_vars import CUE_AUDIO_COUNT_SOURCES, CUE_AUDIO_SOURCES, clean_audio_trigger  # deferred
+            if len(tokens) < 2:
+                raise _Incomplete("Cue Trigger Audio: missing source (Beat, Kick, Snare, Hat, Level, Bass, Mid, High, B1 ... B8), e.g. 'Cue 3 Trigger Audio Kick'")
+            source = str(tokens[1]).lower()
+            if source not in CUE_AUDIO_SOURCES:
+                raise _CommandError(f"Cue Trigger Audio: unknown source '{tokens[1]}' (Beat, Kick, Snare, Hat, Level, Bass, Mid, High, B1 ... B8)")
+            value = None
+            if len(tokens) > 2:
+                try:
+                    value = float(str(tokens[2]).rstrip("%").replace(",", "."))
+                except ValueError:
+                    raise _CommandError(f"Invalid number: {tokens[2]}")
+            src, val = clean_audio_trigger(source, value)
+            text = f"Audio {src.capitalize()}" + (f" every {val:g}. hit" if src in CUE_AUDIO_COUNT_SOURCES and val > 1 else f" at {val:g} %" if src not in CUE_AUDIO_COUNT_SOURCES else "")
+            return {"trigger": "audio", "audio_source": src, "audio_value": val}, text
+        if low == "midi":
+            return _cue_trigger_midi(tokens)
+        if low in ("clock", "at", "daytime", "wallclock"):
+            return _cue_trigger_clock(tokens)
+        raise _CommandError("Cue Trigger: expected Go, Follow, Timecode <time>, Audio <source> [value], Midi <Note|CC|PC> <number> or Clock <HH:MM> [days]")
+    if kind == "playmode":
+        if low not in ("absolute", "relative", "tracking"):
+            raise _CommandError("Cue Mode: expected Absolute (the exact stored state) or Relative (only the stored changes, tracking)")
+        return {"play_mode": "absolute" if low == "absolute" else "tracking"}, "Absolute" if low == "absolute" else "Relative"
     if kind == "mib":
         mapping = {"off": "Off", "0": "Off", "auto": "Auto", "on": "On"}
         if low not in mapping:
@@ -1640,18 +1811,22 @@ async def _cmd_go(rest: List[str], broadcast: Broadcast, keyword: str = "go") ->
 
 
 async def _cmd_update(rest: List[str], broadcast: Broadcast) -> Dict[str, Any]:
-    """Update [CueOnly]: uebernimmt die Programmer-Werte in den aktiven Cue. Ohne Zusatz laufen Aenderungen in
-    Folge-Cues weiter (Tracking), mit CueOnly bleibt die Aenderung auf diesen Cue beschraenkt."""
+    """Update [CueOnly|Tracking]: uebernimmt die Programmer-Werte in den aktiven Cue. Tracking: Aenderungen laufen in Folge-Cues weiter, CueOnly: die Aenderung bleibt auf
+    diesen Cue beschraenkt. Ohne Zusatz gilt die Vorgabe aus den Einstellungen (Standardwerte -> Aktualisieren; 'Fragen' wirkt hier wie Tracking)."""
     option = rest[0].lower() if rest else ""
-    if option not in ("", "cueonly"):
-        raise _CommandError("Update: expected 'Update' or 'Update CueOnly'")
+    if option not in ("", "cueonly", "tracking", "normal"):
+        raise _CommandError("Update: expected 'Update', 'Update Tracking' or 'Update CueOnly'")
+    if option:
+        only = option == "cueonly"
+    else:
+        only = state.console_defaults.get("update_mode") == "only"
     cl = _active_cuelist()
     status, cue = state.update_active_cue(cl.id, state.get_programmer_snapshot(), fx=fx_engine.cue_effects(),
-                                          fx_order=fx_engine.cue_effect_order(), mode="only" if option else "normal")
+                                          fx_order=fx_engine.cue_effect_order(), mode="only" if only else "normal", live=True)
     if status == "no_active_cue":
         raise _CommandError("Update: no active cue in this cue list - run Go first")
     if status == "empty":
-        raise _CommandError("Update: programmer is empty - set values or an effect first")
+        raise _CommandError("Update: nothing has changed compared with this cue")
     if status != "updated":
         raise _CommandError("Update: failed")
     affected = state.clear_programmer(None)
@@ -1659,7 +1834,7 @@ async def _cmd_update(rest: List[str], broadcast: Broadcast) -> Dict[str, Any]:
     if affected:
         await broadcast("programmer_cleared", {"fixture_ids": affected})
         await broadcast("programmer_refs", {"refs": state.programmer_refs_payload()})
-    return {"success": True, "message": f"OK: Cue {_fmt_num(cue.number)} updated" + (" (CueOnly)" if option else "")}
+    return {"success": True, "message": f"OK: Cue {_fmt_num(cue.number)} updated" + (" (CueOnly)" if only else "")}
 
 
 async def _cmd_move(rest: List[str], broadcast: Broadcast) -> Dict[str, Any]:
@@ -1771,10 +1946,247 @@ async def _cmd_timecode(rest: List[str], broadcast: Broadcast) -> Dict[str, Any]
     return await done(snapshot, f"Timecode at {format_timecode(target)}" + (" (playing)" if snapshot["running"] else ""))
 
 
+def current_value_for(template: str) -> Optional[float]:
+    """Aktueller Wert des Ziels eines Reglerbefehls ('Master {value}', 'Fader {value}', 'Cuelist <Name> Fader {value}') in Prozent - fuer das "Pickup" eines MIDI-Reglers
+    (app/midi_engine.py). Gibt None zurueck, wenn der Befehl nicht so aussieht oder das Ziel nicht bekannt ist."""
+    try:
+        tokens = [str(t) for t in _tokenize(template)]
+    except Exception:
+        return None
+    if not tokens or "{value}" not in tokens[-1]:
+        return None
+    head = tokens[0].lower()
+    body = [t.lower() for t in tokens[1:-1]]
+    if body and body[-1] == "at":
+        body = body[:-1]
+    if head in ("master", "grandmaster") and not body:
+        return float(state.grand_master)
+    if head in ("fader", "mix") and not body:
+        cl = state.cuelists.get(state.active_cuelist_id) if state.active_cuelist_id else None
+        return float(state.cuelist_master(cl.id)) if cl else None
+    if head in _CUELIST_KEYWORDS and body and body[-1] == "fader":
+        found = _match_cuelist(tokens[1:1 + len(body) - 1])
+        return float(state.cuelist_master(found[0].id)) if found else None
+    return _attribute_value_for(tokens)
+
+
+_VALUE_ATTRIBUTES = {"at": "dimmer", "dimmer": "dimmer", "intensity": "dimmer", "zoom": "zoom", "focus": "focus", "gobo": "gobo", "prism": "prism", "strobe": "strobe"}
+
+
+def _attribute_value_for(tokens: List[str]) -> Optional[float]:
+    """'Fixture 5 At {value}' / 'Group front At {value}' / 'At {value}' / 'Zoom {value}' ...: aktueller Wert (0-100) des Attributs der ERSTEN betroffenen Fixture (Auswahl, Nummer oder Gruppe)."""
+    if len(tokens) < 2:
+        return None
+    attr = _VALUE_ATTRIBUTES.get(tokens[-2].lower())
+    if attr is None:
+        return None
+    head, middle = tokens[0].lower(), tokens[1:-2]
+    ids: List[str] = []
+    try:
+        if head in ("fixture", "group"):
+            if not middle:
+                return None
+            numbers, names = _parse_selection(middle)
+            if head == "fixture":
+                by_fid = {fx.fid: fx.id for fx in state.fixtures.values()}
+                ids = [by_fid[n] for n in numbers if n in by_fid]
+                for name in names:
+                    ids += [fx.id for fx in state.fixtures.values() if fx.name.strip().lower() == name.strip().lower()]
+            else:
+                for name in names or [str(n) for n in numbers]:
+                    group = next((members for gname, members in state.groups.items() if gname.strip().lower() == str(name).strip().lower()), None)
+                    if group is None and str(name).isdigit() and 0 < int(name) <= len(state.groups):
+                        group = list(state.groups.values())[int(name) - 1]
+                    ids += list(group or [])
+        elif not middle and _VALUE_ATTRIBUTES.get(tokens[0].lower()) is not None:
+            ids = list(state.selected_fixture_ids)
+    except Exception:
+        return None
+    fixture = next((state.fixtures[i] for i in ids if i in state.fixtures), None)
+    if fixture is None:
+        return None
+    return float(_current_pct(fixture, attr))                      # Programmer-Wert, sonst der zuletzt ausgegebene
+
+
+async def _cmd_osc(rest: List[str]) -> Dict[str, Any]:
+    """'Osc /address [value ...]': eine OSC-Nachricht an das Ziel der Einstellungen (Steuerung -> OSC -> Senden an) schicken. Werte: Zahlen, true / false oder Text."""
+    from app.osc import guess_value, osc  # deferred
+    if not rest:
+        raise _Incomplete("Osc: /address [value ...]  (e.g. 'Osc /opencue/go' or 'Osc /light/1 0.5')")
+    address = str(rest[0])
+    if not address.startswith("/"):
+        raise _CommandError(f"Osc: the address must start with / (got '{address}')")
+    try:
+        message = osc.send(address, [guess_value(str(x)) for x in rest[1:]])
+    except ValueError as exc:
+        raise _CommandError(f"Osc: {exc}")
+    return {"success": True, "message": f"OK: {message}"}
+
+
+async def _cmd_midi(rest: List[str], broadcast: Broadcast) -> Dict[str, Any]:
+    """'Midi Note 60 [100] [Ch 2] [Len 0.5]' | 'Midi On 60 [100] [Ch]' | 'Midi Off 60 [Ch]' | 'Midi CC 7 100 [Ch]' | 'Midi PC 3 [Ch]' | 'Midi Panic':
+    sendet MIDI an den gewaehlten Ausgang (Dialog "MIDI-Belegung"). Note = Ton an und nach Len Sekunden (Standard 0,3) wieder aus; On / Off einzeln."""
+    from app.midi_engine import MSC_COMMANDS, build_msc, midi
+    if not rest:
+        raise _Incomplete("Midi: Note <n> [vel] | On <n> | Off <n> | CC <n> <value> | PC <n> | MSC <command> | Panic   (optional: Ch <1-16>)")
+    sub = _norm(rest[0])
+    args = list(rest[1:])
+    if sub == "msc":                                         # Midi MSC Go [<cue>] [List <n>] [Device <0-127>]
+        if not args:
+            raise _Incomplete("Midi MSC: Go | Stop | Resume | AllOff | Restore | Reset | Load | Fire  [<cue>] [List <n>] [Device <0-127>]")
+        names = {name.replace("_", "").lower(): name for name in MSC_COMMANDS.values()}
+        command = names.get(_norm(args[0]))
+        if command is None:
+            raise _CommandError(f"Midi MSC: unknown command '{args[0]}' ({', '.join(sorted(n.title().replace('_', '') for n in MSC_COMMANDS.values()))})")
+        cue, cue_list, device, i = "", "", 127, 1
+        while i < len(args):
+            word = _norm(args[i])
+            if word in ("list", "cuelist", "l") and i + 1 < len(args):
+                cue_list = str(_parse_int(args[i + 1]))
+                i += 2
+            elif word in ("device", "dev", "id") and i + 1 < len(args):
+                device = _parse_int(args[i + 1])
+                i += 2
+            elif re.fullmatch(r"\d+(\.\d+)?", str(args[i])) and not cue:
+                cue = str(args[i])
+                i += 1
+            else:
+                raise _CommandError(f"Midi MSC: unexpected '{args[i]}'")
+        if not 0 <= device <= 127:
+            raise _CommandError("Midi MSC: device must be 0-127")
+        ok, msg = midi.send(build_msc(command, cue, cue_list, device))
+        return {"success": ok, "message": f"OK: MIDI Show Control {command}{(' cue ' + cue) if cue else ''}{(' list ' + cue_list) if cue_list else ''} (device {device}) -> {msg}" if ok else msg}
+    channel, length = 1, 0.3
+    i = 0
+    plain: List[str] = []
+    while i < len(args):                                    # Ch <n> und Len <s> stehen irgendwo hinter dem Befehl
+        word = _norm(args[i])
+        if word in ("ch", "channel") and i + 1 < len(args):
+            channel = _parse_int(args[i + 1])
+            i += 2
+        elif word in ("len", "length", "for") and i + 1 < len(args):
+            length = max(0.02, min(30.0, _parse_float(args[i + 1])))
+            i += 2
+        else:
+            plain.append(args[i])
+            i += 1
+    if not 1 <= channel <= 16:
+        raise _CommandError(f"Midi: channel must be 1-16 (got {channel})")
+    nums = [_parse_int(a) for a in plain]
+    if any(not 0 <= n <= 127 for n in nums):
+        raise _CommandError("Midi: numbers and values must be 0-127")
+    status = channel - 1
+    if sub == "panic":
+        failed = ""
+        for ch in range(16):
+            ok, msg = midi.send([0xB0 | ch, 123, 0])
+            if not ok:
+                failed = msg
+                break
+        if failed:
+            return {"success": False, "message": failed}
+        return {"success": True, "message": "OK: MIDI all notes off"}
+    if sub in ("note", "on", "noteon", "off", "noteoff"):
+        if not nums:
+            raise _Incomplete("Midi Note: missing note number (0-127, 60 = middle C)")
+        note = nums[0]
+        velocity = nums[1] if len(nums) > 1 else 100
+        if sub in ("off", "noteoff"):
+            ok, msg = midi.send([0x80 | status, note, 0])
+            return {"success": ok, "message": f"OK: MIDI note {note} off (channel {channel}) -> {msg}" if ok else msg}
+        ok, msg = midi.send([0x90 | status, note, max(1, velocity)])
+        if not ok:
+            return {"success": False, "message": msg}
+        if sub == "note":
+            asyncio.get_running_loop().call_later(length, lambda: midi.send([0x80 | status, note, 0]))
+        return {"success": True, "message": f"OK: MIDI note {note} velocity {max(1, velocity)} (channel {channel}) -> {msg}"}
+    if sub in ("cc", "control"):
+        if len(nums) < 2:
+            raise _Incomplete("Midi CC: <controller 0-127> <value 0-127>")
+        ok, msg = midi.send([0xB0 | status, nums[0], nums[1]])
+        return {"success": ok, "message": f"OK: MIDI CC {nums[0]} = {nums[1]} (channel {channel}) -> {msg}" if ok else msg}
+    if sub in ("pc", "program", "programchange"):
+        if not nums:
+            raise _Incomplete("Midi PC: <program 0-127>")
+        ok, msg = midi.send([0xC0 | status, nums[0]])
+        return {"success": ok, "message": f"OK: MIDI program {nums[0]} (channel {channel}) -> {msg}" if ok else msg}
+    raise _CommandError(f"Midi: unknown subcommand '{rest[0]}' (Note, On, Off, CC, PC, Panic)")
+
+
+async def _cmd_audio(keyword: str, rest: List[str], broadcast: Broadcast) -> Dict[str, Any]:
+    """Audio-Analyse (Panel "Audio", app/audio_engine.py):
+        Tap                          Tempo antippen (ab dem zweiten Tipp: festes Tempo aus den Abstaenden, Beat auf dem Tipp)
+        BPM <zahl> | Auto | Half | Double   Tempo fest einstellen, zur Erkennung zurueck, halbieren, verdoppeln
+        Audio [Status] | Start | Stop | Demo   Quelle oeffnen (die zuletzt gewaehlte), schliessen, Demo-Beat"""
+    from app.audio_engine import audio_engine  # deferred: numpy erst laden, wenn gebraucht
+    words = [str(w).lower() for w in rest]
+
+    async def announce() -> None:
+        state.audio_config = dict(audio_engine.config)
+        state.save_app_config()
+        await broadcast("audio_state", audio_engine.status())
+
+    def current_bpm() -> float:
+        return float(audio_engine.values().get("a_bpm") or audio_engine.config.get("bpm", 120.0))
+
+    if keyword == "tap":
+        bpm = audio_engine.tap()
+        await announce()
+        return {"success": True, "message": f"OK: Tap - {bpm:.1f} BPM" if bpm else "OK: Tap - tap again to set the tempo"}
+    if keyword == "bpm":
+        if not words:
+            return {"success": True, "message": f"OK: {current_bpm():.1f} BPM ({audio_engine.config.get('mode')})"}
+        head = words[0]
+        if head in ("auto", "automatic"):
+            audio_engine.configure({"mode": "auto"})
+            text = "BPM: automatic detection"
+        elif head in ("half", "/2", "x0.5"):
+            audio_engine.configure({"mode": "manual", "bpm": current_bpm() / 2.0})
+            text = f"BPM {audio_engine.config['bpm']:.1f}"
+        elif head in ("double", "x2", "*2"):
+            audio_engine.configure({"mode": "manual", "bpm": current_bpm() * 2.0})
+            text = f"BPM {audio_engine.config['bpm']:.1f}"
+        else:
+            try:
+                value = float(head.replace(",", "."))
+            except ValueError:
+                raise _CommandError(f"BPM: expected a number (30 - 300), Auto, Half or Double - not '{rest[0]}'")
+            if not 30.0 <= value <= 300.0:
+                raise _CommandError("BPM: the tempo must be between 30 and 300")
+            audio_engine.configure({"mode": "manual", "bpm": value})
+            text = f"BPM {value:g}"
+        await announce()
+        return {"success": True, "message": f"OK: {text}"}
+    head = words[0] if words else "status"
+    if head in ("start", "on", "open"):
+        if not audio_engine.config.get("device"):
+            raise _CommandError("Audio: no source chosen yet - pick one in the Audio panel or use 'Audio Demo'")
+        if not await asyncio.to_thread(audio_engine.start):
+            raise _CommandError(f"Audio: the source could not be opened ({audio_engine.error})")
+        await announce()
+        return {"success": True, "message": f"OK: Audio started ({audio_engine.device_name})"}
+    if head == "demo":
+        audio_engine.configure({"device": "demo"})
+        if not await asyncio.to_thread(audio_engine.start):
+            raise _CommandError(f"Audio: the demo could not be started ({audio_engine.error})")
+        await announce()
+        return {"success": True, "message": "OK: Audio demo beat started"}
+    if head in ("stop", "off", "close"):
+        await asyncio.to_thread(audio_engine.stop)
+        await announce()
+        return {"success": True, "message": "OK: Audio stopped"}
+    if head == "status":
+        if not audio_engine.running:
+            return {"success": True, "message": "OK: Audio is off"}
+        values = audio_engine.values()
+        return {"success": True, "message": f"OK: Audio on ({audio_engine.device_name}), {values['a_bpm']:.1f} BPM, level {values['a_level'] * 100:.0f}%"}
+    raise _CommandError("Audio: expected Start, Stop, Demo or Status")
+
+
 async def _cmd_off(rest: List[str], broadcast: Broadcast) -> Dict[str, Any]:
     """Off Exec <N> | Off Cuelist <name> | Off (aktive Liste): "Exec N" ist die N-te Cue-Liste in der Reihenfolge des Dropdowns.
     "Off" loescht aktuell nur den aktiven-Cue-Status der Liste (kein Blackout-Fade der zuletzt ausgegebenen DMX-Werte) -
-    siehe documentation/commands.md fuer diese bewusste Einschraenkung."""
+    siehe static/help/commands.en.md fuer diese bewusste Einschraenkung."""
     head = str(rest[0]).lower() if rest else ""
     if head in _CUELIST_KEYWORDS:
         cl, _used = _find_cuelist(rest[1:])
@@ -1811,6 +2223,10 @@ async def _dispatch(tokens: List[str], broadcast: Broadcast) -> Dict[str, Any]:
         return await _cmd_attr(tokens, broadcast)
     if keyword == "clear":
         return await _cmd_clear(rest, broadcast)
+    if keyword == "zero" and not rest:                    # Zero = die Auswahl auf 0 % (wie "At 0")
+        return await _cmd_attr(["At", "0"], broadcast)
+    if keyword in ("next", "prev", "previous") and not rest:
+        return await _cmd_step_fixture(1 if keyword == "next" else -1, broadcast)
     if keyword in ("master", "grandmaster"):
         return await _cmd_master(rest, broadcast)
     if keyword == "blackout":
@@ -1839,6 +2255,12 @@ async def _dispatch(tokens: List[str], broadcast: Broadcast) -> Dict[str, Any]:
         return await _cmd_off(rest, broadcast)
     if keyword in ("timecode", "tc"):
         return await _cmd_timecode(rest, broadcast)
+    if keyword in ("tap", "bpm", "audio"):
+        return await _cmd_audio(keyword, rest, broadcast)
+    if keyword == "midi":
+        return await _cmd_midi(rest, broadcast)
+    if keyword == "osc":
+        return await _cmd_osc(rest)
     if state.selected_fixture_ids and any(
             _find_channel(fixture_channel_offsets(fx), tokens[0]) for fx in (state.fixtures.get(i) for i in state.selected_fixture_ids) if fx):
         return await _cmd_attr(tokens, broadcast)           # Frost 50 (Kanalname der selektierten Geraete)
@@ -1914,6 +2336,9 @@ _TOP_LEVEL_KEYWORDS: List[Tuple[str, Optional[str]]] = [
     ("Strobe", "<0-100>"),
     ("Channel", "<number | name> <value>"),
     ("Clear", None),
+    ("Zero", "(selection to 0 %)"),
+    ("Next", "(select the next fixture)"),
+    ("Previous", "(select the previous fixture)"),
     ("Master", "[At] <0-100> | Full | +<n> | -<n>"),
     ("Blackout", "[On | Off]  (without: toggle)"),
     ("Variable", '"<name>"  (applies a variable to the selection)'),
@@ -1936,6 +2361,11 @@ _TOP_LEVEL_KEYWORDS: List[Tuple[str, Optional[str]]] = [
     ("Cue", "<number> Fade|Delay|... <value>"),
     ("Off", "[Exec <number> | Cuelist <name>]"),
     ("Timecode", "At <time> | Play | Reverse | Pause | Stop | Rate <factor>"),
+    ("Tap", None),
+    ("BPM", "<number> | Auto | Half | Double"),
+    ("Audio", "Start | Stop | Demo | Status"),
+    ("Midi", "Note <n> [vel] | On <n> | Off <n> | CC <n> <v> | PC <n> | Panic   [Ch <1-16>] [Len <s>]"),
+    ("Osc", "/address [value ...]  (sends an OSC message to the target set under Controls -> OSC)"),
 ]
 _LIST_SUBCOMMANDS: List[Tuple[str, Optional[str]]] = [
     ("Go", "[Cue <number>]"), ("Back", None), ("Goto", "Cue <number>"), ("Pause", None), ("Resume", None), ("Stop", None),
@@ -2078,7 +2508,8 @@ def _clause_value_hints(tokens: List[str], i: int, fixtures: List[Any]) -> List[
     kw = _norm(tokens[i])
     args = tokens[i + 1:]
     if kw in ("at", "full"):
-        return _level_items(("Full",)) + [_info("<0-100> | +<n> | -<n>  (%)")]
+        extra = [_kw("At", "all on: 100 % + white (no selection = ALL fixtures)")] if kw == "at" and not args else []
+        return _level_items(("Full",)) + extra + [_info("<0-100> | +<n> | -<n>  (%)")]
     if kw in ("color", "colour"):
         if not args:
             return [_kw(name.capitalize()) for name in _NAMED_COLORS] + [_info("#RRGGBB | <r> <g> <b>")]
@@ -2177,7 +2608,7 @@ def _suggest_cue_properties(rest: List[str]) -> List[Suggestion]:
         return []
     if i >= len(rest):
         return [_kw("Thru", "<number>"), _kw("Fade", "<seconds>"), _kw("Delay", "<seconds>"), _kw("Color", "Fade|Delay"), _kw("Pos", "Fade|Delay"),
-                _kw("Beam", "Fade|Delay"), _kw("Zoom", "Fade|Delay"), _kw("FX", "In|Out"), _kw("Trigger", "Go|Follow|Timecode"),
+                _kw("Beam", "Fade|Delay"), _kw("Zoom", "Fade|Delay"), _kw("FX", "In|Out"), _kw("Trigger", "Go|Follow|Timecode|Audio|Midi"),
                 _kw("MIB", "Off|Auto|On"), _kw("Cmd", '"<commands>"'), _kw("Name", '"<text>"')]
     try:
         (_field, kind, label), j = _match_cue_prop(rest, i)
@@ -2189,7 +2620,19 @@ def _suggest_cue_properties(rest: List[str]) -> List[Suggestion]:
     values = rest[j:]
     if kind == "trigger":
         if not values:
-            return [_kw("Go"), _kw("Follow"), _kw("Timecode", "<time>")]
+            return [_kw("Go"), _kw("Follow"), _kw("Timecode", "<time>"), _kw("Audio", "<source> [value]"), _kw("Midi", "<Note|CC|PC> <number>"), _kw("Clock", "<HH:MM> [days]")]
+        if str(values[0]).lower() == "audio":
+            if len(values) == 1:
+                return [_kw(n) for n in ("Beat", "Kick", "Snare", "Hat", "Level", "Bass", "Mid", "High", "B1", "B2", "B3", "B4", "B5", "B6", "B7", "B8")]
+            return [_info("<n>: every n-th hit  |  <percent>: threshold")] if len(values) == 2 else []
+        if str(values[0]).lower() == "midi":
+            if len(values) == 1:
+                return [_kw("Note", "<0-127 | C4>"), _kw("CC", "<0-127> [threshold]"), _kw("PC", "<0-127>")]
+            if len(values) == 2:
+                return [_info("<number 0-127>" + (", or a note name such as C4" if str(values[1]).lower() == "note" else ""))]
+            return [_kw("Ch", "<1-16>")] if str(values[-1]).lower() not in ("ch", "channel") else [_info("<channel 1-16>")]
+        if str(values[0]).lower() in ("clock", "at", "daytime", "wallclock"):
+            return [_info("<time of day>, e.g. 19:30")] if len(values) == 1 else [_kw("Mon-Fri"), _kw("Sat,Sun"), _kw("Weekdays"), _kw("Weekend"), _kw("Daily")] if len(values) == 2 else []
         return [_info("<time>, e.g. 00:01:30.000")] if len(values) == 1 and str(values[0]).lower() in ("timecode", "tc", "time") else []
     if kind == "mib":
         return [_kw("Off"), _kw("Auto"), _kw("On")] if not values else []
@@ -2230,6 +2673,49 @@ def _suggest_cuelist_context(rest: List[str]) -> List[Suggestion]:
         if 1 <= n <= len(lists):
             return _suggest_after_list(rest[1:], lists[n - 1])
     return []
+
+
+def _suggest_midi(rest: List[str]) -> List[Suggestion]:
+    """'Midi ...': zuerst Note / On / Off / CC / PC / Panic, danach der Hinweis auf die Zahl, die als Naechstes kommt, und die Schluesselwoerter Ch / Len."""
+    if not rest:
+        return [_kw("Note", "<note> [velocity]  (plays and releases)"), _kw("On", "<note> [velocity]"), _kw("Off", "<note>"), _kw("CC", "<controller> <value>"),
+                _kw("PC", "<program>"), _kw("MSC", "Go | Stop | Resume | AllOff | Restore ... (show control)"), _kw("Panic", "all notes off")]
+    sub = _norm(rest[0])
+    args = rest[1:]
+    if sub == "msc":
+        if not args:
+            return [_kw("Go", "[<cue>] [List <n>]"), _kw("Stop"), _kw("Resume"), _kw("AllOff"), _kw("Restore"), _kw("Reset"), _kw("Load", "<cue>"), _kw("Fire", "<macro>")]
+        used_words = [_norm(a) for a in args[1:]]
+        return ([_kw("List", "<n>")] if "list" not in used_words else []) + ([_kw("Device", "<0-127>")] if "device" not in used_words else [])
+    if sub == "panic" or sub not in ("note", "on", "off", "noteon", "noteoff", "cc", "control", "pc", "program", "programchange"):
+        return []
+    if args and _norm(args[-1]) in ("ch", "channel"):
+        return [_info("<channel 1-16>")]
+    if args and _norm(args[-1]) in ("len", "length"):
+        return [_info("<seconds>, e.g. 0.5")]
+    used, plain, i = set(), 0, 0
+    while i < len(args):                                            # Zahlen zaehlen; "Ch <n>" / "Len <s>" sind Paare
+        word = _norm(args[i])
+        if word in ("ch", "channel", "len", "length"):
+            used.add("ch" if word in ("ch", "channel") else "len")
+            i += 2
+        else:
+            plain += 1
+            i += 1
+    is_cc, is_pc = sub in ("cc", "control"), sub in ("pc", "program", "programchange")
+    need = 2 if is_cc else 1
+    out: List[Suggestion] = []
+    if plain < need:
+        names = ["<controller 0-127>", "<value 0-127>"] if is_cc else (["<program 0-127>"] if is_pc else ["<note 0-127>, 60 = C4"])
+        out.append(_info(names[plain]))
+        return out
+    if sub in ("note", "on", "noteon") and plain == 1:
+        out.append(_info("[velocity 1-127]"))
+    if "ch" not in used:
+        out.append(_kw("Ch", "<channel 1-16>"))
+    if sub == "note" and "len" not in used:
+        out.append(_kw("Len", "<seconds>"))
+    return out
 
 
 def _suggest_for_context(ctx_tokens: List[str]) -> List[Suggestion]:
@@ -2274,6 +2760,12 @@ def _suggest_for_context(ctx_tokens: List[str]) -> List[Suggestion]:
         if len(rest) == 2 and str(rest[0]).lower() == "at":
             return [_kw("Play"), _kw("Reverse")]
         return []
+    if keyword == "bpm":
+        return [_kw("Auto"), _kw("Half"), _kw("Double"), _info("<number>, e.g. 128")] if not rest else []
+    if keyword == "audio":
+        return [_kw("Start"), _kw("Stop"), _kw("Demo"), _kw("Status")] if not rest else []
+    if keyword == "midi":
+        return _suggest_midi(rest)
     if keyword == "clear":
         return [_kw("Clear", "full reset")] if not rest else []
     return []

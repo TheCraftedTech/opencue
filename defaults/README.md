@@ -5,10 +5,11 @@ Beim ersten Start kopiert OpenCue die Vorlagen einmalig in den Benutzerordner (`
 
 | Ordner | Inhalt | Ziel im Benutzerordner |
 |---|---|---|
-| `effects/` | Effekt-Skripte (`.fx`, 60 Vorlagen für Dimmer, Farbe, Position, Zoom, Fokus und Gobo; siehe `static/help/effect-studio.de.md` / `.en.md`) | `effects/` |
+| `effects/` | Effekt-Skripte (`.fx`, 96 Vorlagen für Dimmer, Farbe, Position, Zoom, Fokus und Gobo, davon 33 Audio-Effekte (`audio_*.fx`); Schlagwörter über `#TAGS`, das erste ist `basic` (19 Einsteiger-Effekte) oder `advanced` (77); siehe `static/help/effect-studio.de.md` / `.en.md`) | `effects/` |
 | `layouts/` | Beispiel-Layouts (`.json`), sortiert nach Dateiname - zur Zeit nur **Default_1** | `layouts/` |
 | `fixtures/` | Standard-Scheinwerfer (GDTF-Dateien `.gdtf`): **zur Zeit leer** - aus rechtlichen Gründen liefert OpenCue keine GDTF-Share-Dateien mit (siehe unten); der Mechanismus bleibt für Dateien, deren Weitergabe erlaubt ist | `fixtures/` |
 | `showfiles/` | **Demo-Shows** (`.json`, in OpenCue gespeichert): zur Zeit **Default_1** (5 Dimmer vom eingebauten Typ *Generic Dimmer*, Cue-Liste mit 2 Cues, ohne 3D-Bühne). Eine Demo darf nur Scheinwerfer-Typen nennen, die es immer gibt (die drei eingebauten) oder die in `fixtures/` mitgeliefert werden | `showfiles/` |
+| `voice/` | Offline-Sprachmodell fuer das Weckwort (`vosk-model-small-en-us-0.15`, Apache-2.0, Alpha Cephei). Wird **nicht** in den Benutzerordner kopiert, sondern direkt aus dem Programmordner gelesen (`app/voice.py`) | – |
 
 Gemeinsame Regeln: einmalig pro Datenordner (Markierung `.defaults_seeded`), nie etwas überschreiben, was der Benutzer löscht, kommt nicht zurück; fehlen die Vorlagen, wird nichts markiert.
 Die drei eingebauten Geräte *Generic Dimmer*, *Generic RGBW LED Par* und *Generic Moving Head Spot 16ch* (ohne 3D-Modell) gibt es immer zusätzlich (`app/fixture_manager.py`);
