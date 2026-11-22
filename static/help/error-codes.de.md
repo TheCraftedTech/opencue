@@ -51,7 +51,6 @@ OpenCue prüft diese Dinge **bevor** etwas anderes startet. Das Fenster sagt, wa
 - OpenCue gerade geschlossen und trotzdem diese Meldung? Es braucht ein paar Sekunden zum Beenden. Kurz warten und neu starten.
 - Gar nichts zu sehen? Im **Task-Manager** nach `OpenCue` suchen (beim Start aus dem Quelltext `python`/`pythonw`) und den übrig gebliebenen Prozess beenden.
 - Für Fortgeschrittene: Für ein zweites, getrenntes OpenCue (z. B. zum Testen) die Umgebungsvariable `OPENCUE_DATA_DIR` auf einen anderen Ordner setzen **und** in dessen `app_config.json` einen anderen Port eintragen (siehe OC-1002).
-- **Neustart gleich nach dem Schließen:** OpenCue wartet jetzt (bis zu etwa 25 Sekunden), bis das alte fertig beendet ist, und startet dann von selbst. Die Meldung erscheint nur, wenn das alte nicht fertig wird.
 
 ### OC-1002 – Netzwerk-Port ist schon belegt
 

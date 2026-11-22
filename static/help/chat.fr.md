@@ -67,6 +67,9 @@ Une note est un texte écrit en **Markdown** – mais vous n'avez pas besoin de 
 
 - Les discussions et les notes appartiennent au **programme, pas à un spectacle** : elles restent quand vous chargez un autre spectacle.
 - Ce sont des fichiers dans le dossier de données (`notebook`) ; copiez le dossier pour les emporter sur un autre ordinateur.
+- **Enregistrer en fichier :** le bouton de téléchargement de l'en-tête enregistre la discussion ou la note ouverte en **fichier Markdown** (`.md`) : une note comme son texte, une discussion comme un historique classé par jour.
+- **Sauvegarder et emporter :** *Gestionnaire de fichiers → Tout sauvegarder* inclut toutes les discussions et notes. Dans *Exporter le show...*, vous pouvez les ajouter au paquet (désactivé par défaut, entrée par entrée). À l'import, rien n'est écrasé – une entrée différente arrive comme copie.
+- **Depuis des programmes et appareils :** scripts et matériel (par exemple un ESP32) peuvent lire et écrire discussions et notes via l'API REST – autorisations *Lire discussions et notes* et *Écrire discussions et notes* (voir le guide API REST, section 6).
 - **Plusieurs personnes dans la même note :** la dernière sauvegarde l'emporte. Si deux personnes écrivent au même moment, un message vous prévient. Utilisez des notes séparées ou alternez.
 - Limites : 300 discussions et notes, 4000 caractères par message, 100 000 par note ; d'une discussion, les 5000 derniers messages sont conservés.
 - Toute personne connectée à OpenCue peut tout lire et tout écrire – la discussion n'est **pas privée**. N'y écrivez pas de mots de passe.

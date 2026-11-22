@@ -1,9 +1,36 @@
 {
  "releases": [
   {
+   "version": "2.1.2",
+   "date": "2026-11-22",
+   "title": "Chat & Notizen, komplett",
+   "items": [
+    {
+     "icon": "download",
+     "title": "Als Markdown-Datei speichern",
+     "text": "Jeden Chat und jede Notiz speicherst du mit einem Klick als Markdown-Datei."
+    },
+    {
+     "icon": "save",
+     "title": "In Sicherungen und Show-Paketen",
+     "text": "„Alles sichern“ nimmt jetzt deine Chats und Notizen mit, und „Show exportieren“ kann sie dem Paket hinzufügen."
+    },
+    {
+     "icon": "terminal",
+     "title": "REST-API für Chats und Notizen",
+     "text": "Skripte und Hardware können Chats und Notizen über die REST-API lesen und schreiben."
+    },
+    {
+     "icon": "check",
+     "title": "Sofortiger Start",
+     "text": "OpenCue wartet beim Start nicht mehr auf ein altes, das sich noch beendet: Das Startbild erscheint sofort, und die Meldung sagt dir, was zu tun ist."
+    }
+   ]
+  },
+  {
    "version": "2.1.1",
    "date": "2026-11-22",
-   "title": "Reibungslosere Updates und Neustarts",
+   "title": "Reibungslosere Updates",
    "items": [
     {
      "icon": "download",
@@ -19,11 +46,6 @@
      "icon": "search",
      "title": "Breitere Suche in den Einstellungen",
      "text": "Die Suche in den Einstellungen ist breiter, und ihre Vorschläge werden nicht mehr abgeschnitten."
-    },
-    {
-     "icon": "refresh",
-     "title": "Sofortiger Neustart",
-     "text": "OpenCue direkt nach dem Schließen wieder starten: Es wartet jetzt, bis das alte fertig beendet ist, statt zu melden, dass es schon läuft."
     }
    ]
   },

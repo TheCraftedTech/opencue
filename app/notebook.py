@@ -18,11 +18,12 @@ import os
 import re
 import threading
 import time
+import urllib.parse
 import uuid
 from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, Body
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 
 from app import paths as _paths
 
@@ -191,7 +192,8 @@ def delete_message(thread_id: str, message_id: str) -> Dict[str, Any]:
         return thread
 
 
-def save_body(thread_id: str, body: str, base_rev: Optional[int]) -> Dict[str, Any]:
+def save_body(thread_id: str, body: str, base_rev: Optional[int], strict: bool = False) -> Dict[str, Any]:
+    """Notiz speichern. Oberflaeche: wer gleichzeitig schreibt, ueberschreibt (conflict=True meldet es). strict (REST-API): bei abweichendem base_rev wird NICHT gespeichert (Fehler 409)."""
     body = str(body or "").replace("\r\n", "\n")
     if len(body) > MAX_BODY:
         raise NotebookError("too_long", f"A note can have at most {MAX_BODY} characters.")
@@ -200,12 +202,128 @@ def save_body(thread_id: str, body: str, base_rev: Optional[int]) -> Dict[str, A
         if thread["kind"] != "note":
             raise NotebookError("not_a_note", "This is a chat, not a note.")
         conflict = base_rev is not None and int(base_rev) != int(thread.get("rev", 0))
+        if conflict and strict:
+            raise NotebookError("conflict", f"The note has changed since revision {int(base_rev)} (now {int(thread.get('rev', 0))}). Read it again and retry.", 409)
         if body == thread.get("body", ""):
             return {"thread": thread, "conflict": False, "changed": False}
         thread["body"] = body
         thread["rev"] = int(thread.get("rev", 0)) + 1
         _save(thread)
         return {"thread": thread, "conflict": conflict, "changed": True}
+
+
+def append_body(thread_id: str, text: str) -> Dict[str, Any]:
+    """Text ans Ende einer Notiz haengen (in einer eigenen Zeile) - fuer Skripte / Geraete, die nur etwas dazuschreiben (z. B. ein Protokoll)."""
+    text = str(text or "").replace("\r\n", "\n").strip("\n")
+    if not text.strip():
+        raise NotebookError("empty", "There is nothing to add.")
+    with _lock:
+        thread = _load(thread_id)
+        if thread["kind"] != "note":
+            raise NotebookError("not_a_note", "This is a chat, not a note.")
+        old = str(thread.get("body", ""))
+        body = (old.rstrip("\n") + "\n" if old.strip() else "") + text + "\n"
+        if len(body) > MAX_BODY:
+            raise NotebookError("too_long", f"A note can have at most {MAX_BODY} characters.")
+        thread["body"] = body
+        thread["rev"] = int(thread.get("rev", 0)) + 1
+        _save(thread)
+        return thread
+
+
+# ------------------------------------------------------------------------------------------------------------ Markdown-Export
+def display_title(thread: Dict[str, Any]) -> str:
+    title = thread.get("title") or ""
+    if title:
+        return title
+    stamp = time.strftime("%Y-%m-%d", time.localtime(thread.get("created") or time.time()))
+    return ("Note " if thread.get("kind") == "note" else "Chat ") + stamp
+
+
+def export_filename(thread: Dict[str, Any]) -> str:
+    stem = re.sub(r'[\\/:*?"<>|\x00-\x1f]', "_", display_title(thread)).strip(" .") or "notebook"
+    return stem[:80] + ".md"
+
+
+def export_markdown(thread: Dict[str, Any]) -> str:
+    """Eine Notiz (ihr Markdown-Text) oder ein Chat (Verlauf, nach Tagen gegliedert) als Markdown-Datei."""
+    title = display_title(thread)
+    if thread.get("kind") == "note":
+        body = str(thread.get("body", "")).strip("\n")
+        first = next((ln for ln in body.splitlines() if ln.strip()), "")
+        return (body if re.match(r"^#\s", first) else f"# {title}\n\n{body}").rstrip("\n") + "\n"
+    lines = [f"# {title}", ""]
+    day = ""
+    for message in thread.get("messages", []):
+        stamp = time.localtime(float(message.get("ts") or 0))
+        key = time.strftime("%Y-%m-%d", stamp)
+        if key != day:
+            day = key
+            lines += [f"## {key}", ""]
+        text = str(message.get("text", "")).split("\n")
+        lines.append(f"- **{time.strftime('%H:%M', stamp)} {message.get('author', '?')}:** {text[0]}")
+        lines += ["  " + ln if ln.strip() else "" for ln in text[1:]]
+    return "\n".join(lines).rstrip("\n") + "\n"
+
+
+# ------------------------------------------------------------------------------------------------------------ Sicherung / Export-Paket
+def thread_files() -> List[Any]:
+    """Alle Eintrags-Dateien (fuer "Alles sichern")."""
+    return sorted(p for p in _dir().glob("*.json") if THREAD_ID.match(p.stem) and p.is_file())
+
+
+def package_info() -> List[Dict[str, Any]]:
+    """Die Eintraege fuer den Export-Dialog der Show: id, Name, Art, Groesse."""
+    out = []
+    for path in thread_files():
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        if not isinstance(data, dict) or data.get("kind") not in KINDS:
+            continue
+        data["id"] = path.stem
+        out.append({"id": path.stem, "name": display_title(data), "kind": data["kind"], "size": path.stat().st_size,
+                    "count": len(data.get("messages", [])) if data["kind"] == "chat" else 0})
+    return sorted(out, key=lambda x: x["name"].lower())
+
+
+def import_thread(file_stem: str, raw: bytes) -> str:
+    """Einen Eintrag aus einer Sicherung / einem Paket einlesen. Gibt "identical" (gibt es schon, gleicher Inhalt), "imported" oder "copy" zurueck.
+    Regel wie bei allen Dateien: nie ueberschreiben - Abweichendes unter gleicher Kennung kommt als Kopie mit neuer Kennung dazu."""
+    try:
+        data = json.loads(raw.decode("utf-8-sig"))
+    except (ValueError, UnicodeDecodeError):
+        raise NotebookError("bad_file", "Not a valid chat or note file.")
+    if not isinstance(data, dict) or data.get("kind") not in KINDS or not THREAD_ID.match(file_stem):
+        raise NotebookError("bad_file", "Not a valid chat or note file.")
+    now = time.time()
+    kind = data["kind"]
+    clean = {"id": file_stem, "kind": kind, "title": clean_title(data.get("title")), "created": float(data.get("created") or now), "updated": float(data.get("updated") or now),
+             "rev": int(data.get("rev") or 0), "version": 1, "messages": [], "body": ""}
+    if kind == "note":
+        clean["body"] = str(data.get("body") or "").replace("\r\n", "\n")[:MAX_BODY]
+    else:
+        for m in (data.get("messages") or [])[-MAX_MESSAGES:]:
+            if isinstance(m, dict) and str(m.get("text", "")).strip():
+                clean["messages"].append({"id": re.sub(r"[^0-9a-f]", "", str(m.get("id", "")))[:12] or uuid.uuid4().hex[:12], "cid": clean_cid(m.get("cid")),
+                                          "author": clean_name(m.get("author")) or "?", "text": str(m.get("text", ""))[:MAX_TEXT], "ts": float(m.get("ts") or now)})
+    with _lock:
+        path = _path(file_stem)
+        status = "imported"
+        if path.exists():
+            try:
+                same = json.loads(path.read_text(encoding="utf-8"))
+                if same.get("kind") == kind and same.get("title", "") == clean["title"] and same.get("body", "") == clean["body"] and same.get("messages", []) == clean["messages"]:
+                    return "identical"
+            except (OSError, ValueError, AttributeError):
+                pass
+            clean["id"] = uuid.uuid4().hex[:16]
+            status = "copy"
+        if len(list(_dir().glob("*.json"))) >= MAX_THREADS:
+            raise NotebookError("limit", f"At most {MAX_THREADS} chats and notes - delete old ones first.")
+        _save(clean, touch=False)
+        return status
 
 
 # ------------------------------------------------------------------------------------------------------------ HTTP
@@ -298,6 +416,28 @@ async def put_body(thread_id: str, data: Dict[str, Any] = Body(default={})) -> J
     if result["changed"]:
         await _announce("note", thread, body=thread["body"], rev=thread["rev"], by=clean_cid(data.get("cid")), author=clean_name(data.get("author")), conflict=result["conflict"])
     return JSONResponse({"rev": thread["rev"], "conflict": result["conflict"], "changed": result["changed"]})
+
+
+@router.get("/{thread_id}/export")
+async def get_export(thread_id: str) -> Response:
+    """Die Notiz bzw. der Chat als Markdown-Datei zum Herunterladen."""
+    try:
+        thread = _load(thread_id)
+    except NotebookError as exc:
+        return _error(exc)
+    return markdown_response(thread)
+
+
+def markdown_response(thread: Dict[str, Any]) -> Response:
+    name = export_filename(thread)
+    fallback = re.sub(r"[^A-Za-z0-9._ -]", "_", name) or "notebook.md"
+    return Response(content=export_markdown(thread).encode("utf-8"), media_type="text/markdown; charset=utf-8", headers={
+        "Content-Disposition": f"attachment; filename=\"{fallback}\"; filename*=UTF-8''{urllib.parse.quote(name)}", "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff"})
+
+
+async def announce_reload() -> None:
+    """Nach dem Einlesen einer Sicherung / eines Pakets: alle Geraete laden die Liste neu."""
+    await _srv().event_bus.broadcast({"type": "notebook_event", "payload": {"op": "reload"}})
 
 
 @router.post("/{thread_id}/typing")

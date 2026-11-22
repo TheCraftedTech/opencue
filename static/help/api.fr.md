@@ -72,6 +72,7 @@ Seul un **hachage** du jeton est enregistré sur le disque, jamais le jeton lui-
 | **Statut** | État : nom du show, blackout, grand master, code temporel, sélection, programmeur, analyse audio, sorties, le flux d'événements en direct | activée |
 | **Données du show** | Projecteurs, types de projecteurs, groupes, variables, effets, scripts d'effets, fichiers de show, listes de cues et cues, médias, dispositions | activée |
 | **Sortie DMX** | Valeurs DMX actuelles et état en direct de chaque projecteur | activée |
+| **Lire discussions et notes** | Les discussions et notes du panneau « Chat et notes » : lister, lire messages et texte, télécharger en Markdown, l'événement `notebook` | activée |
 
 **Exploitation**
 
@@ -85,6 +86,7 @@ Seul un **hachage** du jeton est enregistré sur le disque, jamais le jeton lui-
 | **Programmeur et sélection** | Sélectionner des projecteurs, régler des valeurs et variables en direct, vider le programmeur | activée |
 | **Boutons, faders, interrupteurs de la console** | Presser, déplacer et basculer les panneaux Bouton, Fader et Interrupteur de la console (ils exécutent les commandes qui y sont configurées) | activée |
 | **Régler le DMX directement** | Écrire des canaux DMX – prime sur le show en cours – *critique* | **désactivée** |
+| **Écrire discussions et notes** | Créer, renommer et supprimer des discussions et notes, envoyer et supprimer des messages, modifier ou compléter une note | **désactivée** |
 
 **Modifier le show**
 
@@ -100,7 +102,7 @@ Seul un **hachage** du jeton est enregistré sur le disque, jamais le jeton lui-
 | **Dispositions** | Afficher une disposition de panneaux enregistrée dans la fenêtre de la console | **désactivée** |
 | **Sorties DMX et langue** | Activer Art-Net, sACN et DMX USB, changer les adresses, l'univers par défaut, la langue – *critique* | **désactivée** |
 
-**Préréglages** dans la boîte de dialogue : *Lecture seule* (les trois autorisations de lecture), *Exploitation* (lecture plus listes de cues, code temporel, blackout/master, audio, programmeur et boutons / faders / interrupteurs de la console – pas de commandes, pas de DMX direct), *Modifier le show* (Exploitation plus listes de cues et cues, variables, effets), *Accès complet* et *Par défaut*.
+**Préréglages** dans la boîte de dialogue : *Lecture seule* (les quatre autorisations de lecture), *Exploitation* (lecture plus listes de cues, code temporel, blackout/master, audio, programmeur, discussions et notes et boutons / faders / interrupteurs de la console – pas de commandes, pas de DMX direct), *Modifier le show* (Exploitation plus listes de cues et cues, variables, effets), *Accès complet* et *Par défaut*.
 
 ---
 
@@ -327,6 +329,23 @@ Le langage de script est décrit dans le guide *Atelier d'effets*.
 | POST | `/layouts/{filename}/load` | – | Affiche une disposition enregistrée (`Name.json` comme dans `GET /layouts`) dans la fenêtre de la console ; les modifications de disposition non enregistrées y sont perdues |
 | PUT | `/system` | `{"artnet": {"enabled": true, "ip": "2.255.255.255", "bind_ip": ""}, "sacn": {"enabled": true}, "enttec": {"enabled": false, "port": "COM3", "universe": 1}, "default_universe": 1, "language": "de"}` – chaque champ facultatif | Active les sorties DMX et change la langue / l'univers par défaut ; la réponse est `GET /system` |
 | POST | `/system/dmx/reinitialize` | – | Redémarre les sorties DMX sans redémarrer le programme |
+
+### Discussions et notes – autorisations *Lire discussions et notes* et *Écrire discussions et notes*
+
+| Méthode | Chemin | Corps | Ce que cela fait |
+|---|---|---|---|
+| GET | `/notebook` | `?kind=chat` ou `?kind=note` (facultatif) | Lister les discussions et notes, la plus récemment modifiée d'abord |
+| GET | `/notebook/{id}` | `?after=<id du message>`, `?limit=100` | Une discussion : ses messages, les plus anciens d'abord ; une note : `body` (Markdown) et `rev` |
+| GET | `/notebook/{id}/export` | – | Télécharger en fichier Markdown |
+| POST | `/notebook` | `{"kind": "note", "title": "…", "body": "…"}` – `kind` vaut `chat` ou `note` ; `body` est le texte de départ d'une note | Créer |
+| PUT | `/notebook/{id}` | `{"title": "…"}` | Renommer |
+| DELETE | `/notebook/{id}` | – | Supprimer (sur tous les appareils) |
+| POST | `/notebook/{id}/messages` | `{"text": "…", "author": "…"}` – `author` est facultatif | Envoyer un message (sans `author`, l'expéditeur est le nom du jeton) |
+| DELETE | `/notebook/{id}/messages/{message_id}` | – | Supprimer un message |
+| PUT | `/notebook/{id}/body` | `{"body": "…", "base_rev": 3}` – `base_rev` est facultatif | Remplacer le texte d'une note ; avec `base_rev` seulement si personne ne l'a modifiée depuis (sinon `409 conflict`, rien n'est enregistré) |
+| POST | `/notebook/{id}/append` | `{"text": "…"}` | Ajouter une ligne à la fin d'une note (pour journaux et scripts, sans la lire avant) |
+
+Tout apparaît aussitôt dans chaque panneau « Chat et notes » ouvert. Les messages envoyés par l'API affichent le **nom du jeton** comme expéditeur (ou l'`author` envoyé). La discussion appartient au programme, pas à un show.
 
 ### Documentation (sans jeton)
 
@@ -639,6 +658,18 @@ curl -X POST -H "Authorization: Bearer oc_xxxxxxxx" -H "Content-Type: applicatio
      -H "X-Filename: intro.mp4" --data-binary @intro.mp4 http://127.0.0.1:8000/api/v1/media
 ```
 
+### Discussions et notes
+
+```
+POST /api/v1/notebook                 { "kind": "chat", "title": "Crew" }
+POST /api/v1/notebook/<id>/messages   { "text": "Soundcheck at 5 pm" }
+GET  /api/v1/notebook/<id>?after=<last message id>
+POST /api/v1/notebook/<id>/append     { "text": "- [ ] 21:40 smoke machine refilled" }
+GET  /api/v1/notebook/<id>/export
+```
+
+Un script peut écrire dans la discussion de l'équipe ou tenir un journal dans une note. `GET /notebook/{id}?after=<id du dernier message>` ne renvoie que les nouveautés. `rev` d'une note change à chaque enregistrement ; renvoyez-le comme `base_rev` pour ne pas écraser la modification de quelqu'un d'autre (`409`). Le flux `?events=notebook` signale chaque changement aussitôt.
+
 ### Événements en direct (flux)
 
 ```
@@ -656,7 +687,7 @@ event: command
 data: {"command": "Fixture 1 At 10", "success": true, "message": "OK: …", "time": "21:14:03"}
 ```
 
-La connexion reste ouverte. Arrivent d'abord `hello` et un message par genre avec l'**état actuel**, puis chaque changement. Genres : `cue` (le cue actif d'une liste a changé), `cuelists` (des listes / cues ont été ajoutés, retirés, renommés), `blackout`, `master`, `timecode` (démarré, arrêté, vitesse), `selection`, `effects`, `fixtures`, `variables`, `show` (nom / modifications non enregistrées), `command` (une commande de console a été exécutée, d'où que ce soit), `audio` (source ouverte / fermée, tempo, signal présent). Seulement sur demande (`?events=beat,hit`) : `beat` (chaque temps, avec le tempo) et `hit` (chaque coup de grosse caisse / caisse claire / charleston : `{"drum": "kick", "strength": 0.9}`). `?events=` limite le flux. Les changements sont détectés en 0,1 s environ. Une ligne de commentaire (`: keep-alive`) arrive toutes les 15 s ; 20 flux au plus tournent en même temps. Nécessite l'autorisation *Statut*.
+La connexion reste ouverte. Arrivent d'abord `hello` et un message par genre avec l'**état actuel**, puis chaque changement. Genres : `cue` (le cue actif d'une liste a changé), `cuelists` (des listes / cues ont été ajoutés, retirés, renommés), `blackout`, `master`, `timecode` (démarré, arrêté, vitesse), `selection`, `effects`, `fixtures`, `variables`, `show` (nom / modifications non enregistrées), `command` (une commande de console a été exécutée, d'où que ce soit), `audio` (source ouverte / fermée, tempo, signal présent). Seulement sur demande (`?events=beat,hit`) : `beat` (chaque temps, avec le tempo) et `hit` (chaque coup de grosse caisse / caisse claire / charleston : `{"drum": "kick", "strength": 0.9}`). `?events=` limite le flux. Les changements sont détectés en 0,1 s environ. Une ligne de commentaire (`: keep-alive`) arrive toutes les 15 s ; 20 flux au plus tournent en même temps. Nécessite l'autorisation *Statut*. Sur demande aussi `notebook` (un message de discussion ou une note a changé ; demande l'autorisation *Lire discussions et notes*).
 
 Dans un navigateur, `EventSource` ne peut pas envoyer d'en-têtes : utilisez plutôt `?access_token=<token>`, ou `fetch()` avec un en-tête et lisez le flux. Le jeton apparaît alors dans l'adresse ; donnez donc à une telle page son propre jeton avec seulement *Statut*.
 

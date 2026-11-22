@@ -4,6 +4,20 @@
 
 All notable changes to OpenCue, newest first. Each entry describes **what you get**, not how it was built. The date is the day the feature was finished. The version number lives in `app/version.py`; every release gets a `vMAJOR.MINOR.PATCH` tag. The format follows [Keep a Changelog](https://keepachangelog.com/).
 
+## v2.1.2 – 2026-11-22
+
+OpenCue 2.1.2 completes Chat & Notes (export, backup, REST API) and makes starting immediate again.
+
+### Added
+
+- **Chat & Notes: save as a Markdown file.** A new download button in the panel header saves the open note as its text and the open chat as a transcript sorted by day (`.md`).
+- **Chat & Notes in backups and show packages.** *File manager → Back up everything* now includes all chats and notes. In *Export show...* they can be added to the package (off by default, each chat or note separately). Importing never overwrites: an entry that differs from the one you already have comes as a copy; open panels update at once.
+- **REST API for chats and notes** (`/api/v1/notebook`) with two new permissions, *Read chats and notes* and *Write chats and notes*: list, read and download chats and notes, create, rename and delete them, send and delete messages, replace a note's text (with `base_rev` as protection against overwriting a change made in the meantime, answer `409`) or just add a line at its end. Everything appears at once in the open panels. The event stream has a new event `notebook`. The REST API guide and the Chat guide describe it in all six languages.
+
+### Changed
+
+- **Start is always immediate again.** OpenCue no longer waits up to 25 seconds for a previous OpenCue that is still closing (added in 2.1.1): the start screen must appear right away, so a second start while the old one is still shutting down shows the "already running" message at once. The message now also says that the old OpenCue may simply not have finished closing yet – wait a few seconds and start again.
+
 ## v2.1.1 – 2026-11-22
 
 OpenCue 2.1.1 makes updating and restarting smoother.

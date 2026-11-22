@@ -51,7 +51,6 @@ OpenCue checks these things **before** anything else starts. The window tells yo
 - Just closed OpenCue and still get this? It may need a few seconds to shut down. Wait a moment and start again.
 - Nothing visible at all? Open the **Task Manager**, look for `OpenCue` (or `python`/`pythonw` when started from source) and end the leftover process.
 - Advanced: for a second, separate OpenCue (for example for testing) set the environment variable `OPENCUE_DATA_DIR` to a different folder **and** give it a different port in its `app_config.json` (see OC-1002).
-- **Starting right after closing:** OpenCue now waits (up to about 25 seconds) until the old one has finished closing and then starts by itself. You only see this message if the old one does not finish.
 
 ### OC-1002 – Network port is already in use
 

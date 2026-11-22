@@ -51,7 +51,6 @@ OpenCue vérifie ces points **avant** que quoi que ce soit d'autre démarre. La 
 - Vous venez de fermer OpenCue et vous obtenez quand même ce message ? Il lui faut peut-être quelques secondes pour s'arrêter. Attendez un instant et redémarrez.
 - Rien de visible du tout ? Ouvrez le **Gestionnaire des tâches**, cherchez `OpenCue` (ou `python`/`pythonw` si lancé depuis les sources) et terminez le processus résiduel.
 - Avancé : pour un second OpenCue séparé (par exemple pour des tests), réglez la variable d'environnement `OPENCUE_DATA_DIR` sur un autre dossier **et** donnez-lui un autre port dans son `app_config.json` (voir OC-1002).
-- **Redémarrage juste après la fermeture :** OpenCue attend maintenant (jusqu'à environ 25 secondes) que l'ancien ait fini de se fermer, puis démarre tout seul. Vous ne voyez ce message que si l'ancien ne se termine pas.
 
 ### OC-1002 – Le port réseau est déjà utilisé
 

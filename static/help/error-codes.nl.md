@@ -51,7 +51,6 @@ OpenCue controleert deze dingen **voordat** er iets anders start. Het venster ve
 - Net OpenCue gesloten en toch deze melding? Het kan een paar seconden nodig hebben om af te sluiten. Wacht even en start opnieuw.
 - Helemaal niets zichtbaar? Open **Taakbeheer**, zoek `OpenCue` (of `python`/`pythonw` bij starten vanuit de broncode) en beëindig het achtergebleven proces.
 - Geavanceerd: voor een tweede, aparte OpenCue (bijvoorbeeld om te testen) zet u de omgevingsvariabele `OPENCUE_DATA_DIR` op een andere map **en** geeft u hem een andere poort in zijn `app_config.json` (zie OC-1002).
-- **Direct opnieuw starten na het sluiten:** OpenCue wacht nu (tot ongeveer 25 seconden) tot het oude klaar is met afsluiten en start dan vanzelf. U ziet deze melding alleen als het oude niet klaar komt.
 
 ### OC-1002 – Netwerkpoort is al in gebruik
 

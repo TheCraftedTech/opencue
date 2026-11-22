@@ -77,7 +77,7 @@
   ],
   "title": "I permessi",
   "keywords": [],
-  "text": "**Lettura**\n\n| Permesso | Consente | Predefinito |\n|---|---|---|\n| **Stato** | Stato: nome dello show, blackout, grand master, timecode, selezione, programmer, analisi audio, uscite, il flusso di eventi in diretta | attivo |\n| **Dati dello show** | Apparecchi, tipi di apparecchio, gruppi, variabili, effetti, script di effetti, file show, liste di cue e cue, media, layout | attivo |\n| **Uscita DMX** | Valori DMX attuali e stato in diretta di ogni apparecchio | attivo |\n\n**Esercizio**"
+  "text": "**Lettura**\n\n| Permesso | Consente | Predefinito |\n|---|---|---|\n| **Stato** | Stato: nome dello show, blackout, grand master, timecode, selezione, programmer, analisi audio, uscite, il flusso di eventi in diretta | attivo |\n| **Dati dello show** | Apparecchi, tipi di apparecchio, gruppi, variabili, effetti, script di effetti, file show, liste di cue e cue, media, layout | attivo |\n| **Uscita DMX** | Valori DMX attuali e stato in diretta di ogni apparecchio | attivo |\n| **Leggere chat e note** | Le chat e le note del pannello «Chat e note»: elencare, leggere messaggi e testo, scaricare come Markdown, l'evento `notebook` | attivo |\n\n**Esercizio**"
  },
  {
   "id": "api-008",
@@ -89,7 +89,7 @@
   ],
   "title": "I permessi (2)",
   "keywords": [],
-  "text": "| Permesso | Consente | Predefinito |\n|---|---|---|\n| **Comandi della console** | Eseguire qualsiasi comando della riga di comando (può anche modificare ed eliminare dati dello show) – *critico* | attivo |\n| **Liste di cue** | Go, Back, salto a un cue, pausa, ripresa, stop, fader | attivo |\n| **Timecode** | Avvio, pausa, stop, ricerca, velocità | attivo |\n| **Blackout e master** | Commutare il blackout, impostare il grand master | attivo |\n| **Audio** | Aprire / chiudere la sorgente audio, cambiarne le impostazioni, battere il tempo | attivo |\n| **Programmer e selezione** | Selezionare apparecchi, impostare valori e variabili in diretta, svuotare il programmer | attivo |\n| **Pulsanti, fader, interruttori della console** | Premere, muovere e commutare i pannelli Pulsante, Fader e Interruttore propri della console (eseguono i comandi impostati in essi) | attivo |\n| **Imposta DMX direttamente** | Scrivere canali DMX – prevale sullo show in esecuzione – *critico* | **spento** |\n\n**Modifica dello show**"
+  "text": "| Permesso | Consente | Predefinito |\n|---|---|---|\n| **Comandi della console** | Eseguire qualsiasi comando della riga di comando (può anche modificare ed eliminare dati dello show) – *critico* | attivo |\n| **Liste di cue** | Go, Back, salto a un cue, pausa, ripresa, stop, fader | attivo |\n| **Timecode** | Avvio, pausa, stop, ricerca, velocità | attivo |\n| **Blackout e master** | Commutare il blackout, impostare il grand master | attivo |\n| **Audio** | Aprire / chiudere la sorgente audio, cambiarne le impostazioni, battere il tempo | attivo |\n| **Programmer e selezione** | Selezionare apparecchi, impostare valori e variabili in diretta, svuotare il programmer | attivo |\n| **Pulsanti, fader, interruttori della console** | Premere, muovere e commutare i pannelli Pulsante, Fader e Interruttore propri della console (eseguono i comandi impostati in essi) | attivo |\n| **Imposta DMX direttamente** | Scrivere canali DMX – prevale sullo show in esecuzione – *critico* | **spento** |\n| **Scrivere chat e note** | Creare, rinominare ed eliminare chat e note, inviare ed eliminare messaggi, modificare o integrare una nota | **spento** |\n\n**Modifica dello show**"
  },
  {
   "id": "api-009",
@@ -113,7 +113,7 @@
   ],
   "title": "I permessi (4)",
   "keywords": [],
-  "text": "**Preset** nella finestra: *Sola lettura* (i tre permessi di lettura), *Esercizio* (lettura più liste di cue, timecode, blackout/master, audio, programmer e i pulsanti / fader / interruttori della console – niente comandi, niente DMX diretto), *Modifica show* (Esercizio più liste di cue e cue, variabili, effetti), *Accesso completo* e *Predefinito*."
+  "text": "**Preset** nella finestra: *Sola lettura* (i quattro permessi di lettura), *Esercizio* (lettura più liste di cue, timecode, blackout/master, audio, programmer, chat e note e i pulsanti / fader / interruttori della console – niente comandi, niente DMX diretto), *Modifica show* (Esercizio più liste di cue e cue, variabili, effetti), *Accesso completo* e *Predefinito*."
  },
  {
   "id": "api-011",
@@ -323,6 +323,30 @@
   "path": [
    "API REST",
    "5. Panoramica degli endpoint",
+   "Chat e note – permessi Leggere chat e note e Scrivere chat e note"
+  ],
+  "title": "Chat e note – permessi Leggere chat e note e Scrivere chat e note",
+  "keywords": [],
+  "text": "| Metodo | Percorso | Corpo | Cosa fa |\n|---|---|---|---|\n| GET | `/notebook` | `?kind=chat` oppure `?kind=note` (facoltativo) | Elencare chat e note, prima la modificata più di recente |\n| GET | `/notebook/{id}` | `?after=<id del messaggio>`, `?limit=100` | Una chat: i suoi messaggi, i più vecchi prima; una nota: `body` (Markdown) e `rev` |\n| GET | `/notebook/{id}/export` | – | Scaricare come file Markdown |\n| POST | `/notebook` | `{\"kind\": \"note\", \"title\": \"…\", \"body\": \"…\"}` – `kind` è `chat` o `note`; `body` è il testo iniziale di una nota | Creare |\n| PUT | `/notebook/{id}` | `{\"title\": \"…\"}` | Rinominare |\n| DELETE | `/notebook/{id}` | – | Eliminare (su tutti i dispositivi) |\n| POST | `/notebook/{id}/messages` | `{\"text\": \"…\", \"author\": \"…\"}` – `author` è facoltativo | Inviare un messaggio (senza `author` il mittente è il nome del token) |\n| DELETE | `/notebook/{id}/messages/{message_id}` | – | Eliminare un messaggio |\n| PUT | `/notebook/{id}/body` | `{\"body\": \"…\", \"base_rev\": 3}` – `base_rev` è facoltativo | Sostituire il testo di una nota; con `base_rev` solo se nessuno l'ha modificata nel frattempo (altrimenti `409 conflict`, non viene salvato nulla) |\n| POST | `/notebook/{id}/append` | `{\"text\": \"…\"}` | Aggiungere una riga alla fine di una nota (per log e script, senza leggerla prima) |"
+ },
+ {
+  "id": "api-029",
+  "page": "api",
+  "path": [
+   "API REST",
+   "5. Panoramica degli endpoint",
+   "Chat e note – permessi Leggere chat e note e Scrivere chat e note"
+  ],
+  "title": "Chat e note – permessi Leggere chat e note e Scrivere chat e note (2)",
+  "keywords": [],
+  "text": "Tutto compare subito in ogni pannello «Chat e note» aperto. I messaggi inviati tramite l'API mostrano il **nome del token** come mittente (o l'`author` inviato). La chat appartiene al programma, non a uno show."
+ },
+ {
+  "id": "api-030",
+  "page": "api",
+  "path": [
+   "API REST",
+   "5. Panoramica degli endpoint",
    "Documentazione (senza token)"
   ],
   "title": "Documentazione (senza token)",
@@ -330,7 +354,7 @@
   "text": "| Metodo | Percorso | Restituisce |\n|---|---|---|\n| GET | `/docs` | Una panoramica leggibile e ricercabile di tutte le route (funziona offline) |\n| GET | `/openapi.json` | La descrizione leggibile dalle macchine (OpenAPI 3.1); ogni route elenca il suo permesso come `x-capability` |"
  },
  {
-  "id": "api-029",
+  "id": "api-031",
   "page": "api",
   "path": [
    "API REST",
@@ -342,7 +366,7 @@
   "text": "```\nGET /api/v1/status\n```\n\n```json\n{\n  \"app\": { \"name\": \"OpenCue\", \"version\": \"1.0.0\" },\n  \"show\": { \"name\": \"Concert\", \"unsaved_changes\": true },\n  \"blackout\": false,\n  \"grand_master\": 100.0,\n  \"timecode\": { \"running\": false, \"direction\": 1, \"rate\": 1.0, \"position_ms\": 0.0, \"position\": \"00:00:00.000\" },\n  \"selection\": { \"fixture_ids\": [\"228a68e5-…\"], \"fids\": [2] },\n  \"active_cuelist\": { \"id\": \"7e5d274f-…\", \"name\": \"Show\" },\n  \"dmx\": { \"universes\": [1], \"artnet\": true, \"sacn\": false, \"usb\": false },\n  \"counts\": { \"fixtures\": 2, \"groups\": 1, \"variables\": 0, \"effects\": 0, \"cuelists\": 1, \"cues\": 2 }\n}\n```"
  },
  {
-  "id": "api-030",
+  "id": "api-032",
   "page": "api",
   "path": [
    "API REST",
@@ -354,7 +378,7 @@
   "text": "```\nGET /api/v1/fixtures?include_state=true\nGET /api/v1/fixtures/state\n```\n\n```json\n{\n  \"fixtures\": [\n    { \"id\": \"9ea4feaa-…\", \"fid\": 1, \"name\": \"Front\", \"state\": { \"dimmer\": 80.0 } },\n    { \"id\": \"228a68e5-…\", \"fid\": 2, \"name\": \"Par left\",\n      \"state\": { \"dimmer\": 100.0, \"color\": { \"r\": 255, \"g\": 0, \"b\": 0, \"hex\": \"#ff0000\" } } }\n  ]\n}\n```\n\n`state` contiene esattamente ciò che la console emette attualmente, letto dal buffer DMX: `dimmer`, `pan`, `tilt`, `zoom`, `focus` … in percentuale e `color` come r/g/b. Gli attributi che un apparecchio non ha mancano. (Con grand master 0 o in blackout il dimmer non può essere ricostruito e viene omesso.)"
  },
  {
-  "id": "api-031",
+  "id": "api-033",
   "page": "api",
   "path": [
    "API REST",
@@ -366,7 +390,7 @@
   "text": "```\nGET /api/v1/fixtures/2\n```\n\n```json\n{\n  \"id\": \"228a68e5-…\", \"fid\": 2, \"name\": \"Par left\", \"type\": \"Generic RGBW LED Par\", \"manufacturer\": \"Generic\",\n  \"universe\": 1, \"start_channel\": 11, \"end_channel\": 14, \"channel_count\": 4, \"mode\": \"default\", \"group\": \"Wash\",\n  \"channels\": [\n    { \"channel\": 1, \"name\": \"ColorAdd_R\", \"address\": 11, \"value\": 255 },\n    { \"channel\": 2, \"name\": \"ColorAdd_G\", \"address\": 12, \"value\": 0 },\n    { \"channel\": 3, \"name\": \"ColorAdd_B\", \"address\": 13, \"value\": 0 },\n    { \"channel\": 4, \"name\": \"ColorAdd_W\", \"address\": 14, \"value\": 0 }\n  ],\n  \"state\": { \"color\": { \"r\": 255, \"g\": 0, \"b\": 0, \"hex\": \"#ff0000\" } }\n}\n```"
  },
  {
-  "id": "api-032",
+  "id": "api-034",
   "page": "api",
   "path": [
    "API REST",
@@ -378,7 +402,7 @@
   "text": "```\nGET /api/v1/cuelists/Show/cues/1\n```\n\n```json\n{\n  \"id\": \"700571ee-…\", \"number\": 1, \"name\": \"Auf\", \"active\": false,\n  \"trigger\": \"go\", \"timecode_ms\": null, \"timecode\": null, \"audio\": null, \"midi\": null, \"clock\": null,\n  \"fade\": 2.0, \"delay\": 0.0,\n  \"times\": { \"color\": { \"fade\": null, \"delay\": null }, \"position\": { \"fade\": null, \"delay\": null },\n             \"beam\": { \"fade\": null, \"delay\": null }, \"zoom\": { \"fade\": null, \"delay\": null } },\n  \"effect_fade\": { \"in\": 0.0, \"out\": 0.0 }, \"mib\": \"Off\", \"command\": \"\", \"fixture_count\": 2,\n  \"changes\": [\n    { \"fixture_id\": \"9ea4feaa-…\", \"fid\": 1, \"name\": \"Front\", \"values\": { \"dimmer\": 50 }, \"variables\": {} },\n    { \"fixture_id\": \"228a68e5-…\", \"fid\": 2, \"name\": \"Par left\",\n      \"values\": { \"dimmer\": 100, \"color\": { \"r\": 255, \"g\": 0, \"b\": 0, \"hex\": \"#ff0000\" } }, \"variables\": {} }\n  ],\n  \"effects\": [],\n  \"cuelist\": { \"id\": \"7e5d274f-…\", \"name\": \"Show\" }\n}\n```"
  },
  {
-  "id": "api-033",
+  "id": "api-035",
   "page": "api",
   "path": [
    "API REST",
@@ -390,7 +414,7 @@
   "text": "- `fade` / `delay` sono i tempi generali; `times` contiene i tempi facoltativi per gruppo di attributi (`null` = usa il tempo generale).\n- `changes[].values` sono i valori fissi memorizzati nel cue. `variables` elenca le variabili (segnaposto) a cui il cue fa riferimento, per tipo e nome – una variabile viene risolta in diretta quando il cue gira.\n- `effects` elenca gli effetti che il cue avvia, per apparecchio.\n- Tutti i cue di una lista in una volta con i loro dettagli: `GET /api/v1/cuelists/Show/cues?detail=true`."
  },
  {
-  "id": "api-034",
+  "id": "api-036",
   "page": "api",
   "path": [
    "API REST",
@@ -402,7 +426,7 @@
   "text": "```\nGET /api/v1/dmx/1?first=1&last=14\nGET /api/v1/dmx/1?nonzero=true\n```\n\n```json\n{ \"universe\": 1, \"first\": 1, \"last\": 14, \"values\": [0,0,0,0,0,0,0,0,0,0,255,0,0,0] }\n{ \"universe\": 1, \"first\": 1, \"last\": 512, \"channels\": { \"11\": 255 } }\n```"
  },
  {
-  "id": "api-035",
+  "id": "api-037",
   "page": "api",
   "path": [
    "API REST",
@@ -414,7 +438,7 @@
   "text": "```\nPOST /api/v1/command\n{ \"command\": \"Fixture 1 Thru 4 At 80\" }\n```\n\n```json\n{ \"command\": \"Fixture 1 Thru 4 At 80\", \"success\": true, \"message\": \"OK: 4 fixtures selected; At 80 applied\" }\n```\n\nFunzionano tutti i comandi della riga di comando, anche concatenati con `;` (vedi la guida *Riferimento dei comandi*)."
  },
  {
-  "id": "api-036",
+  "id": "api-038",
   "page": "api",
   "path": [
    "API REST",
@@ -426,7 +450,7 @@
   "text": "```\nPOST /api/v1/cuelists/Show/go            { \"cue\": \"2\" }\n```\n\n```json\n{ \"cuelist\": { \"id\": \"7e5d274f-…\", \"name\": \"Show\" }, \"command\": \"Cuelist \\\"Show\\\" Go Cue 2\", \"success\": true, \"message\": \"OK: Go Cue 2 [Show]\" }\n```\n\nSenza corpo `go` avvia il cue successivo. Nota: una lista di cue il cui **nome contiene un apice doppio** non si può indirizzare così; rinominatela."
  },
  {
-  "id": "api-037",
+  "id": "api-039",
   "page": "api",
   "path": [
    "API REST",
@@ -438,7 +462,7 @@
   "text": "```\nPUT /api/v1/timecode   { \"action\": \"seek\", \"position\": \"1:04.300\" }\nPUT /api/v1/timecode   { \"action\": \"play\", \"position\": 10 }\nGET /api/v1/timecode\n```\n\n```json\n{ \"running\": false, \"direction\": 1, \"rate\": 1.0, \"position_ms\": 64300.0, \"position\": \"00:01:04.300\" }\n```\n\n`position` è un numero in **secondi** o un testo come `1:04.300` o `00:00:04.300`. `play` può partire da una `position` e girare all'indietro con `\"direction\": -1`; `rate` è la velocità tra 0,1 e 8. Saltare con `seek` non fa scattare i cue a timecode."
  },
  {
-  "id": "api-038",
+  "id": "api-040",
   "page": "api",
   "path": [
    "API REST",
@@ -450,7 +474,7 @@
   "text": "```\nPUT /api/v1/dmx/1/200                      { \"value\": 255 }\nPUT /api/v1/dmx/1                          { \"channels\": { \"201\": 10, \"202\": 20 } }\nPUT /api/v1/fixtures/Front/channels/Dimmer { \"percent\": 50 }\n```\n\n```json\n{ \"universe\": 1, \"channel\": 1, \"value\": 128, \"fixture\": { \"fid\": 1, \"name\": \"Front\" }, \"channel_of_fixture\": 1 }\n```\n\nUn canale che appartiene a un **apparecchio** viene impostato come il fader *DMX diretto* del programmer: diventa un valore manuale che i cue in esecuzione non mescolano più. Gli altri canali vengono scritti direttamente nell'uscita. Questo permesso è **spento di default**."
  },
  {
-  "id": "api-039",
+  "id": "api-041",
   "page": "api",
   "path": [
    "API REST",
@@ -462,7 +486,7 @@
   "text": "```\nGET  /api/v1/audio/devices                    -> { \"devices\": [ { \"id\": \"demo\", \"kind\": \"demo\", \"name\": \"Demo beat\" }, ... ] }\nPUT  /api/v1/audio    { \"device\": \"demo\" }    open that source (`running` false closes it)\nPUT  /api/v1/audio    { \"settings\": { \"mode\": \"manual\", \"bpm\": 128, \"sensitivity\": 0.7 } }\nPOST /api/v1/audio/tap                        tap the tempo (about 4 taps in a row set it, the tempo switches to manual)\nGET  /api/v1/audio                            level, bands, kick / snare / hat, bpm, beat_phase ... and the settings\n```\n\n`PUT /audio` applica prima le `settings`, poi apre (`running: true`, o un `device`) o chiude (`running: false`) la sorgente, e risponde come `GET /audio`. Se la sorgente non si può aprire la risposta è `409 audio_failed` con il motivo. Impostazioni: `gain`, `auto_gain`, `sensitivity`, `smoothing`, `latency_ms`, `mode` (`auto` | `manual`), `bpm` (tempo manuale), `phase_follow`, `demo_bpm`, `autostart`; le chiavi sconosciute vengono ignorate e i numeri vengono limitati al loro intervallo."
  },
  {
-  "id": "api-040",
+  "id": "api-042",
   "page": "api",
   "path": [
    "API REST",
@@ -474,7 +498,7 @@
   "text": "```\nPOST /api/v1/cuelists/Show/cues\n{\n  \"number\": 3, \"name\": \"Blue wash\", \"fade\": 3,\n  \"changes\": [\n    { \"group\": \"Wash\", \"values\": { \"dimmer\": 80, \"color\": \"#0000ff\" } },\n    { \"fixtures\": [1], \"values\": { \"dimmer\": 20 } }\n  ],\n  \"effects\": [ { \"fixtures\": [2, 3], \"effects\": { \"dimmer\": \"Blink\" } } ]\n}\n```\n\n```json\n{ \"status\": \"created\", \"cuelist\": { \"id\": \"7e5d274f-…\", \"name\": \"Show\" },\n  \"cue\": { \"id\": \"5c0b…\", \"number\": 3, \"name\": \"Blue wash\", \"fade\": 3.0, \"changes\": [ … ], \"effects\": [ … ], … } }\n```\n\nLa risposta è l'intero cue come lo mostrerebbe `GET …/cues/3`. Se il cue 3 esiste ricevete `409 cue_exists`; inviate `\"on_conflict\": \"merge\"` per aggiungervi gli attributi inviati, o `\"overwrite\"` per sostituirne il contenuto (stato `merged` / `overwritten`).\n\nLa stessa cosa dal programmer, come *Store Cue*:\n\n```\nPUT  /api/v1/programmer/values   { \"fixtures\": [2, 3], \"values\": { \"color\": \"#ff8000\", \"dimmer\": 100 } }\nPOST /api/v1/cuelists/Show/cues  { \"number\": 4, \"name\": \"Orange\", \"from_programmer\": true, \"clear_programmer\": true }\n```"
  },
  {
-  "id": "api-041",
+  "id": "api-043",
   "page": "api",
   "path": [
    "API REST",
@@ -486,7 +510,7 @@
   "text": "```\nPUT    /api/v1/cuelists/Show/cues/3   { \"name\": \"Deep blue\", \"fade\": 5, \"times\": { \"color\": { \"fade\": 8 } } }\nPUT    /api/v1/cuelists/Show/cues/3   { \"changes\": [ { \"fixtures\": [1], \"values\": { \"dimmer\": 0 } } ] }                       (adds to the content)\nPUT    /api/v1/cuelists/Show/cues/3   { \"content\": \"replace\", \"changes\": [ { \"fixtures\": [1], \"values\": { \"dimmer\": 0 } } ] } (content = exactly this)\nPUT    /api/v1/cuelists/Show/cues/3   { \"number\": 2.5 }                                                                          (renumber)\nDELETE /api/v1/cuelists/Show/cues/3\n```\n\nCambia solo ciò che inviate. Una modifica a un cue in esecuzione ha effetto al suo prossimo *Go*."
  },
  {
-  "id": "api-042",
+  "id": "api-044",
   "page": "api",
   "path": [
    "API REST",
@@ -498,7 +522,7 @@
   "text": "```\nPOST /api/v1/variables  { \"name\": \"Warm white\", \"type\": \"color\", \"values\": { \"hex\": \"#ffb060\" } }\nPUT  /api/v1/variables/Warm white   { \"values\": { \"hex\": \"#ffa040\" } }      -> every cue that uses it is warmer now\nPOST /api/v1/effects    { \"script\": \"strobe\", \"name\": \"Blink\", \"params\": { \"rate_hz\": 8 } }\nPOST /api/v1/effects/Blink/assign   { \"fixtures\": [2, 3] }                  -> it runs now\nPOST /api/v1/effects/release        { \"fixtures\": [2, 3] }                  -> stop it\n```\n\n`GET /api/v1/effect-scripts` elenca i tipi di effetto con le loro impostazioni (`variables`: nome, genere, limiti, predefinito, etichette in entrambe le lingue)."
  },
  {
-  "id": "api-043",
+  "id": "api-045",
   "page": "api",
   "path": [
    "API REST",
@@ -510,7 +534,7 @@
   "text": "```\nPOST /api/v1/effect-scripts/check   { \"text\": \"…\" }                  -> { \"ok\": false, \"line\": 3, \"message\": \"…\" }\nPUT  /api/v1/effect-scripts/my_wave { \"text\": \"…\", \"overwrite\": true }\nPOST /api/v1/effects                { \"script\": \"my_wave\" }\n```\n\nUno script viene salvato solo se compila e gira. Il linguaggio è documentato nella guida *Studio effetti*."
  },
  {
-  "id": "api-044",
+  "id": "api-046",
   "page": "api",
   "path": [
    "API REST",
@@ -522,7 +546,7 @@
   "text": "```\nGET  /api/v1/fixture-types?q=par\nPOST /api/v1/fixtures  { \"type\": \"Generic RGBW LED Par\", \"quantity\": 4, \"name\": \"Par\", \"universe\": 1, \"address\": 11, \"group\": \"Wash\" }\n```\n\n```json\n{ \"created\": [ { \"fid\": 4, \"name\": \"Par 1\", \"universe\": 1, \"start_channel\": 11, \"end_channel\": 14, … },\n               { \"fid\": 5, \"name\": \"Par 2\", \"universe\": 1, \"start_channel\": 15, … }, … ] }\n```\n\nGli indirizzi che si sovrappongono ad altri apparecchi vengono rifiutati (`409 address_conflict`); `\"allow_overlap\": true` patcha comunque."
  },
  {
-  "id": "api-045",
+  "id": "api-047",
   "page": "api",
   "path": [
    "API REST",
@@ -534,7 +558,7 @@
   "text": "```\nGET  /api/v1/programmer\nPUT  /api/v1/selection            { \"group\": \"Wash\" }\nPUT  /api/v1/programmer/values    { \"values\": { \"dimmer\": 100, \"color\": [255, 0, 0] } }       (without fixtures: the selection)\nPOST /api/v1/programmer/variables { \"variable\": \"Warm white\" }\nPOST /api/v1/programmer/clear     { \"fixtures\": [2] }          forget their values (the output stays)\nPOST /api/v1/programmer/clear     { \"all\": true }              Clear Clear: every fixture dark, effects end\n```\n\nI valori impostati così si comportano come i fader della finestra del programmer: l'uscita cambia subito, contano come toccati e il successivo *Store Cue* li riprende."
  },
  {
-  "id": "api-046",
+  "id": "api-048",
   "page": "api",
   "path": [
    "API REST",
@@ -546,7 +570,7 @@
   "text": "```\ncurl -X PUT -H \"Authorization: Bearer oc_xxxxxxxx\" -H \"Content-Type: application/json\" \\\n  -d '{\"group\": \"Front\", \"mode\": \"relative\", \"values\": {\"pan\": 2.5, \"dimmer\": -10}}' \\\n  http://127.0.0.1:8000/api/v1/programmer/values\n```\n\nCon `\"mode\": \"relative\"` i numeri sono **variazioni in punti percentuali** (da −100 a 100); ogni apparecchio parte dal proprio valore ed è limitato a 0 / 100 %. Colori e canali grezzi esistono solo come valori assoluti. Per sequenze rapide di modifiche (manopole, joystick) è meglio il WebSocket (sezione 10)."
  },
  {
-  "id": "api-047",
+  "id": "api-049",
   "page": "api",
   "path": [
    "API REST",
@@ -558,7 +582,7 @@
   "text": "```\nPOST /api/v1/showfile/save-as  { \"name\": \"Concert\" }\nPOST /api/v1/showfile/load     { \"name\": \"Concert\", \"force\": false }\nPOST /api/v1/showfile/new      { \"force\": true }\n```\n\nSenza `force`, *load* e *new* si fermano con `409 unsaved_changes` quando lo show in esecuzione ha modifiche non salvate. `GET /api/v1/showfile` dice se ne ha."
  },
  {
-  "id": "api-048",
+  "id": "api-050",
   "page": "api",
   "path": [
    "API REST",
@@ -570,7 +594,7 @@
   "text": "```\nGET /api/v1/widgets\nPOST /api/v1/widgets/b1/press\nPUT  /api/v1/widgets/f1/value   { \"value\": 70 }\nPUT  /api/v1/widgets/t1/state   { \"on\": true }\n```\n\n`GET /widgets` elenca i pannelli con il loro `id`, `label`, comando e il valore attuale (fader) o lo stato (interruttori). Premere, muovere o commutare esegue il comando impostato nel pannello – lo stesso che attiva un operatore – e i pannelli su ogni dispositivo seguono (un pulsante premuto pulsa, fader e interruttori con lo stesso comando si muovono insieme). Il valore di un fader è limitato al suo minimo / massimo. Un pannello senza comando risponde `409 no_command` (un interruttore senza comandi si limita a commutare). I pannelli sono quelli del layout della **console**; i dispositivi remoti hanno layout propri."
  },
  {
-  "id": "api-049",
+  "id": "api-051",
   "page": "api",
   "path": [
    "API REST",
@@ -582,7 +606,7 @@
   "text": "```\nPUT  /api/v1/system   { \"artnet\": { \"ip\": \"192.168.1.255\" }, \"sacn\": { \"enabled\": false } }\nPOST /api/v1/layouts/Concert.json/load\nPOST /api/v1/fixture-types   (raw .gdtf file, header X-Filename: my_fixture.gdtf)\n```"
  },
  {
-  "id": "api-050",
+  "id": "api-052",
   "page": "api",
   "path": [
    "API REST",
@@ -594,7 +618,19 @@
   "text": "```\ncurl -X POST -H \"Authorization: Bearer oc_xxxxxxxx\" -H \"Content-Type: application/octet-stream\" \\\n     -H \"X-Filename: intro.mp4\" --data-binary @intro.mp4 http://127.0.0.1:8000/api/v1/media\n```"
  },
  {
-  "id": "api-051",
+  "id": "api-053",
+  "page": "api",
+  "path": [
+   "API REST",
+   "6. Esempi con risposte reali",
+   "Chat e note"
+  ],
+  "title": "Chat e note",
+  "keywords": [],
+  "text": "```\nPOST /api/v1/notebook                 { \"kind\": \"chat\", \"title\": \"Crew\" }\nPOST /api/v1/notebook/<id>/messages   { \"text\": \"Soundcheck at 5 pm\" }\nGET  /api/v1/notebook/<id>?after=<last message id>\nPOST /api/v1/notebook/<id>/append     { \"text\": \"- [ ] 21:40 smoke machine refilled\" }\nGET  /api/v1/notebook/<id>/export\n```\n\nUno script può scrivere nella chat della crew o tenere un log in una nota. `GET /notebook/{id}?after=<id dell'ultimo messaggio>` restituisce solo le novità. `rev` di una nota cambia a ogni salvataggio; rimandalo come `base_rev` per non sovrascrivere la modifica di qualcun altro (`409`). Il flusso `?events=notebook` segnala ogni modifica subito."
+ },
+ {
+  "id": "api-054",
   "page": "api",
   "path": [
    "API REST",
@@ -603,10 +639,10 @@
   ],
   "title": "Eventi in diretta (flusso)",
   "keywords": [],
-  "text": "```\ncurl -N -H \"Authorization: Bearer oc_xxxxxxxx\" \"http://127.0.0.1:8000/api/v1/events?events=cue,blackout,command\"\n```\n\n```\nevent: hello\ndata: {\"app\": \"OpenCue\", \"events\": [\"blackout\", \"cue\", \"command\"]}\n\nevent: cue\ndata: {\"cuelists\": [{\"id\": \"7e5d…\", \"name\": \"Show\", \"active_cue\": {\"id\": \"700…\", \"number\": 2, \"name\": \"Blue\", …}}]}\n\nevent: command\ndata: {\"command\": \"Fixture 1 At 10\", \"success\": true, \"message\": \"OK: …\", \"time\": \"21:14:03\"}\n```\n\nLa connessione resta aperta. Arrivano prima `hello` e un messaggio per genere con lo **stato attuale**, poi ogni modifica. Generi: `cue` (il cue attivo di una lista è cambiato), `cuelists` (liste / cue aggiunti, rimossi, rinominati), `blackout`, `master`, `timecode` (avviato, fermato, velocità), `selection`, `effects`, `fixtures`, `variables`, `show` (nome / modifiche non salvate), `command` (è stato eseguito un comando di console, da qualsiasi parte), `audio` (sorgente aperta / chiusa, tempo, segnale presente). Solo su richiesta (`?events=beat,hit`): `beat` (ogni battito, con il tempo) e `hit` (ogni colpo di cassa / rullante / hi-hat: `{\"drum\": \"kick\", \"strength\": 0.9}`). `?events=` limita il flusso. Le modifiche vengono rilevate entro circa 0,1 s. Ogni 15 s arriva una riga di commento (`: keep-alive`); al massimo 20 flussi girano contemporaneamente. Richiede il permesso *Stato*."
+  "text": "```\ncurl -N -H \"Authorization: Bearer oc_xxxxxxxx\" \"http://127.0.0.1:8000/api/v1/events?events=cue,blackout,command\"\n```\n\n```\nevent: hello\ndata: {\"app\": \"OpenCue\", \"events\": [\"blackout\", \"cue\", \"command\"]}\n\nevent: cue\ndata: {\"cuelists\": [{\"id\": \"7e5d…\", \"name\": \"Show\", \"active_cue\": {\"id\": \"700…\", \"number\": 2, \"name\": \"Blue\", …}}]}\n\nevent: command\ndata: {\"command\": \"Fixture 1 At 10\", \"success\": true, \"message\": \"OK: …\", \"time\": \"21:14:03\"}\n```"
  },
  {
-  "id": "api-052",
+  "id": "api-055",
   "page": "api",
   "path": [
    "API REST",
@@ -615,10 +651,10 @@
   ],
   "title": "Eventi in diretta (flusso) (2)",
   "keywords": [],
-  "text": "In un browser `EventSource` non può inviare intestazioni: usate invece `?access_token=<token>`, oppure `fetch()` con un'intestazione e leggete il flusso. Il token compare allora nell'indirizzo, quindi date a una tale pagina un token proprio con solo *Stato*."
+  "text": "La connessione resta aperta. Arrivano prima `hello` e un messaggio per genere con lo **stato attuale**, poi ogni modifica. Generi: `cue` (il cue attivo di una lista è cambiato), `cuelists` (liste / cue aggiunti, rimossi, rinominati), `blackout`, `master`, `timecode` (avviato, fermato, velocità), `selection`, `effects`, `fixtures`, `variables`, `show` (nome / modifiche non salvate), `command` (è stato eseguito un comando di console, da qualsiasi parte), `audio` (sorgente aperta / chiusa, tempo, segnale presente). Solo su richiesta (`?events=beat,hit`): `beat` (ogni battito, con il tempo) e `hit` (ogni colpo di cassa / rullante / hi-hat: `{\"drum\": \"kick\", \"strength\": 0.9}`). `?events=` limita il flusso. Le modifiche vengono rilevate entro circa 0,1 s. Ogni 15 s arriva una riga di commento (`: keep-alive`); al massimo 20 flussi girano contemporaneamente. Richiede il permesso *Stato*. Su richiesta anche `notebook` (un messaggio di chat o una nota è cambiato; richiede il permesso *Leggere chat e note*).\n\nIn un browser `EventSource` non può inviare intestazioni: usate invece `?access_token=<token>`, oppure `fetch()` con un'intestazione e leggete il flusso. Il token compare allora nell'indirizzo, quindi date a una tale pagina un token proprio con solo *Stato*."
  },
  {
-  "id": "api-053",
+  "id": "api-056",
   "page": "api",
   "path": [
    "API REST",
@@ -629,7 +665,7 @@
   "text": "Python, con la libreria `requests` (funziona qualsiasi libreria HTTP):\n\n```python\nimport requests\n\nBASE = \"http://127.0.0.1:8000/api/v1\"\nHEAD = {\"Authorization\": \"Bearer oc_xxxxxxxx\"}\n\n# What is the colour of every fixture?\nfor fx in requests.get(f\"{BASE}/fixtures/state\", headers=HEAD).json()[\"fixtures\"]:\n    color = fx[\"state\"].get(\"color\")\n    print(fx[\"fid\"], fx[\"name\"], color[\"hex\"] if color else \"-\")\n\n# Dim the front lights, then start the next cue\nrequests.post(f\"{BASE}/command\", headers=HEAD, json={\"command\": \"Fixture 1 At 30\"})\nrequests.post(f\"{BASE}/cuelists/Show/go\", headers=HEAD)\n```\n\nCostruire un piccolo show (richiede i permessi di modifica):\n\n```python\nrequests.post(f\"{BASE}/fixtures\", headers=HEAD, json={\"type\": \"Generic RGBW LED Par\", \"quantity\": 4, \"name\": \"Par\", \"address\": 1, \"group\": \"Wash\"})\nrequests.post(f\"{BASE}/variables\", headers=HEAD, json={\"name\": \"Warm\", \"type\": \"color\", \"values\": {\"hex\": \"#ffb060\"}})\nrequests.post(f\"{BASE}/cuelists\", headers=HEAD, json={\"name\": \"Show\"})\nrequests.post(f\"{BASE}/cuelists/Show/cues\", headers=HEAD, json={\n    \"number\": 1, \"name\": \"Warm\", \"fade\": 3,\n    \"changes\": [{\"group\": \"Wash\", \"values\": {\"dimmer\": 80}, \"variables\": {\"color\": \"Warm\"}}]})\nrequests.post(f\"{BASE}/showfile/save-as\", headers=HEAD, json={\"name\": \"From the API\"})\n```"
  },
  {
-  "id": "api-054",
+  "id": "api-057",
   "page": "api",
   "path": [
    "API REST",
@@ -640,7 +676,7 @@
   "text": "Una pagina web che mostra il cue attivo in diretta (JavaScript nel browser; la pagina può provenire da qualsiasi indirizzo, vedi la sezione 8):\n\n```javascript\nconst res = await fetch(\"http://192.168.1.20:8000/api/v1/events?events=cue\", { headers: { Authorization: \"Bearer oc_xxxxxxxx\" } });\nconst reader = res.body.pipeThrough(new TextDecoderStream()).getReader();\nfor (;;) {\n  const { value, done } = await reader.read();\n  if (done) break;\n  console.log(value);          // \"event: cue\\ndata: {...}\\n\\n\"\n}\n```"
  },
  {
-  "id": "api-055",
+  "id": "api-058",
   "page": "api",
   "path": [
    "API REST",
@@ -651,7 +687,7 @@
   "text": "- **Da un altro computer o tablet** l'API è raggiungibile non appena **Consenti l'accesso via HTTP** (Impostazioni → Accesso remoto) è attivo. Usate l'indirizzo della console (mostrato in quella pagina) invece di `127.0.0.1`, ad esempio `http://192.168.1.20:8000/api/v1/status`. Con l'accesso remoto spento la porta è chiusa alla rete. Il **token sostituisce la password** in quel caso – non serve alcun accesso.\n- I token danno un vero controllo sulle luci. Date a ogni programma il **proprio token con solo i permessi di cui ha bisogno** ed eliminate i token che non usate più.\n- I **permessi di modifica sono spenti di default** e possono cambiare o distruggere dati dello show: *Patch*, *File show* e *Comandi della console* sono contrassegnati come **critici**. *Carica* e *Nuovo* rifiutano di buttare via modifiche non salvate senza `force`.\n- Il traffico è semplice HTTP all'interno della vostra rete. Non esponete la porta a internet.\n- Le **pagine web su altri indirizzi** (la vostra dashboard, uno strumento web nel browser) possono chiamare direttamente l'API: le risposte portano le intestazioni per l'accesso cross-origin (CORS) e la richiesta preliminare del browser (`OPTIONS`, che non può portare un token) riceve risposta. La pagina ha comunque bisogno di un token nell'intestazione `Authorization`, e deve tenere il token per sé (non mettete un token potente in una pagina web pubblica). Disattivatelo in *Impostazioni → API → Consenti pagine web su altri indirizzi* se non vi serve; i browser bloccano allora di nuovo tali pagine (programmi e script non sono interessati).\n- L'API modifica lo show **in memoria**, come la finestra. Nulla viene scritto su disco finché lo show non viene salvato (`POST /showfile/save`, o *Salva* nella finestra)."
  },
  {
-  "id": "api-056",
+  "id": "api-059",
   "page": "api",
   "path": [
    "API REST",
@@ -662,7 +698,7 @@
   "text": "| Problema | Controllare |\n|---|---|\n| `401 unauthorized` | Intestazione scritta `Authorization: Bearer oc_…` con il token completo? Token eliminato o rigenerato? |\n| `403 forbidden` | Al token manca questo permesso – aprite il token in *Impostazioni → API* e attivatelo (il messaggio lo nomina). |\n| `403 api_disabled` | L'interruttore principale in *Impostazioni → API* è spento. |\n| `403 remote access disabled` | Chiamate da un altro dispositivo mentre *Consenti l'accesso via HTTP* è spento. |\n| `404 not_found` | Controllate il numero dell'apparecchio, il nome della lista di cue (esattamente) e il numero del cue. |\n| `409 duplicate` | Il nome è occupato (maiuscole / minuscole non contano). Scegliete un altro nome o modificate quello esistente con `PUT`. |\n| `409 cue_exists` | Nella lista c'è un cue con questo numero: `on_conflict` o `PUT`. |\n| `409 unsaved_changes` | Salvate prima (`POST /showfile/save`) o inviate `force: true`. |\n| `409 no_command` / `409 wrong_type` | Un pannello non ha comando impostato / avete premuto un fader, mosso un pulsante … (vedi `GET /widgets` per il tipo). |\n| `422` | Un campo che non esiste (errore di battitura?) o un tipo sbagliato – il messaggio nomina il campo. |\n| `422 invalid_script` | Lo script contiene un errore – il messaggio nomina la riga. `POST /effect-scripts/check` prova senza salvare. |\n| `200` ma `\"success\": false` | Il comando è stato rifiutato – leggete `message`. |\n| `429` | Troppi token sbagliati da questo indirizzo. Attendete `Retry-After` secondi. |\n| Pagina del browser: «bloccato da CORS» | *Impostazioni → API → Consenti pagine web su altri indirizzi* è spento, o la richiesta non ha un token (la risposta di errore dell'API porta le intestazioni, così il vero motivo è visibile). |\n| Nessuna risposta | OpenCue è in esecuzione e la porta è giusta (la mostra Impostazioni → Accesso remoto)? |"
  },
  {
-  "id": "api-057",
+  "id": "api-060",
   "page": "api",
   "path": [
    "API REST",
@@ -673,7 +709,7 @@
   "text": "Per l'**hardware** (ESP32, Arduino, Raspberry Pi, un banco autocostruito) e ogni applicazione che invia o riceve **molti piccoli valori rapidamente**, accanto alle route HTTP c'è un **WebSocket**: `ws://<console>:8000/api/v1/ws`. Una connessione resta aperta ed entrambe le parti inviano piccoli **messaggi JSON** (frame di testo) – senza il costo di una nuova richiesta HTTP per ogni valore. Non richiede alcun permesso aggiuntivo: ogni messaggio richiede **lo stesso permesso della route HTTP corrispondente** (tabella sotto). Con il preset *Esercizio* funziona tutto tranne il DMX grezzo."
  },
  {
-  "id": "api-058",
+  "id": "api-061",
   "page": "api",
   "path": [
    "API REST",
@@ -685,7 +721,7 @@
   "text": "Il token si può inviare in tre modi (i microcontrollori trovano l'indirizzo più facilmente):\n\n1. nell'indirizzo: `ws://opencue.local:8000/api/v1/ws?access_token=oc_xxxxxxxx`\n2. nell'intestazione: `Authorization: Bearer oc_xxxxxxxx` (o `X-API-Key`)\n3. come **primo messaggio** entro 5 s: `{\"op\": \"auth\", \"token\": \"oc_xxxxxxxx\"}`\n\nPoi OpenCue invia `{\"op\": \"hello\", ...}` con i permessi, le operazioni, gli argomenti e i limiti consentiti. Gli errori chiudono la connessione con un codice: `4401` (token mancante / sbagliato), `4403` (API spenta, solo questo PC, accesso remoto spento, token disattivato), `4429` (troppi tentativi falliti / troppe connessioni). Valgono le stesse regole di HTTP: *API REST attiva*, *Raggiungibile da*, blocco dopo tentativi falliti. Al massimo 10 connessioni sono aperte contemporaneamente.\n\nOgni messaggio è un oggetto JSON con `\"op\"`. Un **`\"id\"`** facoltativo (qualsiasi numero o testo) torna nella risposta: `{\"op\": \"ack\", \"id\": 7, ...}` in caso di successo, `{\"op\": \"error\", \"id\": 7, \"code\": \"...\", \"message\": \"...\"}` in caso di errore. Senza `id` vengono risposti solo gli errori. Un messaggio difettoso non termina mai la connessione."
  },
  {
-  "id": "api-059",
+  "id": "api-062",
   "page": "api",
   "path": [
    "API REST",
@@ -697,7 +733,7 @@
   "text": "| `op` | Permesso | Cosa fa |\n|---|---|---|\n| `joystick` | Programmer | Un joystick – vedi sotto |\n| `set` | Programmer | Impostare valori, **assoluti** o **relativi** – vedi sotto |\n| `select` | Programmer | Cambiare la selezione: `{\"op\":\"select\",\"mode\":\"set\",\"fixtures\":[1,2]}` (`mode`: `set`, `add`, `remove`, `clear`) |\n| `cmd` | Comandi | Comando di console: `{\"op\":\"cmd\",\"line\":\"Cuelist Main Go\"}` (risposta: `success`, `message`) |\n| `cue` | Cue | `{\"op\":\"cue\",\"list\":\"Main\",\"action\":\"go\"}`; `action`: `go` (con `\"cue\": 5` salta), `back`, `pause`, `resume`, `stop`, `fader` (con `\"value\"`) |\n| `master`, `blackout` | Blackout / Master | `{\"op\":\"master\",\"value\":70}`, `{\"op\":\"blackout\",\"on\":true}` |\n| `dmx` | Canali DMX | `{\"op\":\"dmx\",\"universe\":1,\"channels\":{\"1\":255,\"2\":0}}` – valori di canale grezzi come `PUT /dmx/{universe}` |\n| `tap` | Audio | Battere il tempo (un pulsante sull'ESP32) |\n| `timecode` | Timecode | Controllare il timecode: `{\"op\":\"timecode\",\"action\":\"play\"}` (anche `pause`, `stop`, `seek`, `rate`) – oppure `{\"op\":\"timecode\",\"action\":\"sync\",\"position\":12345,\"running\":true}`: OpenCue **segue** un clock esterno (posizione in ms o `\"0:12.345\"`; gli scostamenti sotto 60 ms non vengono corretti così il clock non trema; un salto lo sposta senza far scattare i cue) |\n| `audio_in` | Audio | Audio **in ingresso** – vedi sotto |\n| `subscribe`, `unsubscribe` | per argomento | **Sottoscrivere** valori in diretta – vedi sotto |\n| `ping` | – | Risposta `{\"op\":\"pong\",\"t\":<il vostro t>,\"server_ms\":...}`: misurare il tempo di andata e ritorno, confrontare i clock |"
  },
  {
-  "id": "api-060",
+  "id": "api-063",
   "page": "api",
   "path": [
    "API REST",
@@ -709,7 +745,7 @@
   "text": "Le destinazioni (`set`, `joystick`, `select`) si chiamano come nelle route HTTP: `\"fixtures\": [1, 2, \"Front 3\"]`, `\"fixture\": 5`, `\"group\": \"Front\"` e / o `\"selection\": true` (la selezione della console). Senza nessuna di esse si usa la selezione."
  },
  {
-  "id": "api-061",
+  "id": "api-064",
   "page": "api",
   "path": [
    "API REST",
@@ -721,7 +757,7 @@
   "text": "```json\n{\"op\": \"set\", \"fixtures\": [1, 2], \"values\": {\"dimmer\": 80, \"pan\": 25, \"color\": \"#ff8800\"}}\n{\"op\": \"set\", \"group\": \"Front\", \"mode\": \"relative\", \"values\": {\"pan\": 2.5, \"dimmer\": -10}}\n```\n\n- **assoluto** (predefinito): i valori sono i nuovi valori – percentuale 0–100, colore come `#rrggbb` / `[r,g,b]`, canali grezzi come `ch<N>` (0–255).\n- **relativo** (`\"mode\": \"relative\"`): i numeri sono **variazioni in punti percentuali** (da −100 a 100); ogni apparecchio parte dal **proprio** valore ed è limitato a 0 / 100 %. Va bene per le manopole rotative e i pulsanti «un po' più avanti». Colori e canali grezzi non possono essere relativi.\n\nHTTP ha lo stesso: `PUT /programmer/values` con `\"mode\": \"relative\"`. Pan e tilt vengono impostati con la piena **risoluzione a 16 bit** (grossolano e fine)."
  },
  {
-  "id": "api-062",
+  "id": "api-065",
   "page": "api",
   "path": [
    "API REST",
@@ -733,7 +769,7 @@
   "text": "```json\n{\"op\": \"joystick\", \"selection\": true, \"x\": 0.35, \"y\": -0.8}\n```\n\n`x` e `y` vanno da −1 a 1 (destra / su positivi). Di default pilota pan (`x`) e tilt (`y`) degli apparecchi selezionati; `\"axes\": {\"x\": \"pan\", \"y\": \"zoom\"}` assegna qualsiasi attributo (`dimmer`, `zoom`, `focus`, `strobe`, `gobo`, `prism` ...). Due modalità (`\"mode\"`):\n\n- **`rate`** (predefinita, **relativa**): la deflessione stabilisce la **velocità**, non la posizione – come il joystick nel programmer. Piccole deflessioni sono molto precise (vicino al centro circa 1° al secondo), grandi veloci (all'estremo esterno l'intero intervallo scorre in pochi secondi); la curva è esponenziale. OpenCue integra il movimento **da sé a 40 Hz** dall'ultima deflessione segnalata – il dispositivo deve solo inviare le modifiche e il valore attuale ogni 20–50 ms; il jitter del WLAN non rende il movimento a scatti. Più apparecchi selezionati si muovono della stessa quantità dal **loro** valore di partenza; a fine intervallo si fermano. Con `x = y = 0` (o dentro la zona morta) la leva è rilasciata: **gli apparecchi restano dove sono**.\n- **`position`** (**assoluta**): la deflessione è la posizione – `x = −1` è pan 0 %, `x = 1` pan 100 %. Non utile per una leva a molla, ma per un encoder o un cursore."
  },
  {
-  "id": "api-063",
+  "id": "api-066",
   "page": "api",
   "path": [
    "API REST",
@@ -745,7 +781,7 @@
   "text": "Altri campi: `stick` (un nome quando un dispositivo ha più leve; predefinito `main`, fino a 4), `speed` (fattore 0,05–4 per la velocità, predefinito 1), `deadzone` (0–0,5, predefinito 0,04), `timeout_ms` (100–5000, predefinito 500), `invert_y`, `release: true` (rilasciare subito). Le destinazioni vengono fissate al primo tocco della leva e mantenute fino al rilascio.\n\n**Dispositivo di sicurezza (uomo morto):** se non arriva alcun messaggio per più di `timeout_ms` (cavo staccato, WLAN assente, dispositivo bloccato) la leva si ferma e OpenCue segnala `{\"op\":\"joystick\",\"stick\":\"main\",\"state\":\"timeout\"}`. Se la connessione cade, tutti gli apparecchi restano dove sono."
  },
  {
-  "id": "api-064",
+  "id": "api-067",
   "page": "api",
   "path": [
    "API REST",
@@ -757,7 +793,7 @@
   "text": "`{\"op\":\"subscribe\",\"topic\":\"<topic>\",\"hz\":30}` – `hz` è la frequenza massima (1–60, predefinita 30). OpenCue invia solo ciò che è **cambiato**. `unsubscribe` con `\"topic\"` termina la sottoscrizione.\n\n| `topic` | Permesso | Messaggi |\n|---|---|---|\n| `audio` | Stato | `{\"op\":\"audio\",\"t\":ms,\"running\":true,\"v\":{\"a_level\":0.62,\"a_bass\":0.9,\"a_bpm\":124,...}}` – le variabili audio dell'analisi audio; `\"keys\": [\"a_level\",\"a_bass\"]` le limita |\n| `dmx` | DMX | `\"universes\": [1]` (fino a 8): prima `{\"op\":\"dmx\",\"universe\":1,\"full\":true,\"values\":[512 numbers]}`, poi solo `{\"op\":\"dmx\",\"universe\":1,\"changes\":{\"17\":255}}` (canale → valore) |\n| `fixtures` | DMX | `{\"op\":\"fixtures\",\"values\":{\"3\":{\"pan\":12.5,\"tilt\":50,\"dimmer\":100,\"color\":{...}}}}` – valori in diretta per **numero** di apparecchio, solo quelli cambiati |\n| `timecode` | Stato | `{\"op\":\"timecode\",\"ms\":83400,\"text\":\"00:01:23.400\",\"running\":true,\"direction\":1,\"rate\":1}` – mentre il clock scorre a ogni tick (fino a 60 Hz), altrimenti solo a una modifica (avvio, stop, salto, velocità) |\n| `events` | Stato | come `GET /events`: `{\"op\":\"event\",\"event\":\"cue\",\"data\":{...}}`; `\"events\": [\"cue\",\"blackout\"]` sceglie (predefinito: i generi standard; `beat` e `hit` solo su richiesta). Prima viene lo stato attuale |"
  },
  {
-  "id": "api-065",
+  "id": "api-068",
   "page": "api",
   "path": [
    "API REST",
@@ -769,7 +805,7 @@
   "text": "Con la sorgente audio **«Rete (flusso API)»** OpenCue analizza l'audio che un dispositivo invia – livello, bande, cassa / rullante / hi-hat, tempo e battito esistono allora come variabili `a_` per **effetti, trigger di cue e il pannello Audio** come al solito.\n\n1. Aprite la sorgente: scegliete *Rete (flusso API)* nel pannello Audio, oppure `PUT /audio` con `{\"device\": \"network\"}`, oppure fatelo con il messaggio del passo 2 (`\"open\": true`).\n2. `{\"op\":\"audio_in\",\"rate\":16000,\"open\":true}` – annuncia PCM (`rate` 8000–48000 Hz, **16 bit con segno little endian, mono**).\n3. Poi inviate **frame binari** (WebSocket binario) con i campioni, ad es. 20 ms alla volta (640 byte a 16 kHz). Al massimo 64 KB per frame.\n\nSe la sorgente non è aperta OpenCue risponde (al massimo una volta al secondo) con l'errore `audio_source`. Senza dati l'analisi continua sul silenzio."
  },
  {
-  "id": "api-066",
+  "id": "api-069",
   "page": "api",
   "path": [
    "API REST",
@@ -781,7 +817,7 @@
   "text": "**L'uscita DMX ha sempre la priorità**: gira in un thread proprio (priorità leggermente superiore) e il flusso è limitato – l'hardware non può quindi mai rallentare la console. Al massimo 300 messaggi al secondo per connessione (raffiche fino a 600) e 1200 in totale – i successivi ricevono `rate_limited` e vengono scartati; messaggi di testo fino a 8 KB, frame binari fino a 64 KB; 10 connessioni; un joystick cambia al massimo a 40 Hz. Una connessione che non accede viene chiusa dopo 5 s."
  },
  {
-  "id": "api-067",
+  "id": "api-070",
   "page": "api",
   "path": [
    "API REST",
@@ -793,7 +829,7 @@
   "text": "```cpp\n#include <WiFi.h>\n#include <WebSocketsClient.h>          // Bibliothek \"WebSockets\" von Markus Sattler (arduinoWebSockets)\n\nconst char* WIFI_SSID = \"MeinWLAN\";\nconst char* WIFI_PASS = \"geheim\";\nconst char* TOKEN     = \"oc_xxxxxxxx\";      // Token mit \"Programmer\" (write.programmer)\nconst int PIN_X = 34, PIN_Y = 35;           // die beiden Achsen des Joysticks (ADC)\n\nWebSocketsClient ws;\nint centerX = 2048, centerY = 2048;\n\nfloat norm(int raw, int center) {           // 0..4095 -> -1..1\n  float f = (raw - center) / 2048.0f;\n  return f < -1 ? -1 : (f > 1 ? 1 : f);\n}\n\nvoid onEvent(WStype_t type, uint8_t* payload, size_t length) {\n  if (type == WStype_CONNECTED) Serial.println(\"OpenCue verbunden\");\n  if (type == WStype_TEXT)      Serial.printf(\"%s\\n\", payload);       // hello, Fehler, Rueckmeldungen\n}\n\nvoid setup() {\n  Serial.begin(115200);\n  WiFi.begin(WIFI_SSID, WIFI_PASS);\n  while (WiFi.status() != WL_CONNECTED) delay(200);\n  delay(300);\n  centerX = analogRead(PIN_X);              // Ruhelage beim Start merken\n  centerY = analogRead(PIN_Y);\n  String path = String(\"/api/v1/ws?access_token=\") + TOKEN;\n  ws.begin(\"opencue.local\", 8000, path);    // oder die IP-Adresse der Konsole\n  ws.onEvent(onEvent);\n  ws.setReconnectInterval(2000);\n  ws.enableHeartbeat(15000, 3000, 2);\n}"
  },
  {
-  "id": "api-068",
+  "id": "api-071",
   "page": "api",
   "path": [
    "API REST",
@@ -805,7 +841,7 @@
   "text": "void loop() {\n  ws.loop();\n  static uint32_t last = 0;\n  if (ws.isConnected() && millis() - last >= 20) {      // 50 Mal pro Sekunde\n    last = millis();\n    float x = norm(analogRead(PIN_X), centerX);\n    float y = -norm(analogRead(PIN_Y), centerY);        // nach oben = Tilt mehr\n    char msg[128];\n    snprintf(msg, sizeof msg, \"{\\\"op\\\":\\\"joystick\\\",\\\"selection\\\":true,\\\"x\\\":%.3f,\\\"y\\\":%.3f}\", x, y);\n    ws.sendTXT(msg);\n  }\n}\n```\n\nIl dispositivo continua a inviare `x = 0, y = 0` a riposo – non fa danni (la leva conta come rilasciata). La selezione sulla console decide cosa si muove; con `\"fixtures\": [1, 2]` o `\"group\"` al posto di `\"selection\": true` la destinazione è fissa."
  },
  {
-  "id": "api-069",
+  "id": "api-072",
   "page": "api",
   "path": [
    "API REST",
@@ -817,7 +853,7 @@
   "text": "```python\nimport asyncio, json, websockets            # pip install websockets\n\nasync def main():\n    async with websockets.connect(\"ws://127.0.0.1:8000/api/v1/ws?access_token=oc_xxxxxxxx\") as ws:\n        print(json.loads(await ws.recv()))                           # hello\n        await ws.send(json.dumps({\"op\": \"set\", \"fixtures\": [1, 2], \"values\": {\"dimmer\": 80}}))\n        await ws.send(json.dumps({\"op\": \"subscribe\", \"topic\": \"audio\", \"hz\": 30, \"keys\": [\"a_level\", \"a_bass\"]}))\n        async for text in ws:\n            frame = json.loads(text)\n            if frame[\"op\"] == \"audio\":\n                print(frame[\"v\"])\n\nasyncio.run(main())\n```\n\nUn riferimento di tutti i messaggi si trova anche nella pagina `/api/v1/docs`."
  },
  {
-  "id": "api-070",
+  "id": "api-073",
   "page": "api",
   "path": [
    "API REST",
@@ -828,7 +864,7 @@
   "text": "Per i dispositivi che sanno solo **recuperare un'immagine** o mostrare una **pagina semplice** – un ESP32 con un display, un vecchio tablet come display a parete, una scheda del browser sul monitor del foyer – ci sono le **viste di stato**. Sono **di sola lettura** (nessun comando), non richiedono **alcuna libreria** sul dispositivo e OpenCue le genera da sé: il contenuto è lo stesso come immagine o come pagina.\n\n| Vista | Mostra | Permesso |\n|---|---|---|\n| `status` | show, blackout, master, timecode, il cue attivo di ogni lista, tempo | Stato |\n| `timecode` | il clock, grande, «in esecuzione / fermo» | Stato |\n| `dmx` | i 512 canali di un universo come griglia (`?universe=1`), luminosità = valore | DMX |\n| `cue` | il cue attivo di una lista (`?list=Main`) e il successivo | Stato |\n| `audio` | livello, le otto bande, tempo | Stato |\n\nOgni vista esiste in più forme (`GET /api/v1/views/<name>…`):"
  },
  {
-  "id": "api-071",
+  "id": "api-074",
   "page": "api",
   "path": [
    "API REST",
@@ -839,7 +875,7 @@
   "text": "| Indirizzo | Risultato |\n|---|---|\n| `/views/status` | **pagina web** che si aggiorna da sola (`?refresh=2` secondi); senza JavaScript tramite meta refresh |\n| `/views/status.png` | **immagine PNG** (`?w=320&h=240&theme=dark`; dimensioni da 64×48 a 800×600; `theme`: `dark` o `light`) |\n| `/views/status.bmp` | **BMP** a 24 bit – qualsiasi piccolo decoder lo capisce |\n| `/views/status.rgb565` | **pixel grezzi**, 16 bit ciascuno (5-6-5, byte alto per primo); la dimensione è nelle intestazioni `X-Width` / `X-Height`: datelo direttamente a un TFT (nessun decoder necessario) |\n| `/views/status.json` | il modello di visualizzazione (parti: titolo, righe, barre, griglia) – per chi vuole disegnare da sé |\n| `/views` | elenco di tutte le viste con i loro parametri |"
  },
  {
-  "id": "api-072",
+  "id": "api-075",
   "page": "api",
   "path": [
    "API REST",
@@ -850,7 +886,7 @@
   "text": "Accedete come al solito. Un browser o un dispositivo che non può inviare un'intestazione aggiunge il token (`access_token`, funziona anche `token`; spazi e virgolette portati con la copia non contano). Il messaggio dice se il token è **mancante** o **non valido / eliminato**; la console registra ogni accesso rifiutato. Se il primo caricamento di `opencue.local` si blocca (Windows a volte risolve lentamente i nomi `.local` la prima volta), usate l'**indirizzo IP** – è elencato in *Impostazioni → API REST* (da copiare): `…/views/status?access_token=oc_xxxxxxxx` (il token fa allora parte dell'indirizzo – create per questo un token separato **con solo «Stato» e «DMX»**). L'interruttore **Viste di stato** in *Impostazioni → API REST* spegne tutto (risposta `403 views_disabled`).\n\n**Colore:** `?color=green` (o `amber`, `red`, `blue`, `cyan`, `white`, `magenta`, `violet`, `orange`, `yellow`, oppure `#rrggbb`) cambia il colore di evidenziazione; il monitor DMX è **verde** di default."
  },
  {
-  "id": "api-073",
+  "id": "api-076",
   "page": "api",
   "path": [
    "API REST",
@@ -861,7 +897,7 @@
   "text": "**Gli errori sono visibili:** se qualcosa non va (token sbagliato, viste spente, nessun permesso) torna un'**immagine** (`.png` / `.bmp` / `.rgb565`) con il giusto codice di stato (401, 403 ...) **come immagine con il messaggio** – un display la mostra semplicemente («TOKEN MISSING OR WRONG», «STATUS VIEWS ARE OFF» ...); la **pagina web** mostra una pagina con il messaggio e si ricarica ogni 5 s. Se OpenCue non è raggiungibile dopo l'apertura della pagina, la pagina mostra in alto **«Nessuna connessione a OpenCue»** e attenua l'ultima immagine finché non funziona di nuovo. `.json` mantiene il messaggio di errore JSON.\n\n**L'uscita DMX ha sempre la priorità:** le immagini vengono ricalcolate al massimo ogni 0,4 s per vista e dimensione (molti dispositivi condividono un'immagine), in un thread in background, e mai più di quattro contemporaneamente. Un'immagine 320×240 costa circa 6 ms. Il thread di uscita DMX gira inoltre con una priorità leggermente superiore."
  },
  {
-  "id": "api-074",
+  "id": "api-077",
   "page": "api",
   "path": [
    "API REST",

@@ -72,6 +72,7 @@ En el disco solo se guarda un **hash** del token, nunca el token en sí.
 | **Estado** | Estado: nombre del show, blackout, grand master, timecode, selección, programador, análisis de audio, salidas, el flujo de eventos en directo | activado |
 | **Datos del show** | Proyectores, tipos de proyector, grupos, variables, efectos, scripts de efectos, archivos de show, listas de cues y cues, medios, disposiciones | activado |
 | **Salida DMX** | Valores DMX actuales y estado en directo de cada proyector | activado |
+| **Leer chats y notas** | Los chats y notas del panel «Chat y notas»: listar, leer mensajes y texto, descargar como Markdown, el evento `notebook` | activado |
 
 **Operación**
 
@@ -85,6 +86,7 @@ En el disco solo se guarda un **hash** del token, nunca el token en sí.
 | **Programador y selección** | Seleccionar proyectores, ajustar valores y variables en directo, vaciar el programador | activado |
 | **Botones, faders e interruptores de la consola** | Pulsar, mover y cambiar los paneles Botón, Fader e Interruptor propios de la consola (ejecutan los comandos configurados en ellos) | activado |
 | **Ajustar DMX directamente** | Escribir canales DMX – prevalece sobre el show en marcha – *crítico* | **desactivado** |
+| **Escribir chats y notas** | Crear, renombrar y borrar chats y notas, enviar y borrar mensajes, cambiar o ampliar una nota | **desactivado** |
 
 **Editar el show**
 
@@ -100,7 +102,7 @@ En el disco solo se guarda un **hash** del token, nunca el token en sí.
 | **Disposiciones** | Mostrar una disposición de paneles guardada en la ventana de la consola | **desactivado** |
 | **Salidas DMX e idioma** | Cambiar Art-Net, sACN y DMX USB, cambiar direcciones, universo predeterminado, idioma – *crítico* | **desactivado** |
 
-**Preajustes** en el cuadro: *Solo lectura* (los tres permisos de lectura), *Operación* (lectura más listas de cues, timecode, blackout/master, audio, programador y los botones / faders / interruptores de la consola – sin comandos, sin DMX directo), *Editar show* (Operación más listas de cues y cues, variables, efectos), *Acceso completo* y *Predeterminado*.
+**Preajustes** en el cuadro: *Solo lectura* (los cuatro permisos de lectura), *Operación* (lectura más listas de cues, timecode, blackout/master, audio, programador, chats y notas y los botones / faders / interruptores de la consola – sin comandos, sin DMX directo), *Editar show* (Operación más listas de cues y cues, variables, efectos), *Acceso completo* y *Predeterminado*.
 
 ---
 
@@ -327,6 +329,23 @@ El lenguaje de script se describe en la guía *Estudio de efectos*.
 | POST | `/layouts/{filename}/load` | – | Muestra una disposición guardada (`Name.json` como en `GET /layouts`) en la ventana de la consola; los cambios de disposición sin guardar allí se pierden |
 | PUT | `/system` | `{"artnet": {"enabled": true, "ip": "2.255.255.255", "bind_ip": ""}, "sacn": {"enabled": true}, "enttec": {"enabled": false, "port": "COM3", "universe": 1}, "default_universe": 1, "language": "de"}` – cada campo opcional | Cambia las salidas DMX y el idioma / universo predeterminado; la respuesta es `GET /system` |
 | POST | `/system/dmx/reinitialize` | – | Reinicia las salidas DMX sin reiniciar el programa |
+
+### Chat y notas – permisos *Leer chats y notas* y *Escribir chats y notas*
+
+| Método | Ruta | Cuerpo | Qué hace |
+|---|---|---|---|
+| GET | `/notebook` | `?kind=chat` o `?kind=note` (opcional) | Listar los chats y notas, primero el modificado más recientemente |
+| GET | `/notebook/{id}` | `?after=<id del mensaje>`, `?limit=100` | Un chat: sus mensajes, los más antiguos primero; una nota: `body` (Markdown) y `rev` |
+| GET | `/notebook/{id}/export` | – | Descargar como archivo Markdown |
+| POST | `/notebook` | `{"kind": "note", "title": "…", "body": "…"}` – `kind` es `chat` o `note`; `body` es el texto inicial de una nota | Crear |
+| PUT | `/notebook/{id}` | `{"title": "…"}` | Renombrar |
+| DELETE | `/notebook/{id}` | – | Borrar (en todos los dispositivos) |
+| POST | `/notebook/{id}/messages` | `{"text": "…", "author": "…"}` – `author` es opcional | Enviar un mensaje (sin `author`, el remitente es el nombre del token) |
+| DELETE | `/notebook/{id}/messages/{message_id}` | – | Borrar un mensaje |
+| PUT | `/notebook/{id}/body` | `{"body": "…", "base_rev": 3}` – `base_rev` es opcional | Sustituir el texto de una nota; con `base_rev` solo si nadie la ha cambiado desde entonces (si no, `409 conflict`, no se guarda nada) |
+| POST | `/notebook/{id}/append` | `{"text": "…"}` | Añadir una línea al final de una nota (para registros y scripts, sin leerla antes) |
+
+Todo aparece al instante en cada panel «Chat y notas» abierto. Los mensajes enviados por la API muestran el **nombre del token** como remitente (o el `author` enviado). El chat pertenece al programa, no a un show.
 
 ### Documentación (sin token)
 
@@ -639,6 +658,18 @@ curl -X POST -H "Authorization: Bearer oc_xxxxxxxx" -H "Content-Type: applicatio
      -H "X-Filename: intro.mp4" --data-binary @intro.mp4 http://127.0.0.1:8000/api/v1/media
 ```
 
+### Chat y notas
+
+```
+POST /api/v1/notebook                 { "kind": "chat", "title": "Crew" }
+POST /api/v1/notebook/<id>/messages   { "text": "Soundcheck at 5 pm" }
+GET  /api/v1/notebook/<id>?after=<last message id>
+POST /api/v1/notebook/<id>/append     { "text": "- [ ] 21:40 smoke machine refilled" }
+GET  /api/v1/notebook/<id>/export
+```
+
+Un script puede escribir en el chat del equipo o llevar un registro en una nota. `GET /notebook/{id}?after=<id del último mensaje>` devuelve solo lo nuevo. `rev` de una nota cambia con cada guardado; devuélvelo como `base_rev` para no pisar el cambio de otra persona (`409`). El flujo `?events=notebook` avisa de cada cambio al momento.
+
 ### Eventos en directo (flujo)
 
 ```
@@ -656,7 +687,7 @@ event: command
 data: {"command": "Fixture 1 At 10", "success": true, "message": "OK: …", "time": "21:14:03"}
 ```
 
-La conexión permanece abierta. Llegan primero `hello` y un mensaje por tipo con el **estado actual**, después cada cambio. Tipos: `cue` (cambió el cue activo de una lista), `cuelists` (se añadieron, quitaron o renombraron listas / cues), `blackout`, `master`, `timecode` (iniciado, detenido, velocidad), `selection`, `effects`, `fixtures`, `variables`, `show` (nombre / cambios sin guardar), `command` (se ejecutó un comando de consola, desde donde sea), `audio` (fuente abierta / cerrada, tempo, señal presente). Solo bajo petición (`?events=beat,hit`): `beat` (cada pulso, con el tempo) y `hit` (cada golpe de bombo / caja / hi-hat: `{"drum": "kick", "strength": 0.9}`). `?events=` limita el flujo. Los cambios se detectan en unos 0,1 s. Cada 15 s llega una línea de comentario (`: keep-alive`); como máximo corren 20 flujos a la vez. Necesita el permiso *Estado*.
+La conexión permanece abierta. Llegan primero `hello` y un mensaje por tipo con el **estado actual**, después cada cambio. Tipos: `cue` (cambió el cue activo de una lista), `cuelists` (se añadieron, quitaron o renombraron listas / cues), `blackout`, `master`, `timecode` (iniciado, detenido, velocidad), `selection`, `effects`, `fixtures`, `variables`, `show` (nombre / cambios sin guardar), `command` (se ejecutó un comando de consola, desde donde sea), `audio` (fuente abierta / cerrada, tempo, señal presente). Solo bajo petición (`?events=beat,hit`): `beat` (cada pulso, con el tempo) y `hit` (cada golpe de bombo / caja / hi-hat: `{"drum": "kick", "strength": 0.9}`). `?events=` limita el flujo. Los cambios se detectan en unos 0,1 s. Cada 15 s llega una línea de comentario (`: keep-alive`); como máximo corren 20 flujos a la vez. Necesita el permiso *Estado*. A petición también `notebook` (un mensaje de chat o una nota ha cambiado; requiere el permiso *Leer chats y notas*).
 
 En un navegador `EventSource` no puede enviar cabeceras: use en su lugar `?access_token=<token>`, o `fetch()` con una cabecera y lea el flujo. El token aparece entonces en la dirección, así que dé a una página así su propio token con solo *Estado*.
 

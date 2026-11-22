@@ -72,6 +72,7 @@ Auf der Festplatte steht nur ein **Hash** des Tokens, nie das Token selbst.
 | **Status** | Zustand: Showname, Blackout, Grand Master, Timecode, Auswahl, Programmer, Audio-Analyse, Ausgänge, der Live-Ereignisstrom | an |
 | **Show-Daten** | Scheinwerfer, Fixture-Typen, Gruppen, Variablen, Effekte, Effekt-Skripte, Showfiles, Cue-Listen und Cues, Medien, Layouts | an |
 | **DMX-Ausgabe** | Aktuelle DMX-Werte und der Live-Zustand jedes Scheinwerfers | an |
+| **Chats und Notizen lesen** | Die Chats und Notizen des Panels „Chat & Notizen“: auflisten, Nachrichten und Text lesen, als Markdown laden, das Ereignis `notebook` | an |
 
 **Bedienen**
 
@@ -85,6 +86,7 @@ Auf der Festplatte steht nur ein **Hash** des Tokens, nie das Token selbst.
 | **Programmer und Auswahl** | Scheinwerfer auswählen, Werte und Variablen live setzen, den Programmer leeren | an |
 | **Buttons, Fader, Toggles der Konsole** | Die eigenen Button-, Fader- und Toggle-Panels der Konsole drücken, bewegen und schalten (sie führen die in ihnen eingestellten Befehle aus) | an |
 | **DMX direkt setzen** | DMX-Kanäle schreiben – überschreibt die laufende Show – *kritisch* | **aus** |
+| **Chats und Notizen schreiben** | Chats und Notizen anlegen, umbenennen und löschen, Nachrichten senden und löschen, eine Notiz ändern oder ergänzen | **aus** |
 
 **Show bearbeiten**
 
@@ -100,7 +102,7 @@ Auf der Festplatte steht nur ein **Hash** des Tokens, nie das Token selbst.
 | **Layouts** | Ein gespeichertes Panel-Layout im Konsolenfenster anzeigen | **aus** |
 | **DMX-Ausgänge und Sprache** | Art-Net, sACN und USB-DMX schalten, Adressen, Standard-Universum und Sprache ändern – *kritisch* | **aus** |
 
-**Voreinstellungen** im Dialog: *Nur lesen* (die drei Lese-Rechte), *Bedienen* (Lesen plus Cue-Listen, Timecode, Blackout/Master, Audio, Programmer und die Buttons / Fader / Toggles der Konsole – ohne Befehle, ohne direktes DMX), *Show bearbeiten* (Bedienen plus Cue-Listen und Cues, Variablen, Effekte), *Voller Zugriff* und *Standard*.
+**Voreinstellungen** im Dialog: *Nur lesen* (die vier Lese-Rechte), *Bedienen* (Lesen plus Cue-Listen, Timecode, Blackout/Master, Audio, Programmer, Chat und Notizen und die Buttons / Fader / Toggles der Konsole – ohne Befehle, ohne direktes DMX), *Show bearbeiten* (Bedienen plus Cue-Listen und Cues, Variablen, Effekte), *Voller Zugriff* und *Standard*.
 
 ---
 
@@ -326,6 +328,23 @@ Die Skriptsprache steht in der Anleitung *Effekt-Studio*.
 | POST | `/layouts/{filename}/load` | – | Ein gespeichertes Layout (`Name.json` wie in `GET /layouts`) im Konsolenfenster anzeigen; ungespeicherte Layout-Änderungen dort gehen verloren |
 | PUT | `/system` | `{"artnet": {"enabled": true, "ip": "2.255.255.255", "bind_ip": ""}, "sacn": {"enabled": true}, "enttec": {"enabled": false, "port": "COM3", "universe": 1}, "default_universe": 1, "language": "de"}` – jedes Feld optional | Die DMX-Ausgänge schalten, Sprache / Standard-Universum ändern; die Antwort ist `GET /system` |
 | POST | `/system/dmx/reinitialize` | – | Die DMX-Ausgänge neu starten, ohne das Programm neu zu starten |
+
+### Chat und Notizen – Rechte *Chats und Notizen lesen* und *Chats und Notizen schreiben*
+
+| Methode | Pfad | Body | Was es tut |
+|---|---|---|---|
+| GET | `/notebook` | `?kind=chat` oder `?kind=note` (optional) | Die Chats und Notizen auflisten, zuletzt Geänderte zuerst |
+| GET | `/notebook/{id}` | `?after=<Nachrichten-Id>`, `?limit=100` | Ein Chat: seine Nachrichten, älteste zuerst; eine Notiz: `body` (Markdown) und `rev` |
+| GET | `/notebook/{id}/export` | – | Als Markdown-Datei herunterladen |
+| POST | `/notebook` | `{"kind": "note", "title": "…", "body": "…"}` – `kind` ist `chat` oder `note`; `body` ist der Starttext einer Notiz | Anlegen |
+| PUT | `/notebook/{id}` | `{"title": "…"}` | Umbenennen |
+| DELETE | `/notebook/{id}` | – | Löschen (auf allen Geräten) |
+| POST | `/notebook/{id}/messages` | `{"text": "…", "author": "…"}` – `author` ist optional | Eine Nachricht senden (ohne `author` ist der Absender der Name des Tokens) |
+| DELETE | `/notebook/{id}/messages/{message_id}` | – | Eine Nachricht löschen |
+| PUT | `/notebook/{id}/body` | `{"body": "…", "base_rev": 3}` – `base_rev` ist optional | Den Text einer Notiz ersetzen; mit `base_rev` nur, wenn sie sich seitdem niemand geändert hat (sonst `409 conflict`, nichts wird gespeichert) |
+| POST | `/notebook/{id}/append` | `{"text": "…"}` | Eine Zeile ans Ende einer Notiz hängen (für Protokolle und Skripte, ohne sie vorher zu lesen) |
+
+Alles erscheint sofort in jedem offenen Panel „Chat & Notizen“. Nachrichten über die API zeigen den **Namen des Tokens** als Absender (oder den mitgeschickten `author`). Der Chat gehört zum Programm, nicht zu einer Show.
 
 ### Dokumentation (ohne Token)
 
@@ -638,6 +657,18 @@ curl -X POST -H "Authorization: Bearer oc_xxxxxxxx" -H "Content-Type: applicatio
      -H "X-Filename: intro.mp4" --data-binary @intro.mp4 http://127.0.0.1:8000/api/v1/media
 ```
 
+### Chat und Notizen
+
+```
+POST /api/v1/notebook                 { "kind": "chat", "title": "Crew" }
+POST /api/v1/notebook/<id>/messages   { "text": "Soundcheck at 5 pm" }
+GET  /api/v1/notebook/<id>?after=<last message id>
+POST /api/v1/notebook/<id>/append     { "text": "- [ ] 21:40 smoke machine refilled" }
+GET  /api/v1/notebook/<id>/export
+```
+
+Ein Skript kann in den Crew-Chat schreiben oder ein Protokoll in einer Notiz führen. `GET /notebook/{id}?after=<Id der letzten Nachricht>` liefert nur das Neue. `rev` einer Notiz ändert sich mit jedem Speichern; schicke es als `base_rev` zurück, um keine fremde Änderung zu überschreiben (`409`). Der Strom `?events=notebook` meldet jede Änderung sofort.
+
 ### Live-Ereignisse (Strom)
 
 ```
@@ -655,7 +686,7 @@ event: command
 data: {"command": "Fixture 1 At 10", "success": true, "message": "OK: …", "time": "21:14:03"}
 ```
 
-Die Verbindung bleibt offen. Zuerst kommen `hello` und je Art eine Meldung mit dem **aktuellen Stand**, danach jede Änderung. Arten: `cue` (der aktive Cue einer Liste hat gewechselt), `cuelists` (Listen / Cues kamen dazu, fielen weg, wurden umbenannt), `blackout`, `master`, `timecode` (gestartet, gestoppt, Tempo), `selection`, `effects`, `fixtures`, `variables`, `show` (Name / ungespeicherte Änderungen), `command` (ein Konsolenbefehl lief, von irgendwoher), `audio` (Quelle geöffnet / geschlossen, Tempo, Signal vorhanden). Nur auf Anfrage (`?events=beat,hit`): `beat` (jeder Beat, mit Tempo) und `hit` (jeder Schlag von Bassdrum / Snare / Hi-Hat: `{"drum": "kick", "strength": 0.9}`). `?events=` beschränkt den Strom. Änderungen werden binnen etwa 0,1 s bemerkt. Alle 15 s kommt eine Kommentarzeile (`: keep-alive`); es laufen höchstens 20 Ströme gleichzeitig. Braucht die Berechtigung *Status*.
+Die Verbindung bleibt offen. Zuerst kommen `hello` und je Art eine Meldung mit dem **aktuellen Stand**, danach jede Änderung. Arten: `cue` (der aktive Cue einer Liste hat gewechselt), `cuelists` (Listen / Cues kamen dazu, fielen weg, wurden umbenannt), `blackout`, `master`, `timecode` (gestartet, gestoppt, Tempo), `selection`, `effects`, `fixtures`, `variables`, `show` (Name / ungespeicherte Änderungen), `command` (ein Konsolenbefehl lief, von irgendwoher), `audio` (Quelle geöffnet / geschlossen, Tempo, Signal vorhanden). Nur auf Anfrage (`?events=beat,hit`): `beat` (jeder Beat, mit Tempo) und `hit` (jeder Schlag von Bassdrum / Snare / Hi-Hat: `{"drum": "kick", "strength": 0.9}`). `?events=` beschränkt den Strom. Änderungen werden binnen etwa 0,1 s bemerkt. Alle 15 s kommt eine Kommentarzeile (`: keep-alive`); es laufen höchstens 20 Ströme gleichzeitig. Braucht die Berechtigung *Status*. Auf Anfrage auch `notebook` (eine Chat-Nachricht oder Notiz hat sich geändert; braucht das Recht *Chats und Notizen lesen*).
 
 Im Browser kann `EventSource` keine Kopfzeilen senden: nimm `?access_token=<Token>` oder `fetch()` mit Kopfzeile und lies den Strom. Das Token steht dann in der Adresse – gib so einer Seite ein eigenes Token nur mit *Status*.
 

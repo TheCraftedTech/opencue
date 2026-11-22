@@ -1,9 +1,36 @@
 {
  "releases": [
   {
+   "version": "2.1.2",
+   "date": "2026-11-22",
+   "title": "Chat & Notes, complete",
+   "items": [
+    {
+     "icon": "download",
+     "title": "Save as a Markdown file",
+     "text": "Save any chat or note as a Markdown file with one click."
+    },
+    {
+     "icon": "save",
+     "title": "In backups and show packages",
+     "text": "“Back up everything” now includes your chats and notes, and “Export show” can add them to the package."
+    },
+    {
+     "icon": "terminal",
+     "title": "REST API for chats and notes",
+     "text": "Scripts and hardware can read and write chats and notes through the REST API."
+    },
+    {
+     "icon": "check",
+     "title": "Immediate start",
+     "text": "OpenCue no longer pauses at start while an old one is still closing: the start screen appears at once, and the message tells you what to do."
+    }
+   ]
+  },
+  {
    "version": "2.1.1",
    "date": "2026-11-22",
-   "title": "Smoother updates and restarts",
+   "title": "Smoother updates",
    "items": [
     {
      "icon": "download",
@@ -19,11 +46,6 @@
      "icon": "search",
      "title": "Wider settings search",
      "text": "The search in the settings is wider and its suggestions are no longer cut off."
-    },
-    {
-     "icon": "refresh",
-     "title": "Instant restart",
-     "text": "Start OpenCue right after closing it: it now waits until the old one has finished closing instead of saying it is already running."
     }
    ]
   },

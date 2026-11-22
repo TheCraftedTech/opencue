@@ -15,11 +15,11 @@ Aufgaben-Teilung: Oeffnen, Umbenennen, Duplizieren und Loeschen bleiben bei den 
                                          Inhalt = uebersprungen, gleicher Name + anderer Inhalt = Kopie unter freiem Namen "Name (2)"
   POST /api/files/import                 ZIP: Sicherung oder Export-Paket einer Show (siehe unten); gleiche Regel; die Show zeigt auf ihre Kopien
   GET  /api/files/export-show/info       was das Export-Paket der geladenen Show enthalten koennte (je Eintrag einzeln waehlbar)
-  GET  /api/files/export-show            das Export-Paket als ZIP (?fixture=<id>&effect=<name>&media=<id>&layout=<datei>&stream=<id>&model=<datei>&stage=1, je Eintrag wiederholbar)
+  GET  /api/files/export-show            das Export-Paket als ZIP (?fixture=<id>&effect=<name>&media=<id>&layout=<datei>&stream=<id>&model=<datei>&notebook=<id>&stage=1, je Eintrag wiederholbar)
   POST /api/files/effects/rename|duplicate|favorite
   POST /api/files/effects/restore-defaults   fehlende mitgelieferte Effekte wieder anlegen (nie ueberschreiben)
 Export-Paket (ZIP): manifest.json, show.json (nur die Show selbst: Scheinwerfer, Cues, Presets, Effekt-Definitionen ...), fixtures/*.gdtf (benutzte Typen), effects/*.fx (benutzte
-Skripte), stages/<Name>.json (die aktive Buehne), models/<Name>.stl (die 3D-Modelle dieser Buehne), media/<sha256> (die Medien der Show), layouts/*.json, streams.json (Quellen OHNE Passwoerter). In der Show selbst steht nichts
+Skripte), stages/<Name>.json (die aktive Buehne), models/<Name>.stl (die 3D-Modelle dieser Buehne), media/<sha256> (die Medien der Show), layouts/*.json, streams.json (Quellen OHNE Passwoerter), notebook/<id>.json (gewaehlte Chats und Notizen). In der Show selbst steht nichts
 davon; jeder Punkt ist im Export-Dialog abwaehlbar. Beim Import wird alles geprueft wie beim Einzel-Upload; vorhandene lokale Dateien bleiben (sie gewinnen).
 Alle Download-Adressen sind gewoehnliche GET-Adressen: lokale Verbindungen brauchen keine Anmeldung, entfernte Geraete haben ihre Sitzung im Cookie.
 """
@@ -42,7 +42,7 @@ from typing import Any, Dict, List, Optional, Tuple
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse, Response
 
-from app import fixture_library, media_store, remote, sim_models, sim_stages, stream_sources
+from app import fixture_library, media_store, notebook, remote, sim_models, sim_stages, stream_sources
 from app import languages
 from app import paths as _paths
 from app import show_safety
@@ -285,7 +285,7 @@ async def export_show(request: Request) -> Response:
     stream=<Id>, model=<Datei>, stage=1. Nicht Genanntes kommt nicht ins Paket."""
     q = request.query_params
     options = {"fixtures": q.getlist("fixture"), "effects": q.getlist("effect"), "media": q.getlist("media"), "layouts": q.getlist("layout"), "streams": q.getlist("stream"),
-               "models": q.getlist("model"),
+               "models": q.getlist("model"), "notebook": q.getlist("notebook"),
                "stage": q.get("stage", "0") in ("1", "true")}
     data, name = await asyncio.to_thread(build_show_package, options)
     return _download(data, f"{name}.ocshow", "application/zip")          # ein ZIP mit eigener Endung: Doppelklick oeffnet es in OpenCue (app/file_assoc.py)
@@ -298,8 +298,12 @@ async def download(request: Request) -> Response:
         kind = q.get("kind", "")
         ids = q.getlist("id")
         if q.get("kinds"):                                           # alles sichern: alle Dateien der genannten Arten
-            kinds = [k for k in q["kinds"].split(",") if k in KINDS]
-            data = await asyncio.to_thread(_zip_files, [(k, p) for k in kinds for p in _all_files(k)])
+            wanted_kinds = q["kinds"].split(",")
+            kinds = [k for k in wanted_kinds if k in KINDS]
+            entries = [(k, p) for k in kinds for p in _all_files(k)]
+            if "notebook" in wanted_kinds:                               # Chats und Notizen (Ordner notebook, gehoeren zum Programm, nicht zur Show)
+                entries += [("notebook", p) for p in notebook.thread_files()]
+            data = await asyncio.to_thread(_zip_files, entries)
             return _download(data, f"opencue-sicherung-{time.strftime('%Y%m%d-%H%M')}.zip", "application/zip")
         _check_kind(kind)
         if kind == "media":                                              # mit dem Anzeigenamen statt der Pruefsumme
@@ -366,7 +370,7 @@ async def open_download(request: Request) -> JSONResponse:
     Entfernte Geraete (und Tests) bekommen opened=false und laden die Adresse selbst herunter."""
     body = await request.json()
     url = str(body.get("url", ""))
-    if not (url.startswith("/api/files/download?") or url.startswith("/api/files/export-show?") or url.startswith("/api/transfer/get?") or url.startswith("/api/report/pdf?") or url == "/api/fixtures/export.csv"):
+    if not (url.startswith("/api/files/download?") or url.startswith("/api/files/export-show?") or url.startswith("/api/transfer/get?") or url.startswith("/api/report/pdf?") or re.fullmatch(r"/api/notebook/[0-9a-f]{16}/export", url) or url == "/api/fixtures/export.csv"):
         return JSONResponse({"ok": False, "error": "invalid_url"}, status_code=400)
     host = request.client.host if request.client else None
     if not (remote.is_local(host) and file_dialog.available):
@@ -592,6 +596,8 @@ async def import_zip(request: Request) -> JSONResponse:
         return exc.response()
     for kind in KINDS:
         await _announce(kind)
+    if result.get("imported", {}).get("notebook"):
+        await notebook.announce_reload()
     return JSONResponse(result)
 
 
@@ -607,6 +613,8 @@ async def upload(kind: str, request: Request) -> JSONResponse:
             result = await asyncio.to_thread(import_package, body)
             for each in KINDS:
                 await _announce(each)
+            if result.get("imported", {}).get("notebook"):
+                await notebook.announce_reload()
             return JSONResponse(result)
         allowed = UPLOAD_EXTENSIONS.get(kind, (EXTENSIONS[kind],))
         if not filename.lower().endswith(tuple(allowed)):
@@ -734,6 +742,14 @@ def import_package(data: bytes) -> Dict[str, Any]:
                     added = _import_streams(raw)
                     if added:
                         imported["streams"] = added
+                elif folder == "notebook" and name.lower().endswith(".json"):
+                    try:
+                        status = notebook.import_thread(name[:-5], raw)
+                    except notebook.NotebookError as exc:
+                        raise FileError("invalid_file", exc.message, 400) from None
+                    count(skipped if status == "identical" else imported, "notebook")
+                    if status == "copy":
+                        copies.append({"kind": "notebook", "from": name, "to": name})
             except FileError as exc:
                 errors.append({"entry": info.filename, "message": exc.message})
             except Exception as exc:                                   # ein kaputter Eintrag stoppt den Rest nicht
@@ -835,7 +851,7 @@ def show_package_info() -> Dict[str, Any]:
         models.append({"id": model, "name": Path(model).stem, "size": path.stat().st_size if path.is_file() else 0, "triangles": info.get("triangles", 0), "present": path.is_file(),
                        "count": sum(1 for o in sim_stages.store.objects if o.get("type") == "model" and o.get("model") == model)})
     return {"show": state.showfile_name, "fixtures": fixtures, "effects": effects, "stage": stage, "models": models, "media": media, "layouts": layouts, "streams": streams,
-            "dirty": bool(state.is_dirty)}
+            "notebook": notebook.package_info(), "dirty": bool(state.is_dirty)}
 
 
 def _used_models() -> List[str]:
@@ -850,7 +866,7 @@ def build_show_package(options: Dict[str, Any]) -> Tuple[bytes, str]:
     gewaehlten Eintraege (Typ-Ids, Skriptnamen, Medien-Ids, Layout-Dateinamen, Stream-Ids), stage = True/False. Es kommt nur hinein, was gewaehlt UND vorhanden ist
     (Scheinwerfertypen und Skripte nur, wenn die Show sie benutzt)."""
     data = state._showfile_dict()
-    want = {k: set(options.get(k) or []) for k in ("fixtures", "effects", "media", "layouts", "streams", "models")}
+    want = {k: set(options.get(k) or []) for k in ("fixtures", "effects", "media", "layouts", "streams", "models", "notebook")}
     stage_entry: Optional[Tuple[str, bytes]] = None
     if isinstance(data.get("sim_stage"), dict):
         stage_ref = data["sim_stage"]
@@ -900,6 +916,10 @@ def build_show_package(options: Dict[str, Any]) -> Tuple[bytes, str]:
         if streams:
             archive.writestr("streams.json", json.dumps({"sources": streams}, indent=2, ensure_ascii=False))
         contents["streams"] = len(streams)
+        threads = [p for p in notebook.thread_files() if p.stem in want["notebook"]]
+        for path in threads:                                         # Chats und Notizen: nur die gewaehlten
+            archive.write(path, f"notebook/{path.name}")
+        contents["notebook"] = len(threads)
         archive.writestr("manifest.json", json.dumps({"format": "opencue-show-package", "version": 2, "show": state.showfile_name, "created": time.strftime("%Y-%m-%dT%H:%M:%S"),
                                                      "contents": contents}, indent=2, ensure_ascii=False))
     return buffer.getvalue(), safe_stem(state.showfile_name, "show")

@@ -4,7 +4,7 @@
 api_v1.py
 REST-API von OpenCue (Version 1) unter /api/v1: Daten lesen (Zustand, Show, DMX-Ausgabe, Cues, Timecode) und steuern (Befehle,
 Cue-Listen, Blackout/Master, Timecode, Audio, einzelne DMX-/Fixture-Kanaele). Antworten sind JSON. Die Show BEARBEITEN (Cues, Variablen, Effekte, Patch,
-Showfiles, Medien) und der Ereignis-Strom stehen in app/api_v1_manage.py und app/api_v1_system.py (gleicher Router, gleiche Anmeldung).
+Showfiles, Medien) und der Ereignis-Strom stehen in app/api_v1_manage.py und app/api_v1_system.py, Chat und Notizen in app/api_v1_notes.py (gleicher Router, gleiche Anmeldung).
 
 Anmeldung: Token im Kopf "Authorization: Bearer <Token>" (oder "X-API-Key: <Token>"). Tokens werden in den Einstellungen (Kategorie "API", nur an
 der Konsole) angelegt, gespeichert wird nur ihr SHA-256-Hash (der Klartext erscheint einmal bei der Erstellung). Jedes Token hat Berechtigungen
@@ -69,6 +69,8 @@ CAPABILITIES: List[Dict[str, Any]] = [
     {"id": "write.audio", "default": True, "group": "write"},      # Audio-Quelle und -Einstellungen aendern, Tempo antippen
     {"id": "write.programmer", "default": True, "group": "write"}, # Programmer: Auswahl, Werte, Variablen anwenden, Programmer leeren
     {"id": "write.widgets", "default": True, "group": "write"},    # Buttons, Fader und Toggles der Konsole bedienen (fuehren ihre eingestellten Befehle aus)
+    {"id": "read.notes", "default": True, "group": "read"},         # Chats und Notizen lesen (Panel "Chat & Notizen")
+    {"id": "write.notes", "default": False, "group": "write"},     # Chats und Notizen schreiben: anlegen, Nachrichten, Notiz aendern / ergaenzen, loeschen
     {"id": "write.dmx", "default": False, "group": "write"},       # einzelne DMX-/Fixture-Kanaele setzen (kritisch: ueberschreibt die Show)
     {"id": "write.show", "default": False, "group": "edit"},       # Cue-Listen und Cues anlegen, aendern, loeschen (Show-Daten)
     {"id": "write.variables", "default": False, "group": "edit"},  # Variablen (Presets) und Variablengruppen
@@ -81,9 +83,9 @@ CAPABILITIES: List[Dict[str, Any]] = [
     {"id": "write.settings", "default": False, "group": "edit"},   # DMX-Ausgaenge (Art-Net, sACN, USB), Standard-Universum, Sprache (kritisch: Netzwerk und Ausgabe)
 ]
 CAPABILITY_IDS = [c["id"] for c in CAPABILITIES]
-_OPERATE = ["read.status", "read.show", "read.dmx", "write.cue", "write.timecode", "write.blackout", "write.audio", "write.programmer", "write.widgets"]
+_OPERATE = ["read.status", "read.show", "read.dmx", "read.notes", "write.notes", "write.cue", "write.timecode", "write.blackout", "write.audio", "write.programmer", "write.widgets"]
 PRESETS = {
-    "read": ["read.status", "read.show", "read.dmx"],
+    "read": ["read.status", "read.show", "read.dmx", "read.notes"],
     "operate": list(_OPERATE),
     "edit": _OPERATE + ["write.show", "write.variables", "write.effects"],
     "full": list(CAPABILITY_IDS),
@@ -1342,6 +1344,7 @@ async def admin_delete(request: Request, token_id: str) -> Dict[str, Any]:
 from app import api_v1_manage  # noqa: E402,F401  (Show bearbeiten: Cue-Listen, Cues, Variablen, Effekte, Skripte)
 from app import api_v1_system  # noqa: E402,F401  (Programmer, Patch, Showfiles, Ereignis-Strom)
 from app import api_v1_views  # noqa: E402,F401  (Status-Ansichten fuer einfache Geraete: Bild / Web-Seite)
+from app import api_v1_notes  # noqa: E402,F401  (Chat und Notizen: /notebook)
 from app import api_v1_stream  # noqa: E402,F401  (WebSocket-Strom /ws: Joystick, schnelle Werte, Audio rein / raus, DMX- und Live-Werte)
 
 

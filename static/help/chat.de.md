@@ -67,6 +67,9 @@ Eine Notiz ist ein Text in **Markdown** – du musst Markdown aber nicht kennen:
 
 - Chats und Notizen gehören zum **Programm, nicht zu einer Show**: sie bleiben, wenn du eine andere Show lädst.
 - Sie liegen als Dateien im Datenordner (`notebook`); kopiere den Ordner, um sie auf einen anderen Computer mitzunehmen.
+- **Als Datei speichern:** Der Download-Knopf im Kopf speichert den geöffneten Chat oder die Notiz als **Markdown-Datei** (`.md`): eine Notiz als ihren Text, einen Chat als Verlauf nach Tagen gegliedert.
+- **Sichern und mitnehmen:** *Dateimanager → Alles sichern* nimmt alle Chats und Notizen mit. Bei *Show exportieren...* lassen sie sich dem Paket hinzufügen (standardmäßig aus, jeder Eintrag einzeln). Beim Einlesen wird nichts überschrieben – ein abweichender Eintrag kommt als Kopie dazu.
+- **Aus Programmen und Geräten:** Skripte und Hardware (zum Beispiel ein ESP32) können Chats und Notizen über die REST-API lesen und schreiben – Rechte *Chats und Notizen lesen* und *Chats und Notizen schreiben* (siehe Anleitung REST-API, Abschnitt 6).
 - **Mehrere Personen in derselben Notiz:** der zuletzt gespeicherte Stand gilt. Tippen zwei Personen im selben Moment, erscheint ein Hinweis. Nutzt getrennte Notizen oder wechselt euch ab.
 - Grenzen: 300 Chats und Notizen, 4000 Zeichen je Nachricht, 100 000 je Notiz; von einem Chat bleiben die letzten 5000 Nachrichten.
 - Jeder, der mit OpenCue verbunden ist, kann alles lesen und schreiben – der Chat ist **nicht privat**. Schreibe keine Passwörter hinein.

@@ -1,9 +1,36 @@
 {
  "releases": [
   {
+   "version": "2.1.2",
+   "date": "2026-11-22",
+   "title": "Chat et notes, complet",
+   "items": [
+    {
+     "icon": "download",
+     "title": "Enregistrer en fichier Markdown",
+     "text": "Enregistrez chaque discussion et chaque note en fichier Markdown d'un clic."
+    },
+    {
+     "icon": "save",
+     "title": "Dans les sauvegardes et les paquets de show",
+     "text": "« Tout sauvegarder » inclut désormais vos discussions et notes, et « Exporter le show » peut les ajouter au paquet."
+    },
+    {
+     "icon": "terminal",
+     "title": "API REST pour discussions et notes",
+     "text": "Scripts et matériel peuvent lire et écrire discussions et notes via l'API REST."
+    },
+    {
+     "icon": "check",
+     "title": "Démarrage immédiat",
+     "text": "OpenCue n'attend plus au démarrage qu'un ancien se termine : l'écran de démarrage apparaît aussitôt, et le message indique quoi faire."
+    }
+   ]
+  },
+  {
    "version": "2.1.1",
    "date": "2026-11-22",
-   "title": "Mises à jour et redémarrages plus fluides",
+   "title": "Mises à jour plus fluides",
    "items": [
     {
      "icon": "download",
@@ -19,11 +46,6 @@
      "icon": "search",
      "title": "Recherche plus large dans les réglages",
      "text": "La recherche dans les réglages est plus large et ses suggestions ne sont plus coupées."
-    },
-    {
-     "icon": "refresh",
-     "title": "Redémarrage immédiat",
-     "text": "Relancez OpenCue juste après l'avoir fermé : il attend maintenant que l'ancien ait fini de se fermer au lieu d'indiquer qu'il est déjà en cours d'exécution."
     }
    ]
   },

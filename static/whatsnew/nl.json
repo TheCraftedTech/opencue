@@ -1,9 +1,36 @@
 {
  "releases": [
   {
+   "version": "2.1.2",
+   "date": "2026-11-22",
+   "title": "Chat & notities, compleet",
+   "items": [
+    {
+     "icon": "download",
+     "title": "Opslaan als Markdown-bestand",
+     "text": "Sla elke chat en notitie met één klik op als Markdown-bestand."
+    },
+    {
+     "icon": "save",
+     "title": "In back-ups en showpakketten",
+     "text": "„Alles back-uppen” neemt nu je chats en notities mee, en „Show exporteren” kan ze aan het pakket toevoegen."
+    },
+    {
+     "icon": "terminal",
+     "title": "REST-API voor chats en notities",
+     "text": "Scripts en hardware kunnen chats en notities via de REST-API lezen en schrijven."
+    },
+    {
+     "icon": "check",
+     "title": "Direct starten",
+     "text": "OpenCue wacht bij het starten niet meer op een oude die nog afsluit: het startscherm verschijnt meteen en de melding zegt wat je kunt doen."
+    }
+   ]
+  },
+  {
    "version": "2.1.1",
    "date": "2026-11-22",
-   "title": "Soepelere updates en herstarts",
+   "title": "Soepelere updates",
    "items": [
     {
      "icon": "download",
@@ -19,11 +46,6 @@
      "icon": "search",
      "title": "Bredere zoekfunctie in de instellingen",
      "text": "De zoekfunctie in de instellingen is breder en de suggesties worden niet meer afgekapt."
-    },
-    {
-     "icon": "refresh",
-     "title": "Direct herstarten",
-     "text": "Start OpenCue direct na het sluiten opnieuw: het wacht nu tot het oude klaar is met afsluiten in plaats van te melden dat het al draait."
     }
    ]
   },

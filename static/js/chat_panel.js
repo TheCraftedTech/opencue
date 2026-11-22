@@ -210,6 +210,11 @@
   function onEvent(p) {
     const id = p.id;
     const mine = p.by === cid() || (p.message && p.message.cid === cid());
+    if (p.op === "reload") {                                                                          // eine Sicherung / ein Paket wurde eingelesen
+      S.cache = {};
+      loadList().then(() => each((v) => v.openThread(v.threadId)));
+      return;
+    }
     if (p.op === "typing") {
       if (!mine) {
         (S.typing[id] = S.typing[id] || {})[p.by] = { name: p.author, until: Date.now() + 4500, what: p.what };
@@ -396,9 +401,10 @@
     toggleList.type = "button"; toggleList.appendChild(Icons.svg("sidebar"));
     const title = el("div", "chp__title");
     const renameBtn = el("button", "chp__icon"); renameBtn.type = "button"; renameBtn.appendChild(Icons.svg("edit"));
+    const exportBtn = el("button", "chp__icon"); exportBtn.type = "button"; exportBtn.appendChild(Icons.svg("download"));
     const deleteBtn = el("button", "chp__icon"); deleteBtn.type = "button"; deleteBtn.appendChild(Icons.svg("trash"));
     const newBtn = el("button", "chp__icon chp__new"); newBtn.type = "button"; newBtn.appendChild(Icons.svg("plus"));
-    header.append(toggleList, title, renameBtn, deleteBtn, newBtn);
+    header.append(toggleList, title, renameBtn, exportBtn, deleteBtn, newBtn);
 
     // ---- Liste links
     const side = el("div", "chp__side");
@@ -453,9 +459,10 @@
     view.renderHeader = () => {
       const th = current();
       if (!view.renaming) title.textContent = th ? threadName(th) : t("PANEL_CHAT", "Chat & Notes");          // waehrend des Umbenennens bleibt das Eingabefeld
-      renameBtn.hidden = deleteBtn.hidden = !th;
+      renameBtn.hidden = exportBtn.hidden = deleteBtn.hidden = !th;
       renameBtn.title = renameBtn.ariaLabel = t("CHP_RENAME", "Rename");
       deleteBtn.title = deleteBtn.ariaLabel = t("CHP_DELETE", "Delete");
+      exportBtn.title = exportBtn.ariaLabel = t("CHP_EXPORT", "Save as a Markdown file");
       newBtn.title = newBtn.ariaLabel = t("CHP_NEW", "New chat or note");
     };
 
@@ -791,6 +798,20 @@
     }
     title.addEventListener("dblclick", startRename);
     renameBtn.addEventListener("click", startRename);
+    exportBtn.addEventListener("click", async () => {
+      const th = current();
+      if (!th) return;
+      if (view.dirty) await flushSave();                                             // erst den letzten Stand speichern, dann herunterladen
+      const url = "/api/notebook/" + th.id + "/export";
+      try {                                                                         // Programmfenster: der Server oeffnet den Standard-Browser (wie im Dateimanager)
+        const res = await fetch("/api/files/open-download", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ url }) });
+        const body = await res.json();
+        if (res.ok && body.opened) { if (typeof _showToast === "function") _showToast(t("FM_DL_STARTED", "Download started in the browser"), "info", 3000); return; }
+      } catch (err) { /* dann laedt dieser Browser selbst */ }
+      const link = document.createElement("a");
+      link.href = url; link.download = "";
+      document.body.appendChild(link); link.click(); link.remove();
+    });
     deleteBtn.addEventListener("click", async () => {
       const th = current();
       if (!th) return;

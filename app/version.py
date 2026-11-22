@@ -16,7 +16,7 @@ import re
 from typing import Any, Dict, Tuple
 
 APP_NAME = "OpenCue"
-APP_VERSION = "2.1.1"                                   # Zusatz fuer Vorabversionen z. B. "1.0.0-beta.1"
+APP_VERSION = "2.1.2"                                   # Zusatz fuer Vorabversionen z. B. "1.0.0-beta.1"
 APP_VERSION_LABEL = "v" + APP_VERSION                   # so steht es in der Oberflaeche, im Installer und im Release-Namen
 APP_DESCRIPTION = "DMX lighting control console"          # kurz halten: Windows kuerzt die Datei-Beschreibung (Task-Manager, Eigenschaften) schnell ab
 APP_COMPANY = "Samuel Zenker"

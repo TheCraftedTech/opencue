@@ -1,9 +1,36 @@
 {
  "releases": [
   {
+   "version": "2.1.2",
+   "date": "2026-11-22",
+   "title": "Chat e note, completo",
+   "items": [
+    {
+     "icon": "download",
+     "title": "Salva come file Markdown",
+     "text": "Salva ogni chat e ogni nota come file Markdown con un clic."
+    },
+    {
+     "icon": "save",
+     "title": "Nei backup e nei pacchetti dello show",
+     "text": "«Esegui backup di tutto» ora include chat e note, e «Esporta show» può aggiungerle al pacchetto."
+    },
+    {
+     "icon": "terminal",
+     "title": "API REST per chat e note",
+     "text": "Script e hardware possono leggere e scrivere chat e note tramite l'API REST."
+    },
+    {
+     "icon": "check",
+     "title": "Avvio immediato",
+     "text": "OpenCue non attende più all'avvio che uno vecchio si chiuda: la schermata di avvio compare subito e il messaggio indica cosa fare."
+    }
+   ]
+  },
+  {
    "version": "2.1.1",
    "date": "2026-11-22",
-   "title": "Aggiornamenti e riavvii più fluidi",
+   "title": "Aggiornamenti più fluidi",
    "items": [
     {
      "icon": "download",
@@ -19,11 +46,6 @@
      "icon": "search",
      "title": "Ricerca più ampia nelle impostazioni",
      "text": "La ricerca nelle impostazioni è più ampia e i suggerimenti non vengono più tagliati."
-    },
-    {
-     "icon": "refresh",
-     "title": "Riavvio immediato",
-     "text": "Riavvia OpenCue subito dopo averlo chiuso: ora attende che quello vecchio abbia finito di chiudersi invece di dire che è già in esecuzione."
     }
    ]
   },

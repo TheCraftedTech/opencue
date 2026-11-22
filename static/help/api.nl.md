@@ -72,6 +72,7 @@ Alleen een **hash** van het token wordt op schijf opgeslagen, nooit het token ze
 | **Status** | Status: shownaam, blackout, grand master, tijdcode, selectie, programmer, audio-analyse, uitgangen, de live gebeurtenissenstroom | aan |
 | **Showgegevens** | Projectoren, projectortypen, groepen, variabelen, effecten, effectscripts, showbestanden, cuelijsten en cues, media, indelingen | aan |
 | **DMX-uitgang** | Actuele DMX-waarden en de live toestand van elke projector | aan |
+| **Chats en notities lezen** | De chats en notities van het paneel „Chat & notities”: opsommen, berichten en tekst lezen, als Markdown downloaden, de gebeurtenis `notebook` | aan |
 
 **Bedienen**
 
@@ -85,6 +86,7 @@ Alleen een **hash** van het token wordt op schijf opgeslagen, nooit het token ze
 | **Programmer en selectie** | Projectoren selecteren, waarden en variabelen live instellen, de programmer leegmaken | aan |
 | **Console-knoppen, -faders, -schakelaars** | De eigen Knop-, Fader- en Schakelaar-panelen van de console indrukken, verschuiven en omschakelen (ze voeren de daarin ingestelde opdrachten uit) | aan |
 | **DMX direct instellen** | DMX-kanalen schrijven – overschrijft de lopende show – *kritiek* | **uit** |
+| **Chats en notities schrijven** | Chats en notities maken, hernoemen en verwijderen, berichten sturen en verwijderen, een notitie wijzigen of aanvullen | **uit** |
 
 **De show bewerken**
 
@@ -100,7 +102,7 @@ Alleen een **hash** van het token wordt op schijf opgeslagen, nooit het token ze
 | **Indelingen** | Een opgeslagen paneelindeling in het consolevenster tonen | **uit** |
 | **DMX-uitgangen en taal** | Art-Net, sACN en USB-DMX schakelen, adressen, standaarduniversum en taal wijzigen – *kritiek* | **uit** |
 
-**Voorinstellingen** in het venster: *Alleen lezen* (de drie leesrechten), *Bedienen* (lezen plus cuelijsten, tijdcode, blackout/master, audio, programmer en de knoppen / faders / schakelaars van de console – geen opdrachten, geen DMX direct), *Show bewerken* (Bedienen plus cuelijsten en cues, variabelen, effecten), *Volledige toegang* en *Standaard*.
+**Voorinstellingen** in het venster: *Alleen lezen* (de vier leesrechten), *Bedienen* (lezen plus cuelijsten, tijdcode, blackout/master, audio, programmer, chats en notities en de knoppen / faders / schakelaars van de console – geen opdrachten, geen DMX direct), *Show bewerken* (Bedienen plus cuelijsten en cues, variabelen, effecten), *Volledige toegang* en *Standaard*.
 
 ---
 
@@ -327,6 +329,23 @@ De scripttaal wordt beschreven in de handleiding *Effectenstudio*.
 | POST | `/layouts/{filename}/load` | – | Toont een opgeslagen indeling (`Name.json` zoals in `GET /layouts`) in het consolevenster; niet-opgeslagen indelingswijzigingen gaan daar verloren |
 | PUT | `/system` | `{"artnet": {"enabled": true, "ip": "2.255.255.255", "bind_ip": ""}, "sacn": {"enabled": true}, "enttec": {"enabled": false, "port": "COM3", "universe": 1}, "default_universe": 1, "language": "de"}` – elk veld optioneel | Schakelt de DMX-uitgangen en wijzigt taal / standaarduniversum; het antwoord is `GET /system` |
 | POST | `/system/dmx/reinitialize` | – | Herstart de DMX-uitgangen zonder het programma te herstarten |
+
+### Chat en notities – rechten *Chats en notities lezen* en *Chats en notities schrijven*
+
+| Methode | Pad | Body | Wat het doet |
+|---|---|---|---|
+| GET | `/notebook` | `?kind=chat` of `?kind=note` (optioneel) | De chats en notities opsommen, laatst gewijzigde eerst |
+| GET | `/notebook/{id}` | `?after=<bericht-id>`, `?limit=100` | Een chat: zijn berichten, oudste eerst; een notitie: `body` (Markdown) en `rev` |
+| GET | `/notebook/{id}/export` | – | Als Markdown-bestand downloaden |
+| POST | `/notebook` | `{"kind": "note", "title": "…", "body": "…"}` – `kind` is `chat` of `note`; `body` is de starttekst van een notitie | Aanmaken |
+| PUT | `/notebook/{id}` | `{"title": "…"}` | Hernoemen |
+| DELETE | `/notebook/{id}` | – | Verwijderen (op alle apparaten) |
+| POST | `/notebook/{id}/messages` | `{"text": "…", "author": "…"}` – `author` is optioneel | Een bericht sturen (zonder `author` is de afzender de naam van het token) |
+| DELETE | `/notebook/{id}/messages/{message_id}` | – | Een bericht verwijderen |
+| PUT | `/notebook/{id}/body` | `{"body": "…", "base_rev": 3}` – `base_rev` is optioneel | De tekst van een notitie vervangen; met `base_rev` alleen als niemand haar sindsdien wijzigde (anders `409 conflict`, er wordt niets opgeslagen) |
+| POST | `/notebook/{id}/append` | `{"text": "…"}` | Een regel aan het einde van een notitie toevoegen (voor logboeken en scripts, zonder haar eerst te lezen) |
+
+Alles verschijnt meteen in elk geopend paneel „Chat & notities”. Berichten via de API tonen de **naam van het token** als afzender (of de meegestuurde `author`). De chat hoort bij het programma, niet bij een show.
 
 ### Documentatie (geen token)
 
@@ -639,6 +658,18 @@ curl -X POST -H "Authorization: Bearer oc_xxxxxxxx" -H "Content-Type: applicatio
      -H "X-Filename: intro.mp4" --data-binary @intro.mp4 http://127.0.0.1:8000/api/v1/media
 ```
 
+### Chat en notities
+
+```
+POST /api/v1/notebook                 { "kind": "chat", "title": "Crew" }
+POST /api/v1/notebook/<id>/messages   { "text": "Soundcheck at 5 pm" }
+GET  /api/v1/notebook/<id>?after=<last message id>
+POST /api/v1/notebook/<id>/append     { "text": "- [ ] 21:40 smoke machine refilled" }
+GET  /api/v1/notebook/<id>/export
+```
+
+Een script kan in de crewchat schrijven of een logboek in een notitie bijhouden. `GET /notebook/{id}?after=<id van het laatste bericht>` geeft alleen het nieuwe. `rev` van een notitie verandert bij elke opslag; stuur het terug als `base_rev` om de wijziging van een ander niet te overschrijven (`409`). De stroom `?events=notebook` meldt elke wijziging meteen.
+
 ### Live-gebeurtenissen (stroom)
 
 ```
@@ -656,7 +687,7 @@ event: command
 data: {"command": "Fixture 1 At 10", "success": true, "message": "OK: …", "time": "21:14:03"}
 ```
 
-De verbinding blijft open. Eerst komen `hello` en één bericht per soort met de **huidige toestand**, daarna elke wijziging. Soorten: `cue` (actieve cue van een lijst gewijzigd), `cuelists` (lijsten / cues toegevoegd, verwijderd, hernoemd), `blackout`, `master`, `timecode` (gestart, gestopt, snelheid), `selection`, `effects`, `fixtures`, `variables`, `show` (naam / niet-opgeslagen wijzigingen), `command` (een consoleopdracht liep, van waar ook), `audio` (bron geopend / gesloten, tempo, signaal aanwezig). Alleen op verzoek (`?events=beat,hit`): `beat` (elke beat, met het tempo) en `hit` (elke slag van basdrum / snare / hi-hat: `{"drum": "kick", "strength": 0.9}`). `?events=` beperkt de stroom. Wijzigingen worden binnen ongeveer 0,1 s opgemerkt. Elke 15 s komt een commentaarregel (`: keep-alive`); er lopen hoogstens 20 stromen tegelijk. Vraagt het recht *Status*.
+De verbinding blijft open. Eerst komen `hello` en één bericht per soort met de **huidige toestand**, daarna elke wijziging. Soorten: `cue` (actieve cue van een lijst gewijzigd), `cuelists` (lijsten / cues toegevoegd, verwijderd, hernoemd), `blackout`, `master`, `timecode` (gestart, gestopt, snelheid), `selection`, `effects`, `fixtures`, `variables`, `show` (naam / niet-opgeslagen wijzigingen), `command` (een consoleopdracht liep, van waar ook), `audio` (bron geopend / gesloten, tempo, signaal aanwezig). Alleen op verzoek (`?events=beat,hit`): `beat` (elke beat, met het tempo) en `hit` (elke slag van basdrum / snare / hi-hat: `{"drum": "kick", "strength": 0.9}`). `?events=` beperkt de stroom. Wijzigingen worden binnen ongeveer 0,1 s opgemerkt. Elke 15 s komt een commentaarregel (`: keep-alive`); er lopen hoogstens 20 stromen tegelijk. Vraagt het recht *Status*. Op verzoek ook `notebook` (een chatbericht of notitie is gewijzigd; vereist het recht *Chats en notities lezen*).
 
 In een browser kan `EventSource` geen headers versturen: gebruik dan `?access_token=<token>`, of `fetch()` met een header en lees de stroom. Het token verschijnt dan in het adres, geef zo'n pagina dus een eigen token met alleen *Status*.
 

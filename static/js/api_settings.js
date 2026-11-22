@@ -376,8 +376,8 @@
 
   // Die Berechtigungen in vier Spalten: Lesen, Bedienen, Show bearbeiten, System (kritisch)
   const CAP_COLUMNS = [
-    ["API_GROUP_READ", "Read", ["read.status", "read.show", "read.dmx"]],
-    ["API_GROUP_WRITE", "Operate", ["write.command", "write.cue", "write.timecode", "write.blackout", "write.audio", "write.programmer", "write.widgets"]],
+    ["API_GROUP_READ", "Read", ["read.status", "read.show", "read.dmx", "read.notes"]],
+    ["API_GROUP_WRITE", "Operate", ["write.command", "write.cue", "write.timecode", "write.blackout", "write.audio", "write.programmer", "write.widgets", "write.notes"]],
     ["API_GROUP_EDIT", "Edit the show", ["write.show", "write.variables", "write.effects", "write.scripts", "write.media", "write.layout"]],
     ["API_GROUP_CRITICAL", "System", ["write.patch", "write.dmx", "write.showfile", "write.settings"]],
   ];

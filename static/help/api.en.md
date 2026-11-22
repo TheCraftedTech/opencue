@@ -72,6 +72,7 @@ Only a **hash** of the token is stored on disk, never the token itself.
 | **Status** | State: show name, blackout, grand master, timecode, selection, programmer, audio analysis, outputs, the live event stream | on |
 | **Show data** | Fixtures, fixture types, groups, variables, effects, effect scripts, showfiles, cue lists and cues, media, layouts | on |
 | **DMX output** | Current DMX values and the live state of each fixture | on |
+| **Read chats and notes** | The chats and notes of the Chat & Notes panel: list, read messages and text, download as Markdown, the `notebook` event | on |
 
 **Operate**
 
@@ -85,6 +86,7 @@ Only a **hash** of the token is stored on disk, never the token itself.
 | **Programmer and selection** | Select fixtures, set values and variables live, clear the programmer | on |
 | **Console buttons, faders, toggles** | Press, move and switch the console's own Button, Fader and Toggle panels (they run the commands set up in them) | on |
 | **Set DMX directly** | Write DMX channels – overrides the running show – *critical* | **off** |
+| **Write chats and notes** | Create, rename and delete chats and notes, send and delete messages, change or extend a note | **off** |
 
 **Edit the show**
 
@@ -100,7 +102,7 @@ Only a **hash** of the token is stored on disk, never the token itself.
 | **Layouts** | Show a saved panel layout in the console window | **off** |
 | **DMX outputs and language** | Switch Art-Net, sACN and USB DMX, change addresses, default universe, language – *critical* | **off** |
 
-**Presets** in the dialog: *Read only* (the three reading permissions), *Operate* (reading plus cue lists, timecode, blackout/master, audio, programmer and the console's buttons / faders / toggles – no commands, no direct DMX), *Edit show* (Operate plus cue lists and cues, variables, effects), *Full access* and *Default*.
+**Presets** in the dialog: *Read only* (the four reading permissions), *Operate* (reading plus cue lists, timecode, blackout/master, audio, programmer, chats and notes and the console's buttons / faders / toggles – no commands, no direct DMX), *Edit show* (Operate plus cue lists and cues, variables, effects), *Full access* and *Default*.
 
 ---
 
@@ -327,6 +329,23 @@ The script language is described in the *Effect Studio* guide.
 | POST | `/layouts/{filename}/load` | – | Show a saved layout (`Name.json` as in `GET /layouts`) in the console window; unsaved layout changes there are lost |
 | PUT | `/system` | `{"artnet": {"enabled": true, "ip": "2.255.255.255", "bind_ip": ""}, "sacn": {"enabled": true}, "enttec": {"enabled": false, "port": "COM3", "universe": 1}, "default_universe": 1, "language": "de"}` – every field optional | Switch the DMX outputs and change language / default universe; the answer is `GET /system` |
 | POST | `/system/dmx/reinitialize` | – | Restart the DMX outputs without restarting the program |
+
+### Chat and notes – permissions *Read chats and notes* and *Write chats and notes*
+
+| Method | Path | Body | What it does |
+|---|---|---|---|
+| GET | `/notebook` | `?kind=chat` or `?kind=note` (optional) | List the chats and notes, newest change first |
+| GET | `/notebook/{id}` | `?after=<message id>`, `?limit=100` | A chat: its messages, oldest first; a note: `body` (Markdown) and `rev` |
+| GET | `/notebook/{id}/export` | – | Download as a Markdown file |
+| POST | `/notebook` | `{"kind": "note", "title": "…", "body": "…"}` – `kind` is `chat` or `note`; `body` is the start text of a note | Create |
+| PUT | `/notebook/{id}` | `{"title": "…"}` | Rename |
+| DELETE | `/notebook/{id}` | – | Delete (on all devices) |
+| POST | `/notebook/{id}/messages` | `{"text": "…", "author": "…"}` – `author` is optional | Send a message (without `author`, the sender is the name of the token) |
+| DELETE | `/notebook/{id}/messages/{message_id}` | – | Delete a message |
+| PUT | `/notebook/{id}/body` | `{"body": "…", "base_rev": 3}` – `base_rev` is optional | Replace the text of a note; with `base_rev` only if nobody changed it since (otherwise `409 conflict`, nothing is saved) |
+| POST | `/notebook/{id}/append` | `{"text": "…"}` | Add a line to the end of a note (for logs and scripts, no need to read it first) |
+
+Everything appears at once in every open Chat & Notes panel. Messages sent through the API show the **name of the token** as sender (or the `author` you send). The chat belongs to the program, not to a show.
 
 ### Documentation (no token)
 
@@ -639,6 +658,18 @@ curl -X POST -H "Authorization: Bearer oc_xxxxxxxx" -H "Content-Type: applicatio
      -H "X-Filename: intro.mp4" --data-binary @intro.mp4 http://127.0.0.1:8000/api/v1/media
 ```
 
+### Chat and notes
+
+```
+POST /api/v1/notebook                 { "kind": "chat", "title": "Crew" }
+POST /api/v1/notebook/<id>/messages   { "text": "Soundcheck at 5 pm" }
+GET  /api/v1/notebook/<id>?after=<last message id>
+POST /api/v1/notebook/<id>/append     { "text": "- [ ] 21:40 smoke machine refilled" }
+GET  /api/v1/notebook/<id>/export
+```
+
+A script can post into the crew chat or keep a log in a note. `GET /notebook/{id}?after=<id of the last message>` returns only what is new. `rev` of a note changes with every save; send it back as `base_rev` to avoid overwriting somebody else's change (`409`). The stream `?events=notebook` reports every change as it happens.
+
 ### Live events (stream)
 
 ```
@@ -656,7 +687,7 @@ event: command
 data: {"command": "Fixture 1 At 10", "success": true, "message": "OK: …", "time": "21:14:03"}
 ```
 
-The connection stays open. First come `hello` and one message per kind with the **current state**, then every change. Kinds: `cue` (active cue of a list changed), `cuelists` (lists / cues were added, removed, renamed), `blackout`, `master`, `timecode` (started, stopped, speed), `selection`, `effects`, `fixtures`, `variables`, `show` (name / unsaved changes), `command` (a console command ran, from anywhere), `audio` (source opened / closed, tempo, signal present). On request only (`?events=beat,hit`): `beat` (every beat, with the tempo) and `hit` (every bass drum / snare / hi-hat hit: `{"drum": "kick", "strength": 0.9}`). `?events=` limits the stream. Changes are noticed within about 0.1 s. A comment line (`: keep-alive`) arrives every 15 s; at most 20 streams run at once. Needs the permission *Status*.
+The connection stays open. First come `hello` and one message per kind with the **current state**, then every change. Kinds: `cue` (active cue of a list changed), `cuelists` (lists / cues were added, removed, renamed), `blackout`, `master`, `timecode` (started, stopped, speed), `selection`, `effects`, `fixtures`, `variables`, `show` (name / unsaved changes), `command` (a console command ran, from anywhere), `audio` (source opened / closed, tempo, signal present). On request only (`?events=beat,hit`): `beat` (every beat, with the tempo) and `hit` (every bass drum / snare / hi-hat hit: `{"drum": "kick", "strength": 0.9}`). `?events=` limits the stream. Changes are noticed within about 0.1 s. A comment line (`: keep-alive`) arrives every 15 s; at most 20 streams run at once. Needs the permission *Status*. On request also `notebook` (a chat message or a note changed; needs the permission *Read chats and notes*).
 
 In a browser, `EventSource` cannot send headers: use `?access_token=<token>` instead, or `fetch()` with a header and read the stream. The token then appears in the address, so give such a page its own token with only *Status*.
 

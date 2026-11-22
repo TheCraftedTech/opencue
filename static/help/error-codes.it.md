@@ -51,7 +51,6 @@ OpenCue controlla queste cose **prima** che parta qualsiasi altra cosa. La fines
 - Avete appena chiuso OpenCue e ricevete comunque questo messaggio? Può servirgli qualche secondo per chiudersi. Aspettate un attimo e riavviate.
 - Non si vede proprio nulla? Aprite **Gestione attività**, cercate `OpenCue` (o `python`/`pythonw` se avviato dal sorgente) e terminate il processo rimasto.
 - Avanzato: per un secondo OpenCue separato (ad esempio per prove) impostate la variabile d'ambiente `OPENCUE_DATA_DIR` su un'altra cartella **e** assegnategli un'altra porta nel suo `app_config.json` (vedi OC-1002).
-- **Riavvio subito dopo la chiusura:** OpenCue ora attende (fino a circa 25 secondi) che quello vecchio abbia finito di chiudersi e poi parte da solo. Vedi questo messaggio solo se quello vecchio non termina.
 
 ### OC-1002 – La porta di rete è già in uso
 

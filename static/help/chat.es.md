@@ -67,6 +67,9 @@ Una nota es un texto escrito en **Markdown** – pero no necesitas saber Markdow
 
 - Los chats y las notas pertenecen al **programa, no a un espectáculo**: se mantienen al cargar otro espectáculo.
 - Son archivos en la carpeta de datos (`notebook`); copia la carpeta para llevarlos a otro ordenador.
+- **Guardar como archivo:** el botón de descarga de la cabecera guarda el chat o la nota abierta como **archivo Markdown** (`.md`): una nota como su texto, un chat como historial ordenado por días.
+- **Copia de seguridad y traslado:** *Gestor de archivos → Hacer copia de seguridad de todo* incluye todos los chats y notas. En *Exportar show...* puedes añadirlos al paquete (desactivado por defecto, entrada por entrada). Al importar no se sobrescribe nada – una entrada distinta llega como copia.
+- **Desde programas y dispositivos:** scripts y hardware (por ejemplo un ESP32) pueden leer y escribir chats y notas mediante la API REST – permisos *Leer chats y notas* y *Escribir chats y notas* (véase la guía API REST, sección 6).
 - **Varias personas en la misma nota:** prevalece el último guardado. Si dos personas escriben en el mismo momento, aparece un aviso. Usad notas distintas o turnaos.
 - Límites: 300 chats y notas, 4000 caracteres por mensaje, 100 000 por nota; de un chat se conservan los últimos 5000 mensajes.
 - Cualquiera conectado a OpenCue puede leerlo y escribirlo todo – el chat **no es privado**. No escribas contraseñas.

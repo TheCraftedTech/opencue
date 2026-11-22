@@ -22,7 +22,7 @@
   const MODAL = "file-manager";
   const EXPORT_MODAL = "file-export";
   const KINDS = ["shows", "layouts", "stages", "models", "media", "effects", "themes", "fixtures"];
-  const BACKUP_KINDS = KINDS.filter((k) => k !== "media");                  // die Sicherung enthaelt Dateien mit Endung; Medien liegen unter ihrer Pruefsumme (Export-Paket der Show nimmt sie mit)
+  const BACKUP_KINDS = KINDS.filter((k) => k !== "media").concat(["notebook"]);                  // die Sicherung enthaelt Dateien mit Endung; Medien liegen unter ihrer Pruefsumme (Export-Paket der Show nimmt sie mit)
   const KIND_UI = {
     shows: { icon: "cuelist", label: "FM_KIND_SHOWS", hint: "FM_HINT_SHOWS", detail: "FM_DETAIL_SHOWS", accept: ".json,.zip,.ocshow" },
     layouts: { icon: "panel", label: "FM_KIND_LAYOUTS", hint: "FM_HINT_LAYOUTS", detail: "FM_DETAIL_LAYOUTS", accept: ".json,.zip" },
@@ -937,6 +937,7 @@
       { key: "media", label: "FM_EXPORT_MEDIA", param: "media", on: true, items: media },
       { key: "layouts", label: "FM_EXPORT_LAYOUTS", param: "layout", on: false, items: info.layouts.map((l) => ({ id: l.id, name: l.name, detail: "", present: true })) },
       { key: "streams", label: "FM_EXPORT_STREAMS", param: "stream", on: false, items: info.streams.map((x) => ({ id: x.id, name: x.name, detail: x.url, present: true })) },
+      { key: "notebook", label: "FM_EXPORT_NOTEBOOK", param: "notebook", on: false, items: (info.notebook || []).map((n) => ({ id: n.id, name: n.name, detail: t(n.kind === "note" ? "CHP_DEFAULT_NOTE" : "CHP_DEFAULT_CHAT") + " · " + fmtSize(n.size), present: true })) },
     ];
   }
   function switchBox(extra) {

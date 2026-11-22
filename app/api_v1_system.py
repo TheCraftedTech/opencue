@@ -662,8 +662,8 @@ class EventHub:
 
     INTERVAL = 0.1
     DEFAULT = ("cue", "cuelists", "blackout", "master", "timecode", "selection", "effects", "fixtures", "variables", "show", "command", "audio")
-    ALL = DEFAULT + ("beat", "hit")             # beat / hit (jeder Schlag) nur auf ausdrueckliche Anfrage: mehrere Meldungen pro Sekunde
-    LIVE = ("command", "beat", "hit")           # kommen als Ereignis, nicht aus dem Zustandsvergleich
+    ALL = DEFAULT + ("beat", "hit", "notebook")  # beat / hit (jeder Schlag) nur auf ausdrueckliche Anfrage: mehrere Meldungen pro Sekunde; notebook (Chat und Notizen) nur mit der Berechtigung read.notes
+    LIVE = ("command", "beat", "hit", "notebook")  # kommen als Ereignis, nicht aus dem Zustandsvergleich
 
     def __init__(self) -> None:
         self.queues: Dict[int, "asyncio.Queue"] = {}
@@ -763,6 +763,10 @@ class EventHub:
             loop.call_soon_threadsafe(self._publish, "hit", {"drum": name, "strength": round(float(strength), 2)})
 
     def _tap(self, message: Dict[str, Any]) -> None:
+        if message.get("type") == "notebook_event" and self.queues:
+            payload = dict(message.get("payload") or {})
+            if payload.get("op") not in ("typing", "reload"):           # "schreibt gerade" ist kein Inhalt
+                self._publish("notebook", payload)
         if message.get("type") == "command_log" and self.queues:
             payload = message.get("payload") or {}
             self._publish("command", {"command": payload.get("command"), "success": payload.get("success"), "message": payload.get("message"), "time": payload.get("timestamp")})
@@ -812,7 +816,7 @@ def _sse(item: Dict[str, Any]) -> str:
 @_route("/events", "read.status", "Live events (Server-Sent Events stream)", query_token=True)
 async def stream_events(request: Request, events: Optional[str] = None, access_token: Optional[str] = None) -> StreamingResponse:
     """A stream that stays open and reports changes as they happen: `cue` (active cue of a list changed), `cuelists`, `blackout`, `master`, `timecode`, `selection`, `effects`, `fixtures`,
-    `variables`, `show`, `command` (a console command ran) and `audio` (source opened / closed, tempo, signal present); on request only (`?events=beat,hit`): `beat` (every beat) and `hit` (every bass drum / snare / hi-hat hit). The first messages (`event: hello`, then one event per kind) carry the current state.
+    `variables`, `show`, `command` (a console command ran) and `audio` (source opened / closed, tempo, signal present); on request only (`?events=beat,hit`): `beat` (every beat) and `hit` (every bass drum / snare / hi-hat hit); `notebook` (a chat message or a note changed: `op` = created | renamed | deleted | message | message_deleted | note, needs the permission `read.notes`). The first messages (`event: hello`, then one event per kind) carry the current state.
     `?events=cue,blackout` limits the stream to those kinds. Browsers' EventSource cannot send headers: use `?access_token=<token>` there (the token then appears in URLs - prefer fetch with the header)."""
     wanted = {e.strip() for e in (events or "").split(",") if e.strip()} or set(hub.DEFAULT)
     unknown = wanted - set(hub.ALL)
@@ -820,6 +824,8 @@ async def stream_events(request: Request, events: Optional[str] = None, access_t
         raise ApiError(400, "bad_request", f"Unknown event '{sorted(unknown)[0]}' (events: {', '.join(hub.ALL)}).")
     if len(hub.queues) >= MAX_STREAMS:
         raise ApiError(429, "too_many_streams", f"At most {MAX_STREAMS} event streams at once.")
+    if "notebook" in wanted and "read.notes" not in (getattr(request.state, "api_token", None) or {}).get("capabilities", []):
+        raise ApiError(403, "forbidden", "This token does not have the permission 'read.notes' (needed for the 'notebook' event).")
     key = hub.subscribe()
     queue = hub.queues[key]
 
