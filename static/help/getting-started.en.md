@@ -23,7 +23,7 @@ All guides are also inside the program, even offline: **Help → Guides** (or **
 
 The **data folder** is where your shows, layouts, fixtures and settings live. The default (`%LOCALAPPDATA%\OpenCue`) is fine for most people; you can choose another location in the setup and change it later in OpenCue under *Settings → Storage*.
 
-If OpenCue is already installed, the setup recognises that and offers *Update*, *Reinstall* or *Uninstall* – your data always stays. OpenCue also checks for new versions at start (switchable in *Settings → General*) and offers to install them; *Help → Check for Updates…* does it on demand.
+If OpenCue is already installed, the setup recognises that and offers *Update*, *Reinstall* or *Uninstall* – your data always stays. OpenCue also checks for new versions at start (switchable in *Settings → General*) and offers to install them; *Help → Check for Updates…* does it on demand. The update window shows the release notes; after an update a **What's new** window opens once with the new features of every version you skipped (also under *Help → What's new*).
 
 OpenCue can be found through the Windows search (press the Windows key and type “OpenCue”).
 
@@ -54,7 +54,7 @@ No stage exists in the 3D simulation yet – you create one when you need it. Th
 | **Library** | **Fixture Library…**, 3D stages, and the file manager lists *Shows*, *Layouts*, *3D stages*, *Effects* |
 | **View** | Fullscreen, GUI scale, Layouts |
 | **Language** | English / Deutsch |
-| **Help** | Keyboard Shortcuts, GitHub repository, Check for Updates…, About OpenCue |
+| **Help** | Keyboard Shortcuts, GitHub repository, What's new, Check for Updates…, About OpenCue |
 
 ### Toolbar (top)
 

@@ -1,0 +1,95 @@
+{
+ "releases": [
+  {
+   "version": "2.1.1",
+   "date": "2026-11-22",
+   "title": "Smoother updates and restarts",
+   "items": [
+    {
+     "icon": "download",
+     "title": "Release notes, nicely formatted",
+     "text": "The update window now shows the release notes with headings and lists instead of plain text."
+    },
+    {
+     "icon": "info",
+     "title": "A proper “What’s new” window",
+     "text": "After an update, this window lists the new features of every version you skipped – in your language."
+    },
+    {
+     "icon": "search",
+     "title": "Wider settings search",
+     "text": "The search in the settings is wider and its suggestions are no longer cut off."
+    },
+    {
+     "icon": "refresh",
+     "title": "Instant restart",
+     "text": "Start OpenCue right after closing it: it now waits until the old one has finished closing instead of saying it is already running."
+    }
+   ]
+  },
+  {
+   "version": "2.1.0",
+   "date": "2026-11-22",
+   "title": "Chat & Notes",
+   "items": [
+    {
+     "icon": "notes",
+     "title": "Chat & Notes panel",
+     "text": "Chat between the console, iPads and phones – with “is typing” – plus notes and checklists in Markdown, saved on the server."
+    },
+    {
+     "icon": "list",
+     "title": "Fixes",
+     "text": "Long sub-menus scroll instead of being cut off, and password fields show dots again."
+    }
+   ]
+  },
+  {
+   "version": "2.0.0",
+   "date": "2026-11-21",
+   "title": "The big release",
+   "items": [
+    {
+     "icon": "dmx",
+     "title": "A new DMX core",
+     "text": "Output, effects and cue fades run in their own process – a steady 40 frames per second even under heavy load."
+    },
+    {
+     "icon": "link",
+     "title": "DMX input",
+     "text": "Receive Art-Net and sACN from another desk, forward and merge it, or use channels as triggers."
+    },
+    {
+     "icon": "screen",
+     "title": "Remote control that can do everything",
+     "text": "A tablet has the same rights as the console, including all settings."
+    },
+    {
+     "icon": "midi",
+     "title": "Control from outside",
+     "text": "MIDI, OSC, a REST API, custom keyboard shortcuts, a scheduler and offline voice control."
+    },
+    {
+     "icon": "timeline",
+     "title": "Timeline and timecode",
+     "text": "A timeline editor with waveforms, LTC in and out, MIDI timecode."
+    },
+    {
+     "icon": "fixtures",
+     "title": "Your own fixtures",
+     "text": "A fixture editor, GDTF Share preview and CSV / Excel patch import."
+    },
+    {
+     "icon": "lock",
+     "title": "Safe shows",
+     "text": "Background backups with crash recovery, global undo and a show lock."
+    },
+    {
+     "icon": "star",
+     "title": "Six languages",
+     "text": "German, English, French, Dutch, Italian and Spanish – including the guides."
+    }
+   ]
+  }
+ ]
+}

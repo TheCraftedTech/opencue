@@ -644,6 +644,7 @@ class StateManager:
                 "language": self.language,
                 "onboarding_pending": bool(self.onboarding_pending),
                 "whats_new_pending": bool(not self.onboarding_pending and self.seen_version != APP_VERSION),
+                "seen_version": self.seen_version,                       # fuer das Fenster "Was ist neu": zeigt die Versionen seitdem
                 "app_version": APP_VERSION,
                 "artnet_enabled": self.artnet_enabled,
                 "artnet_ip": self.artnet_ip,

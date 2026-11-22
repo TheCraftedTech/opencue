@@ -1,0 +1,95 @@
+{
+ "releases": [
+  {
+   "version": "2.1.1",
+   "date": "2026-11-22",
+   "title": "Aggiornamenti e riavvii più fluidi",
+   "items": [
+    {
+     "icon": "download",
+     "title": "Note di rilascio ben formattate",
+     "text": "La finestra di aggiornamento ora mostra le note di rilascio con titoli ed elenchi invece di testo semplice."
+    },
+    {
+     "icon": "info",
+     "title": "Una vera finestra «Novità»",
+     "text": "Dopo un aggiornamento, questa finestra elenca le novità di ogni versione saltata – nella tua lingua."
+    },
+    {
+     "icon": "search",
+     "title": "Ricerca più ampia nelle impostazioni",
+     "text": "La ricerca nelle impostazioni è più ampia e i suggerimenti non vengono più tagliati."
+    },
+    {
+     "icon": "refresh",
+     "title": "Riavvio immediato",
+     "text": "Riavvia OpenCue subito dopo averlo chiuso: ora attende che quello vecchio abbia finito di chiudersi invece di dire che è già in esecuzione."
+    }
+   ]
+  },
+  {
+   "version": "2.1.0",
+   "date": "2026-11-22",
+   "title": "Chat e note",
+   "items": [
+    {
+     "icon": "notes",
+     "title": "Pannello Chat e note",
+     "text": "Chat tra console, iPad e telefoni – con «sta scrivendo» – più note e liste di controllo in Markdown, salvate sul server."
+    },
+    {
+     "icon": "list",
+     "title": "Correzioni",
+     "text": "I sottomenu lunghi scorrono invece di essere tagliati e i campi password mostrano di nuovo i puntini."
+    }
+   ]
+  },
+  {
+   "version": "2.0.0",
+   "date": "2026-11-21",
+   "title": "La grande versione",
+   "items": [
+    {
+     "icon": "dmx",
+     "title": "Un nuovo nucleo DMX",
+     "text": "Uscita, effetti e dissolvenze delle cue girano in un processo a parte – 40 fotogrammi al secondo costanti anche sotto carico elevato."
+    },
+    {
+     "icon": "link",
+     "title": "Ingresso DMX",
+     "text": "Ricevere Art-Net e sACN da un'altra console, inoltrarli e mixarli, o usare i canali come trigger."
+    },
+    {
+     "icon": "screen",
+     "title": "Controllo remoto che fa tutto",
+     "text": "Un tablet ha gli stessi diritti della console, impostazioni comprese."
+    },
+    {
+     "icon": "midi",
+     "title": "Controllo dall'esterno",
+     "text": "MIDI, OSC, un'API REST, scorciatoie da tastiera personalizzate, un pianificatore e il controllo vocale offline."
+    },
+    {
+     "icon": "timeline",
+     "title": "Timeline e timecode",
+     "text": "Un editor timeline con forme d'onda, LTC in ingresso e in uscita, timecode MIDI."
+    },
+    {
+     "icon": "fixtures",
+     "title": "I tuoi apparecchi",
+     "text": "Un editor di apparecchi, anteprima GDTF Share e importazione del patch da CSV / Excel."
+    },
+    {
+     "icon": "lock",
+     "title": "Show al sicuro",
+     "text": "Backup in background con ripristino dopo un arresto anomalo, annullamento globale e blocco dello show."
+    },
+    {
+     "icon": "star",
+     "title": "Sei lingue",
+     "text": "Tedesco, inglese, francese, olandese, italiano e spagnolo – anche le guide."
+    }
+   ]
+  }
+ ]
+}

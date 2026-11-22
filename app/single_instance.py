@@ -116,6 +116,29 @@ def write_runfile(port: int, headless: bool) -> None:
         pass
 
 
+def mark_stopping() -> None:
+    """Das laufende OpenCue beendet sich gerade (Fenster zu, Aufraeumen laeuft): ein neuer Start wartet dann, statt den Fehler OC-1001 zu zeigen."""
+    import json
+    try:
+        data = read_runfile()
+        if data.get("pid") == os.getpid() and not data.get("stopping"):
+            data["stopping"] = True
+            _runfile().write_text(json.dumps(data), encoding="utf-8")
+    except OSError:
+        pass
+
+
+def wait_until_free(timeout: float = 25.0) -> bool:
+    """Wartet, bis das beendende OpenCue den Mutex freigibt, und uebernimmt ihn (True). Nach `timeout` Sekunden False."""
+    import time
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        if acquire():
+            return True
+        time.sleep(0.2)
+    return False
+
+
 def clear_runfile() -> None:
     try:
         data = read_runfile()

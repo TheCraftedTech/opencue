@@ -23,7 +23,7 @@ Todas las guías están también dentro del programa, incluso sin conexión: **A
 
 La **carpeta de datos** es donde viven tus shows, disposiciones, proyectores y ajustes. La ubicación por defecto (`%LOCALAPPDATA%\OpenCue`) sirve para la mayoría; puedes elegir otra en la instalación y cambiarla después en OpenCue en *Ajustes → Almacenamiento*.
 
-Si OpenCue ya está instalado, el instalador lo reconoce y ofrece *Actualizar*, *Reinstalar* o *Desinstalar* – tus datos siempre se conservan. OpenCue también busca versiones nuevas al iniciar (se puede desactivar en *Ajustes → General*) y ofrece instalarlas; *Ayuda → Buscar actualizaciones…* lo hace a petición.
+Si OpenCue ya está instalado, el instalador lo reconoce y ofrece *Actualizar*, *Reinstalar* o *Desinstalar* – tus datos siempre se conservan. OpenCue también busca versiones nuevas al iniciar (se puede desactivar en *Ajustes → General*) y ofrece instalarlas; *Ayuda → Buscar actualizaciones…* lo hace a petición. La ventana de actualización muestra las notas de la versión; tras una actualización se abre una vez una ventana **Novedades** con las novedades de cada versión que te saltaste (también en *Ayuda → Novedades*).
 
 OpenCue se encuentra con la búsqueda de Windows (tecla Windows y escribe «OpenCue»).
 
@@ -54,7 +54,7 @@ En la simulación 3D todavía no existe ningún escenario – lo creas cuando lo
 | **Biblioteca** | **Biblioteca de proyectores…**, escenarios 3D, y el gestor de archivos lista *Shows*, *Disposiciones*, *Escenarios 3D*, *Efectos* |
 | **Ver** | Pantalla completa, escala de la interfaz, disposiciones |
 | **Idioma** | English / Deutsch / Français / Nederlands / Italiano / Español |
-| **Ayuda** | Atajos de teclado, repositorio de GitHub, Buscar actualizaciones…, Acerca de OpenCue |
+| **Ayuda** | Atajos de teclado, repositorio de GitHub, Novedades, Buscar actualizaciones…, Acerca de OpenCue |
 
 ### Barra de herramientas (arriba)
 

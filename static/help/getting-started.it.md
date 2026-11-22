@@ -23,7 +23,7 @@ Tutte le guide sono anche nel programma, persino offline: **Aiuto → Guide** (o
 
 La **cartella dei dati** è dove stanno i tuoi show, i layout, gli apparecchi e le impostazioni. Il percorso predefinito (`%LOCALAPPDATA%\OpenCue`) va bene per la maggior parte delle persone; puoi sceglierne un altro nell'installazione e cambiarlo in seguito in OpenCue in *Impostazioni → Archiviazione*.
 
-Se OpenCue è già installato, l'installatore lo riconosce e offre *Aggiorna*, *Reinstalla* o *Disinstalla* – i tuoi dati restano sempre. OpenCue controlla anche all'avvio se ci sono nuove versioni (si può disattivare in *Impostazioni → Generale*) e propone di installarle; *Aiuto → Verifica aggiornamenti…* lo fa su richiesta.
+Se OpenCue è già installato, l'installatore lo riconosce e offre *Aggiorna*, *Reinstalla* o *Disinstalla* – i tuoi dati restano sempre. OpenCue controlla anche all'avvio se ci sono nuove versioni (si può disattivare in *Impostazioni → Generale*) e propone di installarle; *Aiuto → Verifica aggiornamenti…* lo fa su richiesta. La finestra di aggiornamento mostra le note di rilascio; dopo un aggiornamento si apre una volta la finestra **Novità** con le novità di ogni versione saltata (anche in *Aiuto → Novità*).
 
 OpenCue si trova con la ricerca di Windows (tasto Windows, poi scrivi “OpenCue”).
 
@@ -54,7 +54,7 @@ Nella simulazione 3D non esiste ancora nessun palco – lo crei quando ti serve.
 | **Libreria** | **Libreria apparecchi…**, palchi 3D, e il gestore file elenca *Show*, *Layout*, *Palchi 3D*, *Effetti* |
 | **Visualizza** | Schermo intero, scala dell'interfaccia, layout |
 | **Lingua** | English / Deutsch / Français / Nederlands / Italiano / Español |
-| **Aiuto** | Scorciatoie da tastiera, repository GitHub, Verifica aggiornamenti…, Informazioni su OpenCue |
+| **Aiuto** | Scorciatoie da tastiera, repository GitHub, Novità, Verifica aggiornamenti…, Informazioni su OpenCue |
 
 ### Barra degli strumenti (in alto)
 

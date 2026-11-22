@@ -80,7 +80,7 @@ def program_smoke(exe: str, port: int) -> None:
         if not up:
             return
         time.sleep(3)
-        pages = ("getting-started", "api", "commands", "error-codes", "whatsnew")
+        pages = ("getting-started", "api", "commands", "error-codes", "chat")
         for lang in ("en", "de", "fr", "nl", "it", "es"):
             miss = []
             for page in pages:

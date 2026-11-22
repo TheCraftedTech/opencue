@@ -23,7 +23,7 @@ Alle Anleitungen gibt es auch im Programm, selbst ohne Internet: **Hilfe → Anl
 
 Der **Datenordner** ist der Ort, an dem deine Shows, Layouts, Scheinwerfer und Einstellungen liegen. Der Vorschlag (`%LOCALAPPDATA%\OpenCue`) passt für die meisten; du kannst im Setup einen anderen Ort wählen und ihn später in OpenCue unter *Einstellungen → Speicherort* ändern.
 
-Ist OpenCue schon installiert, erkennt das Setup das und bietet *Aktualisieren*, *Neu installieren* oder *Deinstallieren* an – deine Daten bleiben immer erhalten. OpenCue prüft auch beim Start auf neue Versionen (abschaltbar unter *Einstellungen → Allgemein*) und bietet die Installation an; *Hilfe → Nach Updates suchen…* tut das auf Wunsch.
+Ist OpenCue schon installiert, erkennt das Setup das und bietet *Aktualisieren*, *Neu installieren* oder *Deinstallieren* an – deine Daten bleiben immer erhalten. OpenCue prüft auch beim Start auf neue Versionen (abschaltbar unter *Einstellungen → Allgemein*) und bietet die Installation an; *Hilfe → Nach Updates suchen…* tut das auf Wunsch. Das Update-Fenster zeigt die Versionshinweise; nach einem Update öffnet sich einmal ein Fenster **Was ist neu** mit den neuen Funktionen jeder übersprungenen Version (auch unter *Hilfe → Was ist neu*).
 
 OpenCue lässt sich über die Windows-Suche finden (Windows-Taste drücken und „OpenCue“ tippen).
 
@@ -54,7 +54,7 @@ In der 3D-Simulation gibt es noch keine Bühne – die legst du an, wenn du sie 
 | **Bibliothek** | **Scheinwerfer-Bibliothek…**, 3D-Bühnen und die Dateimanager-Listen *Shows*, *Layouts*, *3D-Bühnen*, *Effekte* |
 | **Ansicht** | Vollbild, GUI-Skalierung, Layouts |
 | **Sprache** | English / Deutsch |
-| **Hilfe** | Tastenkürzel, GitHub-Repository, Nach Updates suchen…, Über OpenCue |
+| **Hilfe** | Tastenkürzel, GitHub-Repository, Was ist neu, Nach Updates suchen…, Über OpenCue |
 
 ### Werkzeugleiste (oben)
 

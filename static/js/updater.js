@@ -23,11 +23,25 @@
     return res.json();
   }
 
+  /** Der Text des GitHub-Releases (Markdown) fuer den Dialog: ohne Website-Zeile, Titelzeile und den Standardteil ab "Installation" (steht auf der Release-Seite). */
+  function cleanNotes(text) {
+    let s = String(text || "").replace(/\r/g, "");
+    s = s.split(/\n-{3,}\s*\n+###\s+Installation/i)[0];
+    s = s.replace(/^\s*\*\*Website:\*\*[^\n]*\n+/i, "").replace(/^##\s+What is new in OpenCue[^\n]*\n+/i, "");
+    s = s.replace(/\[([^\]]+)\]\(https?:\/\/[^)]*\)/g, "$1");
+    return s.trim();
+  }
+
   function show(parts) {
     const set = (id, text) => { const el = $("#" + id); el.textContent = text || ""; el.hidden = !text; };
     set("update-headline", parts.headline);
     set("update-sub", parts.sub);
-    set("update-notes", parts.notes);
+    const notes = $("#update-notes");
+    notes.textContent = "";
+    const clean = cleanNotes(parts.notes);
+    if (clean && window.OCHelp && window.OCHelp.renderMarkdown) notes.appendChild(window.OCHelp.renderMarkdown(clean));
+    else notes.textContent = clean;
+    notes.hidden = !clean;
     set("update-error", parts.error);
     $("#update-progress").hidden = !parts.progress;
     const on = (id, visible, label) => { const b = $("#" + id); b.hidden = !visible; b.disabled = false; if (label) b.textContent = label; };

@@ -1,0 +1,95 @@
+{
+ "releases": [
+  {
+   "version": "2.1.1",
+   "date": "2026-11-22",
+   "title": "Soepelere updates en herstarts",
+   "items": [
+    {
+     "icon": "download",
+     "title": "Versienotities mooi weergegeven",
+     "text": "Het updatevenster toont de versienotities nu met koppen en lijsten in plaats van platte tekst."
+    },
+    {
+     "icon": "info",
+     "title": "Een echt venster “Wat is er nieuw”",
+     "text": "Na een update toont dit venster de nieuwe functies van elke overgeslagen versie – in uw taal."
+    },
+    {
+     "icon": "search",
+     "title": "Bredere zoekfunctie in de instellingen",
+     "text": "De zoekfunctie in de instellingen is breder en de suggesties worden niet meer afgekapt."
+    },
+    {
+     "icon": "refresh",
+     "title": "Direct herstarten",
+     "text": "Start OpenCue direct na het sluiten opnieuw: het wacht nu tot het oude klaar is met afsluiten in plaats van te melden dat het al draait."
+    }
+   ]
+  },
+  {
+   "version": "2.1.0",
+   "date": "2026-11-22",
+   "title": "Chat en notities",
+   "items": [
+    {
+     "icon": "notes",
+     "title": "Paneel Chat en notities",
+     "text": "Chat tussen de console, iPads en telefoons – met “is aan het typen” – plus notities en checklists in Markdown, opgeslagen op de server."
+    },
+    {
+     "icon": "list",
+     "title": "Verbeteringen",
+     "text": "Lange submenu’s scrollen in plaats van afgekapt te worden, en wachtwoordvelden tonen weer stippen."
+    }
+   ]
+  },
+  {
+   "version": "2.0.0",
+   "date": "2026-11-21",
+   "title": "De grote release",
+   "items": [
+    {
+     "icon": "dmx",
+     "title": "Een nieuwe DMX-kern",
+     "text": "Uitvoer, effecten en cue-fades draaien in een eigen proces – een constante 40 beelden per seconde, ook onder zware belasting."
+    },
+    {
+     "icon": "link",
+     "title": "DMX-ingang",
+     "text": "Art-Net en sACN van een andere tafel ontvangen, doorsturen en mixen, of kanalen als trigger gebruiken."
+    },
+    {
+     "icon": "screen",
+     "title": "Afstandsbediening die alles kan",
+     "text": "Een tablet heeft dezelfde rechten als de console, inclusief alle instellingen."
+    },
+    {
+     "icon": "midi",
+     "title": "Bediening van buitenaf",
+     "text": "MIDI, OSC, een REST-API, eigen sneltoetsen, een planner en spraakbediening zonder internet."
+    },
+    {
+     "icon": "timeline",
+     "title": "Tijdlijn en timecode",
+     "text": "Een tijdlijn-editor met golfvormen, LTC in en uit, MIDI-timecode."
+    },
+    {
+     "icon": "fixtures",
+     "title": "Eigen projectoren",
+     "text": "Een projectoreditor, GDTF Share-voorbeeld en patch-import uit CSV / Excel."
+    },
+    {
+     "icon": "lock",
+     "title": "Veilige shows",
+     "text": "Back-ups op de achtergrond met herstel na een crash, globaal ongedaan maken en een showvergrendeling."
+    },
+    {
+     "icon": "star",
+     "title": "Zes talen",
+     "text": "Duits, Engels, Frans, Nederlands, Italiaans en Spaans – ook de handleidingen."
+    }
+   ]
+  }
+ ]
+}

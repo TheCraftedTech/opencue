@@ -2587,7 +2587,7 @@
 
   <!-- Update verfuegbar / nach Updates suchen (static/js/updater.js, app/updater.py, app/about.py) -->
   <div class="modal-backdrop" data-modal-backdrop="update" aria-hidden="true">
-    <div class="modal modal--update modal--s" role="dialog" aria-modal="true" aria-labelledby="update-title">
+    <div class="modal modal--update modal--m" role="dialog" aria-modal="true" aria-labelledby="update-title">
       <div class="modal__header">
         <span id="update-title" data-i18n="UPDATE_TITLE">Update</span>
         <button type="button" class="modal__close" data-modal-close="update" aria-label="Close" data-i18n-aria="CLOSE">&times;</button>
@@ -2595,7 +2595,7 @@
       <div class="modal__body update">
         <p class="update__headline" id="update-headline"></p>
         <p class="update__sub" id="update-sub"></p>
-        <pre class="update__notes" id="update-notes" hidden></pre>
+        <div class="update__notes hv-md" id="update-notes" hidden></div>
         <div class="update__progress" id="update-progress" hidden>
           <div class="update__bar"><div class="update__bar-fill" id="update-bar-fill"></div></div>
           <span class="update__progress-text" id="update-progress-text"></span>
@@ -2608,6 +2608,21 @@
         <button type="button" id="update-page" class="modal__button" data-i18n="UPDATE_PAGE">Release page</button>
         <button type="button" id="update-close" class="modal__button" data-i18n="CLOSE">Close</button>
         <button type="button" id="update-install" class="modal__button modal__button--primary" data-i18n="UPDATE_INSTALL">Install now</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Was ist neu (static/js/whatsnew.js, Texte in static/whatsnew/<sprache>.json): erscheint einmal nach einem Update, sonst Hilfe -> Was ist neu -->
+  <div class="modal-backdrop" data-modal-backdrop="whatsnew" aria-hidden="true">
+    <div class="modal modal--whatsnew modal--m" role="dialog" aria-modal="true" aria-labelledby="wn-title">
+      <div class="modal__header">
+        <span id="wn-title" data-i18n="WHATSNEW_TITLE_PLAIN">What&#8217;s new</span>
+        <button type="button" class="modal__close" data-modal-close="whatsnew" aria-label="Close" data-i18n-aria="CLOSE">&times;</button>
+      </div>
+      <div class="modal__body wn" id="wn-body"></div>
+      <div class="modal__footer">
+        <button type="button" id="wn-all" class="modal__button" data-i18n="WHATSNEW_ALL">All changes</button>
+        <button type="button" id="wn-close" class="modal__button modal__button--primary" data-i18n="CLOSE">Close</button>
       </div>
     </div>
   </div>
@@ -3066,6 +3081,7 @@
   <script src="/static/js/tooltips.js{% if asset_v %}?v={{ asset_v }}{% endif %}"></script>
   <script src="/static/js/recent_shows.js{% if asset_v %}?v={{ asset_v }}{% endif %}"></script>
   <script src="/static/js/report.js{% if asset_v %}?v={{ asset_v }}{% endif %}"></script>
+  <script src="/static/js/whatsnew.js{% if asset_v %}?v={{ asset_v }}{% endif %}"></script>
   <script src="/static/js/welcome.js{% if asset_v %}?v={{ asset_v }}{% endif %}"></script>
   <script src="/static/js/fixture_import.js{% if asset_v %}?v={{ asset_v }}{% endif %}"></script>
   <script src="/static/js/sim_json.js{% if asset_v %}?v={{ asset_v }}{% endif %}"></script>

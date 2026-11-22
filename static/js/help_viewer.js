@@ -12,7 +12,7 @@
 (function () {
   "use strict";
 
-  const PAGES = ["getting-started", "fixtures", "fixture-editor", "keyboard-shortcuts", "remote", "audio", "effect-studio", "commands", "voice-commands", "midi", "dmx-input", "timeline", "assistant", "chat", "api", "show-safety", "startup-options", "automation", "whatsnew", "error-codes"];
+  const PAGES = ["getting-started", "fixtures", "fixture-editor", "keyboard-shortcuts", "remote", "audio", "effect-studio", "commands", "voice-commands", "midi", "dmx-input", "timeline", "assistant", "chat", "api", "show-safety", "startup-options", "automation", "error-codes"];
   const MAX_RESULTS = 80;
   const ROOT = '[data-modal-backdrop="help"]';
   const STORE = "opencue.help";
@@ -512,5 +512,7 @@
     if (opts.find !== undefined || !opts.page) focusSearch();
   }
 
-  window.OCHelp = { open, focusSearch, isOpen: () => typeof Modal !== "undefined" && Modal.isOpen("help") };
+  /** Markdown -> DOM-Knoten (ohne innerHTML), z. B. fuer die Versionshinweise im Update-Fenster. */
+  const renderMarkdown = (markdown) => render(String(markdown || ""), null).root;
+  window.OCHelp = { open, focusSearch, renderMarkdown, isOpen: () => typeof Modal !== "undefined" && Modal.isOpen("help") };
 })();

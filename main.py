@@ -155,7 +155,11 @@ def _check_data_folder() -> None:
 
 
 _check_data_folder()
-if not single_instance.acquire():
+_have_lock = single_instance.acquire()
+if not _have_lock and single_instance.read_runfile().get("stopping"):                # das vorige OpenCue schliesst sich gerade (bis zu einigen Sekunden): abwarten und dann normal starten
+    print(f"[{APP_NAME}] the previous OpenCue is still closing - waiting for it ...")
+    _have_lock = single_instance.wait_until_free(25.0)
+if not _have_lock:
     _running = single_instance.read_runfile()
     _raised = single_instance.raise_running_window()
     print(f"[{APP_NAME}] another instance is already running (its window was raised: {_raised})")
@@ -291,6 +295,7 @@ def _start_server() -> tuple[uvicorn.Server, threading.Thread]:
 
 def _stop_everything(server: uvicorn.Server, server_thread: threading.Thread) -> None:
     """Gemeinsamer Rest des Beendens (mit und ohne Fenster): DMX stoppen, ungespeicherte Aenderungen sichern, Server anhalten, Markierungen loeschen, ein vorgemerktes Update starten."""
+    single_instance.mark_stopping()                                  # ein sofortiger Neustart wartet jetzt auf das Ende, statt "laeuft schon" zu melden
     dmx_engine.shutdown()
 
     from app import backups
@@ -752,6 +757,7 @@ def main() -> None:
         # stattdessen der Beenden-Dialog im Frontend gezeigt. Ohne verbundenen
         # Client gibt es niemanden, der fragen kann - dann schliessen wir direkt.
         if close_allowed.is_set():
+            single_instance.mark_stopping()                              # das Fenster schliesst sich: ab jetzt gilt das Programm als "beendet sich"
             return True
         return not request_close_prompt()
 

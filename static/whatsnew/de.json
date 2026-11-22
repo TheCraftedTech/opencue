@@ -1,0 +1,95 @@
+{
+ "releases": [
+  {
+   "version": "2.1.1",
+   "date": "2026-11-22",
+   "title": "Reibungslosere Updates und Neustarts",
+   "items": [
+    {
+     "icon": "download",
+     "title": "Versionshinweise schön dargestellt",
+     "text": "Das Update-Fenster zeigt die Versionshinweise jetzt mit Überschriften und Listen statt als reinen Text."
+    },
+    {
+     "icon": "info",
+     "title": "Ein richtiges „Was ist neu“-Fenster",
+     "text": "Nach einem Update listet dieses Fenster die neuen Funktionen jeder übersprungenen Version auf – in deiner Sprache."
+    },
+    {
+     "icon": "search",
+     "title": "Breitere Suche in den Einstellungen",
+     "text": "Die Suche in den Einstellungen ist breiter, und ihre Vorschläge werden nicht mehr abgeschnitten."
+    },
+    {
+     "icon": "refresh",
+     "title": "Sofortiger Neustart",
+     "text": "OpenCue direkt nach dem Schließen wieder starten: Es wartet jetzt, bis das alte fertig beendet ist, statt zu melden, dass es schon läuft."
+    }
+   ]
+  },
+  {
+   "version": "2.1.0",
+   "date": "2026-11-22",
+   "title": "Chat & Notizen",
+   "items": [
+    {
+     "icon": "notes",
+     "title": "Panel „Chat & Notizen“",
+     "text": "Chat zwischen Konsole, iPads und Handys – mit „schreibt gerade“ – dazu Notizen und Checklisten in Markdown, auf dem Server gespeichert."
+    },
+    {
+     "icon": "list",
+     "title": "Korrekturen",
+     "text": "Lange Untermenüs scrollen, statt abgeschnitten zu werden, und Kennwortfelder zeigen wieder Punkte."
+    }
+   ]
+  },
+  {
+   "version": "2.0.0",
+   "date": "2026-11-21",
+   "title": "Das große Release",
+   "items": [
+    {
+     "icon": "dmx",
+     "title": "Ein neuer DMX-Kern",
+     "text": "Ausgabe, Effekte und Cue-Überblendungen laufen in einem eigenen Prozess – gleichmäßige 40 Bilder pro Sekunde auch unter hoher Last."
+    },
+    {
+     "icon": "link",
+     "title": "DMX-Eingang",
+     "text": "Art-Net und sACN von einem anderen Pult empfangen, weiterleiten und mischen oder Kanäle als Auslöser nutzen."
+    },
+    {
+     "icon": "screen",
+     "title": "Fernsteuerung, die alles kann",
+     "text": "Ein Tablet hat dieselben Rechte wie die Konsole, einschließlich aller Einstellungen."
+    },
+    {
+     "icon": "midi",
+     "title": "Steuerung von außen",
+     "text": "MIDI, OSC, eine REST-API, eigene Tastenkürzel, ein Zeitplan und Sprachsteuerung ohne Internet."
+    },
+    {
+     "icon": "timeline",
+     "title": "Zeitleiste und Timecode",
+     "text": "Ein Zeitleisten-Editor mit Wellenformen, LTC ein und aus, MIDI-Timecode."
+    },
+    {
+     "icon": "fixtures",
+     "title": "Eigene Scheinwerfer",
+     "text": "Ein Scheinwerfer-Editor, GDTF-Share-Vorschau und Patch-Import aus CSV / Excel."
+    },
+    {
+     "icon": "lock",
+     "title": "Sichere Shows",
+     "text": "Sicherungen im Hintergrund mit Wiederherstellung nach Abstürzen, globales Rückgängig und eine Show-Sperre."
+    },
+    {
+     "icon": "star",
+     "title": "Sechs Sprachen",
+     "text": "Deutsch, Englisch, Französisch, Niederländisch, Italienisch und Spanisch – auch die Anleitungen."
+    }
+   ]
+  }
+ ]
+}

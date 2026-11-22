@@ -23,7 +23,7 @@ Alle handleidingen zitten ook in het programma, zelfs offline: **Help → Handle
 
 De **gegevensmap** is waar je shows, lay-outs, projectoren en instellingen staan. De standaardlocatie (`%LOCALAPPDATA%\OpenCue`) is voor de meeste mensen prima; je kunt in de setup een andere kiezen en die later in OpenCue wijzigen onder *Instellingen → Opslag*.
 
-Is OpenCue al geïnstalleerd, dan herkent de setup dat en biedt *Bijwerken*, *Opnieuw installeren* of *Verwijderen* aan – je gegevens blijven altijd staan. OpenCue controleert bij het starten ook op nieuwe versies (uit te schakelen in *Instellingen → Algemeen*) en biedt aan ze te installeren; *Help → Controleren op updates…* doet het op verzoek.
+Is OpenCue al geïnstalleerd, dan herkent de setup dat en biedt *Bijwerken*, *Opnieuw installeren* of *Verwijderen* aan – je gegevens blijven altijd staan. OpenCue controleert bij het starten ook op nieuwe versies (uit te schakelen in *Instellingen → Algemeen*) en biedt aan ze te installeren; *Help → Controleren op updates…* doet het op verzoek. Het updatevenster toont de versienotities; na een update opent eenmalig een venster **Wat is er nieuw** met de nieuwe functies van elke overgeslagen versie (ook onder *Help → Wat is er nieuw*).
 
 OpenCue vind je via de Windows-zoekfunctie (Windows-toets en typ « OpenCue »).
 
@@ -54,7 +54,7 @@ In de 3D-simulatie bestaat nog geen podium – dat maak je aan als je het nodig 
 | **Bibliotheek** | **Projectorbibliotheek…**, 3D-podia, en het bestandsbeheer toont *Shows*, *Lay-outs*, *3D-podia*, *Effecten* |
 | **Weergave** | Volledig scherm, GUI-schaal, Lay-outs |
 | **Taal** | English / Deutsch / Français / Nederlands / Italiano / Español |
-| **Help** | Toetsenbordsnelkoppelingen, GitHub-repository, Controleren op updates…, Over OpenCue |
+| **Help** | Toetsenbordsnelkoppelingen, GitHub-repository, Wat is er nieuw, Controleren op updates…, Over OpenCue |
 
 ### Werkbalk (boven)
 

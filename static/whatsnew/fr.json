@@ -1,0 +1,95 @@
+{
+ "releases": [
+  {
+   "version": "2.1.1",
+   "date": "2026-11-22",
+   "title": "Mises à jour et redémarrages plus fluides",
+   "items": [
+    {
+     "icon": "download",
+     "title": "Notes de version bien présentées",
+     "text": "La fenêtre de mise à jour affiche maintenant les notes de version avec titres et listes au lieu d'un simple texte."
+    },
+    {
+     "icon": "info",
+     "title": "Une vraie fenêtre « Nouveautés »",
+     "text": "Après une mise à jour, cette fenêtre liste les nouveautés de chaque version sautée – dans votre langue."
+    },
+    {
+     "icon": "search",
+     "title": "Recherche plus large dans les réglages",
+     "text": "La recherche dans les réglages est plus large et ses suggestions ne sont plus coupées."
+    },
+    {
+     "icon": "refresh",
+     "title": "Redémarrage immédiat",
+     "text": "Relancez OpenCue juste après l'avoir fermé : il attend maintenant que l'ancien ait fini de se fermer au lieu d'indiquer qu'il est déjà en cours d'exécution."
+    }
+   ]
+  },
+  {
+   "version": "2.1.0",
+   "date": "2026-11-22",
+   "title": "Chat et notes",
+   "items": [
+    {
+     "icon": "notes",
+     "title": "Panneau Chat et notes",
+     "text": "Discussion entre la console, les iPad et les téléphones – avec « est en train d'écrire » – ainsi que des notes et des listes de contrôle en Markdown, enregistrées sur le serveur."
+    },
+    {
+     "icon": "list",
+     "title": "Corrections",
+     "text": "Les longs sous-menus défilent au lieu d'être coupés, et les champs de mot de passe affichent de nouveau des points."
+    }
+   ]
+  },
+  {
+   "version": "2.0.0",
+   "date": "2026-11-21",
+   "title": "La grande version",
+   "items": [
+    {
+     "icon": "dmx",
+     "title": "Un nouveau cœur DMX",
+     "text": "Sortie, effets et fondus de cues tournent dans leur propre processus – 40 images par seconde stables, même sous forte charge."
+    },
+    {
+     "icon": "link",
+     "title": "Entrée DMX",
+     "text": "Recevoir Art-Net et sACN d'une autre console, les transmettre et les mixer, ou utiliser des canaux comme déclencheurs."
+    },
+    {
+     "icon": "screen",
+     "title": "Une télécommande qui fait tout",
+     "text": "Une tablette a les mêmes droits que la console, réglages compris."
+    },
+    {
+     "icon": "midi",
+     "title": "Commande depuis l'extérieur",
+     "text": "MIDI, OSC, une API REST, des raccourcis clavier personnalisés, un planificateur et la commande vocale hors ligne."
+    },
+    {
+     "icon": "timeline",
+     "title": "Frise et timecode",
+     "text": "Un éditeur de frise avec formes d'onde, LTC en entrée et en sortie, timecode MIDI."
+    },
+    {
+     "icon": "fixtures",
+     "title": "Vos propres projecteurs",
+     "text": "Un éditeur de projecteurs, l'aperçu GDTF Share et l'import de patch CSV / Excel."
+    },
+    {
+     "icon": "lock",
+     "title": "Des shows en sécurité",
+     "text": "Sauvegardes en arrière-plan avec récupération après plantage, annulation globale et verrou de show."
+    },
+    {
+     "icon": "star",
+     "title": "Six langues",
+     "text": "Allemand, anglais, français, néerlandais, italien et espagnol – guides compris."
+    }
+   ]
+  }
+ ]
+}

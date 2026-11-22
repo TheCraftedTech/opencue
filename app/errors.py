@@ -42,7 +42,8 @@ from app.version import APP_NAME, APP_VERSION_LABEL
 
 CATALOG: Dict[str, Tuple[str, str, str]] = {
     "OC-1001": ("OpenCue is already running",
-                "Only one OpenCue can run at the same time on this computer. The window that is already open has been brought to the front.", "info"),
+                "Only one OpenCue can run at the same time on this computer. If a window is open, it has been brought to the front. "
+                "If you have just closed OpenCue, it may still be shutting down: wait a few seconds and start it again.", "info"),
     "OC-1002": ("Network port {port} is already in use",
                 "OpenCue needs this port for its built-in server, but another program is using it. Close that program and start OpenCue again. "
                 "To use a different port, change \"server_port\" in the settings file shown below.", "error"),

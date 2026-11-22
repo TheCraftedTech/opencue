@@ -4,7 +4,7 @@
  * Willkommen: vier Seiten zum Durchklicken (Sprache / DMX-Ausgabe / andere Geraete / fertig). Der Dialog laesst sich nicht schliessen (kein X, Escape tut nichts): man klickt sich durch oder
  * drueckt auf der ersten Seite "Ueberspringen". Hier laesst sich z. B. das Netzwerk gleich einschalten - nichts davon passiert ohne ausdrueckliche Eingabe (die Schalter stehen anfangs alle aus),
  * und Windows darf dann fragen. Angewendet wird erst mit "Fertig". Server: state.onboarding_pending (nur frische Installation, main.py), WS `onboarding_done`.
- * Was ist neu: die Anleitung "whatsnew" (static/help) oeffnet sich einmal nach einem Update (state.whats_new_pending), WS `whats_new_seen`; auch im Hilfe-Menue. */
+ * Was ist neu: das Fenster aus static/js/whatsnew.js (Texte static/whatsnew/<sprache>.json) oeffnet sich einmal nach einem Update (state.whats_new_pending), WS `whats_new_seen`; auch im Hilfe-Menue. */
 (function () {
   "use strict";
 
@@ -152,7 +152,7 @@
   // ------------------------------------------------------------------------------------------------ Was ist neu?
   function openWhatsNew() {
     if (typeof _closeAllMenus === "function") _closeAllMenus();
-    if (window.OCHelp) window.OCHelp.open({ page: "whatsnew" });
+    if (window.OCWhatsNew) window.OCWhatsNew.open();
     if (typeof client !== "undefined" && client.state && client.state.whats_new_pending) { client.state.whats_new_pending = false; client.send("whats_new_seen", {}); }
   }
 

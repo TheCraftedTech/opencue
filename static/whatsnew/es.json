@@ -1,0 +1,95 @@
+{
+ "releases": [
+  {
+   "version": "2.1.1",
+   "date": "2026-11-22",
+   "title": "Actualizaciones y reinicios más fluidos",
+   "items": [
+    {
+     "icon": "download",
+     "title": "Notas de la versión bien presentadas",
+     "text": "La ventana de actualización ahora muestra las notas de la versión con títulos y listas en lugar de texto plano."
+    },
+    {
+     "icon": "info",
+     "title": "Una ventana «Novedades» como es debido",
+     "text": "Tras una actualización, esta ventana enumera las novedades de cada versión que te saltaste, en tu idioma."
+    },
+    {
+     "icon": "search",
+     "title": "Búsqueda más ancha en los ajustes",
+     "text": "La búsqueda de los ajustes es más ancha y sus sugerencias ya no se cortan."
+    },
+    {
+     "icon": "refresh",
+     "title": "Reinicio inmediato",
+     "text": "Inicia OpenCue justo después de cerrarlo: ahora espera a que el anterior termine de cerrarse en lugar de avisar de que ya se está ejecutando."
+    }
+   ]
+  },
+  {
+   "version": "2.1.0",
+   "date": "2026-11-22",
+   "title": "Chat y notas",
+   "items": [
+    {
+     "icon": "notes",
+     "title": "Panel Chat y notas",
+     "text": "Chat entre la consola, los iPad y los teléfonos (con «está escribiendo»), además de notas y listas de comprobación en Markdown, guardadas en el servidor."
+    },
+    {
+     "icon": "list",
+     "title": "Correcciones",
+     "text": "Los submenús largos se desplazan en lugar de cortarse y los campos de contraseña vuelven a mostrar puntos."
+    }
+   ]
+  },
+  {
+   "version": "2.0.0",
+   "date": "2026-11-21",
+   "title": "La gran versión",
+   "items": [
+    {
+     "icon": "dmx",
+     "title": "Un nuevo núcleo DMX",
+     "text": "La salida, los efectos y los fundidos de cues se ejecutan en su propio proceso: 40 fotogramas por segundo estables, incluso con mucha carga."
+    },
+    {
+     "icon": "link",
+     "title": "Entrada DMX",
+     "text": "Recibe Art-Net y sACN de otra mesa, reenvíalos y mézclalos, o usa canales como disparadores."
+    },
+    {
+     "icon": "screen",
+     "title": "Control remoto que lo hace todo",
+     "text": "Una tableta tiene los mismos derechos que la consola, incluidos todos los ajustes."
+    },
+    {
+     "icon": "midi",
+     "title": "Control desde fuera",
+     "text": "MIDI, OSC, una API REST, atajos de teclado propios, un programador y control por voz sin conexión."
+    },
+    {
+     "icon": "timeline",
+     "title": "Línea de tiempo y timecode",
+     "text": "Un editor de línea de tiempo con formas de onda, LTC de entrada y salida, timecode MIDI."
+    },
+    {
+     "icon": "fixtures",
+     "title": "Tus propios proyectores",
+     "text": "Un editor de proyectores, vista previa de GDTF Share e importación del patch desde CSV / Excel."
+    },
+    {
+     "icon": "lock",
+     "title": "Shows seguros",
+     "text": "Copias de seguridad en segundo plano con recuperación tras un fallo, deshacer global y bloqueo del show."
+    },
+    {
+     "icon": "star",
+     "title": "Seis idiomas",
+     "text": "Alemán, inglés, francés, neerlandés, italiano y español, también las guías."
+    }
+   ]
+  }
+ ]
+}

@@ -23,7 +23,7 @@ Tous les guides sont aussi dans le programme, même hors ligne : **Aide → Guid
 
 Le **dossier de données** contient vos shows, mises en page, projecteurs et réglages. L'emplacement par défaut (`%LOCALAPPDATA%\OpenCue`) convient à la plupart des gens ; vous pouvez en choisir un autre dans l'installation et le modifier plus tard dans OpenCue sous *Paramètres → Stockage*.
 
-Si OpenCue est déjà installé, l'installateur le reconnaît et propose *Mettre à jour*, *Réinstaller* ou *Désinstaller* – vos données restent toujours. OpenCue cherche aussi de nouvelles versions au démarrage (désactivable dans *Paramètres → Général*) et propose de les installer ; *Aide → Rechercher des mises à jour…* le fait à la demande.
+Si OpenCue est déjà installé, l'installateur le reconnaît et propose *Mettre à jour*, *Réinstaller* ou *Désinstaller* – vos données restent toujours. OpenCue cherche aussi de nouvelles versions au démarrage (désactivable dans *Paramètres → Général*) et propose de les installer ; *Aide → Rechercher des mises à jour…* le fait à la demande. La fenêtre de mise à jour affiche les notes de version ; après une mise à jour, une fenêtre **Nouveautés** s'ouvre une fois avec les nouveautés de chaque version sautée (aussi sous *Aide → Nouveautés*).
 
 OpenCue se trouve avec la recherche Windows (touche Windows, puis tapez « OpenCue »).
 
@@ -54,7 +54,7 @@ Il n'existe encore aucune scène dans la simulation 3D – vous en créez une qu
 | **Bibliothèque** | **Bibliothèque de projecteurs…**, scènes 3D, et le gestionnaire de fichiers liste *Shows*, *Mises en page*, *Scènes 3D*, *Effets* |
 | **Affichage** | Plein écran, échelle de l'interface, mises en page |
 | **Langue** | English / Deutsch / Français / Nederlands / Italiano / Español |
-| **Aide** | Raccourcis clavier, dépôt GitHub, Rechercher des mises à jour…, À propos d'OpenCue |
+| **Aide** | Raccourcis clavier, dépôt GitHub, Nouveautés, Rechercher des mises à jour…, À propos d'OpenCue |
 
 ### Barre d'outils (en haut)
 

@@ -4,6 +4,20 @@
 
 All notable changes to OpenCue, newest first. Each entry describes **what you get**, not how it was built. The date is the day the feature was finished. The version number lives in `app/version.py`; every release gets a `vMAJOR.MINOR.PATCH` tag. The format follows [Keep a Changelog](https://keepachangelog.com/).
 
+## v2.1.1 – 2026-11-22
+
+OpenCue 2.1.1 makes updating and restarting smoother.
+
+### Changed
+
+- **Update window:** the release notes are shown properly formatted (headings, lists, bold) instead of as plain text.
+- **"What's new" is now its own window** instead of a guide. After an update it opens once and lists the new features of every version you skipped, in your language; you can open it again any time from *Help → What's new*. The old *What's new* guide was removed.
+- **Settings search:** the search box is wider and its suggestions are no longer cut off.
+
+### Fixed
+
+- **Restarting right after closing:** if you start OpenCue again while the old one is still shutting down, it now waits for it and starts normally instead of reporting that it is already running. If the old one really does not finish, the message now says it may still be closing.
+
 ## v2.1.0 – 2026-11-22
 
 OpenCue 2.1.0 adds a panel for chatting and taking notes with all the devices connected to your console.

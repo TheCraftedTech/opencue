@@ -1968,7 +1968,7 @@ html.oc-fs-active body { overflow: hidden; }
 
 /* ================================================================== Einstellungen: grosser Dialog
  * Wie der Dateimanager gross und ruhig: breite Seitenleiste, die Seiten haben eine feste, gut lesbare Breite (die Zeilen laufen nicht ueber den ganzen Dialog). */
-.modal--settings .settings-modal__sidebar { flex: 0 0 14rem; padding: var(--sp-4) var(--sp-3); gap: var(--sp-1); }
+.modal--settings .settings-modal__sidebar { flex: 0 0 18rem; padding: var(--sp-4) var(--sp-3); gap: var(--sp-1); }
 .modal--settings .settings-modal__category { font-size: var(--fs-md); }
 .modal--settings .settings-modal__content { padding: 0; }
 .modal--settings .settings-modal__pane { padding: var(--sp-6) var(--sp-7, 2rem); max-width: 58rem; }
@@ -2028,7 +2028,11 @@ html.oc-fs-active body { overflow: hidden; }
 .update { display: flex; flex-direction: column; gap: 0.8rem; }
 .update__headline { margin: 0; font-size: 1.1rem; font-weight: 700; }
 .update__sub { margin: 0; color: var(--secondary-text); }
-.update__notes { margin: 0; padding: 0.7rem; max-height: 14rem; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; background: var(--bg-color); border: 1px solid var(--border-color); border-radius: var(--base-radius, 3px); font: 0.8rem/1.45 ui-monospace, Consolas, monospace; user-select: text; }
+.update__notes { margin: 0; padding: 0.2rem 0.9rem 0.6rem; max-height: 20rem; overflow: auto; overflow-wrap: anywhere; background: var(--bg-color); border: 1px solid var(--border-color); border-radius: var(--base-radius, 3px); }
+.update__notes.hv-md { max-width: none; margin: 0; font-size: 0.88rem; line-height: 1.5; }
+.update__notes.hv-md h2 { margin: 1rem 0 0.4rem; font-size: 1.05rem; }
+.update__notes.hv-md h3 { margin: 1rem 0 0.35rem; font-size: 0.98rem; }
+.update__notes.hv-md > :first-child { margin-top: 0.6rem; }
 .update__notes[hidden], .update__progress[hidden], .update__error[hidden], .update__headline[hidden], .update__sub[hidden] { display: none; }
 .update__progress { display: flex; flex-direction: column; gap: 0.35rem; }
 .update__bar { height: 0.7rem; border: 1px solid var(--border-color); border-radius: var(--base-radius, 3px); overflow: hidden; background: var(--bg-color); }
@@ -3086,12 +3090,12 @@ html.tb-off-undogo #toolbar-undo-go { display: none !important; }
 .sh-toggle { flex: none; width: var(--control-md); height: var(--control-md); min-height: 0; padding: 0; display: inline-flex; align-items: center; justify-content: center; background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text-2); cursor: pointer; }
 .sh-toggle svg { width: 1.1rem; height: 1.1rem; }
 .sh-toggle--on { color: var(--accent); border-color: var(--accent); }
-.sh-results { position: absolute; z-index: 20; top: calc(100% + 4px); left: 0; width: min(24rem, 60vw); max-height: 60vh; overflow-y: auto; display: flex; flex-direction: column;
+.sh-results { position: absolute; z-index: 20; top: calc(100% + 4px); left: 0; width: min(32rem, 70vw); max-height: 60vh; overflow-y: auto; display: flex; flex-direction: column;
   background: var(--surface-1); border: 1px solid var(--border-strong); border-radius: var(--radius-md); box-shadow: var(--shadow-2); }
 .sh-results[hidden] { display: none; }
 .sh-result { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; padding: var(--sp-2) var(--sp-3); background: none; border: 0; border-bottom: 1px solid var(--border); color: var(--text-1); text-align: left; cursor: pointer; }
 .sh-result:hover, .sh-result:focus-visible { background: var(--surface-2); }
-.sh-result__name { font-size: var(--fs-sm); font-weight: 600; }
+.sh-result__name { font-size: var(--fs-sm); font-weight: 600; overflow-wrap: anywhere; }
 .sh-result__where { font-size: var(--fs-xs); color: var(--text-3); }
 .sh-result__more { padding: var(--sp-2) var(--sp-3); font-size: var(--fs-xs); color: var(--text-3); }
 .sh-flash { animation: sh-flash 1.8s ease-out; }
@@ -3122,3 +3126,22 @@ html.tb-off-undogo #toolbar-undo-go { display: none !important; }
 .voice-model__bar { width: 100%; height: 0.6rem; accent-color: var(--accent); }
 .voice-model__err { color: var(--error); }
 .voice-model .modal__button { align-self: flex-start; min-width: 12rem; }
+
+/* ---- Fenster "Was ist neu" (static/js/whatsnew.js) ------------------------------------------------------------------ */
+.wn { display: flex; flex-direction: column; gap: 1.1rem; max-height: 62vh; overflow-y: auto; }
+.wn__release { display: flex; flex-direction: column; gap: 0.55rem; }
+.wn__head { display: flex; align-items: baseline; flex-wrap: wrap; gap: 0.2rem 0.7rem; padding-bottom: 0.35rem; border-bottom: 1px solid var(--border); }
+.wn__version { margin: 0; font-size: 1.05rem; }
+.wn__tag { color: var(--accent); font-weight: 600; font-size: 0.85rem; }
+.wn__date { margin-left: auto; color: var(--text-3); font-size: 0.78rem; font-variant-numeric: tabular-nums; }
+.wn__list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.6rem; }
+.wn__item { display: flex; gap: 0.8rem; align-items: flex-start; }
+.wn__icon { flex: 0 0 auto; width: 2rem; height: 2rem; display: inline-flex; align-items: center; justify-content: center; color: var(--accent); background: var(--accent-soft); border-radius: var(--radius-sm); }
+.wn__icon svg { width: 1.15rem; height: 1.15rem; }
+.wn__text { display: flex; flex-direction: column; gap: 0.1rem; min-width: 0; }
+.wn__text strong { font-size: 0.92rem; }
+.wn__text span { color: var(--text-2); font-size: 0.85rem; line-height: 1.45; }
+.wn__more > summary { cursor: pointer; color: var(--text-2); padding: 0.4rem 0; }
+.wn__more[open] > summary { margin-bottom: 0.6rem; }
+.wn__more > .wn__release { margin-top: 0.9rem; }
+.wn__empty { color: var(--text-2); }

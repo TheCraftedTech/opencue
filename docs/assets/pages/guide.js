@@ -16,7 +16,6 @@
   // reading order = order of the cards on the docs overview: [folder, text key, English title]
   var ORDER = [
     ["getting-started", "guide.start.t", "Getting started"],
-    ["whatsnew", "guide.whatsnew.t", "What's new"],
     ["commands", "guide.cmd.t", "Command reference"],
     ["keyboard-shortcuts", "guide.keys.t", "Keyboard shortcuts"],
     ["fixtures", "guide.fix.t", "Fixtures and patching"],

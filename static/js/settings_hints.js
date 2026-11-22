@@ -108,6 +108,18 @@
   }
 
   let list = null;
+  /** Die Vorschlagsliste liegt fest ueber dem Dialog (nicht in der scrollenden Seitenleiste): sonst schneidet diese sie ab. Breiter als das Suchfeld, aber im Fenster. */
+  function placeList() {
+    const box = input.closest(".settings-modal__search").getBoundingClientRect();
+    const rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+    const width = Math.max(box.width, Math.min(32 * rem, window.innerWidth - box.left - 16));
+    list.style.position = "fixed";
+    list.style.left = Math.max(8, Math.min(box.left, window.innerWidth - width - 8)) + "px";
+    list.style.top = (box.bottom + 4) + "px";
+    list.style.width = width + "px";
+    list.style.maxHeight = Math.max(160, window.innerHeight - box.bottom - 24) + "px";
+  }
+  window.addEventListener("resize", () => { if (list && !list.hidden) placeList(); });
   function renderList() {
     if (!root || !input) return;
     if (!list) {
@@ -117,6 +129,7 @@
     list.textContent = "";
     const items = results();
     list.hidden = !items.length || !words().length;
+    if (!list.hidden) placeList();
     items.slice(0, 14).forEach((r) => {
       const b = el("button", "sh-result"); b.type = "button";
       b.append(el("span", "sh-result__name", r.name), el("span", "sh-result__where", r.where || t("SET_HINTS_CATEGORY", "Category")));

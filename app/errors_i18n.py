@@ -30,11 +30,11 @@ UI: Dict[str, Dict[str, str]] = {
 # Fehlercodes mit Fenster (1xxx, 2xxx): code -> sprache -> (Titel, Text). Platzhalter wie im englischen Katalog ({port}).
 CODES: Dict[str, Dict[str, Tuple[str, str]]] = {
     "OC-1001": {
-        "de": ("OpenCue läuft bereits", "Auf diesem Computer kann nur ein OpenCue gleichzeitig laufen. Das bereits geöffnete Fenster wurde in den Vordergrund geholt."),
-        "fr": ("OpenCue est déjà en cours d'exécution", "Une seule instance d'OpenCue peut fonctionner à la fois sur cet ordinateur. La fenêtre déjà ouverte a été amenée au premier plan."),
-        "nl": ("OpenCue draait al", "Op deze computer kan maar één OpenCue tegelijk draaien. Het al geopende venster is naar voren gehaald."),
-        "it": ("OpenCue è già in esecuzione", "Su questo computer può essere in esecuzione un solo OpenCue alla volta. La finestra già aperta è stata portata in primo piano."),
-        "es": ("OpenCue ya se está ejecutando", "En este ordenador solo puede ejecutarse un OpenCue a la vez. La ventana que ya estaba abierta se ha traído al primer plano."),
+        "de": ("OpenCue läuft bereits", "Auf diesem Computer kann nur ein OpenCue gleichzeitig laufen. Ein geöffnetes Fenster wurde in den Vordergrund geholt. Falls Sie OpenCue gerade erst geschlossen haben, beendet es sich vielleicht noch: Warten Sie ein paar Sekunden und starten Sie es erneut."),
+        "fr": ("OpenCue est déjà en cours d'exécution", "Une seule instance d'OpenCue peut fonctionner à la fois sur cet ordinateur. Une fenêtre ouverte a été amenée au premier plan. Si vous venez de fermer OpenCue, il est peut-être encore en train de se terminer : attendez quelques secondes et relancez-le."),
+        "nl": ("OpenCue draait al", "Op deze computer kan maar één OpenCue tegelijk draaien. Een geopend venster is naar voren gehaald. Hebt u OpenCue net gesloten, dan is het misschien nog bezig met afsluiten: wacht een paar seconden en start het opnieuw."),
+        "it": ("OpenCue è già in esecuzione", "Su questo computer può essere in esecuzione un solo OpenCue alla volta. Una finestra aperta è stata portata in primo piano. Se hai appena chiuso OpenCue, potrebbe essere ancora in chiusura: attendi qualche secondo e riavvialo."),
+        "es": ("OpenCue ya se está ejecutando", "En este ordenador solo puede ejecutarse un OpenCue a la vez. Se ha traído al primer plano una ventana abierta. Si acabas de cerrar OpenCue, quizá aún se esté cerrando: espera unos segundos y vuelve a iniciarlo."),
     },
     "OC-1002": {
         "de": ("Netzwerk-Port {port} wird bereits verwendet",

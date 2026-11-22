@@ -51,6 +51,7 @@ OpenCue comprueba estas cosas **antes** de que arranque cualquier otra. La venta
 - ¿Acaba de cerrar OpenCue y aun así recibe esto? Puede necesitar unos segundos para cerrarse. Espere un momento y vuelva a iniciarlo.
 - ¿No se ve nada en absoluto? Abra el **Administrador de tareas**, busque `OpenCue` (o `python`/`pythonw` si se inició desde el código fuente) y finalice el proceso sobrante.
 - Avanzado: para un segundo OpenCue separado (por ejemplo para pruebas) ponga la variable de entorno `OPENCUE_DATA_DIR` en otra carpeta **y** déle otro puerto en su `app_config.json` (véase OC-1002).
+- **Reinicio justo después de cerrar:** OpenCue ahora espera (hasta unos 25 segundos) a que el anterior termine de cerrarse y luego arranca solo. Solo verás este mensaje si el anterior no termina.
 
 ### OC-1002 – El puerto de red ya está en uso
 
