@@ -1,0 +1,67 @@
+[
+ {
+  "id": "chat-001",
+  "page": "chat",
+  "path": [
+   "Chat e note"
+  ],
+  "title": "Chat e note",
+  "keywords": [],
+  "text": "Il pannello **Chat e note** è un piccolo messenger e un taccuino insieme. Puoi **chattare con gli altri dispositivi** collegati a OpenCue – la console, un iPad, un telefono – e tenere **note e liste di controllo** per lo spettacolo: un elenco di cose da fare prima dell'apertura delle porte, un promemoria sul patch, il programma del bis.\n\nTutto viene salvato **sul server** (il computer su cui gira OpenCue). Ogni dispositivo vede le stesse chat e le stesse note, e domani sono ancora lì."
+ },
+ {
+  "id": "chat-002",
+  "page": "chat",
+  "path": [
+   "Chat e note",
+   "1. Aprire il pannello"
+  ],
+  "title": "1. Aprire il pannello",
+  "keywords": [],
+  "text": "*Modifica → **Aggiungi pannello** → Palco e assistente → **Chat e note*** (su un tablet allo stesso modo). Puoi aggiungere il pannello più volte e disporli liberamente; tutti mostrano le stesse chat e note.\n\nA sinistra c'è l'**elenco** di chat e note. Il primo pulsante nell'intestazione lo nasconde; in un pannello stretto scorre sopra il contenuto. Il pulsante **+** crea una **nuova chat** o una **nuova nota**. Sotto l'elenco vedi **il tuo nome**."
+ },
+ {
+  "id": "chat-003",
+  "page": "chat",
+  "path": [
+   "Chat e note",
+   "2. Chattare con altri dispositivi"
+  ],
+  "title": "2. Chattare con altri dispositivi",
+  "keywords": [],
+  "text": "- Clicca su una chat, scrivi, invia con **Invio** – **Maiusc + Invio** va a capo.\n- Ogni messaggio mostra chi l'ha scritto e quando. I tuoi messaggi sono a destra.\n- **Il tuo nome** (in basso a sinistra, clicca per cambiarlo) si sceglie per dispositivo, ad esempio «Mixer» o «iPad palco». Viene ricordato su quel dispositivo. Finché non ne scegli uno, la console si chiama «Console» e un tablet «Remoto» con un numero.\n- I nuovi messaggi compaiono **subito** su ogni dispositivo. Se la chat non è aperta su un dispositivo, nell'elenco appare un piccolo **punto** e un breve avviso.\n- Mentre qualcuno scrive, sotto i messaggi vedi **«Nome sta scrivendo»**. In una nota compare **«Nome sta modificando la nota»** finché qualcun altro ci lavora.\n- Passa il mouse su un messaggio (su un touchscreen i pulsanti sono sempre visibili) per **Copia** ed **Elimina**. Eliminare rimuove il messaggio su tutti i dispositivi.\n- Doppio clic sul titolo (o la matita) per **rinominare** una chat; il cestino elimina l'intera chat dopo conferma.\n- **Grassetto**, *corsivo*, `codice`, ++sottolineato++ e link funzionano nei messaggi come nelle note (sezione 4)."
+ },
+ {
+  "id": "chat-004",
+  "page": "chat",
+  "path": [
+   "Chat e note",
+   "3. Note e liste di controllo"
+  ],
+  "title": "3. Note e liste di controllo",
+  "keywords": [],
+  "text": "Una nota è un testo scritto in **Markdown** – ma non devi conoscere il Markdown: ci pensa la **barra degli strumenti**.\n\n| Pulsante | Cosa fa |\n|---|---|\n| **B**, *I*, U, S | grassetto, corsivo, sottolineato, barrato (anche **Ctrl+B / I / U**) |\n| H | titolo – clicca ancora per uno più piccolo |\n| pulsanti elenco | elenco puntato, elenco numerato, **lista di controllo**, citazione, codice |\n\n- **Modifica / Anteprima** (in alto a destra): *Anteprima* mostra la nota formattata. Nell'anteprima puoi **spuntare direttamente le caselle** – ideale per una lista da seguire durante lo spettacolo. Un doppio clic nell'anteprima avvia la modifica.\n- **Invio** in un elenco lo continua con la voce successiva; **Invio** su una voce vuota termina l'elenco. **Tab / Maiusc + Tab** rientrano o fanno uscire le voci.\n- Nell'elenco una nota mostra quante attività sono completate, ad esempio «3/5».\n- Le note vengono **salvate automaticamente** poco dopo che smetti di scrivere («Salvato» accanto ai pulsanti)."
+ },
+ {
+  "id": "chat-005",
+  "page": "chat",
+  "path": [
+   "Chat e note",
+   "4. Markdown in breve"
+  ],
+  "title": "4. Markdown in breve",
+  "keywords": [],
+  "text": "| Scrivi | Ottieni |\n|---|---|\n| `**grassetto**` | **grassetto** |\n| `*corsivo*` | *corsivo* |\n| `++sottolineato++` | sottolineato |\n| `~~barrato~~` | barrato |\n| `# Titolo`, `## Più piccolo` | titoli |\n| `- voce` | elenco puntato (rientra di due spazi per un sotto-elenco) |\n| `1. voce` | elenco numerato |\n| `- [ ] attività` / `- [x] fatto` | casella |\n| `> citazione` | citazione |\n| `` `codice` `` | codice |\n| `---` | linea orizzontale |\n| `[testo](https://...)` | link |"
+ },
+ {
+  "id": "chat-006",
+  "page": "chat",
+  "path": [
+   "Chat e note",
+   "5. Da sapere"
+  ],
+  "title": "5. Da sapere",
+  "keywords": [],
+  "text": "- Chat e note appartengono al **programma, non a uno spettacolo**: restano quando carichi un altro spettacolo.\n- Sono file nella cartella dei dati (`notebook`); copia la cartella per portarli su un altro computer.\n- **Più persone nella stessa nota:** vale l'ultimo salvataggio. Se due persone scrivono nello stesso momento, compare un avviso. Usate note separate o a turno.\n- Limiti: 300 chat e note, 4000 caratteri per messaggio, 100 000 per nota; di una chat restano gli ultimi 5000 messaggi.\n- Chiunque sia collegato a OpenCue può leggere e scrivere tutto – la chat **non è privata**. Non scriverci password.\n- Nulla lascia la tua rete."
+ }
+]

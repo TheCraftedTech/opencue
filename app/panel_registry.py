@@ -32,7 +32,7 @@ PANEL_META = {
     "command_line": ("input", "terminal"), "command_numpad": ("input", "keypad"), "command_buttons": ("input", "keys"),
     "button": ("input", "button"), "fader": ("input", "fader"), "toggle": ("input", "toggle"),
     "sim3d": ("other", "cube"), "simple": ("input", "joystick"),
-    "timecode": ("media", "clock"), "timeline": ("media", "timeline"), "media_player": ("media", "film"), "stream": ("media", "camera"), "audio": ("media", "audio"), "assistant": ("other", "chat"),
+    "timecode": ("media", "clock"), "timeline": ("media", "timeline"), "media_player": ("media", "film"), "stream": ("media", "camera"), "audio": ("media", "audio"), "assistant": ("other", "chat"), "chat": ("other", "notes"),
 }
 
 
@@ -527,6 +527,19 @@ class AssistantPanel(BasePanel):
         return {}
 
 
+class ChatPanel(BasePanel):
+    """Chat und Notizen (app/notebook.py, static/js/chat_panel.js): Unterhaltungen zwischen den verbundenen Geraeten (Konsole, iPad ...) und Notizen / Checklisten
+    in Markdown. Alles liegt als Dateien auf dem Server und gehoert nicht zum Panel; jedes Chat-Panel auf jedem Geraet zeigt dieselben Eintraege."""
+    panel_type = "chat"
+    panel_name = "PANEL_CHAT"
+    default_width = 42.0
+    default_height = 62.0
+
+    @property
+    def default_module_config(self) -> Dict[str, Any]:
+        return {}
+
+
 class MediaPlayerPanel(BasePanel):
     """Video-/Audio-Player. Das Medium gehoert zur Show (siehe app/media_store.py), das Panel verweist nur darauf.
     sync "timecode": laeuft synchron zum globalen Timecode (ab tc_start_ms); sync "free": normaler Player mit eigenen Bedienelementen."""
@@ -631,6 +644,7 @@ PanelRegistry.register(TogglePanel)
 PanelRegistry.register(TimecodePanel)
 PanelRegistry.register(AudioPanel)
 PanelRegistry.register(AssistantPanel)
+PanelRegistry.register(ChatPanel)
 PanelRegistry.register(MediaPlayerPanel)
 PanelRegistry.register(StreamPanel)
 PanelRegistry.register(Sim3DPanel)

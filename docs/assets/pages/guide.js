@@ -31,6 +31,7 @@
     ["dmx-input", "guide.dmx-input.t", "DMX input (receive Art-Net and sACN)"],
     ["voice-commands", "guide.voice-commands.t", "Voice commands"],
     ["assistant", "guide.assistant.t", "AI assistant"],
+    ["chat", "guide.chat.t", "Chat and notes"],
     ["show-safety", "guide.show-safety.t", "Backups, locks and quitting safely"],
     ["startup-options", "guide.startup-options.t", "Startup options and server mode"],
     ["error-codes", "guide.error-codes.t", "Error codes and troubleshooting"]

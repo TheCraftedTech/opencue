@@ -524,6 +524,7 @@ def login_page() -> str:
   input, button {{ font: inherit; font-size: 1rem; min-height: 3rem; box-sizing: border-box;
     border-radius: var(--radius-sm); border: 1px solid var(--border); padding: 0 var(--sp-4); }}
   input {{ background: var(--surface-2); color: var(--text-1); }}
+  input[type="password"] {{ font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }}   /* Systemschrift: Punkte statt Striche */
   input:focus-visible {{ outline: 2px solid var(--accent); outline-offset: 1px; border-color: var(--accent); }}
   button {{ background: var(--accent); border-color: var(--accent); color: var(--accent-ink);
     font-weight: 600; cursor: pointer; }}

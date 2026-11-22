@@ -4,6 +4,22 @@
 
 All notable changes to OpenCue, newest first. Each entry describes **what you get**, not how it was built. The date is the day the feature was finished. The version number lives in `app/version.py`; every release gets a `vMAJOR.MINOR.PATCH` tag. The format follows [Keep a Changelog](https://keepachangelog.com/).
 
+## v2.1.0 – 2026-11-22
+
+OpenCue 2.1.0 adds a panel for chatting and taking notes with all the devices connected to your console.
+
+### Added
+
+- **New panel "Chat & Notes":** a messenger and a notebook in one, saved on the server so every device sees the same content.
+  - **Chat** between the console, iPads and phones: every message shows who wrote it and when, new messages appear at once everywhere, you see "Name is typing" while someone writes, an unread dot and a short pop-up tell you about new messages in a chat that is not open, and every device chooses its own name. Several chats can exist side by side; chats can be renamed and deleted, single messages can be copied or deleted.
+  - **Notes and checklists** in Markdown with a toolbar (bold, italic, underline, strikethrough, heading, bulleted and numbered lists, checkboxes, quote, code). In the finished view you tick checkboxes directly; Enter continues a list; notes save themselves, and you see who else is editing.
+  - Chats and notes belong to the program, not to a show: they stay when you load another show. They are files in the data folder (`notebook`). New guide *Chat and notes*.
+
+### Fixed
+
+- Long sub-menus (*View → Open Panel as Window*, *Edit → Add Panel*) are no longer cut off at the bottom on large GUI scales or small screens; they scroll.
+- Password fields show dots instead of dashes on some devices.
+
 ## v2.0.0 – 2026-11-21
 
 OpenCue roughly tripled in features since v1.0.0. The big ones:

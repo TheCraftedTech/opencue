@@ -1432,8 +1432,31 @@ function setupMenuBar() {
       document.querySelectorAll("[data-submenu]").forEach((el) => {
         el.classList.remove("menu__item--submenu-open");
       });
-      if (!isOpen) item.classList.add("menu__item--submenu-open");
+      if (!isOpen) {
+        item.classList.add("menu__item--submenu-open");
+        requestAnimationFrame(() => fitSubmenu(item));
+      }
     });
+    item.addEventListener("pointerenter", (event) => { if (event.pointerType === "mouse") fitSubmenu(item); });
+  });
+
+  // Ein Untermenue, das laenger ist als der Platz unter seiner Zeile (grosse UI-Skalierung, iPad, viele Panels), wird nach oben geschoben und - wenn es auch dann
+  // nicht passt - scrollbar; sonst waere der Rest abgeschnitten und nicht erreichbar. Zu weit rechts: Aufklappen nach links.
+  const fitSubmenu = (item) => {
+    const sub = item.querySelector(":scope > .menu__submenu");
+    if (!sub) return;
+    sub.style.top = ""; sub.style.left = ""; sub.style.right = ""; sub.style.maxHeight = ""; sub.style.overflowY = "";
+    const margin = 8;
+    const room = window.innerHeight - 2 * margin;
+    const row = item.getBoundingClientRect();
+    let height = sub.offsetHeight;
+    if (height > room) { sub.style.maxHeight = room + "px"; sub.style.overflowY = "auto"; height = room; }
+    const wanted = Math.max(margin, Math.min(row.top, window.innerHeight - height - margin));
+    if (Math.abs(wanted - row.top) > 1) sub.style.top = (wanted - row.top) + "px";
+    if (row.right + sub.offsetWidth + margin > window.innerWidth) { sub.style.left = "auto"; sub.style.right = "calc(100% + 2px)"; }
+  };
+  window.addEventListener("resize", () => {
+    document.querySelectorAll("[data-submenu].menu__item--submenu-open").forEach(fitSubmenu);
   });
 
   // View -> Add Panel -> <type>: create a new panel of that type. Delegated

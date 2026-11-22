@@ -1,0 +1,67 @@
+[
+ {
+  "id": "chat-001",
+  "page": "chat",
+  "path": [
+   "Chat and notes"
+  ],
+  "title": "Chat and notes",
+  "keywords": [],
+  "text": "The **Chat & Notes** panel is a small messenger and a notebook in one. You can **chat with the other devices** connected to OpenCue - the console, an iPad, a phone - and you can keep **notes and checklists** for the show: a to-do list before the doors open, a memo about the patch, the plan for the encore.\n\nEverything is saved **on the server** (the computer that runs OpenCue). Every device sees the same chats and notes, and they are still there tomorrow."
+ },
+ {
+  "id": "chat-002",
+  "page": "chat",
+  "path": [
+   "Chat and notes",
+   "1. Open the panel"
+  ],
+  "title": "1. Open the panel",
+  "keywords": [],
+  "text": "*Edit → **Add Panel** → Stage and assistant → **Chat & Notes*** (on a tablet the same way). You can add the panel several times and arrange them freely; all of them show the same chats and notes.\n\nOn the left is the **list** of chats and notes. The first button in the header hides it; in a narrow panel it slides over the content. The **+** button creates a **new chat** or a **new note**. Below the list you see **your name**."
+ },
+ {
+  "id": "chat-003",
+  "page": "chat",
+  "path": [
+   "Chat and notes",
+   "2. Chat with other devices"
+  ],
+  "title": "2. Chat with other devices",
+  "keywords": [],
+  "text": "- Click a chat, type, press **Enter** to send - **Shift + Enter** starts a new line.\n- Every message shows who wrote it and when. Your own messages are on the right.\n- **Your name** (bottom left, click to change) is chosen per device, for example \"Front of house\" or \"Stage iPad\". It is remembered on that device. Until you choose one, the console is called \"Console\" and a tablet \"Remote\" plus a number.\n- New messages appear **immediately** on every device. If the chat is not open on a device, a small **dot** appears in the list and a short message pops up.\n- While someone is writing, you see **“Name is typing”** under the messages. In a note you see **“Name is editing”** while someone else works in it.\n- Hover over a message (on a touch screen the buttons are always visible) for **Copy** and **Delete**. Deleting removes the message on all devices.\n- Double-click the title (or use the pencil) to **rename** a chat; the bin deletes the whole chat after asking.\n- **Bold**, *italic*, `code`, ++underline++ and links work in messages as in notes (section 4)."
+ },
+ {
+  "id": "chat-004",
+  "page": "chat",
+  "path": [
+   "Chat and notes",
+   "3. Notes and checklists"
+  ],
+  "title": "3. Notes and checklists",
+  "keywords": [],
+  "text": "A note is a text written in **Markdown** - but you do not need to know Markdown: the **toolbar** does it for you.\n\n| Button | What it does |\n|---|---|\n| **B**, *I*, U, S | bold, italic, underlined, struck through (also **Ctrl+B / I / U**) |\n| H | heading - click again for a smaller one |\n| list buttons | bulleted list, numbered list, **checklist**, quote, code |\n\n- **Edit / View** (top right): *View* shows the finished note. In the view you can **tick checkboxes directly** - ideal for a checklist you work through during the show. A double-click in the view starts editing.\n- **Enter** in a list continues it with the next item; **Enter** on an empty item ends the list. **Tab / Shift + Tab** indent items.\n- In the list a note shows how many tasks are done, for example \"3/5\".\n- Notes are **saved automatically** a moment after you stop typing (\"Saved\" next to the buttons)."
+ },
+ {
+  "id": "chat-005",
+  "page": "chat",
+  "path": [
+   "Chat and notes",
+   "4. Markdown cheat sheet"
+  ],
+  "title": "4. Markdown cheat sheet",
+  "keywords": [],
+  "text": "| You type | You get |\n|---|---|\n| `**bold**` | **bold** |\n| `*italic*` | *italic* |\n| `++underlined++` | underlined |\n| `~~struck~~` | struck through |\n| `# Heading`, `## Smaller` | headings |\n| `- item` | bulleted list (indent by two spaces for a sub-list) |\n| `1. item` | numbered list |\n| `- [ ] task` / `- [x] done` | checkbox |\n| `> quote` | quote |\n| `` `code` `` | code |\n| `---` | horizontal line |\n| `[text](https://...)` | link |"
+ },
+ {
+  "id": "chat-006",
+  "page": "chat",
+  "path": [
+   "Chat and notes",
+   "5. Good to know"
+  ],
+  "title": "5. Good to know",
+  "keywords": [],
+  "text": "- Chats and notes belong to the **program, not to a show**: they stay when you load another show.\n- They are files in the data folder (`notebook`); copy the folder to move them to another computer.\n- **Several people in the same note:** the last save wins. If two people type at the same moment, a message tells you. Use separate notes or take turns.\n- Limits: 300 chats and notes, 4000 characters per message, 100 000 per note; of a chat the last 5000 messages are kept.\n- Everyone connected to OpenCue can read and write everything - the chat is **not private**. Do not put passwords into it.\n- Nothing leaves your network."
+ }
+]

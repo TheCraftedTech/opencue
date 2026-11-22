@@ -106,6 +106,7 @@ from app import api_v1
 from app.ai import routes as ai_routes
 from app.ai import AiError as _AiError, assistant as ai_assistant
 from app import audio_routes
+from app import notebook as notebook_mod
 from app.audio_engine import audio_engine
 from app import defaults_seed
 from app import updater
@@ -1570,6 +1571,7 @@ app.include_router(osc_mod.router)            # OSC: Empfangen und Senden (/api/
 app.include_router(artnet_discovery.router)    # Art-Net-Geraete suchen (/api/artnet/nodes)
 app.include_router(backups.router)             # Sicherungen im Hintergrund, Wiederherstellung (/api/backups)
 app.include_router(audio_routes.router)          # Audio-Panel: Geraete, Quelle, Einstellungen (/api/audio)
+app.include_router(notebook_mod.router)          # Chat und Notizen (/api/notebook); Aenderungen gehen als WebSocket-Nachricht notebook_event an alle Geraete
 app.include_router(ai_routes.router)             # KI-Assistent: Einstellungen, Modelle, Chats (/api/ai); Senden und Antwort laufen ueber den WebSocket
 api_v1.install(app)          # REST-API /api/v1 (Token-Anmeldung) und Token-Verwaltung /api/apikeys (nur Konsole)
 @app.get("/api/effects")
