@@ -37,7 +37,7 @@
    "Visualisierung",
    "3D-Panel"
   ],
-  "text": "- Drei Modi oben links: **Ansicht**, **Bauen** (Objekte und 3D-Modelle) und **Scheinwerfer** (Scheinwerfer platzieren, Moving Heads anleuchten).\n- Knöpfe oben rechts: VR-Brille (nur wenn der Browser eine anbietet), Kamera zwischen Geräten teilen, **Raum & Licht** (Zahnrad), **3D-Simulation anhalten / starten**, **Blackout** (Glühbirne), **Ansicht zurücksetzen**, **Vollbild**.\n- Unten links: der Qualitätsknopf zeigt Bildrate und Auflösung; ein Klick schaltet Auto → Niedrig → Mittel → Hoch um."
+  "text": "- Drei Modi oben links: **Ansicht**, **Bauen** (Objekte und 3D-Modelle) und **Scheinwerfer** (Scheinwerfer platzieren, Moving Heads anleuchten).\n- Knöpfe oben rechts: VR-Brille (nur wenn der Browser eine anbietet), Kamera zwischen Geräten teilen, **Raum & Licht** (Zahnrad), **3D-Simulation anhalten / starten**, **Blackout** (Glühbirne), **Ansicht zurücksetzen**, **Vollbild**.\n- Unten links: der Qualitätsknopf zeigt Bildrate und Auflösung; ein Klick schaltet Auto → Niedrig → Mittel → Hoch um.\n- **Planungslicht im Editor:** In den Modi **Bauen** und **Scheinwerfer** leuchten die Scheinwerfer nicht und es gibt keinen Nebel – das Arbeitslicht macht den Raum gleichmäßig hell, und die Anzeige bleibt flüssig. Im Modus *Scheinwerfer* sind sie rot markiert, damit du siehst, wo sie hängen. In der **Ansicht** bleibt alles wie gewohnt. Abschalten: *Raum & Licht → Scheinwerfer im Editor dunkel* (gilt nur für dieses Gerät).\n- **Schärfe im Stand:** Ruht das Bild (Kamera still, nichts ändert sich, kein Live-Licht bewegt sich), zeichnet OpenCue es einmal in höherer Auflösung neu; jede Bewegung oder Änderung schaltet sofort zurück. Wie hoch es geht, richtet sich nach der Grafikkarte (schwächere Karten bekommen weniger Zuschlag, die Einstellung *Niedrig* schaltet es ab). Bei laufendem Live-Licht bleibt es bei der normalen Auflösung.\n- **3D in eigenem Fenster:** Der Knopf *3D in eigenem Fenster* (oben rechts im 3D-Panel, nur auf dem Konsolen-Rechner) öffnet die 3D-Simulation in einem **eigenen Fenster mit eigenem Prozess**. Die Konsole läuft dann ohne 3D-Last (Fader und Listen bleiben flüssig, auch wenn die 3D-Ansicht viel zu tun hat), und der 3D-Prozess läuft mit **niedrigerer Priorität**: die Konsole hat Vorrang. Das Fenster lässt sich auf einen zweiten Bildschirm ziehen; Lage und Größe werden gemerkt. Im Hauptfenster zeigt das Panel solange einen Platzhalter mit *Fenster nach vorn* und *Hier anzeigen (Fenster schließen)*. Schließt du das Fenster (oder das Programm), kommt die 3D-Ansicht zurück. Alles, was du in der Konsole machst, siehst du im 3D-Fenster live. Die Grafikkarte teilen sich beide Fenster weiterhin.\n- **Anhalten, wenn nichts zu sehen ist:** Ist das Fenster minimiert, auf einem anderen Desktop oder ganz von anderen Fenstern verdeckt, zeichnet die 3D-Ansicht nichts mehr (kein Rechnen, keine Grafikkartenlast); sobald du das Fenster wieder siehst, geht es sofort weiter. Außerdem kannst du die 3D-Ansicht mit dem Pause-Knopf anhalten und wieder starten – auch das **3D-Fenster vom Hauptfenster aus** (Knopf *3D anhalten* / *3D starten* im Platzhalter)."
  },
  {
   "id": "3d-simulation-003",
@@ -135,16 +135,16 @@
    "Visualisierung",
    "3D-Panel"
   ],
-  "text": "| Einstellung | Bedeutung |\n|---|---|\n| **Qualität** | Auto (passt sich der Bildrate an), Niedrig, Mittel, Hoch: Auflösung und Schattendetail. |\n| **Max. Lichter** | Wie viele Scheinwerfer gleichzeitig ein eigenes Licht auf den Flächen bekommen (Vorgabe 32). Die hellsten gewinnen. |\n| **Max. Schatten** | Wie viele dieser Lichter Schatten werfen. 0 = so viele, wie die Grafikkarte erlaubt. |\n| **Max. Spiegelstrahlen** | Spiegelungen auf Metall und Spiegeln. |\n| **Max. einfache Lichtkegel** | Wie viele einfache Lichtkegel gezeichnet werden. 0 = alle. Mit Grenze behält jeder Scheinwerfer zuerst seinen ersten Kegel, dann die hellsten. |\n| **Max. Bildrate** | Begrenzt, wie oft pro Sekunde das Bild neu gezeichnet wird (z. B. 30). 0 = unbegrenzt. |\n| **Scheinwerfer werfen Schatten** | Die Gehäuse der Scheinwerfer werfen Schatten in die Lichtkegel (Vorgabe: ein). |\n\nDie Zeile unter den Einstellungen zeigt, was gerade gilt (Lichter, Schatten, platzierte Scheinwerfer) und was die Grafikkarte erlaubt. **Grenzen zurücksetzen** stellt die Vorgaben wieder her."
+  "text": "| Einstellung | Bedeutung |\n|---|---|\n| **Qualität** | Auto (passt sich der Bildrate an), Niedrig, Mittel, Hoch: Auflösung und Schattendetail. |\n| **Max. Lichter** | Wie viele Scheinwerfer gleichzeitig ein eigenes Licht auf den Flächen bekommen (Vorgabe 32). Die hellsten gewinnen. |\n| **Max. Schatten** | Wie viele dieser Lichter Schatten werfen. 0 = so viele, wie die Grafikkarte erlaubt. |\n| **Max. Spiegelstrahlen** | Spiegelungen auf Metall und Spiegeln. |\n| **Max. einfache Lichtkegel** | Wie viele einfache Lichtkegel gezeichnet werden. 0 = alle. Mit Grenze behält jeder Scheinwerfer zuerst seinen ersten Kegel, dann die hellsten. |\n| **Max. Bildrate** | Begrenzt, wie oft pro Sekunde das Bild neu gezeichnet wird (z. B. 30). 0 = unbegrenzt. |\n| **Scheinwerfer werfen Schatten** | Die Gehäuse der Scheinwerfer werfen Schatten in die Lichtkegel (Vorgabe: ein). |\n| **Scheinwerfer im Editor dunkel** | Im Baumodus und im Scheinwerfer-Modus leuchten die Scheinwerfer nicht (Vorgabe: ein); im Scheinwerfer-Modus sind sie rot markiert. |\n| **Markierung im Scheinwerfer-Modus** | Wie die Scheinwerfer im Modus *Scheinwerfer* markiert werden: *Keine*, *Rote Scheinwerfer* (Vorgabe), *Roter Punkt* oder *Rot und Punkt*. |\n| **VR-Knopf** | Wann der VR-Knopf (Brille) erscheint: *Automatisch* (nur auf VR-Geräten wie Quest, Pico, Vision Pro – nicht am PC oder Laptop), *Immer, wenn möglich* (z. B. PC-VR) oder *Nie*. |"
  },
  {
   "id": "3d-simulation-006",
   "page": "3d-simulation",
   "path": [
    "3D-Simulation",
-   "4. Wenn das Bild nicht wie erwartet aussieht"
+   "3. Raum & Licht"
   ],
-  "title": "4. Wenn das Bild nicht wie erwartet aussieht",
+  "title": "3. Raum & Licht (3)",
   "keywords": [
    "Problem",
    "Fehler",
@@ -189,6 +189,17 @@
    "Visualisierung",
    "3D-Panel"
   ],
+  "text": "Die Zeile unter den Einstellungen zeigt, was gerade gilt (Lichter, Schatten, platzierte Scheinwerfer) und was die Grafikkarte erlaubt. **Grenzen zurücksetzen** stellt die Vorgaben wieder her."
+ },
+ {
+  "id": "3d-simulation-007",
+  "page": "3d-simulation",
+  "path": [
+   "3D-Simulation",
+   "4. Wenn das Bild nicht wie erwartet aussieht"
+  ],
+  "title": "4. Wenn das Bild nicht wie erwartet aussieht",
+  "keywords": [],
   "text": "- **Nicht jeder Scheinwerfer leuchtet die Bühne an, manche haben keinen Schatten, nur manche zeigen ein Gobo.** Das liegt an den Grenzen dieses Geräts. Nur die hellsten *Max. Lichter* Scheinwerfer (Vorgabe 32) beleuchten die Flächen, nur *Max. Schatten* davon werfen Schatten (die Grafikkarte setzt eine Obergrenze, sie steht in der Infozeile), und ein Gobo- oder Prisma-Muster erscheint auf den ersten **3** solchen Lichtern; die anderen zeigen offenes Licht. Erhöhe *Max. Lichter* und *Max. Schatten* (0 = so viele wie möglich), wenn alles angezeigt werden soll – bei vielen Scheinwerfern wird das Bild dann langsamer oder hat etwas Verzögerung.\n- **Ein Scheinwerfer leuchtet, aber sein Kegel fehlt.** Prüfe **Nebel** (0 % = keine Kegel), *Max. einfache Lichtkegel*, Blackout, den Grand Master, den Dimmer des Scheinwerfers und ob die 3D-Simulation angehalten ist.\n- **Das Bild ist dunkel.** Das Arbeitslicht gibt es nur im Baumodus; prüfe den Regler *Belichtung*, Blackout und den Grand Master.\n- **Die 3D-Simulation ist langsam.** Probiere der Reihe nach: Nebel 0 % (wenn du keinen Nebel brauchst), weniger *Max. Lichter* / *Max. Schatten*, *Max. einfache Lichtkegel* (z. B. 200), *Scheinwerfer werfen Schatten* ausschalten, Qualität Niedrig oder Auto, eine *Max. Bildrate* von 30 oder die 3D-Simulation anhalten, solange du sie nicht brauchst. Bühnen mit 100 oder mehr gleichzeitig leuchtenden Scheinwerfern sind anspruchsvoll; bis etwa 16 gleichzeitig leuchtende Scheinwerfer reichen die Vorgaben.\n- **Ein Scheinwerfer bewegt sich in 3D nicht.** Sein Typ braucht ein 3D-Modell mit beweglichem Joch / Kopf und Pan- / Tilt-Kanäle; Typen ohne beides (LED-Panels, Leisten, Blinder) bleiben ruhig. Der Scheinwerfer muss außerdem auf der Bühne platziert sein (Modus Scheinwerfer → *Alle platzieren*).\n- **Ein Lichtkegel zeigt in die falsche Richtung.** OpenCue dreht die Richtung automatisch, wenn eine GDTF-Datei den Strahl ins Gehäuse zeigen lässt. Stimmt ein Gerätetyp trotzdem nicht, notiere seinen Namen und melde ihn dem Entwickler."
  }
 ]

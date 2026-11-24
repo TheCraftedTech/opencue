@@ -140,9 +140,9 @@ export function createRoom(sim, host, tools) {
     const work = mode !== "view" ? state.work / 100 : 0;
     const house = state.house / 100 * 0.6;
     hemi.groundColor.set(work > 0 ? 0xffffff : 0x2c2c2e);                  // Arbeitslicht: oben wie unten gleich hell (kein dunkler Boden-Anteil)
-    hemi.intensity = work * 0.7 + house;
-    sun.intensity = 0.55 * work;
-    fills.forEach((l) => { l.intensity = 0.55 * work; });
+    hemi.intensity = work * 1.05 + house;                                  // Arbeitslicht / Planungslicht: Raum gleichmaessig hell, auch die Waende
+    sun.intensity = 0.75 * work;
+    fills.forEach((l) => { l.intensity = 0.75 * work; });
     sim.renderer.toneMappingExposure = state.exposure / 100;
     sim.setHaze(state.haze / 100, mode !== "view");                                        // Dunst: Dichte und Sichtbarkeit der Lichtkegel
     const boost = INDIRECT_BOOST * state.bounce / 100;
@@ -389,6 +389,39 @@ export function createRoom(sim, host, tools) {
     limitRows[key] = input;
     return row;
   }
+  const darkRow = document.createElement("div");                      // Editor: Scheinwerfer dunkel (Planungslicht statt Scheinwerferlicht)
+  darkRow.className = "sim3d__room-row";
+  const darkLabel = document.createElement("label");
+  darkLabel.textContent = i18n("SIM3D_EDITOR_DARK");
+  darkLabel.title = i18n("SIM3D_EDITOR_DARK_TIP");
+  const darkBox = document.createElement("input");
+  darkBox.type = "checkbox";
+  darkBox.dataset.field = "editorDark";
+  darkBox.addEventListener("change", () => { sim.limits.set("editorDark", darkBox.checked ? 1 : 0); });
+  darkLabel.addEventListener("click", () => darkBox.click());
+  darkRow.append(darkLabel, darkBox);
+  const markRow = document.createElement("div");                      // Scheinwerfer-Modus: wie die Scheinwerfer markiert werden
+  markRow.className = "sim3d__room-row";
+  const markLabel = document.createElement("label");
+  markLabel.textContent = i18n("SIM3D_EDITOR_MARK");
+  markLabel.title = i18n("SIM3D_EDITOR_MARK_TIP");
+  const markSelect = document.createElement("select");
+  markSelect.className = "sim3d__select";
+  markSelect.dataset.field = "editorMark";
+  [[0, "SIM3D_MARK_OFF"], [1, "SIM3D_MARK_BODY"], [2, "SIM3D_MARK_DOT"], [3, "SIM3D_MARK_BOTH"]].forEach(([value, key]) => { const o = document.createElement("option"); o.value = String(value); o.textContent = i18n(key); markSelect.appendChild(o); });
+  markSelect.addEventListener("change", () => { sim.limits.set("editorMark", markSelect.value); });
+  markRow.append(markLabel, markSelect);
+  const vrRow = document.createElement("div");                        // VR-Knopf: nur auf Geraeten, die es nutzen koennen
+  vrRow.className = "sim3d__room-row";
+  const vrLabel = document.createElement("label");
+  vrLabel.textContent = i18n("SIM3D_VR_BUTTON");
+  vrLabel.title = i18n("SIM3D_VR_BUTTON_TIP");
+  const vrSelect = document.createElement("select");
+  vrSelect.className = "sim3d__select";
+  vrSelect.dataset.field = "vrButton";
+  [[0, "SIM3D_VR_BTN_AUTO"], [1, "SIM3D_VR_BTN_ALWAYS"], [2, "SIM3D_VR_BTN_NEVER"]].forEach(([value, key]) => { const o = document.createElement("option"); o.value = String(value); o.textContent = i18n(key); vrSelect.appendChild(o); });
+  vrSelect.addEventListener("change", () => { sim.limits.set("vrButton", vrSelect.value); });
+  vrRow.append(vrLabel, vrSelect);
   const castRow = document.createElement("div");
   castRow.className = "sim3d__room-row";
   const castLabel = document.createElement("label");
@@ -403,6 +436,10 @@ export function createRoom(sim, host, tools) {
   const note = (k) => { const p = document.createElement("p"); p.className = "sim3d__room-hint"; p.textContent = i18n(k); return p; };
   function paintLimits() {
     castBox.checked = sim.limits.values.fixtureShadows !== 0;
+    darkBox.checked = sim.limits.values.editorDark !== 0;
+    markSelect.value = String(sim.limits.values.editorMark);
+    vrSelect.value = String(sim.limits.values.vrButton);
+    markRow.style.display = sim.limits.values.editorDark === 0 ? "none" : "";
     const v = sim.limits.values;
     for (const key of Object.keys(limitRows)) if (document.activeElement !== limitRows[key]) limitRows[key].value = String(v[key]);
     const info = sim.limits.info || {};
@@ -435,6 +472,9 @@ export function createRoom(sim, host, tools) {
     title("SIM3D_SECTION_DEVICE"),
     note("SIM3D_SECTION_DEVICE_HINT"),
     qualityRow,
+    darkRow,
+    markRow,
+    vrRow,
     limitRow("maxLights", "SIM3D_LIMIT_LIGHTS", "SIM3D_LIMIT_LIGHTS_TIP"),
     limitRow("maxShadows", "SIM3D_LIMIT_SHADOWS", "SIM3D_LIMIT_SHADOWS_TIP"),
     limitRow("maxSpecular", "SIM3D_LIMIT_SPECULAR", "SIM3D_LIMIT_SPECULAR_TIP"),
@@ -518,6 +558,7 @@ export function createRoom(sim, host, tools) {
 
   return {
     get work() { return state.work; },
+    get mode() { return mode; },
     get envScale() { return envScale; },
     get ambient() { return ambient; },
     get state() { return { ...state }; },

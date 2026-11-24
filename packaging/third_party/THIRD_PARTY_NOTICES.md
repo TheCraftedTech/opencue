@@ -1,6 +1,6 @@
 # Third-party notices
 
-OpenCue v2.2.0 is free software under the **GNU General Public License v3.0 or later** (see `LICENSE`). Copyright (C) 2026 Samuel Zenker. It ships with and uses the following components; their licence texts are in the `licenses` folder.
+OpenCue v2.3.0 is free software under the **GNU General Public License v3.0 or later** (see `LICENSE`). Copyright (C) 2026 Samuel Zenker. It ships with and uses the following components; their licence texts are in the `licenses` folder.
 
 | Component | Version | Licence | Used for | Homepage |
 |---|---|---|---|---|

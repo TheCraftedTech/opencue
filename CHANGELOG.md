@@ -4,6 +4,25 @@
 
 All notable changes to OpenCue, newest first. Each entry describes **what you get**, not how it was built. The date is the day the feature was finished. The version number lives in `app/version.py`; every release gets a `vMAJOR.MINOR.PATCH` tag. The format follows [Keep a Changelog](https://keepachangelog.com/).
 
+## v2.3.0 – 2026-11-24
+
+OpenCue 2.3.0 brings the **MVR export** (your rig and your 3D stage to Vectorworks, Capture, Depence ...), the **3D simulation in its own window** that keeps the console smooth, a calm **editor mode** for the 3D stage and a sharper picture at rest.
+
+### Added
+
+- **MVR export (stage and fixtures)** (*Library → Export MVR scene…*, also a button in the 3D panel): writes an `.mvr` file from your show. Two switches decide what goes in: **fixtures and patch** (every fixture with position, rotation, GDTF fixture file, mode, universe and address, and fixture number) and the **3D stage** (every stage object as its own `.glb` 3D file with colour and placement). The file is built in the background with a loading animation; once it is ready, **Download** appears. Fixtures that are not placed in the 3D stage can be left out or put at the origin.
+- **3D simulation in its own window.** A button in the 3D panel (on the console computer) opens the 3D simulation in a window of its own, with its own process and a lower priority - ideal for a second screen. The console no longer carries the 3D load: faders and lists stay smooth even while the 3D view is busy (in our measurement the load of the console window dropped from about 80 % to about 14 % of a processor core while fixture brightness changed). The window remembers its position and size. The main window shows a placeholder with *Pause 3D / Start 3D*, *Bring window to front* and *Show here (close window)*; the 3D window can be paused and started from either window.
+- **Calm editor mode for the 3D stage.** In **Build** and **Fixtures** mode the fixtures no longer emit light, cones or haze; an even work light brightens the room and the display is much smoother. In *Fixtures* mode every fixture is shown **red** so you can see where it hangs (setting *Marking in fixtures mode*: none, red fixtures, red dot or both). *Room & light → Fixtures dark in the editor* switches the mode off; the **View** is never affected.
+- **Sharper picture at rest.** When the 3D picture does not move, it is redrawn once in a higher resolution (sharper edges); any movement switches back at once. Weaker graphics cards get a smaller bonus, *Low* quality turns it off.
+- **New setting *VR button*** (*Room & light*, per device): automatic, always or never.
+
+### Changed
+
+- **3D saves power when it cannot be seen.** A minimized window, a window on another desktop or one that is completely covered by other windows stops drawing the 3D view (no computing, no graphics card load) and continues the moment you see it again.
+- **The VR button only appears on devices that can use it** (VR headsets such as Quest, Pico or Vision Pro) - no longer on a PC or laptop that merely reports "VR possible".
+- **Brighter work light** in the 3D editor modes.
+- **Guides** *3D Simulation* and *Fixtures* describe the new functions (all six languages, also for the assistant).
+
 ## v2.2.0 – 2026-11-24
 
 OpenCue 2.2.0 brings the **MVR import** (stage and fixtures from Vectorworks, Capture, Depence ...), a calmer file manager, a faster 3D simulation with new settings and a guide, and fixes the freezing with big shows.

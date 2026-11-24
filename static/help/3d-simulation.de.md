@@ -9,6 +9,10 @@ Das Panel **3D-Simulation** zeigt die Bühne in 3D, jeder Scheinwerfer leuchtet 
 - Drei Modi oben links: **Ansicht**, **Bauen** (Objekte und 3D-Modelle) und **Scheinwerfer** (Scheinwerfer platzieren, Moving Heads anleuchten).
 - Knöpfe oben rechts: VR-Brille (nur wenn der Browser eine anbietet), Kamera zwischen Geräten teilen, **Raum & Licht** (Zahnrad), **3D-Simulation anhalten / starten**, **Blackout** (Glühbirne), **Ansicht zurücksetzen**, **Vollbild**.
 - Unten links: der Qualitätsknopf zeigt Bildrate und Auflösung; ein Klick schaltet Auto → Niedrig → Mittel → Hoch um.
+- **Planungslicht im Editor:** In den Modi **Bauen** und **Scheinwerfer** leuchten die Scheinwerfer nicht und es gibt keinen Nebel – das Arbeitslicht macht den Raum gleichmäßig hell, und die Anzeige bleibt flüssig. Im Modus *Scheinwerfer* sind sie rot markiert, damit du siehst, wo sie hängen. In der **Ansicht** bleibt alles wie gewohnt. Abschalten: *Raum & Licht → Scheinwerfer im Editor dunkel* (gilt nur für dieses Gerät).
+- **Schärfe im Stand:** Ruht das Bild (Kamera still, nichts ändert sich, kein Live-Licht bewegt sich), zeichnet OpenCue es einmal in höherer Auflösung neu; jede Bewegung oder Änderung schaltet sofort zurück. Wie hoch es geht, richtet sich nach der Grafikkarte (schwächere Karten bekommen weniger Zuschlag, die Einstellung *Niedrig* schaltet es ab). Bei laufendem Live-Licht bleibt es bei der normalen Auflösung.
+- **3D in eigenem Fenster:** Der Knopf *3D in eigenem Fenster* (oben rechts im 3D-Panel, nur auf dem Konsolen-Rechner) öffnet die 3D-Simulation in einem **eigenen Fenster mit eigenem Prozess**. Die Konsole läuft dann ohne 3D-Last (Fader und Listen bleiben flüssig, auch wenn die 3D-Ansicht viel zu tun hat), und der 3D-Prozess läuft mit **niedrigerer Priorität**: die Konsole hat Vorrang. Das Fenster lässt sich auf einen zweiten Bildschirm ziehen; Lage und Größe werden gemerkt. Im Hauptfenster zeigt das Panel solange einen Platzhalter mit *Fenster nach vorn* und *Hier anzeigen (Fenster schließen)*. Schließt du das Fenster (oder das Programm), kommt die 3D-Ansicht zurück. Alles, was du in der Konsole machst, siehst du im 3D-Fenster live. Die Grafikkarte teilen sich beide Fenster weiterhin.
+- **Anhalten, wenn nichts zu sehen ist:** Ist das Fenster minimiert, auf einem anderen Desktop oder ganz von anderen Fenstern verdeckt, zeichnet die 3D-Ansicht nichts mehr (kein Rechnen, keine Grafikkartenlast); sobald du das Fenster wieder siehst, geht es sofort weiter. Außerdem kannst du die 3D-Ansicht mit dem Pause-Knopf anhalten und wieder starten – auch das **3D-Fenster vom Hauptfenster aus** (Knopf *3D anhalten* / *3D starten* im Platzhalter).
 
 ## 2. 3D-Simulation anhalten und starten
 
@@ -33,6 +37,9 @@ Nach dem Starten, nach dem Laden einer großen Show oder nach dem Ändern der Li
 | **Max. einfache Lichtkegel** | Wie viele einfache Lichtkegel gezeichnet werden. 0 = alle. Mit Grenze behält jeder Scheinwerfer zuerst seinen ersten Kegel, dann die hellsten. |
 | **Max. Bildrate** | Begrenzt, wie oft pro Sekunde das Bild neu gezeichnet wird (z. B. 30). 0 = unbegrenzt. |
 | **Scheinwerfer werfen Schatten** | Die Gehäuse der Scheinwerfer werfen Schatten in die Lichtkegel (Vorgabe: ein). |
+| **Scheinwerfer im Editor dunkel** | Im Baumodus und im Scheinwerfer-Modus leuchten die Scheinwerfer nicht (Vorgabe: ein); im Scheinwerfer-Modus sind sie rot markiert. |
+| **Markierung im Scheinwerfer-Modus** | Wie die Scheinwerfer im Modus *Scheinwerfer* markiert werden: *Keine*, *Rote Scheinwerfer* (Vorgabe), *Roter Punkt* oder *Rot und Punkt*. |
+| **VR-Knopf** | Wann der VR-Knopf (Brille) erscheint: *Automatisch* (nur auf VR-Geräten wie Quest, Pico, Vision Pro – nicht am PC oder Laptop), *Immer, wenn möglich* (z. B. PC-VR) oder *Nie*. |
 
 Die Zeile unter den Einstellungen zeigt, was gerade gilt (Lichter, Schatten, platzierte Scheinwerfer) und was die Grafikkarte erlaubt. **Grenzen zurücksetzen** stellt die Vorgaben wieder her.
 

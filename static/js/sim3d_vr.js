@@ -229,7 +229,16 @@ export function createVR(sim, host, tools) {
 
   // Sichtbar nur, wenn VR hier etwas nuetzt: eine Brille ist da (oder eine Quest ohne https - dann erklaert der Knopf es) und es ist nicht die Konsole (Laptop)
   let supported = false;
-  const refreshVisible = () => { button.hidden = isConsole() || !(supported || (quest && !secure && !navigator.xr)); };
+  // Einstellung "VR-Knopf" (je Geraet): Automatisch = nur auf VR-Geraeten (Quest, Pico, Vision Pro ...), nicht am PC / Laptop - dort meldet der Browser oft "VR moeglich", auch ohne Brille; Immer = wenn der Browser VR
+  // anbietet (PC-VR mit SteamVR o. ae.); Nie = nie.
+  const vrBrowser = /OculusBrowser|Quest|Pico|Wolvic|VisionOS|Vision Pro|HoloLens/i.test(navigator.userAgent || "");
+  const refreshVisible = () => {
+    const mode = sim.limits.values.vrButton;
+    if (mode === 2) { button.hidden = true; return; }
+    if (mode === 1) { button.hidden = !(supported || (quest && !secure && !navigator.xr)); return; }
+    button.hidden = isConsole() || !vrBrowser || !(supported || (quest && !secure && !navigator.xr));
+  };
+  sim.limits.listeners.push(refreshVisible);
   if (navigator.xr && typeof navigator.xr.isSessionSupported === "function") {
     navigator.xr.isSessionSupported("immersive-vr").then((ok) => { supported = !!ok; refreshVisible(); }).catch(() => {});
   } else if (quest && !secure) {

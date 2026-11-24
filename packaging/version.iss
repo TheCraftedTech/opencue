@@ -1,8 +1,8 @@
 ; Erzeugt von packaging/make_version_info.py aus app/version.py - nicht von Hand aendern.
 #define AppName "OpenCue"
-#define AppVersion "2.2.0"
-#define AppVersionLabel "v2.2.0"
-#define AppVersionNumeric "2.2.0.0"
+#define AppVersion "2.3.0"
+#define AppVersionLabel "v2.3.0"
+#define AppVersionNumeric "2.3.0.0"
 #define AppPublisher "Samuel Zenker"
 #define AppURL "https://thecraftedtech.github.io/opencue/"
 #define AppExeName "OpenCue.exe"

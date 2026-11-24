@@ -50,7 +50,7 @@ LOCK_SECONDS = 60
 LOCAL_ONLY_MESSAGES = {"toggle_fullscreen"}      # nur das Fenster des Hauptrechners; Einstellungen (auch Passwort, Sichermodus) duerfen Fernzugriffs-Geraete nach dem Login genauso aendern
 # Server -> Client Nachrichten, die nur an Konsolen-Fenster gehen: das Layout des Hauptrechners (panels_changed;
 # jedes Remote-Geraet bekommt sein eigenes) und die Abfrage des Schliessen-X.
-LOCAL_ONLY_EVENTS = {"panels_changed", "close_requested", "open_show_request"}
+LOCAL_ONLY_EVENTS = {"panels_changed", "close_requested", "open_show_request", "sim3d_window", "host_window_visible"}
 # Gesperrte Konsole: nur diese Nachrichten des Konsolen-Fensters werden noch angenommen (Zustand abholen); alles andere wird verworfen (siehe server.py)
 LOCKED_ALLOWED_MESSAGES = {"get_state_snapshot", "request_full_state", "ping", "pong"}
 # ... und diese Adressen (HTTP) bleiben bei gesperrter Konsole schreibend erreichbar: Entsperren, Abmelden, Start-Signal, REST-API (eigene Token)

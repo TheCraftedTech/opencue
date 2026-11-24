@@ -40,7 +40,7 @@
    "pannello",
    "3D"
   ],
-  "text": "- Tre modalità in alto a sinistra: **Visualizza**, **Costruisci** (oggetti e modelli 3D) e **Apparecchi** (posizionare gli apparecchi, puntare le teste mobili).\n- Pulsanti in alto a destra: visore VR (solo se il browser ne offre uno), condividere la camera tra dispositivi, **Stanza e luce** (ingranaggio), **Ferma / Avvia la simulazione 3D**, **Blackout** (lampadina), **Reimposta vista**, **Schermo intero**.\n- In basso a sinistra: il pulsante della qualità mostra frequenza e risoluzione; un clic passa da Automatica → Bassa → Media → Alta."
+  "text": "- Tre modalità in alto a sinistra: **Visualizza**, **Costruisci** (oggetti e modelli 3D) e **Apparecchi** (posizionare gli apparecchi, puntare le teste mobili).\n- Pulsanti in alto a destra: visore VR (solo se il browser ne offre uno), condividere la camera tra dispositivi, **Stanza e luce** (ingranaggio), **Ferma / Avvia la simulazione 3D**, **Blackout** (lampadina), **Reimposta vista**, **Schermo intero**.\n- In basso a sinistra: il pulsante della qualità mostra frequenza e risoluzione; un clic passa da Automatica → Bassa → Media → Alta.\n- **Luce di pianificazione nell'editor:** Nelle modalità **Costruisci** e **Apparecchi** gli apparecchi non emettono luce e non c'è foschia – la luce di lavoro rende la sala uniformemente luminosa e la visualizzazione resta fluida. In modalità *Apparecchi* sono segnati in rosso per vedere dove sono. In **Vista** tutto resta come sempre. Per disattivarlo: *Sala e luce → Apparecchi spenti nell'editor* (solo questo dispositivo).\n- **Nitidezza da fermo:** Quando l'immagine è ferma (camera immobile, nulla cambia, nessuna luce dal vivo si muove), OpenCue la ridisegna una volta a risoluzione più alta; ogni movimento o modifica torna subito alla normalità. Quanto sale dipende dalla scheda grafica (le schede deboli ottengono meno, l'impostazione *Bassa* lo disattiva). Mentre una luce dal vivo si muove, la risoluzione resta normale.\n- **3D in una finestra propria:** Il pulsante *3D in una finestra propria* (in alto a destra nel pannello 3D, solo sul computer della console) apre la simulazione 3D in una **finestra propria con un processo proprio**. La console funziona poi senza il carico 3D (fader e liste restano fluidi anche quando la vista 3D è impegnata) e il processo 3D gira con **priorità più bassa**: la console ha la precedenza. La finestra si può trascinare su un secondo schermo; posizione e dimensione vengono ricordate. Nella finestra principale il pannello mostra un segnaposto con *Porta la finestra in primo piano* e *Mostra qui (chiudi la finestra)*. Se chiudi la finestra (o il programma), la vista 3D torna. Tutto ciò che fai nella console appare dal vivo nella finestra 3D. Le due finestre condividono ancora la scheda grafica.\n- **Pausa quando non si vede nulla:** Se la finestra è ridotta a icona, su un altro desktop o completamente coperta da altre finestre, la vista 3D non disegna più nulla (nessun calcolo, nessun carico sulla scheda grafica); appena rivedi la finestra, riprende subito. Puoi anche mettere in pausa e riavviare la vista 3D con il pulsante di pausa – anche la **finestra 3D dalla finestra principale** (pulsante *Metti in pausa il 3D* / *Avvia il 3D* nel segnaposto)."
  },
  {
   "id": "3d-simulation-003",
@@ -135,16 +135,16 @@
    "pannello",
    "3D"
   ],
-  "text": "| Impostazione | Significato |\n|---|---|\n| **Qualità** | Automatica (si adatta alla frequenza), Bassa, Media, Alta: risoluzione e dettaglio delle ombre. |\n| **Luci massime** | Quanti apparecchi ricevono contemporaneamente una propria luce sulle superfici (predefinito 32). Vincono i più luminosi. |\n| **Ombre massime** | Quante di queste luci proiettano ombre. 0 = quante ne consente la scheda grafica. |\n| **Riflessi speculari massimi** | Riflessi su metallo e specchi. |\n| **Max. coni di luce semplici** | Quanti coni di luce semplici vengono disegnati. 0 = tutti. Con un limite ogni apparecchio mantiene prima il suo primo cono, poi i più luminosi. |\n| **Frequenza max.** | Limita quante volte al secondo l'immagine viene ridisegnata (ad es. 30). 0 = illimitata. |\n| **Gli apparecchi proiettano ombre** | Gli involucri degli apparecchi proiettano ombre nei coni di luce (attivo per impostazione predefinita). |\n\nLa riga sotto le impostazioni mostra cosa vale ora (luci, ombre, apparecchi posizionati) e cosa consente la scheda grafica. **Reimposta limiti** ripristina i valori predefiniti."
+  "text": "| Impostazione | Significato |\n|---|---|\n| **Qualità** | Automatica (si adatta alla frequenza), Bassa, Media, Alta: risoluzione e dettaglio delle ombre. |\n| **Luci massime** | Quanti apparecchi ricevono contemporaneamente una propria luce sulle superfici (predefinito 32). Vincono i più luminosi. |\n| **Ombre massime** | Quante di queste luci proiettano ombre. 0 = quante ne consente la scheda grafica. |\n| **Riflessi speculari massimi** | Riflessi su metallo e specchi. |\n| **Max. coni di luce semplici** | Quanti coni di luce semplici vengono disegnati. 0 = tutti. Con un limite ogni apparecchio mantiene prima il suo primo cono, poi i più luminosi. |\n| **Frequenza max.** | Limita quante volte al secondo l'immagine viene ridisegnata (ad es. 30). 0 = illimitata. |\n| **Gli apparecchi proiettano ombre** | Gli involucri degli apparecchi proiettano ombre nei coni di luce (attivo per impostazione predefinita). |\n| **Apparecchi spenti nell'editor** | In modalità costruzione e apparecchi gli apparecchi non emettono luce (predefinito: sì); in modalità apparecchi sono segnati in rosso. |\n| **Marcatura in modalità apparecchi** | Come vengono segnati gli apparecchi in modalità *Apparecchi*: *Nessuna*, *Apparecchi rossi* (predefinito), *Punto rosso* o *Rosso e punto*. |\n| **Pulsante VR** | Quando appare il pulsante VR (visore): *Automatico* (solo su dispositivi VR come Quest, Pico, Vision Pro – non su PC o portatile), *Sempre se possibile* (p. es. PC VR) o *Mai*. |"
  },
  {
   "id": "3d-simulation-006",
   "page": "3d-simulation",
   "path": [
    "Simulazione 3D",
-   "4. Quando l'immagine non è quella attesa"
+   "3. Stanza e luce"
   ],
-  "title": "4. Quando l'immagine non è quella attesa",
+  "title": "3. Stanza e luce (3)",
   "keywords": [
    "problema",
    "errore",
@@ -184,6 +184,17 @@
    "pannello",
    "3D"
   ],
+  "text": "La riga sotto le impostazioni mostra cosa vale ora (luci, ombre, apparecchi posizionati) e cosa consente la scheda grafica. **Reimposta limiti** ripristina i valori predefiniti."
+ },
+ {
+  "id": "3d-simulation-007",
+  "page": "3d-simulation",
+  "path": [
+   "Simulazione 3D",
+   "4. Quando l'immagine non è quella attesa"
+  ],
+  "title": "4. Quando l'immagine non è quella attesa",
+  "keywords": [],
   "text": "- **Non tutti gli apparecchi illuminano il palco, alcuni non hanno ombra, solo alcuni mostrano un gobo.** Dipende dai limiti di questo dispositivo. Solo i *Luci massime* apparecchi più luminosi (predefinito 32) illuminano le superfici, solo *Ombre massime* di queste luci proiettano ombre (la scheda grafica fissa un limite massimo, indicato nella riga informativa) e un motivo di gobo o prisma compare sulle prime **3** luci di questo tipo; le altre mostrano luce aperta. Aumenta *Luci massime* e *Ombre massime* (0 = quante possibile) se vuoi vedere tutto – con molti apparecchi l'immagine diventa più lenta o ha un po' di ritardo.\n- **Un apparecchio è acceso ma il suo cono manca.** Controlla la **Foschia** (0 % = nessun cono), *Max. coni di luce semplici*, il Blackout, il Grand Master, il dimmer dell'apparecchio e che la simulazione 3D non sia ferma.\n- **L'immagine è scura.** La luce di lavoro esiste solo in modalità Costruisci; controlla il cursore *Esposizione*, il Blackout e il Grand Master.\n- **La simulazione 3D è lenta.** Prova in quest'ordine: Foschia 0 % (se non ti serve), meno *Luci massime* / *Ombre massime*, *Max. coni di luce semplici* (ad es. 200), disattivare *Gli apparecchi proiettano ombre*, qualità Bassa o Automatica, una *Frequenza max.* di 30, oppure fermare la simulazione 3D finché non ti serve. I palchi con 100 o più apparecchi accesi insieme sono impegnativi; fino a circa 16 apparecchi accesi contemporaneamente bastano i valori predefiniti.\n- **Un apparecchio non si muove in 3D.** Il suo tipo ha bisogno di un modello 3D con forcella / testa mobile e di canali Pan / Tilt; i tipi senza (pannelli LED, barre, blinder) restano fermi. L'apparecchio deve inoltre essere posizionato sul palco (modalità Apparecchi → *Posiziona tutti*).\n- **Un cono di luce punta nella direzione sbagliata.** OpenCue inverte la direzione automaticamente quando un file GDTF fa puntare il fascio nell'involucro. Se un tipo è ancora sbagliato, annota il suo nome e segnalalo allo sviluppatore."
  }
 ]

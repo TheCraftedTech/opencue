@@ -1,6 +1,43 @@
 {
  "releases": [
   {
+   "version": "2.3.0",
+   "date": "2026-11-24",
+   "title": "MVR-export en 3D in een eigen venster",
+   "items": [
+    {
+     "icon": "download",
+     "title": "Podium en projectoren exporteren",
+     "text": "Bibliotheek → MVR-scène exporteren… schrijft projectoren met hun patch en het 3D-podium als .mvr-bestand voor Vectorworks, Capture of Depence."
+    },
+    {
+     "icon": "external",
+     "title": "3D in een eigen venster",
+     "text": "De 3D-simulatie draait op verzoek in een eigen venster met een eigen proces – ideaal voor een tweede scherm. De console blijft soepel."
+    },
+    {
+     "icon": "cube",
+     "title": "Rustige editor",
+     "text": "In bouw- en projectormodus zijn de projectoren donker (rood in projectormodus) en het ruimtelicht is gelijkmatig – bouwen blijft soepel."
+    },
+    {
+     "icon": "pause",
+     "title": "Bespaart vermogen als er niets te zien is",
+     "text": "Een geminimaliseerd of bedekt venster tekent geen 3D meer; staat het beeld stil, dan wordt het scherper."
+    },
+    {
+     "icon": "gear",
+     "title": "VR-knop alleen op VR-apparaten",
+     "text": "De VR-knop verschijnt alleen waar hij nuttig is. Nieuwe instellingen onder Ruimte en licht."
+    },
+    {
+     "icon": "help",
+     "title": "Handleidingen bijgewerkt",
+     "text": "De handleidingen 3D-simulatie en Projectoren beschrijven de nieuwe functies – ook de assistent kent ze."
+    }
+   ]
+  },
+  {
    "version": "2.2.0",
    "date": "2026-11-24",
    "title": "MVR-import en een snellere 3D-simulatie",

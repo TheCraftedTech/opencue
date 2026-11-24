@@ -61,11 +61,14 @@ const BLEED_GLSL = `
 const HOME = { position: [9, -11, 7], target: [0, 0, 0.8] };
 const TOUCH = typeof matchMedia === "function" && matchMedia("(pointer: coarse)").matches;
 const PIXEL_BUDGETS = [0.6, 1.0, 1.6, 2.4, 3.6, 5.5];  // Megapixel, auf die die Aufloesung begrenzt wird (Stufe 0 ... 5)
+const SHARP_MP = 8;                                    // Schaerfe im Stand: so viele Megapixel (hoechstens 2-fache Aufloesung je Achse), sobald das Bild ruht
+const SHARP_MAX_MS = 160;                              // ... und nur so hoch, dass das einzelne scharfe Bild (Bildzeit x Pixelfaktor) hoechstens so lange dauert: schwache Grafikkarte = weniger Zuschlag
+const SHARP_DELAY = 300;                               // ... nach so vielen ms Ruhe (ohne Kamerabewegung, ohne Aenderung, ohne Live-Animation)
 const AUTO_MAX = 4;                                    // "Auto" geht bis Stufe 4 (3,6 MP); Stufe 5 nur ueber "Hoch"
 const MANUAL_LEVEL = { low: 1, medium: 2, high: 4 };
 const QUALITY_STORE = "oc-sim3d-quality";
 const LIMITS_STORE = "oc-sim3d-limits";
-const LIMIT_DEFAULTS = { maxLights: 32, maxShadows: 0, maxSpecular: 8, fixtureShadows: 1, maxCones: 0, maxFps: 0 };       // 0 = unbegrenzt (maxShadows 0 = so viele, wie die Grafikkarte kann; maxCones 0 = alle einfachen Lichtkegel; maxFps 0 = Bildrate nicht begrenzt)
+const LIMIT_DEFAULTS = { editorDark: 1, editorMark: 1, vrButton: 0, maxLights: 32, maxShadows: 0, maxSpecular: 8, fixtureShadows: 1, maxCones: 0, maxFps: 0 };       // 0 = unbegrenzt (maxShadows 0 = so viele, wie die Grafikkarte kann; maxCones 0 = alle einfachen Lichtkegel; maxFps 0 = Bildrate nicht begrenzt)
 const SHADOW_SIZES = [512, 512, 1024, 1024, 2048, 2048];       // Schattenkarte je Stufe
 const MIN_CAMERA_Z = 0.05;                            // die Kamera darf bis knapp auf den Boden (Meter)
 
@@ -338,6 +341,7 @@ function createScene(host) {
       compiling = false;
       showCompiling(false);
       ignoreFrames = Math.max(ignoreFrames, 3);          // die Wartezeit zaehlt nicht als langsame Bilder (sonst fiele Auto auf die niedrigste Stufe)
+      lastFrameMs = 0;                                   // andere Shader = andere Bildzeit: neu messen (Schaerfe im Stand)
       lastDone = performance.now();
       if (!destroyed) invalidate();
     };
@@ -345,10 +349,64 @@ function createScene(host) {
     try { promise = renderer.compileAsync(scene, camera); } catch (err) { promise = Promise.resolve(); }
     promise.then(done, done);
   }
+  // Schaerfe im Stand: ruht das Bild (Kamera still, nichts hat sich geaendert, kein Live-Licht animiert), wird es einmal in hoeherer Aufloesung neu gezeichnet (bis SHARP_MP, hoechstens 2-fach
+  // je Achse, Kantenglaettung bleibt). Jede Bewegung/Aenderung geht sofort zurueck auf die normale Stufe. Haelt die hohe Aufloesung nie lange (etwas aendert das Bild dauernd), wird die Wartezeit laenger.
+  let sharp = false;
+  let sharpTimer = 0;
+  let sharpAt = 0;
+  let sharpDelay = SHARP_DELAY;
+  let sharpEntering = false;
+  let sharpFactor = Infinity;                            // groesster Zuschlag auf die Pixelzahl je Achse (aus der letzten Bildzeit)
+  let lastFrameMs = 0;                                   // Dauer des zuletzt fertigen Bildes (ms) bei normaler Aufloesung: daraus folgt, ob ein einzelnes scharfes Bild vertretbar ist
+  function applyRatio() {
+    const width = Math.max(1, host.clientWidth);
+    const height = Math.max(1, host.clientHeight);
+    renderer.setPixelRatio(pixelRatio(width, height));
+    renderer.setSize(width, height, false);
+    if (qualityButton) paintQuality();
+  }
+  function leaveSharp() {
+    clearTimeout(sharpTimer);
+    sharpTimer = 0;
+    if (!sharp) return;
+    const held = performance.now() - sharpAt;
+    sharpDelay = held < 150 ? Math.min(4000, sharpDelay * 2) : held > 1500 ? SHARP_DELAY : sharpDelay;
+    sharp = false;
+    ignoreFrames = Math.max(ignoreFrames, 2);
+    applyRatio();
+  }
+  function sharpGain() {
+    const width = Math.max(1, host.clientWidth);
+    const height = Math.max(1, host.clientHeight);
+    sharp = true;
+    sharpFactor = lastFrameMs ? Math.sqrt(SHARP_MAX_MS / lastFrameMs) : Infinity;
+    const high = pixelRatio(width, height);
+    sharp = false;
+    return high / pixelRatio(width, height);
+  }
+  function armSharp() {
+    if (sharp || sharpTimer || destroyed || compiling) return;
+    if (gpu.software || setting === "low") return;                                          // Software-Rendering / Einstellung Niedrig: nie hoeher rechnen
+    sharpTimer = setTimeout(() => {
+      sharpTimer = 0;
+      if (destroyed || raf || sharp || interacting || compiling || renderer.xr.isPresenting || inflight.length) return;
+      if (!lastFrameMs) { ignoreFrames = 0; invalidateView(); return; }          // Bildzeit unbekannt (nach Moduswechsel / Shader-Aufbau): erst ein Bild messen, dann entscheiden
+      const gain = sharpGain();
+      if (gain < 1.08) return;                             // schon so hoch aufgeloest: nichts zu gewinnen
+      sharp = true;
+      sharpAt = performance.now();
+      ignoreFrames = Math.max(ignoreFrames, 2);
+      applyRatio();
+      sharpEntering = true;
+      invalidateView();
+      sharpEntering = false;
+    }, sharpDelay);
+  }
   const frame = () => {
     raf = 0;
     if (destroyed || renderer.xr.isPresenting) return;      // mit VR-Brille zeichnet deren eigene Bildschleife (sim3d_vr.js)
     if (!host.isConnected) { destroy(); return; }       // Panel wurde entfernt
+    if (window.__hostHidden) return;                    // Fenster minimiert / verdeckt (app/window_host.py): nichts zeichnen, beim Sichtbarwerden wird neu gezeichnet
     if (inflight.length >= 2) { invalidateView(); return; }       // die Grafikkarte hinkt hinterher: kein weiteres Bild vorbestellen (sonst staut sich Arbeit und alles haengt)
     if (compiling) return;                               // Shader werden im Hintergrund uebersetzt: bis dahin kein Bild (das Fenster bleibt bedienbar), danach wird neu gezeichnet
     const cap = limits.values.maxFps;                    // Einstellung "Max. Bildrate" (0 = unbegrenzt): die 3D-Ansicht nimmt der Oberflaeche dann weniger Zeit
@@ -364,11 +422,16 @@ function createScene(host) {
       const sig = programSignature();
       if (sig !== compiledSig) { compiledSig = sig; precompile(); return; }
     }
+    const still = !moving && !wake && !interacting;
+    if (sharp && !still) leaveSharp();                   // Bewegung / Animation: sofort zurueck auf die normale Aufloesung (vor dem Zeichnen)
     renderer.render(scene, camera);
     track();
-    if (moving || wake) invalidateView();                // nie zwei Ketten: invalidateView plant nur, wenn noch nichts geplant ist (wake: ein Bildhaken animiert noch, z. B. Live-Licht)
+    if (moving || wake) invalidateView();
+    if (still) armSharp(); else { clearTimeout(sharpTimer); sharpTimer = 0; }                // nie zwei Ketten: invalidateView plant nur, wenn noch nichts geplant ist (wake: ein Bildhaken animiert noch, z. B. Live-Licht)
   };
-  const invalidateView = () => { if (!raf && !destroyed && !renderer.xr.isPresenting) raf = requestAnimationFrame(frame); };           // nur die Kamera hat sich bewegt: Schattenkarten bleiben
+  const invalidateView = () => { if (sharp && !sharpEntering) leaveSharp(); else if (sharpTimer && !sharpEntering) { clearTimeout(sharpTimer); sharpTimer = 0; } if (!raf && !destroyed && !renderer.xr.isPresenting) raf = requestAnimationFrame(frame); };           // nur die Kamera hat sich bewegt: Schattenkarten bleiben
+  const onHostVisible = () => { if (window.__hostHidden) return; ignoreFrames = Math.max(ignoreFrames, 3); lastDone = performance.now(); invalidate(); };
+  document.addEventListener("host-visibility", onHostVisible);
   const invalidate = () => { sceneVersion.n += 1; renderer.shadowMap.needsUpdate = true; invalidateView(); };                  // die Szene hat sich geaendert
   controls.addEventListener("change", invalidateView);
   controls.addEventListener("start", () => { interacting = true; clearTimeout(settle); });
@@ -413,7 +476,11 @@ function createScene(host) {
   })();
   const pixelRatio = (width, height) => {
     const budget = Math.sqrt((PIXEL_BUDGETS[level()] * 1e6) / Math.max(1, width * height));
-    return Math.max(0.5, Math.min(window.devicePixelRatio || 1, budget));
+    const dpr = window.devicePixelRatio || 1;
+    const normal = Math.max(0.5, Math.min(dpr, budget));
+    if (!sharp) return normal;
+    const sharpBudget = Math.sqrt((SHARP_MP * 1e6) / Math.max(1, width * height));
+    return Math.max(normal, Math.min(sharpBudget, Math.max(dpr, 2), normal * sharpFactor));
   };
   const resize = () => {
     const width = Math.max(1, host.clientWidth);
@@ -471,6 +538,7 @@ function createScene(host) {
     lastDone = now;
     if (ignoreFrames > 0) { ignoreFrames -= 1; return; }
     if (dt <= 0) return;
+    if (!sharp) lastFrameMs = dt;
     samples.push(dt);
     slowRun = dt > 250 ? slowRun + 1 : 0;
     if (setting === "auto" && slowRun >= 2 && autoLevel > 0) { stepDown(now, dt > 500 ? 2 : 1); return; }     // sehr langsam (unter 4 Bilder/s): sofort runter, nicht erst nach einem Messfenster
@@ -588,6 +656,8 @@ function createScene(host) {
     cancelAnimationFrame(flight);
     cancelAnimationFrame(shiftAnim);
     clearTimeout(settle);
+    clearTimeout(sharpTimer);
+    document.removeEventListener("host-visibility", onHostVisible);
     onDestroy.forEach((fn) => fn());
     observer.disconnect();
     qualityButton.remove();
@@ -601,7 +671,8 @@ function createScene(host) {
 
   resize();
   paintQuality();
-  return { scene, camera, controls, renderer, canvas, floor, reset, invalidate, invalidateView, destroy, onDestroy, frameHooks, setShift, setHaze, quality, limits, helpers, bleed, patchBleed, lightSources: [], keepAlive: () => { wake = true; invalidateView(); }, get version() { return sceneVersion.n; } };
+  return { scene, camera, controls, renderer, canvas, floor, reset, invalidate, invalidateView, destroy, onDestroy, frameHooks, setShift, setHaze, quality, limits, helpers, bleed, patchBleed, lightSources: [], keepAlive: () => { wake = true; invalidateView(); }, get version() { return sceneVersion.n; },
+    get sharpInfo() { return { sharp, timer: !!sharpTimer, delay: sharpDelay, lastFrameMs, interacting, wake, raf: !!raf, compiling, inflight: inflight.length, software: gpu.software, setting, ratio: renderer.getPixelRatio() }; } };
 }
 
 function toolButton(icon, titleKey) {
@@ -615,7 +686,26 @@ function toolButton(icon, titleKey) {
 }
 
 const ACTIVE_STORE = "opencue.sim3d.active";             // "0" = ausgeschaltet; je Geraet (die Konsole spiegelt "opencue.*" in die Konfiguration)
+/** Das 3D-Fenster (eigener Prozess, app/window_host.py) ist offen: dieses Fenster zeichnet dann keine 3D-Ansicht (das 3D-Fenster selbst nie betroffen). */
+function externalOpen() { return !!window.__sim3dWindowOpen && !window.__solo; }
+let windowAvailable = false;                              // gibt es ein Programmfenster, das ein 3D-Fenster oeffnen kann (nur Konsolen-Rechner)?
+let windowInfoAsked = false;
+async function refreshWindowInfo() {
+  try {
+    const info = await (await fetch("/api/sim3d/window", { cache: "no-store" })).json();
+    windowAvailable = !!info.available && !window.__solo;
+    window.__sim3dWindowOpen = !!info.open;
+    window.__sim3dWindowPaused = !!info.paused;
+    window.__hostHidden = !!(info.available && info.hidden && info.hidden[window.__solo ? "sim3d" : "main"]);       // Fenster gerade verdeckt (nur Konsolen-Rechner)
+  } catch (err) { windowAvailable = false; }
+  document.dispatchEvent(new CustomEvent("sim3d-active-changed"));
+}
+async function windowAction(action) {
+  try { await fetch("/api/sim3d/window", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action }) }); } catch (err) { /* offline */ }
+}
 function simActive() {
+  if (window.__solo) return !window.__sim3dWindowPaused;          // das 3D-Fenster: Pause kommt vom Server
+  if (externalOpen()) return false;
   try { return localStorage.getItem(ACTIVE_STORE) !== "0"; } catch (err) { return true; }
 }
 function setSimActive(on) {
@@ -655,23 +745,63 @@ function buildContent() {
   powerButton.classList.add("sim3d__btn--power");
   powerButton.dataset.act = "power";
   powerButton.addEventListener("dblclick", (e) => e.stopPropagation());
-  tools.append(powerButton, blackoutButton, resetButton, fullButton);
+  // 3D in eigenem Fenster (eigener Prozess, niedrigere Prioritaet): nur auf dem Konsolen-Rechner und nicht im 3D-Fenster selbst
+  const windowButton = toolButton("external", "SIM3D_WINDOW");
+  windowButton.dataset.act = "window";
+  windowButton.title = i18n("SIM3D_WINDOW_TIP");
+  windowButton.hidden = true;
+  windowButton.addEventListener("click", () => windowAction("open"));
+  windowButton.addEventListener("dblclick", (e) => e.stopPropagation());
+  tools.append(windowButton, powerButton, blackoutButton, resetButton, fullButton);
+  if (!windowInfoAsked) { windowInfoAsked = true; refreshWindowInfo(); }
   root.appendChild(tools);
   root._sim3d = null;
   let pausedView = null;
+  // Pause des 3D-FENSTERS gehoert dem Server (app/window_host.py): so kann man es auch am Hauptfenster anhalten und starten
+  const windowOwned = () => externalOpen() || !!window.__solo;
   const syncPower = () => {
     const on = simActive();
-    powerButton.replaceChildren(Icons.svg(on ? "pause" : "play"));
-    powerButton.title = i18n(on ? "SIM3D_PAUSE" : "SIM3D_PLAY");
+    const ext = externalOpen();
+    const winPaused = !!window.__sim3dWindowPaused;
+    const pausedNow = windowOwned() ? winPaused : !on;
+    windowButton.hidden = !windowAvailable || window.__solo || ext;
+    powerButton.disabled = false;
+    const kind = ext ? "external:" + (winPaused ? "p" : "r") : "paused";
+    if (!on && pausedView && pausedView.dataset.kind !== kind) { pausedView.remove(); pausedView = null; }
+    powerButton.replaceChildren(Icons.svg(pausedNow ? "play" : "pause"));
+    powerButton.title = i18n(pausedNow ? "SIM3D_PLAY" : "SIM3D_PAUSE");
     powerButton.setAttribute("aria-label", powerButton.title);
-    powerButton.setAttribute("aria-pressed", on ? "false" : "true");
-    powerButton.classList.toggle("sim3d__btn--paused", !on);
-    if (!on && !pausedView) {
+    powerButton.setAttribute("aria-pressed", pausedNow ? "true" : "false");
+    powerButton.classList.toggle("sim3d__btn--paused", pausedNow);
+    if (!on && !pausedView && ext) {                                  // die 3D-Ansicht laeuft im eigenen Fenster
+      pausedView = document.createElement("div");
+      pausedView.className = "sim3d__external";
+      pausedView.dataset.kind = kind;
+      const title = document.createElement("div");
+      title.className = "sim3d__external-title";
+      title.textContent = i18n(winPaused ? "SIM3D_EXTERNAL_PAUSED" : "SIM3D_EXTERNAL_TITLE");
+      const text = document.createElement("div");
+      text.textContent = i18n("SIM3D_EXTERNAL_TEXT");
+      const row = document.createElement("div");
+      row.className = "sim3d__external-row";
+      [[winPaused ? "SIM3D_EXTERNAL_PLAY" : "SIM3D_EXTERNAL_PAUSE", winPaused ? "resume" : "pause", winPaused ? "play" : "pause"], ["SIM3D_EXTERNAL_FOCUS", "focus", "external"], ["SIM3D_EXTERNAL_BACK", "close", "collapse"]].forEach(([key, action, icon]) => {
+        const b = document.createElement("button");
+        b.type = "button";
+        b.className = "sim3d__btn sim3d__btn--wide";
+        b.dataset.act = "external-" + action;
+        b.append(Icons.svg(icon), document.createTextNode(i18n(key)));
+        b.addEventListener("click", () => windowAction(action));
+        row.appendChild(b);
+      });
+      pausedView.append(title, text, row);
+      root.appendChild(pausedView);
+    } else if (!on && !pausedView) {
       pausedView = document.createElement("div");
       pausedView.className = "sim3d__paused";
+      pausedView.dataset.kind = "paused";
       const big = toolButton("play", "SIM3D_PLAY");
       big.classList.add("sim3d__paused-play");
-      big.addEventListener("click", () => setSimActive(true));
+      big.addEventListener("click", () => { if (windowOwned()) windowAction("resume"); else setSimActive(true); });
       const text = document.createElement("div");
       text.textContent = i18n("SIM3D_PAUSED");
       pausedView.append(big, text);
@@ -681,7 +811,7 @@ function buildContent() {
       pausedView = null;
     }
   };
-  powerButton.addEventListener("click", () => setSimActive(!simActive()));
+  powerButton.addEventListener("click", () => { if (windowOwned()) windowAction(window.__sim3dWindowPaused ? "resume" : "pause"); else setSimActive(!simActive()); });
 
   // Vollbild ueber die ganze Oberflaeche (eigenes Vollbild, siehe fullscreen.js); Knopf und Tooltip folgen dem Zustand
   const syncFull = (on) => {
@@ -719,7 +849,7 @@ function buildContent() {
       sim.room = createRoom(sim, root, tools);
     } catch (err) {                                                  // ein Fehler im Raum-Fenster darf Umschalter und Bauen nicht verhindern
       console.error("Raum & Licht konnte nicht aufgebaut werden:", err);
-      sim.room = { work: 100, envScale: 1, ambient: 0, pool: [], setMode() {}, onEnv() {}, update() {}, dispose() {} };
+      sim.room = { work: 100, mode: "view", envScale: 1, ambient: 0, pool: [], setMode() {}, onEnv() {}, update() {}, dispose() {} };
     }
     sim.onDestroy.push(() => sim.room.dispose());
     try {

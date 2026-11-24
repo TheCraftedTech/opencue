@@ -9,6 +9,10 @@ The panel **3D Simulation** shows your stage in 3D with every fixture lit live f
 - Three modes at the top left: **View**, **Build** (objects and 3D models) and **Fixtures** (place fixtures, aim moving heads).
 - Buttons at the top right: VR headset (only if the browser offers one), share the camera between devices, **Room & light** (gear icon), **Stop / Start 3D simulation**, **Blackout** (light bulb), **Reset view**, **Fullscreen**.
 - Bottom left: the quality button shows the frame rate and the resolution; a click switches Auto → Low → Medium → High.
+- **Planning light in the editor:** In the **Build** and **Fixtures** modes the fixtures do not emit light and there is no haze – the work light makes the room evenly bright and the display stays smooth. In *Fixtures* mode they are marked red so you can see where they hang. In **View** everything stays as usual. To switch it off: *Room & light → Fixtures dark in the editor* (this device only).
+- **Sharp when still:** When the picture rests (camera still, nothing changes, no live light moving), OpenCue redraws it once at a higher resolution; any movement or change switches back immediately. How high it goes depends on the graphics card (weaker cards get less of a bonus; the *Low* setting turns it off). While live light is moving it stays at the normal resolution.
+- **3D in its own window:** The *3D in its own window* button (top right of the 3D panel, console computer only) opens the 3D simulation in its **own window with its own process**. The console then runs without the 3D load (faders and lists stay smooth even when the 3D view is busy), and the 3D process runs with **lower priority**: the console comes first. The window can be dragged to a second screen; position and size are remembered. In the main window the panel shows a placeholder with *Bring window to front* and *Show here (close window)*. When you close the window (or the program), the 3D view comes back. Everything you do in the console shows up live in the 3D window. Both windows still share the graphics card.
+- **Pauses when nothing is visible:** When the window is minimized, on another desktop or completely covered by other windows, the 3D view draws nothing (no computing, no graphics card load); as soon as you see the window again it continues at once. You can also pause and start the 3D view with the pause button – including the **3D window from the main window** (button *Pause 3D* / *Start 3D* in the placeholder).
 
 ## 2. Stop and start the 3D simulation
 
@@ -33,6 +37,9 @@ Open the dialog with the gear icon. It has two parts.
 | **Max. simple light cones** | How many simple light cones are drawn. 0 = all. With a limit every fixture keeps its first cone first, then the brightest ones. |
 | **Max. frame rate** | Limits how often the picture is redrawn per second (for example 30). 0 = unlimited. |
 | **Fixtures cast shadows** | The fixture housings cast shadows into the light cones (on by default). |
+| **Fixtures dark in the editor** | In build mode and fixtures mode the fixtures do not emit light (default: on); in fixtures mode they are marked red. |
+| **Marking in fixtures mode** | How the fixtures are marked in *Fixtures* mode: *None*, *Red fixtures* (default), *Red dot* or *Red and dot*. |
+| **VR button** | When the VR button (headset) appears: *Automatic* (only on VR devices such as Quest, Pico, Vision Pro – not on a PC or laptop), *Always when possible* (e.g. PC VR) or *Never*. |
 
 The line below the settings shows what applies right now (lights, shadows, fixtures placed) and what the graphics card allows. **Reset limits** restores the defaults.
 

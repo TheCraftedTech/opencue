@@ -1,6 +1,43 @@
 {
  "releases": [
   {
+   "version": "2.3.0",
+   "date": "2026-11-24",
+   "title": "Esportazione MVR e 3D in una finestra propria",
+   "items": [
+    {
+     "icon": "download",
+     "title": "Esporta palco e apparecchi",
+     "text": "Libreria → Esporta scena MVR… scrive gli apparecchi con il loro patch e il palco 3D in un file .mvr per Vectorworks, Capture o Depence."
+    },
+    {
+     "icon": "external",
+     "title": "3D in una finestra propria",
+     "text": "La simulazione 3D può girare in una finestra propria con un processo proprio – ideale per un secondo schermo. La console resta fluida."
+    },
+    {
+     "icon": "cube",
+     "title": "Editor tranquillo",
+     "text": "Nelle modalità costruzione e apparecchi gli apparecchi sono spenti (rossi in modalità apparecchi) e la luce della sala è uniforme – costruire resta fluido."
+    },
+    {
+     "icon": "pause",
+     "title": "Risparmia potenza quando non si vede nulla",
+     "text": "Una finestra ridotta a icona o coperta non disegna più il 3D; quando l'immagine è ferma diventa più nitida."
+    },
+    {
+     "icon": "gear",
+     "title": "Pulsante VR solo sui dispositivi VR",
+     "text": "Il pulsante VR appare solo dove serve. Nuove impostazioni in Sala e luce."
+    },
+    {
+     "icon": "help",
+     "title": "Guide aggiornate",
+     "text": "Le guide Simulazione 3D e Apparecchi descrivono le nuove funzioni – anche l'assistente le conosce."
+    }
+   ]
+  },
+  {
    "version": "2.2.0",
    "date": "2026-11-24",
    "title": "Import MVR e simulazione 3D più veloce",

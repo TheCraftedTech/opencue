@@ -9,6 +9,10 @@ Il pannello **Simulazione 3D** mostra il palco in 3D; ogni apparecchio si accend
 - Tre modalità in alto a sinistra: **Visualizza**, **Costruisci** (oggetti e modelli 3D) e **Apparecchi** (posizionare gli apparecchi, puntare le teste mobili).
 - Pulsanti in alto a destra: visore VR (solo se il browser ne offre uno), condividere la camera tra dispositivi, **Stanza e luce** (ingranaggio), **Ferma / Avvia la simulazione 3D**, **Blackout** (lampadina), **Reimposta vista**, **Schermo intero**.
 - In basso a sinistra: il pulsante della qualità mostra frequenza e risoluzione; un clic passa da Automatica → Bassa → Media → Alta.
+- **Luce di pianificazione nell'editor:** Nelle modalità **Costruisci** e **Apparecchi** gli apparecchi non emettono luce e non c'è foschia – la luce di lavoro rende la sala uniformemente luminosa e la visualizzazione resta fluida. In modalità *Apparecchi* sono segnati in rosso per vedere dove sono. In **Vista** tutto resta come sempre. Per disattivarlo: *Sala e luce → Apparecchi spenti nell'editor* (solo questo dispositivo).
+- **Nitidezza da fermo:** Quando l'immagine è ferma (camera immobile, nulla cambia, nessuna luce dal vivo si muove), OpenCue la ridisegna una volta a risoluzione più alta; ogni movimento o modifica torna subito alla normalità. Quanto sale dipende dalla scheda grafica (le schede deboli ottengono meno, l'impostazione *Bassa* lo disattiva). Mentre una luce dal vivo si muove, la risoluzione resta normale.
+- **3D in una finestra propria:** Il pulsante *3D in una finestra propria* (in alto a destra nel pannello 3D, solo sul computer della console) apre la simulazione 3D in una **finestra propria con un processo proprio**. La console funziona poi senza il carico 3D (fader e liste restano fluidi anche quando la vista 3D è impegnata) e il processo 3D gira con **priorità più bassa**: la console ha la precedenza. La finestra si può trascinare su un secondo schermo; posizione e dimensione vengono ricordate. Nella finestra principale il pannello mostra un segnaposto con *Porta la finestra in primo piano* e *Mostra qui (chiudi la finestra)*. Se chiudi la finestra (o il programma), la vista 3D torna. Tutto ciò che fai nella console appare dal vivo nella finestra 3D. Le due finestre condividono ancora la scheda grafica.
+- **Pausa quando non si vede nulla:** Se la finestra è ridotta a icona, su un altro desktop o completamente coperta da altre finestre, la vista 3D non disegna più nulla (nessun calcolo, nessun carico sulla scheda grafica); appena rivedi la finestra, riprende subito. Puoi anche mettere in pausa e riavviare la vista 3D con il pulsante di pausa – anche la **finestra 3D dalla finestra principale** (pulsante *Metti in pausa il 3D* / *Avvia il 3D* nel segnaposto).
 
 ## 2. Fermare e avviare la simulazione 3D
 
@@ -33,6 +37,9 @@ Apri la finestra con l'ingranaggio. Ha due parti.
 | **Max. coni di luce semplici** | Quanti coni di luce semplici vengono disegnati. 0 = tutti. Con un limite ogni apparecchio mantiene prima il suo primo cono, poi i più luminosi. |
 | **Frequenza max.** | Limita quante volte al secondo l'immagine viene ridisegnata (ad es. 30). 0 = illimitata. |
 | **Gli apparecchi proiettano ombre** | Gli involucri degli apparecchi proiettano ombre nei coni di luce (attivo per impostazione predefinita). |
+| **Apparecchi spenti nell'editor** | In modalità costruzione e apparecchi gli apparecchi non emettono luce (predefinito: sì); in modalità apparecchi sono segnati in rosso. |
+| **Marcatura in modalità apparecchi** | Come vengono segnati gli apparecchi in modalità *Apparecchi*: *Nessuna*, *Apparecchi rossi* (predefinito), *Punto rosso* o *Rosso e punto*. |
+| **Pulsante VR** | Quando appare il pulsante VR (visore): *Automatico* (solo su dispositivi VR come Quest, Pico, Vision Pro – non su PC o portatile), *Sempre se possibile* (p. es. PC VR) o *Mai*. |
 
 La riga sotto le impostazioni mostra cosa vale ora (luci, ombre, apparecchi posizionati) e cosa consente la scheda grafica. **Reimposta limiti** ripristina i valori predefiniti.
 

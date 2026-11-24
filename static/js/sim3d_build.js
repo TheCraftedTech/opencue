@@ -1130,6 +1130,12 @@ export function attachBuilder(root, sim) {
     b.title = t("SIM3D_MVR_TIP");
     return b;
   }
+  function mvrExportButton() {
+    const b = iconButton("download", t("SIM3D_MVRX_BTN"), "", () => { if (window.OCMvrExport) window.OCMvrExport.open(); });
+    b.dataset.act = "mvr-export";
+    b.title = t("SIM3D_MVRX_TIP");
+    return b;
+  }
   let jsonPanel = null;
   let jsonMode = false;
   /** Die Seitenleiste zeigt entweder die Werkzeuge (Koerper hinzufuegen, Liste, Eigenschaften) oder den Text der Buehne (JSON, live); Buehnenname, Rueckgaengig und Speichern bleiben in beiden gleich. */
@@ -1226,6 +1232,7 @@ export function attachBuilder(root, sim) {
     modelToggle.title = t("SIM3D_MODEL_ADD_TIP");
     add.appendChild(modelToggle);
     add.appendChild(mvrButton());
+    add.appendChild(mvrExportButton());
     if (modelsOpen) {
       const box = el("div", "sim3d__models");
       if (!modelList) box.appendChild(el("p", "sim3d__hint", t("SIM3D_MODEL_LOADING")));
@@ -1704,6 +1711,7 @@ export function attachBuilder(root, sim) {
     all.style.flex = "0 0 auto";
     head.appendChild(all);
     head.appendChild(mvrButton());
+    head.appendChild(mvrExportButton());
     side.appendChild(head);
 
     const list = section("");

@@ -9,6 +9,10 @@ El panel **Simulación 3D** muestra tu escenario en 3D; cada proyector se ilumin
 - Tres modos arriba a la izquierda: **Ver**, **Construir** (objetos y modelos 3D) y **Proyectores** (colocar proyectores, apuntar las cabezas móviles).
 - Botones arriba a la derecha: gafas VR (solo si el navegador ofrece unas), compartir la cámara entre dispositivos, **Sala y luz** (engranaje), **Detener / Iniciar la simulación 3D**, **Blackout** (bombilla), **Restablecer vista**, **Pantalla completa**.
 - Abajo a la izquierda: el botón de calidad muestra la tasa de imagen y la resolución; un clic cambia Automática → Baja → Media → Alta.
+- **Luz de planificación en el editor:** En los modos **Construir** y **Proyectores** los proyectores no emiten luz y no hay neblina – la luz de trabajo ilumina la sala de forma uniforme y la visualización sigue fluida. En el modo *Proyectores* se marcan en rojo para ver dónde están. En **Vista** todo sigue como siempre. Para desactivarlo: *Sala y luz → Proyectores apagados en el editor* (solo este dispositivo).
+- **Nitidez en reposo:** Cuando la imagen está en reposo (cámara quieta, nada cambia, ninguna luz en directo se mueve), OpenCue la vuelve a dibujar una vez con mayor resolución; cualquier movimiento o cambio vuelve de inmediato a lo normal. Hasta dónde llega depende de la tarjeta gráfica (las débiles reciben menos, el ajuste *Baja* lo desactiva). Mientras se mueve una luz en directo, la resolución se mantiene normal.
+- **3D en ventana propia:** El botón *3D en ventana propia* (arriba a la derecha del panel 3D, solo en el ordenador de la consola) abre la simulación 3D en una **ventana propia con su propio proceso**. La consola funciona entonces sin la carga 3D (faders y listas siguen fluidos aunque la vista 3D esté ocupada) y el proceso 3D se ejecuta con **menor prioridad**: la consola va primero. La ventana se puede arrastrar a una segunda pantalla; se recuerdan posición y tamaño. En la ventana principal el panel muestra un marcador con *Traer la ventana al frente* y *Mostrar aquí (cerrar la ventana)*. Al cerrar la ventana (o el programa), vuelve la vista 3D. Todo lo que haces en la consola se ve en directo en la ventana 3D. Ambas ventanas siguen compartiendo la tarjeta gráfica.
+- **Pausa cuando no se ve nada:** Si la ventana está minimizada, en otro escritorio o totalmente tapada por otras ventanas, la vista 3D no dibuja nada (sin cálculo, sin carga de la tarjeta gráfica); en cuanto vuelves a ver la ventana, continúa al instante. También puedes pausar y reanudar la vista 3D con el botón de pausa – incluida la **ventana 3D desde la ventana principal** (botón *Pausar 3D* / *Iniciar 3D* en el marcador).
 
 ## 2. Detener e iniciar la simulación 3D
 
@@ -33,6 +37,9 @@ Abre el diálogo con el engranaje. Tiene dos partes.
 | **Máx. conos de luz simples** | Cuántos conos de luz simples se dibujan. 0 = todos. Con un límite, cada proyector conserva primero su primer cono, luego los más brillantes. |
 | **Tasa máx. de imagen** | Limita cuántas veces por segundo se redibuja la imagen (por ejemplo 30). 0 = ilimitada. |
 | **Los proyectores proyectan sombras** | Las carcasas de los proyectores proyectan sombras en los conos de luz (activado por defecto). |
+| **Proyectores apagados en el editor** | En el modo construcción y proyectores, los proyectores no emiten luz (por defecto: sí); en el modo proyectores se marcan en rojo. |
+| **Marcado en el modo proyectores** | Cómo se marcan los proyectores en el modo *Proyectores*: *Ninguno*, *Proyectores rojos* (por defecto), *Punto rojo* o *Rojo y punto*. |
+| **Botón VR** | Cuándo aparece el botón VR (gafas): *Automático* (solo en dispositivos VR como Quest, Pico, Vision Pro – no en PC o portátil), *Siempre que sea posible* (p. ej. VR en PC) o *Nunca*. |
 
 La línea bajo los ajustes muestra lo que se aplica ahora (luces, sombras, proyectores colocados) y lo que permite la tarjeta gráfica. **Restablecer límites** restaura los valores por defecto.
 

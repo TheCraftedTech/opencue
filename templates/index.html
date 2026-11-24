@@ -141,6 +141,7 @@
           <li class="menu__item menu__item--featured" data-i18n="FXLIB_MENU" data-action="fixture-library">Fixture Library...</li>
           <li class="menu__item" data-i18n="FXI_MENU" data-action="open-fixture-import">Import fixture list (CSV / Excel)...</li>
           <li class="menu__item" data-i18n="MVR_MENU" data-action="open-mvr-import">Import MVR scene (stage and fixtures)...</li>
+          <li class="menu__item" data-i18n="MVRX_MENU" data-action="open-mvr-export">Export MVR scene (stage and fixtures)...</li>
           <li class="menu__separator" role="separator"></li>
           <li class="menu__item" data-i18n="FM_MENU_SHOWS" data-action="file-manager" data-fm-kind="shows">Shows...</li>
           <li class="menu__item" data-i18n="FM_MENU_LAYOUTS" data-action="file-manager" data-fm-kind="layouts">Layouts...</li>
@@ -1511,6 +1512,35 @@
         <button type="button" class="modal__button" id="mvr-cancel" data-modal-cancel="mvr-import" data-i18n="CANCEL">Cancel</button>
         <button type="button" class="modal__button modal__button--primary" id="mvr-import" data-i18n="MVR_IMPORT" hidden disabled>Import</button>
         <button type="button" class="modal__button modal__button--primary" id="mvr-close" data-i18n="CLOSE" hidden>Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MVR-Szene exportieren (Menue Bibliothek; static/js/mvr_export.js, app/mvr_export.py) -->
+  <div class="modal-backdrop" data-modal-backdrop="mvr-export" aria-hidden="true">
+    <div class="modal modal--mvr modal--m" role="dialog" aria-modal="true" aria-labelledby="mvrx-title">
+      <div class="modal__header">
+        <span id="mvrx-title" data-i18n="MVRX_TITLE">Export MVR scene</span>
+        <button type="button" class="modal__close" data-modal-close="mvr-export" aria-label="Close" data-i18n-aria="CLOSE">&times;</button>
+      </div>
+      <div class="modal__body mvr">
+        <div id="mvrx-step-options">
+          <p class="fxi__intro" data-i18n="MVRX_INTRO">Writes an .mvr file for Vectorworks, Capture, Depence and other programs. Choose what goes in.</p>
+          <div id="mvrx-options"></div>
+        </div>
+        <div id="mvrx-step-busy" hidden>
+          <div class="mvr__busy"><span class="mvr__spin" aria-hidden="true"></span><div class="mvr__busy-text"><div id="mvrx-busy-title" class="mvr__busy-title"></div><div id="mvrx-busy-sub" class="mvr__hint"></div></div></div>
+          <div class="mvr__bar" role="progressbar" aria-valuemin="0" aria-valuemax="100"><div class="mvr__bar-fill" id="mvrx-bar"></div></div>
+        </div>
+        <div id="mvrx-step-done" hidden><div id="mvrx-done"></div></div>
+        <p class="fxi__msg" id="mvrx-msg" role="status"></p>
+      </div>
+      <div class="modal__footer">
+        <button type="button" class="modal__button" id="mvrx-again" data-i18n="MVRX_AGAIN" hidden>Export again</button>
+        <button type="button" class="modal__button" id="mvrx-cancel" data-modal-cancel="mvr-export" data-i18n="CANCEL">Cancel</button>
+        <button type="button" class="modal__button modal__button--primary" id="mvrx-start" data-i18n="MVRX_START">Export</button>
+        <button type="button" class="modal__button modal__button--primary" id="mvrx-download" data-i18n="MVRX_DOWNLOAD" hidden>Download</button>
+        <button type="button" class="modal__button" id="mvrx-close" data-i18n="CLOSE" hidden>Close</button>
       </div>
     </div>
   </div>
@@ -3119,6 +3149,7 @@
   <script src="/static/js/welcome.js{% if asset_v %}?v={{ asset_v }}{% endif %}"></script>
   <script src="/static/js/fixture_import.js{% if asset_v %}?v={{ asset_v }}{% endif %}"></script>
   <script src="/static/js/mvr_import.js{% if asset_v %}?v={{ asset_v }}{% endif %}"></script>
+  <script src="/static/js/mvr_export.js{% if asset_v %}?v={{ asset_v }}{% endif %}"></script>
   <script src="/static/js/sim_json.js{% if asset_v %}?v={{ asset_v }}{% endif %}"></script>
   <script src="/static/js/schedule.js{% if asset_v %}?v={{ asset_v }}{% endif %}"></script>
   <script src="/static/js/osc.js{% if asset_v %}?v={{ asset_v }}{% endif %}"></script>

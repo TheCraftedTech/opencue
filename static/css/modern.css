@@ -2608,6 +2608,25 @@ body.oc-saving #toolbar-showfile-name::after { content: ""; display: inline-bloc
 .mvr__layer-name { flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; }
 .mvr__layer-count { color: var(--text-3); font-size: var(--fs-sm); white-space: nowrap; }
 @media (max-width: 640px) { .mvr__cards--two { grid-template-columns: minmax(0, 1fr); } .mvr__fxopts { margin-left: 0; } }
+/* MVR-Szene exportieren (static/js/mvr_export.js): zwei grosse Schalterkarten, Dateiname, Ergebnis */
+.mvrx__cards { display: flex; flex-direction: column; gap: var(--sp-3); margin-bottom: var(--sp-3); }
+.mvrx__card { display: flex; align-items: center; gap: var(--sp-3); padding: var(--sp-3) var(--sp-4); border: 1px solid var(--border-strong); border-radius: calc(var(--base-radius, 3px) * 2); background: var(--surface-1); cursor: pointer; transition: border-color 0.15s, background 0.15s, box-shadow 0.15s; }
+.mvrx__card:hover { border-color: var(--text-3); }
+.mvrx__card:has(input:checked) { border-color: var(--accent); background: var(--accent-soft); box-shadow: 0 0 0 1px var(--accent) inset; }
+.mvrx__card:has(input:focus-visible) { outline: 2px solid var(--accent); outline-offset: 2px; }
+.mvrx__card--off { opacity: 0.55; cursor: default; }
+.mvrx__icon { flex: 0 0 auto; display: grid; place-items: center; width: 2.6rem; height: 2.6rem; border-radius: 50%; background: var(--surface-3); color: var(--text-2); font-size: 1.35rem; transition: background 0.15s, color 0.15s; }
+.mvrx__card:has(input:checked) .mvrx__icon { background: var(--accent); color: var(--accent-ink); }
+.mvrx__text { flex: 1 1 auto; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.mvrx__title { font-weight: 600; font-size: 1.02rem; color: var(--text-1); }
+.mvrx__sub { color: var(--text-3); font-size: var(--fs-sm); line-height: 1.35; overflow-wrap: anywhere; }
+.mvrx__card .toggle-switch { flex: 0 0 auto; }
+.mvrx__notes:empty { display: none; }
+.mvrx__notes { margin: calc(var(--sp-2) * -1) 0 var(--sp-3); }
+.mvrx__unplaced { margin-bottom: var(--sp-3); }
+.mvrx__name { margin-bottom: var(--sp-2); }
+.mvrx__name input { flex: 1 1 12rem; min-width: 0; }
+.mvrx__file { margin-bottom: var(--sp-3); padding: var(--sp-2) var(--sp-3); border: 1px solid var(--border); border-radius: var(--base-radius, 3px); background: var(--surface-2, var(--surface-1)); color: var(--text-1); font-family: var(--font-mono, monospace); font-size: var(--fs-sm); overflow-wrap: anywhere; }
 #mvr-again[hidden], #mvr-import[hidden], #mvr-close[hidden], #mvr-cancel[hidden] { display: none; }
 /* ---- Drucken / PDF (static/js/report.js) ---- */
 .report { display: grid; grid-template-columns: minmax(20rem, 26rem) minmax(0, 1fr); gap: var(--sp-4); align-items: start; }
@@ -3202,3 +3221,12 @@ html.tb-off-undogo #toolbar-undo-go { display: none !important; }
 .wn__more[open] > summary { margin-bottom: 0.6rem; }
 .wn__more > .wn__release { margin-top: 0.9rem; }
 .wn__empty { color: var(--text-2); }
+
+/* 3D-Fenster (?solo=sim3d, app/window_host.py): nur das 3D-Panel, ganze Flaeche; die Konsolen-Oberflaeche dahinter bleibt leer (kein Layout) und ist verdeckt */
+.solo-root { position: fixed; inset: 0; z-index: 90000; display: flex; background: var(--bg); }
+.solo-root > .panelwin__panel { background: var(--bg); }
+.solo-root > .panelwin__panel > .panel__content { padding: 0; overflow: hidden; }
+body.solo { overflow: hidden; }
+.sim3d__external { position: absolute; inset: 0; z-index: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.8rem; padding: 1rem; text-align: center; color: var(--secondary-text); }
+.sim3d__external-title { color: var(--text-main); font-size: 1rem; font-weight: 600; }
+.sim3d__external-row { display: flex; flex-wrap: wrap; gap: 0.5rem; justify-content: center; }

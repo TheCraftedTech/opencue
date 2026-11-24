@@ -1,6 +1,43 @@
 {
  "releases": [
   {
+   "version": "2.3.0",
+   "date": "2026-11-24",
+   "title": "MVR-Export und 3D im eigenen Fenster",
+   "items": [
+    {
+     "icon": "download",
+     "title": "Bühne und Scheinwerfer exportieren",
+     "text": "Bibliothek → MVR-Szene exportieren… schreibt Scheinwerfer mit Patch und die 3D-Bühne als .mvr-Datei für Vectorworks, Capture oder Depence."
+    },
+    {
+     "icon": "external",
+     "title": "3D im eigenen Fenster",
+     "text": "Die 3D-Simulation läuft auf Wunsch in einem eigenen Fenster mit eigenem Prozess – ideal für einen zweiten Bildschirm. Die Konsole bleibt flüssig."
+    },
+    {
+     "icon": "cube",
+     "title": "Ruhiger Editor",
+     "text": "Im Bauen- und Scheinwerfer-Modus sind die Scheinwerfer dunkel (im Scheinwerfer-Modus rot), das Raumlicht ist gleichmäßig hell – das macht das Bauen flüssig."
+    },
+    {
+     "icon": "pause",
+     "title": "Spart Leistung, wenn nichts zu sehen ist",
+     "text": "Ein minimiertes oder verdecktes Fenster zeichnet kein 3D mehr; steht das Bild still, wird es schärfer."
+    },
+    {
+     "icon": "gear",
+     "title": "VR-Knopf nur auf VR-Geräten",
+     "text": "Der VR-Knopf erscheint nur dort, wo er etwas nützt. Neue Einstellungen unter Raum & Licht."
+    },
+    {
+     "icon": "help",
+     "title": "Anleitungen aktualisiert",
+     "text": "Die Anleitungen 3D-Simulation und Scheinwerfer beschreiben die neuen Funktionen – auch der KI-Assistent kennt sie."
+    }
+   ]
+  },
+  {
    "version": "2.2.0",
    "date": "2026-11-24",
    "title": "MVR-Import und eine schnellere 3D-Simulation",

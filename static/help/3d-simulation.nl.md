@@ -9,6 +9,10 @@ Het paneel **3D-simulatie** toont je podium in 3D; elke projector brandt live vo
 - Drie modi linksboven: **Weergave**, **Bouwen** (objecten en 3D-modellen) en **Projectoren** (projectoren plaatsen, moving heads richten).
 - Knoppen rechtsboven: VR-bril (alleen als de browser er een aanbiedt), camera delen tussen apparaten, **Ruimte en licht** (tandwiel), **3D-simulatie stoppen / starten**, **Blackout** (gloeilamp), **Weergave resetten**, **Volledig scherm**.
 - Linksonder: de kwaliteitsknop toont beeldsnelheid en resolutie; een klik schakelt Automatisch → Laag → Gemiddeld → Hoog.
+- **Planlicht in de editor:** In de modi **Bouwen** en **Projectoren** geven de projectoren geen licht en is er geen mist – het werklicht maakt de ruimte gelijkmatig helder en de weergave blijft soepel. In modus *Projectoren* zijn ze rood gemarkeerd zodat je ziet waar ze hangen. In **Weergave** blijft alles zoals gewoonlijk. Uitschakelen: *Ruimte en licht → Projectoren donker in de editor* (alleen dit apparaat).
+- **Scherp bij stilstand:** Staat het beeld stil (camera stil, niets verandert, geen live licht beweegt), tekent OpenCue het één keer opnieuw in hogere resolutie; elke beweging of wijziging schakelt meteen terug. Hoe hoog het gaat, hangt af van de grafische kaart (zwakkere kaarten krijgen minder, de instelling *Laag* schakelt het uit). Zolang live licht beweegt, blijft de resolutie normaal.
+- **3D in eigen venster:** De knop *3D in eigen venster* (rechtsboven in het 3D-paneel, alleen op de console-computer) opent de 3D-simulatie in een **eigen venster met een eigen proces**. De console draait dan zonder 3D-belasting (faders en lijsten blijven soepel, ook als de 3D-weergave het druk heeft), en het 3D-proces draait met **lagere prioriteit**: de console gaat voor. Het venster kun je naar een tweede scherm slepen; positie en grootte worden onthouden. In het hoofdvenster toont het paneel een plaatshouder met *Venster naar voren* en *Hier tonen (venster sluiten)*. Sluit je het venster (of het programma), dan komt de 3D-weergave terug. Alles wat je in de console doet, zie je live in het 3D-venster. De grafische kaart delen beide vensters nog steeds.
+- **Pauzeert als er niets te zien is:** Is het venster geminimaliseerd, op een ander bureaublad of helemaal door andere vensters bedekt, dan tekent de 3D-weergave niets meer (geen rekenwerk, geen belasting van de grafische kaart); zodra je het venster weer ziet, gaat het meteen verder. Je kunt de 3D-weergave ook pauzeren en starten met de pauzeknop – ook het **3D-venster vanuit het hoofdvenster** (knop *3D pauzeren* / *3D starten* in de plaatshouder).
 
 ## 2. De 3D-simulatie stoppen en starten
 
@@ -33,6 +37,9 @@ Open het dialoogvenster met het tandwiel. Het bestaat uit twee delen.
 | **Max. eenvoudige lichtkegels** | Hoeveel eenvoudige lichtkegels worden getekend. 0 = alle. Met een limiet houdt elke projector eerst zijn eerste kegel, daarna de helderste. |
 | **Max. beeldsnelheid** | Beperkt hoe vaak per seconde het beeld opnieuw wordt getekend (bijvoorbeeld 30). 0 = onbeperkt. |
 | **Projectoren werpen schaduwen** | De behuizingen van de projectoren werpen schaduwen in de lichtkegels (standaard aan). |
+| **Projectoren donker in de editor** | In bouwmodus en projectormodus geven de projectoren geen licht (standaard: aan); in projectormodus zijn ze rood gemarkeerd. |
+| **Markering in projectormodus** | Hoe de projectoren in modus *Projectoren* worden gemarkeerd: *Geen*, *Rode projectoren* (standaard), *Rode stip* of *Rood en stip*. |
+| **VR-knop** | Wanneer de VR-knop (bril) verschijnt: *Automatisch* (alleen op VR-apparaten zoals Quest, Pico, Vision Pro – niet op pc of laptop), *Altijd als het kan* (bijv. pc-VR) of *Nooit*. |
 
 De regel onder de instellingen toont wat nu geldt (lichten, schaduwen, geplaatste projectoren) en wat de grafische kaart toestaat. **Limieten resetten** herstelt de standaardwaarden.
 

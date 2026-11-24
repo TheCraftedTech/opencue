@@ -110,6 +110,57 @@ export function createLive(sim, ctx) {
   let last = performance.now();
   let destroyed = false;
 
+  // ------------------------------------------------------------------------------------------ Editor-Modus
+  // Im Baumodus und im Scheinwerfer-Modus (Einstellung "Scheinwerfer im Editor dunkel", Standard an) leuchten die Scheinwerfer nicht: kein Lichtvorrat, keine Kegel, kein Nebel, kein Schattenwurf -
+  // das Arbeitslicht (sim3d_room.js) macht die Buehne gleichmaessig hell und die Anzeige bleibt fluessig. Im Scheinwerfer-Modus tragen sie eine rote Markierung (ein Punkt, der immer sichtbar bleibt)
+  // und eine rot leuchtende Linse, damit man sieht, wo sie haengen. Die Ansicht (view) ist davon nie betroffen.
+  const editorOff = () => sim.limits.values.editorDark !== 0 && !!sim.room && sim.room.mode !== "view";
+  const markerTexture = (() => {
+    const c = document.createElement("canvas");
+    c.width = c.height = 64;
+    const g = c.getContext("2d");
+    const grad = g.createRadialGradient(32, 32, 4, 32, 32, 30);
+    grad.addColorStop(0, "rgba(255,255,255,1)");
+    grad.addColorStop(0.45, "rgba(255,60,60,1)");
+    grad.addColorStop(0.7, "rgba(255,40,40,0.55)");
+    grad.addColorStop(1, "rgba(255,40,40,0)");
+    g.fillStyle = grad;
+    g.fillRect(0, 0, 64, 64);
+    const tex = new THREE.CanvasTexture(c);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    return tex;
+  })();
+  const markerMaterial = new THREE.SpriteMaterial({ map: markerTexture, sizeAttenuation: false, depthTest: false, depthWrite: false, transparent: true, fog: false, toneMapped: false });
+  const MARK_COLOR = new THREE.Color(1, 0.1, 0.12);
+  /** Rote Scheinwerfer: alle Koerperteile rot und leuchtend; die urspruenglichen Farben werden gemerkt und beim Ausschalten (oder Modus-Wechsel) zurueckgesetzt. */
+  function setBody(entry, st, on) {
+    if (st.redMats) { st.redMats.forEach((r) => { r.m.color.setHex(r.color); r.m.emissive.setHex(r.emissive); r.m.emissiveIntensity = r.ei; r.m.needsUpdate = false; }); st.redMats = null; }
+    if (!on || !entry.built) return;
+    const seen = new Set();
+    st.redMats = [];
+    entry.built.group.traverse((o) => {
+      const m = o.isMesh ? o.material : null;
+      if (!m || seen.has(m) || m === entry.built.lensMaterial || !m.emissive) return;
+      seen.add(m);
+      st.redMats.push({ m, color: m.color.getHex(), emissive: m.emissive.getHex(), ei: m.emissiveIntensity });
+      m.color.setHex(0xc81e28);
+      m.emissive.setHex(0xff2030);
+      m.emissiveIntensity = 0.85;
+    });
+  }
+  function setMarker(entry, st, on) {
+    if (!on) { if (st.marker) st.marker.visible = false; return; }
+    if (!st.marker) {
+      st.marker = new THREE.Sprite(markerMaterial);
+      st.marker.scale.setScalar(0.022);                           // Anteil der Bildhoehe, unabhaengig vom Abstand
+      st.marker.renderOrder = 20;
+      st.marker.raycast = () => {};                              // nie anklickbar (die Auswahl geht ueber das Geraet selbst)
+      st.marker.userData.helper = true;
+    }
+    if (st.marker.parent !== entry.group) entry.group.add(st.marker);
+    st.marker.visible = true;
+  }
+
   // ------------------------------------------------------------------------------------------ volumetrischer Kegel (Plaetze mit Schatten)
   const fullscreen = (() => {                                      // ein Dreieck ueber den ganzen Bildschirm: jedes Pixel rechnet den Schnitt seines Sehstrahls mit dem Kegel
     const g = new THREE.BufferGeometry();
@@ -527,6 +578,7 @@ export function createLive(sim, ctx) {
     let placed = 0;
     for (const entry of ctx.entries().values()) if (!entry.data.hidden) placed++;
     placed = Math.max(1, placed);
+    if (editorOff()) { limits.info = { placed, lights: 0, shadows: 0, maps: 0, gpuShadows: 0, gpuLights: 0, editor: true }; return { lights: 0, shadows: 0, maps: 0 }; }       // Editor: gar kein Lichtvorrat (der Shader wird schlank)
     let lights = Math.max(4, Math.ceil(placed / 4) * 4);
     if (v.maxLights > 0) lights = Math.max(1, Math.min(lights, v.maxLights));
     const maps0 = MAX_MAPS;                      // nichts hier haengt von der Qualitaetsstufe ab: sie bestimmt nur Aufloesung, Schattenkarten-Groesse und Abtastschritte
@@ -646,6 +698,9 @@ export function createLive(sim, ctx) {
   }
   function dropState(st) {
     st.cones = [];
+    if (st.marker && st.marker.parent) st.marker.parent.remove(st.marker);
+    st.marker = null;
+    st.redMats = null;
   }
   // ---- Einfache Kegel: eine Instanz-Zeichnung fuer alle (Kapazitaet waechst bei Bedarf)
   let coneBatch = null;
@@ -773,8 +828,13 @@ export function createLive(sim, ctx) {
     last = now;
     if (sim.quality.level !== level) buildPool();
     else { const w = wanted(); if (w.lights !== lights.length || w.shadows !== shadowCount) buildPool(); }          // Scheinwerfer platziert/entfernt oder Grenze geaendert: Vorrat anpassen
+    const off = editorOff();                           // Editor: Scheinwerfer dunkel
+    const markStyle = sim.limits.values.editorMark;     // Einstellung: 0 aus, 1 rote Scheinwerfer, 2 roter Punkt, 3 beides
+    const markBody = off && sim.room.mode === "fixtures" && (markStyle & 1) !== 0;       // ... im Scheinwerfer-Modus: Koerper rot
+    const markDot = off && sim.room.mode === "fixtures" && (markStyle & 2) !== 0;        // ... und / oder ein roter Punkt
+    const markKey = (markBody ? 1 : 0) + (markDot ? 2 : 0);
     const haze = Math.max(0, Math.min(1, ctx.haze()));
-    const fogOn = haze > 0.002;                        // Nebel aus: weder Lichtkegel noch Nebel-Durchlauf noch Tiefenbild (der groesste Posten der Grafikkarte)
+    const fogOn = haze > 0.002 && !off;                        // Nebel aus: weder Lichtkegel noch Nebel-Durchlauf noch Tiefenbild (der groesste Posten der Grafikkarte)
     const activeCones = [];                            // einfache Kegel dieses Bildes (eine Instanz-Zeichnung)
     let probesLeft = PROBES_PER_FRAME;                 // Strahlproben (CPU, gegen alle Flaechen der Buehne): nur wenige je Bild
     const gm = Math.max(0, Math.min(100, Number.isFinite(window.__grandMaster) ? window.__grandMaster : 100)) / 100;
@@ -792,7 +852,7 @@ export function createLive(sim, ctx) {
       const live = cache[id];
       // Zielwerte: ohne Live-Eintrag ist der Scheinwerfer aus; hat das Geraet keinen Dimmer-Kanal (nur Farbe), zaehlt die Farbe
       const unit = (v) => (Number.isFinite(v) ? Math.max(0, Math.min(1, v)) : 0);                 // jeder Eingangswert bleibt in 0..1: nichts kann ueber das Maximum hinaus wachsen
-      const dimTarget = live ? unit(live.dimmer !== undefined ? live.dimmer / 100 : 1) * gm * blackout : 0;
+      const dimTarget = off ? 0 : live ? unit(live.dimmer !== undefined ? live.dimmer / 100 : 1) * gm * blackout : 0;
       const color = live && live.color ? live.color : null;
       if (entry.modelType && st.wheelsFor !== entry.modelType) {                          // Farbraeder des Typs holen (einmal je Typ)
         st.wheelsFor = entry.modelType;
@@ -818,6 +878,7 @@ export function createLive(sim, ctx) {
       const zoomTarget = live && live.zoom !== undefined ? live.zoom : null;
       const before = st.dim + st.r + st.g + st.b + st.pan + st.tilt;
       st.dim = approach(st.dim, dimTarget, dt, TAU.dim);
+      if (off) st.dim = 0;                                                            // Editor: sofort dunkel, kein Ausblenden
       st.r = approach(st.r, rTarget, dt, TAU.color);
       st.g = approach(st.g, gTarget, dt, TAU.color);
       st.b = approach(st.b, bTarget, dt, TAU.color);
@@ -835,6 +896,7 @@ export function createLive(sim, ctx) {
         st.appliedPan = st.pan;
         st.appliedTilt = st.tilt;
       }
+      if (st.marked !== markKey || st.markedBuilt !== entry.built) { st.marked = markKey; st.markedBuilt = entry.built; st.darkDone = false; setMarker(entry, st, markDot); setBody(entry, st, markBody); }          // Markierung an / aus: einmal neu zeichnen
       if (st.darkDone && st.dim === 0 && dimTarget === 0) continue;                 // aus und schon als aus gezeichnet: kein Lichtkegel, keine Linse, kein Muster - nichts zu tun
       entry.group.updateMatrixWorld(true);
       tmpColor.setRGB(st.r, st.g, st.b, THREE.SRGBColorSpace);
@@ -846,6 +908,11 @@ export function createLive(sim, ctx) {
         entry.built.lensMaterial.emissive.copy(tmpColor);
         entry.built.lensMaterial.color.copy(tmpColor).lerp(LENS_OFF, 1 - Math.min(1, power * 4));
         entry.built.lensMaterial.emissiveIntensity = power * 2.2;
+        if (markBody) {                                           // Scheinwerfer-Modus (rote Scheinwerfer): rot leuchtende Linse
+          entry.built.lensMaterial.emissive.copy(MARK_COLOR);
+          entry.built.lensMaterial.color.copy(MARK_COLOR);
+          entry.built.lensMaterial.emissiveIntensity = 2.2;
+        }
       }
       const patternState = { moving: false };
       const pattern = resolvePattern(entry, st, live, dt, now / 1000, patternState);        // Gobo/Prisma aus den DMX-Bytes

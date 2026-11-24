@@ -746,6 +746,7 @@ def main() -> None:
 
     def _shutdown_work() -> None:
         stop_watching.set()
+        window_host.close_all()                                          # das 3D-Fenster zuerst (solange es offen ist, endet die Fensterschleife nicht)
         crash.dialogs_enabled = False                                    # Fehler beim Beenden: nur ins Log, kein Fenster mehr
 
         print("[OpenCue] Shutting down...")
@@ -776,6 +777,142 @@ def main() -> None:
     # Feuert nach dem tatsaechlichen Schliessen (siehe _watch_exit_signal) und
     # gibt die Geometrie frei.
     window.events.closed += shutdown
+
+    # ---- Eigenes 3D-Fenster (app/window_host.py): dieselbe Oberflaeche mit ?solo=sim3d, nur das 3D-Panel; eigener Renderer-Prozess mit niedrigerer Prioritaet.
+    from app import window_host
+    solo_state: dict = {"window": None, "pids": []}
+    solo_lock = threading.Lock()
+    solo_file = get_data_root() / "webview" / "sim3d_window.json"
+    solo_geometry: dict = {}
+
+    def _solo_load_geometry() -> dict:
+        import json
+        try:
+            data = json.loads(solo_file.read_text(encoding="utf-8"))
+            keys = ("x", "y", "width", "height")
+            if all(isinstance(data.get(k), int) for k in keys) and data["width"] >= 320 and data["height"] >= 240:
+                return {k: data[k] for k in keys} | {"maximized": bool(data.get("maximized"))}
+        except Exception:
+            pass
+        return {}
+
+    def _solo_save_geometry() -> None:
+        import json
+        if not solo_geometry:
+            return
+        try:
+            solo_file.parent.mkdir(parents=True, exist_ok=True)
+            solo_file.write_text(json.dumps(solo_geometry), encoding="utf-8")
+        except Exception as exc:
+            print(f"[{APP_NAME}] 3D-Fenster: Position nicht gespeichert: {exc}")
+
+    def _solo_moved(x: int, y: int) -> None:
+        low, high = _PLAUSIBLE_COORD_RANGE
+        if low < x < high and low < y < high:
+            solo_geometry["x"], solo_geometry["y"] = x, y
+
+    def _solo_resized(width: int, height: int) -> None:
+        if width >= 320 and height >= 240:
+            solo_geometry["width"], solo_geometry["height"] = width, height
+
+    def _solo_closed(*_args) -> None:
+        with solo_lock:
+            solo_state["window"] = None
+        _solo_save_geometry()
+        window_host.notify()
+
+    def _solo_open() -> bool:
+        with solo_lock:
+            if solo_state["window"] is not None:
+                pass
+            else:
+                geo = _solo_load_geometry()
+                kwargs: dict = {"width": 1280, "height": 800}
+                if geo and _position_is_visible(geo["x"], geo["y"], geo["width"], geo["height"]):
+                    kwargs.update(x=geo["x"], y=geo["y"], width=geo["width"], height=geo["height"])
+                    solo_geometry.update(geo)
+                before = window_host.process_ids()
+                new = webview.create_window("OpenCue 3D", url=f"http://{HOST}:{PORT}/?solo=sim3d", resizable=True, min_size=(480, 320), confirm_close=False, **kwargs)
+                solo_state["pids"] = []
+                new.events.closed += _solo_closed
+                new.events.moved += _solo_moved
+                new.events.resized += _solo_resized
+                solo_state["window"] = new
+
+                def _lower() -> None:
+                    # solange DIESES Fenster offen ist, die Prioritaet halten (Chromium setzt sie bei Fokuswechseln zurueck)
+                    window_host.lower_new_processes(before, lambda: solo_state["window"] is new, sink=solo_state["pids"])
+
+                threading.Thread(target=_lower, name="solo-priority", daemon=True).start()
+                window_host.notify()
+                return True
+        _solo_focus()
+        return True
+
+    def _solo_close() -> None:
+        current = solo_state["window"]
+        if current is not None:
+            try:
+                current.destroy()
+            except Exception as exc:
+                print(f"[{APP_NAME}] 3D-Fenster schliessen: {exc}")
+
+    def _solo_focus() -> None:
+        current = solo_state["window"]
+        if current is None:
+            return
+        try:
+            current.restore()
+        except Exception:
+            pass
+        try:
+            current.show()
+            from webview.platforms import winforms
+            from System import Func, Type
+            form = winforms.BrowserView.instances.get(current.uid)
+            if form is not None:
+                form.Invoke(Func[Type](form.Activate))
+        except Exception as exc:
+            print(f"[{APP_NAME}] 3D-Fenster nach vorn: {exc}")
+
+    window_host.register(_solo_open, _solo_close, _solo_focus, lambda: solo_state["window"] is not None, lambda: {"pids": list(solo_state["pids"])})
+
+    def _watch_occlusion() -> None:
+        """Beobachtet auf Windows-Ebene, ob das Programmfenster / das 3D-Fenster verdeckt ist (minimiert, anderer Desktop, ganz von anderen Fenstern bedeckt). WebView2 meldet das nicht (die
+        Seite gilt weiter als sichtbar); die 3D-Ansicht pausiert dann ihr Zeichnen (app/window_host.py set_hidden -> Ereignis host_window_visible). Erst nach zwei Messungen in Folge (~1 s) "verdeckt",
+        sofort wieder sichtbar."""
+        if sys.platform != "win32":
+            return
+        from webview.platforms import winforms
+        from System import Func, Type
+        handles: dict = {}
+        misses = {"main": 0, "sim3d": 0}
+
+        def handle_of(w) -> int:
+            if w.uid in handles:
+                return handles[w.uid]
+            form = winforms.BrowserView.instances.get(w.uid)
+            if form is None:
+                return 0
+            box: list = []
+            form.Invoke(Func[Type](lambda: box.append(int(form.Handle.ToInt64()))))
+            handles[w.uid] = box[0] if box else 0
+            return handles[w.uid]
+
+        while not stop_watching.wait(0.5):
+            for name, w in (("main", window), ("sim3d", solo_state["window"])):
+                if w is None:
+                    misses[name] = 0
+                    window_host.set_hidden(name, False)
+                    continue
+                try:
+                    hidden = window_host.window_hidden(handle_of(w))
+                except Exception:
+                    hidden = False
+                misses[name] = misses[name] + 1 if hidden else 0
+                window_host.set_hidden(name, misses[name] >= 2)
+
+    threading.Thread(target=_watch_occlusion, name="occlusion", daemon=True).start()
 
     exit_watcher = threading.Thread(
         target=_watch_exit_signal, args=(window, stop_watching), daemon=True

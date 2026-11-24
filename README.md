@@ -44,7 +44,7 @@
 | **Output** | Art-Net, sACN (E1.31) and USB-DMX (Enttec DMX USB Pro and compatible); automatic discovery of Art-Net nodes; output in its own process. |
 | **Input** | Receive Art-Net and sACN from another desk or software, forward and merge it (highest wins or replace), use channels as triggers; OpenCue announces itself as an Art-Net device. |
 | **Control** | MIDI in and out, OSC, a token-based REST API, custom keyboard shortcuts, optional offline voice control. |
-| **3D stage** | Build a stage, see the fixtures with their real GDTF models and live DMX light, aim moving heads at a point. |
+| **3D stage** | Build a stage, see the fixtures with their real GDTF models and live DMX light, aim moving heads at a point, import and export MVR scenes (Vectorworks, Capture, Depence), and run the 3D view in its own window. |
 | **Time and media** | Global timecode (internal, MIDI timecode, LTC in and out), a timeline editor, video and audio player, camera and stream panels. |
 | **Remote control** | Tablets and phones in the local network with password, QR code and an installable web app; off by default; server-only mode (`--no-ui`) with a tray icon. |
 | **Safe shows** | Background backups, crash recovery, lock screen, safe saving, export and import of shows with their fixtures. |

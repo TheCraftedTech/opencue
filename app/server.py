@@ -74,7 +74,7 @@ from app import media_store
 from app import stream_sources
 from app import sim_stages
 from app import sim_models
-from app import mvr_import
+from app import mvr_export, mvr_import, window_host
 from app import voice
 from app import dictation
 from app import io_overview
@@ -1572,6 +1572,8 @@ app.include_router(fs_browser.router)             # OpenCue-Explorer: Dateien im
 app.include_router(sim_stages.router)
 app.include_router(sim_models.router)
 app.include_router(mvr_import.router)          # MVR-Import (/api/mvr): Buehne + Scheinwerfer aus einer .mvr-Datei
+app.include_router(mvr_export.router)
+app.include_router(window_host.router)               # 3D-Panel in eigenem Fenster (app/window_host.py)          # MVR-Export (/api/mvr/export): Scheinwerfer + Buehne als .mvr-Datei
 app.include_router(ui_store.router)               # Oberflaechenzustand der Konsole (/api/uistore)
 app.include_router(console_defaults.router)   # Standardwerte (/api/defaults)
 app.include_router(io_overview.router)            # Uebersicht aller Ein- und Ausgaenge (/api/io-overview)

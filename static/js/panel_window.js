@@ -155,5 +155,20 @@
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", hookMenu); else hookMenu();
   document.addEventListener("i18n-applied", () => { const submenu = document.getElementById("panelwin-submenu"); if (submenu) submenu.dataset.signature = ""; });
 
-  window.OCPanelWindow = { open, close, toggle, isOpen: () => !!current, type: () => (current ? current.type : null), types, CONSOLE };
+  /** 3D-Fenster (?solo=...): das Panel einmal in voller Groesse, ohne Layout und ohne Rahmen. */
+  let soloRoot = null;
+  function solo(type) {
+    if (soloRoot) return true;
+    const info = infoOf(type);
+    if (!info) return false;
+    soloRoot = el("div", "solo-root");
+    soloRoot.appendChild(panelSection(info));
+    document.body.classList.add("solo");
+    document.body.appendChild(soloRoot);
+    refreshActivePanels();
+    document.dispatchEvent(new CustomEvent("panels-rendered"));
+    return true;
+  }
+
+  window.OCPanelWindow = { open, close, toggle, solo, isOpen: () => !!current, type: () => (current ? current.type : null), types, CONSOLE };
 })();

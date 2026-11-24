@@ -1,6 +1,43 @@
 {
  "releases": [
   {
+   "version": "2.3.0",
+   "date": "2026-11-24",
+   "title": "MVR export and 3D in its own window",
+   "items": [
+    {
+     "icon": "download",
+     "title": "Export stage and fixtures",
+     "text": "Library → Export MVR scene… writes fixtures with their patch and the 3D stage as an .mvr file for Vectorworks, Capture or Depence."
+    },
+    {
+     "icon": "external",
+     "title": "3D in its own window",
+     "text": "On request the 3D simulation runs in a window of its own with its own process – ideal for a second screen. The console stays smooth."
+    },
+    {
+     "icon": "cube",
+     "title": "Calm editor",
+     "text": "In Build and Fixtures mode the fixtures are dark (red in Fixtures mode) and the room light is even – building stays smooth."
+    },
+    {
+     "icon": "pause",
+     "title": "Saves power when nothing is visible",
+     "text": "A minimized or covered window stops drawing 3D; when the picture rests it becomes sharper."
+    },
+    {
+     "icon": "gear",
+     "title": "VR button only on VR devices",
+     "text": "The VR button only appears where it is useful. New settings in Room & light."
+    },
+    {
+     "icon": "help",
+     "title": "Guides updated",
+     "text": "The guides 3D Simulation and Fixtures describe the new functions – the assistant knows them too."
+    }
+   ]
+  },
+  {
    "version": "2.2.0",
    "date": "2026-11-24",
    "title": "MVR import and a faster 3D simulation",

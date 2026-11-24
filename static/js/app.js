@@ -53,6 +53,8 @@ const ASSET_VERSION = (() => {
   try { return new URL(document.currentScript.src).searchParams.get("v") || ""; } catch (error) { return ""; }
 })();
 const _assetQuery = ASSET_VERSION ? "?v=" + encodeURIComponent(ASSET_VERSION) : "";
+// 3D-Fenster (app/window_host.py): dieselbe Oberflaeche mit ?solo=sim3d - kein Layout, nur das 3D-Panel in voller Groesse (panel_window.js solo()). Kein Speichern, keine Tastenkuerzel.
+window.__solo = (() => { try { return new URLSearchParams(location.search).get("solo") || ""; } catch (error) { return ""; } })();
 
 let _activeLayoutName = null;     // Anzeigename des aktuellen Layouts
 let _activeLayoutFilename = null; // Dateiname (z.B. "My Layout.json") für API-Aufrufe
@@ -888,6 +890,7 @@ class OpenCueClient {
         _applyRemoteSnapshot(message.payload);
         this._showConnectionBanner(false);   // Resync fertig
         _restoreDeviceLayout(message.payload);
+        if (window.__solo && window.OCPanelWindow) window.OCPanelWindow.solo(window.__solo);        // 3D-Fenster: das 3D-Panel (einmal) aufbauen
         if (message.payload.grand_master != null) window.__grandMaster = message.payload.grand_master;
         document.dispatchEvent(new CustomEvent("grand-master-changed"));
         window.__blackout = !!message.payload.blackout;
@@ -1199,7 +1202,19 @@ class OpenCueClient {
       case "showfile_status_changed":
         _refreshShowfileStatus(true);
         break;
+      case "sim3d_window":                                  // das 3D-Fenster wurde geoeffnet / geschlossen (app/window_host.py): das Hauptfenster haelt seine 3D-Ansicht an / zeigt sie wieder
+        window.__sim3dWindowOpen = !!(message.payload && message.payload.open);
+        window.__sim3dWindowPaused = !!(message.payload && message.payload.paused);
+        document.dispatchEvent(new CustomEvent("sim3d-active-changed"));
+        break;
+      case "host_window_visible":                            // das Programmfenster ist minimiert / verdeckt / wieder sichtbar (Windows-Ebene, app/window_host.py): die 3D-Ansicht pausiert ihr Zeichnen
+        if (message.payload && message.payload.window === (window.__solo ? "sim3d" : "main")) {
+          window.__hostHidden = !message.payload.visible;
+          document.dispatchEvent(new CustomEvent("host-visibility"));
+        }
+        break;
       case "close_requested":
+        if (window.__solo) break;                           // das Beenden-Fenster gehoert dem Hauptfenster
         _pendingCloseAfterSave = false;
         _closeSaveInFlight = false;
         _openCloseDialog();
@@ -1548,6 +1563,7 @@ new MutationObserver((records) => {
 const Modal = {
   AUTO_DELETE: { "cue-delete-confirm": ["cues", "cue-delete-confirm-button"], "preset-delete-confirm": ["library", "preset-delete-confirm-button"], "preset-group-delete-confirm": ["library", "preset-group-delete-confirm-button"] },
   _stack: [],
+  SOLO_BLOCKED: new Set(["whatsnew", "welcome", "update", "backup-restore", "backup-recovery"]),      // 3D-Fenster: die Start-Dialoge der Konsole (Was ist neu, Willkommen, Update, Wiederherstellen) gehoeren dem Hauptfenster
   _hooks: {},   // id -> Funktion, die einmalig beim Schliessen (X, Abbrechen, Escape) laeuft
   // Formular-Dialoge: haben die Nutzerin / der Nutzer etwas getippt oder umgestellt, fragen Abbrechen, X und Escape vor dem Schliessen nach (Einstellung "Rueckfragen": Kategorie "other").
   DIRTY_GUARD: new Set(["cue-edit", "preset-edit", "fx-edit", "stream-source", "sim-json", "cue-store", "cue-copy", "fx-import", "midi-template", "hotkey-device"]),
@@ -1566,6 +1582,7 @@ const Modal = {
   },
   _guards: {},  // id -> Funktion, die statt des Schliessens laeuft (z. B. "Aenderungen verwerfen?"); wer wirklich schliessen will, ruft Modal.close(id, true)
   open(id) {
+    if (window.__solo && Modal.SOLO_BLOCKED.has(id)) return;
     const auto = Modal.AUTO_DELETE[id];                                        // Loesch-Dialoge mit eigenem Knopf: ohne Sicherheitsfrage fuehrt der Knopf die Aktion sofort aus
     if (auto && !_confirmWanted(auto[0])) {
       const button = document.getElementById(auto[1]);
@@ -1840,6 +1857,7 @@ const PANEL_TITLE_KEYS = {
  * another connected client) from ever flickering or interrupting whatever
  * the user is doing in an already-open panel. */
 function renderPanels(panels) {
+  if (window.__solo) return;                          // 3D-Fenster: kein Layout
   const workspace = document.getElementById("app-root");
   if (!workspace) return;
 
@@ -6701,7 +6719,7 @@ function buildSettingsPanelContent() {
 function updateWindowTitle(showfileName, dirty) {
   const d = dirty ?? _isDirty;
   const name = (!showfileName || showfileName === "Untitled") ? i18n("SHOWFILE_UNTITLED") : showfileName;
-  document.title = "OpenCue";   // fester Titel - Showfile und Version stehen in der Toolbar
+  document.title = window.__solo ? "OpenCue 3D" : "OpenCue";   // fester Titel - Showfile und Version stehen in der Toolbar
   const indicator = document.getElementById("toolbar-showfile-name");
   if (indicator) {
     indicator.textContent = name;
@@ -7372,6 +7390,7 @@ function _rememberDeviceLayout(filename) {
 }
 
 async function _restoreDeviceLayout(snapshot) {
+  if (window.__solo) return;                          // 3D-Fenster: fasst das Layout nie an
   if (_deviceLayoutRestored) return;
   _deviceLayoutRestored = true;
   let stored = null;
@@ -19107,7 +19126,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   setupFullscreenToggle();
   setupFileMenu();
   setupLayoutMenu();
-  setupKeyboardShortcuts();
+  if (!window.__solo) setupKeyboardShortcuts();        // 3D-Fenster: keine Tastenkuerzel der Konsole
   setupHelpMenu();
   setEditMode(false); // establishes the initial disabled/label state
 });

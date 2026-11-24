@@ -445,7 +445,7 @@ async def open_download(request: Request) -> JSONResponse:
     Entfernte Geraete (und Tests) bekommen opened=false und laden die Adresse selbst herunter."""
     body = await request.json()
     url = str(body.get("url", ""))
-    if not (url.startswith("/api/files/download?") or url.startswith("/api/files/export-show?") or url.startswith("/api/transfer/get?") or url.startswith("/api/report/pdf?") or re.fullmatch(r"/api/notebook/[0-9a-f]{16}/export", url) or url == "/api/fixtures/export.csv"):
+    if not (url.startswith("/api/files/download?") or url.startswith("/api/files/export-show?") or url.startswith("/api/transfer/get?") or url.startswith("/api/mvr/export/download?") or url.startswith("/api/report/pdf?") or re.fullmatch(r"/api/notebook/[0-9a-f]{16}/export", url) or url == "/api/fixtures/export.csv"):
         return JSONResponse({"ok": False, "error": "invalid_url"}, status_code=400)
     host = request.client.host if request.client else None
     if not (remote.is_local(host) and file_dialog.available):

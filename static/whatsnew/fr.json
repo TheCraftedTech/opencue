@@ -1,6 +1,43 @@
 {
  "releases": [
   {
+   "version": "2.3.0",
+   "date": "2026-11-24",
+   "title": "Export MVR et 3D dans sa propre fenêtre",
+   "items": [
+    {
+     "icon": "download",
+     "title": "Exporter la scène et les projecteurs",
+     "text": "Bibliothèque → Exporter une scène MVR… écrit les projecteurs avec leur patch et la scène 3D dans un fichier .mvr pour Vectorworks, Capture ou Depence."
+    },
+    {
+     "icon": "external",
+     "title": "3D dans sa propre fenêtre",
+     "text": "La simulation 3D peut tourner dans une fenêtre à part avec son propre processus – idéal pour un deuxième écran. La console reste fluide."
+    },
+    {
+     "icon": "cube",
+     "title": "Éditeur calme",
+     "text": "En modes Construire et Projecteurs, les projecteurs sont éteints (rouges en mode Projecteurs) et la lumière de la salle est uniforme – la construction reste fluide."
+    },
+    {
+     "icon": "pause",
+     "title": "Économise de la puissance quand rien n'est visible",
+     "text": "Une fenêtre réduite ou recouverte ne dessine plus de 3D ; quand l'image est au repos, elle devient plus nette."
+    },
+    {
+     "icon": "gear",
+     "title": "Bouton VR seulement sur les appareils VR",
+     "text": "Le bouton VR n'apparaît que là où il sert. Nouveaux réglages sous Salle et lumière."
+    },
+    {
+     "icon": "help",
+     "title": "Guides mis à jour",
+     "text": "Les guides Simulation 3D et Projecteurs décrivent les nouvelles fonctions – l'assistant les connaît aussi."
+    }
+   ]
+  },
+  {
    "version": "2.2.0",
    "date": "2026-11-24",
    "title": "Import MVR et simulation 3D plus rapide",

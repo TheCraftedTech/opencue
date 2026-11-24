@@ -13,6 +13,7 @@ const Icons = (() => {
     "arrow-up": '<path d="M12 19V5M5 12l7-7 7 7"/>',
     "arrow-left": '<path d="M19 12H5M12 5l-7 7 7 7"/>',
     check: '<path d="M5 12.5l4.5 4.5L19 7.5"/>',
+    external: '<path d="M14 4h6v6M20 4l-8.5 8.5"/><path d="M18 14v4.5a1.5 1.5 0 01-1.5 1.5h-12A1.5 1.5 0 013 18.5v-12A1.5 1.5 0 014.5 5H10"/>',
     close: '<path d="M6 6l12 12M18 6L6 18"/>',
     star: { fill: true, d: '<path d="M12 3.2l2.7 5.6 6.1.8-4.5 4.2 1.1 6.1L12 17l-5.4 2.9 1.1-6.1-4.5-4.2 6.1-.8z"/>' },
     play: { fill: true, d: '<path d="M7 4.5v15l12.5-7.5z"/>' },
