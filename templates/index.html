@@ -130,6 +130,7 @@
           <li class="menu__item" data-i18n="ADD_WIDGET_FADER" data-action="add-panel" data-panel-type="fader" data-edit-only>Add Fader</li>
           <li class="menu__item" data-i18n="ADD_WIDGET_TOGGLE" data-action="add-panel" data-panel-type="toggle" data-edit-only>Add Toggle</li>
           <li class="menu__separator" role="separator"></li>
+          <li class="menu__item" data-i18n="LAYOUT_NEW_MENU" data-action="new-layout">New layout...</li>
           <li class="menu__item" data-i18n="LAYOUT_MANAGE" data-action="file-manager" data-fm-kind="layouts">Manage Layouts...</li>
         </ul>
       </div>
@@ -139,6 +140,7 @@
         <ul class="menu__dropdown">
           <li class="menu__item menu__item--featured" data-i18n="FXLIB_MENU" data-action="fixture-library">Fixture Library...</li>
           <li class="menu__item" data-i18n="FXI_MENU" data-action="open-fixture-import">Import fixture list (CSV / Excel)...</li>
+          <li class="menu__item" data-i18n="MVR_MENU" data-action="open-mvr-import">Import MVR scene (stage and fixtures)...</li>
           <li class="menu__separator" role="separator"></li>
           <li class="menu__item" data-i18n="FM_MENU_SHOWS" data-action="file-manager" data-fm-kind="shows">Shows...</li>
           <li class="menu__item" data-i18n="FM_MENU_LAYOUTS" data-action="file-manager" data-fm-kind="layouts">Layouts...</li>
@@ -1477,6 +1479,38 @@
         <button type="button" class="modal__button" id="fxi-again" data-i18n="FXI_AGAIN" hidden>Other file ...</button>
         <button type="button" class="modal__button" data-modal-cancel="fx-import" data-i18n="CANCEL">Cancel</button>
         <button type="button" class="modal__button modal__button--primary" id="fxi-import" data-i18n="FXI_IMPORT" hidden disabled>Import</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MVR-Szene importieren (Menue Bibliothek; static/js/mvr_import.js, app/mvr_import.py) -->
+  <div class="modal-backdrop" data-modal-backdrop="mvr-import" aria-hidden="true">
+    <div class="modal modal--mvr modal--m" role="dialog" aria-modal="true" aria-labelledby="mvr-title">
+      <div class="modal__header">
+        <span id="mvr-title" data-i18n="MVR_TITLE">Import MVR scene</span>
+        <button type="button" class="modal__close" data-modal-close="mvr-import" aria-label="Close" data-i18n-aria="CLOSE">&times;</button>
+      </div>
+      <div class="modal__body mvr">
+        <div id="mvr-step-file">
+          <p class="fxi__intro" data-i18n="MVR_INTRO">MVR is the exchange format of stage and lighting design programs (Vectorworks, Capture, Depence ...).</p>
+          <div class="fxi__buttons">
+            <button type="button" class="modal__button modal__button--primary" id="mvr-pick" data-i18n="MVR_PICK">Choose MVR file ...</button>
+          </div>
+          <p class="mvr__hint" data-i18n="MVR_DROP">or drop a .mvr file onto this window</p>
+        </div>
+        <div id="mvr-step-options" hidden><div id="mvr-options"></div></div>
+        <div id="mvr-step-busy" hidden>
+          <div class="mvr__busy"><span class="mvr__spin" aria-hidden="true"></span><div class="mvr__busy-text"><div id="mvr-busy-title" class="mvr__busy-title"></div><div id="mvr-busy-sub" class="mvr__hint"></div></div></div>
+          <div class="mvr__bar" role="progressbar" aria-valuemin="0" aria-valuemax="100"><div class="mvr__bar-fill" id="mvr-bar"></div></div>
+        </div>
+        <div id="mvr-step-done" hidden><div id="mvr-done"></div></div>
+        <p class="fxi__msg" id="mvr-msg" role="status"></p>
+      </div>
+      <div class="modal__footer">
+        <button type="button" class="modal__button" id="mvr-again" data-i18n="MVR_AGAIN" hidden>Other file ...</button>
+        <button type="button" class="modal__button" id="mvr-cancel" data-modal-cancel="mvr-import" data-i18n="CANCEL">Cancel</button>
+        <button type="button" class="modal__button modal__button--primary" id="mvr-import" data-i18n="MVR_IMPORT" hidden disabled>Import</button>
+        <button type="button" class="modal__button modal__button--primary" id="mvr-close" data-i18n="CLOSE" hidden>Close</button>
       </div>
     </div>
   </div>
@@ -3084,6 +3118,7 @@
   <script src="/static/js/whatsnew.js{% if asset_v %}?v={{ asset_v }}{% endif %}"></script>
   <script src="/static/js/welcome.js{% if asset_v %}?v={{ asset_v }}{% endif %}"></script>
   <script src="/static/js/fixture_import.js{% if asset_v %}?v={{ asset_v }}{% endif %}"></script>
+  <script src="/static/js/mvr_import.js{% if asset_v %}?v={{ asset_v }}{% endif %}"></script>
   <script src="/static/js/sim_json.js{% if asset_v %}?v={{ asset_v }}{% endif %}"></script>
   <script src="/static/js/schedule.js{% if asset_v %}?v={{ asset_v }}{% endif %}"></script>
   <script src="/static/js/osc.js{% if asset_v %}?v={{ asset_v }}{% endif %}"></script>

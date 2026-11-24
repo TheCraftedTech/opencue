@@ -193,7 +193,7 @@
   ],
   "title": "7. De interface naar je hand zetten",
   "keywords": [],
-  "text": "- **Bewerkmodus** (**Bewerken → Panelen bewerken**, `Ctrl+E`): panelen verplaatsen en vergroten of verkleinen (heel klein kan, de inhoud scrolt dan), hun eigenschappen en kleuren wijzigen, kopiëren en plakken. **Rechtsklikken op de lege werkruimte** voegt een paneel, knop, schakelaar of fader toe op de plek van de klik. Het vinkje **Bewerken → Hulplijnen** zet de uitlijnhulplijnen tijdens het verplaatsen aan of uit (houd `Alt` ingedrukt: kortstondig uit).\n- **Lay-outs** zijn bestanden. Bouw er meerdere (bijvoorbeeld een kleine om te programmeren en een grote om af te spelen) en wissel met `Ctrl+1` … `Ctrl+9` of **Weergave → Lay-outs**. Opslaan met `Ctrl+S` of in het bestandsbeheer.\n- **Thema's** (kleurprofielen): *Instellingen → Weergave* – donker, licht of je eigen.\n- **GUI-schaal** (`Ctrl +` / `Ctrl -`): maakt alles groter voor aanraakschermen; wordt per apparaat bewaard.\n- **Taal:** menu *Taal* (English, Deutsch, Français, Nederlands, Italiano, Español) of `Ctrl+Shift+L`. De handleidingen zijn beschikbaar in alle zes de talen."
+  "text": "- **Bewerkmodus** (**Bewerken → Panelen bewerken**, `Ctrl+E`): panelen verplaatsen en vergroten of verkleinen (heel klein kan, de inhoud scrolt dan), hun eigenschappen en kleuren wijzigen, kopiëren en plakken. **Rechtsklikken op de lege werkruimte** voegt een paneel, knop, schakelaar of fader toe op de plek van de klik. Het vinkje **Bewerken → Hulplijnen** zet de uitlijnhulplijnen tijdens het verplaatsen aan of uit (houd `Alt` ingedrukt: kortstondig uit).\n- **Lay-outs** zijn bestanden. Bouw er meerdere (bijvoorbeeld een kleine om te programmeren en een grote om af te spelen) en wissel met `Ctrl+1` … `Ctrl+9` of **Weergave → Lay-outs**. Opslaan met `Ctrl+S` of in het bestandsbeheer. Een nieuwe, lege layout maak je met **Bewerken → Nieuwe layout…**.\n- **Thema's** (kleurprofielen): *Instellingen → Weergave* – donker, licht of je eigen.\n- **GUI-schaal** (`Ctrl +` / `Ctrl -`): maakt alles groter voor aanraakschermen; wordt per apparaat bewaard.\n- **Taal:** menu *Taal* (English, Deutsch, Français, Nederlands, Italiano, Español) of `Ctrl+Shift+L`. De handleidingen zijn beschikbaar in alle zes de talen."
  },
  {
   "id": "getting-started-018",
@@ -251,6 +251,17 @@
   ],
   "title": "9. Waar je gegevens staan en hoe je ze back-upt",
   "keywords": [],
-  "text": "Je gegevens zijn gewone bestanden in de gegevensmap (standaard `%LOCALAPPDATA%\\OpenCue`):\n\n| Map | Inhoud |\n|---|---|\n| `showfiles` | Shows (projectoren, groepen, cues, presets, effecten) |\n| `layouts` | Paneel-lay-outs |\n| `themes` | Kleurprofielen |\n| `fixtures` | GDTF-projectorbestanden |\n| `effects` | Effectscripts (`.fx`) |\n| `stages` | 3D-podia |\n| `media` | Video's en audio van je shows |\n| `config` | Instellingen (`app_config.json`, incl. de gekozen audiobron) en de API-tokens (`api_tokens.json`, alleen hashes) |\n\nVoor een back-up kopieer je de map – of gebruik je de **export** van het bestandsbeheer (een show als ZIP inclusief de projectoren en effecten die hij nodig heeft), waarmee je een show ook naar een andere computer verplaatst.\n\nBij het verwijderen van OpenCue wordt gevraagd of deze gegevens ook moeten worden gewist; de standaardkeuze is **Nee**."
+  "text": "Je gegevens zijn gewone bestanden in de gegevensmap (standaard `%LOCALAPPDATA%\\OpenCue`):\n\n| Map | Inhoud |\n|---|---|\n| `showfiles` | Shows (projectoren, groepen, cues, presets, effecten) |\n| `layouts` | Paneel-lay-outs |\n| `themes` | Kleurprofielen |\n| `fixtures` | GDTF-projectorbestanden |\n| `effects` | Effectscripts (`.fx`) |\n| `stages` | 3D-podia |\n| `media` | Video's en audio van je shows |\n| `config` | Instellingen (`app_config.json`, incl. de gekozen audiobron) en de API-tokens (`api_tokens.json`, alleen hashes) |\n\nVoor een back-up kopieer je de map – of gebruik je de **export** van het bestandsbeheer (een show als ZIP inclusief de projectoren en effecten die hij nodig heeft), waarmee je een show ook naar een andere computer verplaatst."
+ },
+ {
+  "id": "getting-started-023",
+  "page": "getting-started",
+  "path": [
+   "Aan de slag met OpenCue",
+   "9. Waar je gegevens staan en hoe je ze back-upt"
+  ],
+  "title": "9. Waar je gegevens staan en hoe je ze back-upt (2)",
+  "keywords": [],
+  "text": "In het **bestandsbeheer** hebben de lijsten *3D-modellen*, *media*, *effecten* en *projectoren* een schakelaar **Lijst | Groepen** (OpenCue onthoudt je keuze). *Groepen* toont eerst de groepen: effecten per soort (Dimmer, Kleur, Positie, Gobo, Zoom, Focus), media per type (Audio, Beeld, Video), projectoren per merk en 3D-modellen per **show** waarin ze worden gebruikt (een model dat in twee shows voorkomt, staat in beide groepen; de lijst toont het één keer). Een klik opent een groep, *Alle groepen* brengt je terug. **Ongebruikte verwijderen** (lijst *3D-modellen*) verwijdert elk 3D-model dat op geen enkel podium staat – noch het geladen noch een opgeslagen podium – zodat oude imports zich niet opstapelen.\n\nBij het verwijderen van OpenCue wordt gevraagd of deze gegevens ook moeten worden gewist; de standaardkeuze is **Nee**."
  }
 ]

@@ -30,6 +30,10 @@ const MAX_BEAMS = 24;                     // Linsen je Geraet (LED-Leisten haben
 // die Grafikkarte (Texturen fuer die Schattenkarten, Shader-Konstanten) - nie durch die Qualitaetsstufe (die bestimmt nur Aufloesung, Schattenkarten-Groesse und Abtastschritte).
 const TEXTURE_RESERVE = 4;                 // Textureinheiten, die nicht fuer Schattenkarten zur Verfuegung stehen (Umgebungs-Karte u. a.)
 const VECTOR_BASE = 220;                   // geschaetzte Shader-Konstanten ohne Lichter; je Licht ca. 8, je Schattenlicht weitere 12
+const SHADOW_STEP_MS = 12;                 // Mindestabstand der Schattenkarten-Aktualisierung je Karte ...
+const SHADOW_MAX_MS = 110;                 // ... hoechstens so lang (ca. 9 Aktualisierungen je Sekunde bei 9 Karten)
+const PROBES_PER_FRAME = 3;                 // Strahlproben (Raycasts) je Bild: 32 Lichter x 18 Strahlen gegen alle Flaechen waren der groesste Posten des Hauptthreads
+const PROBE_MIN_MS = 70;                   // ein Platz wird hoechstens so oft neu vermessen
 const MAX_MAPS = 3;                         // davon mit Lichtkarte fuer Gobo/Prisma (die ersten Schattenplaetze; jede Karte braucht eine Textureinheit mehr)
 const STEPS = [8, 10, 14, 18, 24, 32];     // Abtastschritte des volumetrischen Nebels je Qualitaetsstufe
 const MAX_RAYS = 9;
@@ -48,26 +52,30 @@ const TAU = { dim: 0.05, color: 0.06, axis: 0.09, zoom: 0.12 };      // Zeitkons
 
 /** Fresnel-Kegel wie in der Vorlage: Spitze bei z = 0, zeigt nach -z, weicher Rand, zur Ferne ausgeblendet. */
 function makeBeamMaterial() {
+  // Alle einfachen Kegel sind EINE Instanz-Zeichnung (ein Aufruf statt ueber 1800 mit eigenem Material). Je Instanz: Matrix (instanceMatrix), Farbe, Staerke / weicher Rand / scharfe Kante.
+  // Die Mischung ist vertauschbar (Screen), die Reihenfolge der Kegel spielt keine Rolle.
   return new THREE.ShaderMaterial({
-    uniforms: { uColor: { value: new THREE.Color(1, 1, 1) }, uStrength: { value: 0 }, uSoft: { value: 1.7 }, uSharp: { value: 0 } },
     vertexShader: `
-      varying vec3 vN; varying vec3 vV; varying float vT;
+      attribute vec3 iColor; attribute vec3 iParams;
+      varying vec3 vN; varying vec3 vV; varying float vT; varying vec3 vColor; varying vec3 vParams;
       void main() {
         vT = clamp(-position.z, 0.0, 1.0);
-        vN = normalize(normalMatrix * normal);
-        vec4 mv = modelViewMatrix * vec4(position, 1.0);
+        mat3 m = mat3(instanceMatrix);
+        vN = normalize(normalMatrix * (transpose(inverse(m)) * normal));
+        vec4 mv = modelViewMatrix * instanceMatrix * vec4(position, 1.0);
         vV = -mv.xyz;
+        vColor = iColor;
+        vParams = iParams;
         gl_Position = projectionMatrix * mv;
       }`,
     fragmentShader: `
-      uniform vec3 uColor; uniform float uStrength; uniform float uSoft; uniform float uSharp;
-      varying vec3 vN; varying vec3 vV; varying float vT;
+      varying vec3 vN; varying vec3 vV; varying float vT; varying vec3 vColor; varying vec3 vParams;
       void main() {
         float f = abs(dot(normalize(vN), normalize(vV)));
-        float edge = mix(pow(f, uSoft), smoothstep(0.0, 0.05, f), uSharp);          // scharf gestellt: harte Kante an der Silhouette des Kegels
+        float edge = mix(pow(f, vParams.y), smoothstep(0.0, 0.05, f), vParams.z);          // scharf gestellt: harte Kante an der Silhouette des Kegels
         float along = pow(clamp(1.0 - vT, 0.0, 1.0), 1.1) * smoothstep(0.0, 0.03, vT);
-        float x = edge * along * uStrength;
-        gl_FragColor = vec4(uColor * (0.7 * (1.0 - exp(-x / 0.7))), 1.0);
+        float x = edge * along * vParams.x;
+        gl_FragColor = vec4(vColor * (0.7 * (1.0 - exp(-x / 0.7))), 1.0);
         #include <tonemapping_fragment>
         #include <colorspace_fragment>
       }`,
@@ -92,6 +100,7 @@ export function createLive(sim, ctx) {
   const tmpDir = new THREE.Vector3();
   const tmpUp = new THREE.Vector3();
   const tmpColor = new THREE.Color();
+  const tmpScaleCone = new THREE.Vector3();
   const raycaster = new THREE.Raycaster();
   const normalMatrix = new THREE.Matrix3();
   const basisU = new THREE.Vector3();
@@ -212,11 +221,12 @@ export function createLive(sim, ctx) {
       u.uRes.value.copy(bufferSize);
     });
   }
+  const typeFetch = (url, fallback) => (window.OCTypeFetch ? window.OCTypeFetch(url, fallback) : fetch(url).then((r) => (r.ok ? r.json() : fallback)).catch(() => fallback));      // gemeinsame Abfrage je Adresse (app.js)
   const wheelCache = new Map();                                    // Typ -> Promise<Raeder des Typs>
   function loadWheels(typeId) {
     if (!typeId) return Promise.resolve([]);
     if (!wheelCache.has(typeId)) {
-      wheelCache.set(typeId, fetch("/api/fixture-types/" + encodeURIComponent(typeId) + "/wheels").then((res) => (res.ok ? res.json() : [])).catch(() => []));
+      wheelCache.set(typeId, typeFetch("/api/fixture-types/" + encodeURIComponent(typeId) + "/wheels", []));
     }
     return wheelCache.get(typeId);
   }
@@ -253,7 +263,7 @@ export function createLive(sim, ctx) {
   function loadBeamfx(typeId) {
     if (!typeId) return Promise.resolve({});
     if (!beamfxCache.has(typeId)) {
-      beamfxCache.set(typeId, fetch("/api/fixture-types/" + encodeURIComponent(typeId) + "/beamfx").then((res) => (res.ok ? res.json() : {})).catch(() => ({})));
+      beamfxCache.set(typeId, typeFetch("/api/fixture-types/" + encodeURIComponent(typeId) + "/beamfx", {}));
     }
     return beamfxCache.get(typeId);
   }
@@ -507,6 +517,8 @@ export function createLive(sim, ctx) {
     volumes = [];
   }
   let shadowCount = 0;
+  let pendingShadow = false;                 // Schattenkarten sind veraltet (Licht hat sich bewegt), die naechste Aktualisierung steht aus
+  let lastShadowAt = 0;
   /** Wie viele Lichter/Schattenlichter/Lichtkarten gebraucht werden und die Grafikkarte tragen kann (Ergebnis auch in sim.limits.info fuer die Anzeige). */
   function wanted() {
     const limits = sim.limits;
@@ -572,6 +584,19 @@ export function createLive(sim, ctx) {
   function makeSource() {
     return { lumens: 0, candela: 0, angle: 0, color: new THREE.Color(), position: new THREE.Vector3(), axis: new THREE.Vector3(0, 0, -1), basisU: new THREE.Vector3(1, 0, 0), basisV: new THREE.Vector3(0, 1, 0), hits: Array.from({ length: MAX_RAYS }, () => ({ valid: false, distance: 1, free: 30, point: new THREE.Vector3(), normal: new THREE.Vector3(), color: new THREE.Color(), metalness: 0, roughness: 1 })), rays: 5 };
   }
+  /** Strahlproben von einer Quelle in eine andere kopieren (ein Platz, der demselben Geraet wieder zugeteilt wird, braucht keine neue Messung). */
+  function copyProbe(from, to) {
+    to.rays = from.rays;
+    to.basisU.copy(from.basisU);
+    to.basisV.copy(from.basisV);
+    for (let k = 0; k < from.hits.length; k++) {
+      const a = from.hits[k];
+      const b = to.hits[k];
+      b.valid = a.valid; b.distance = a.distance; b.free = a.free; b.metalness = a.metalness; b.roughness = a.roughness;
+      b.point.copy(a.point); b.normal.copy(a.normal); b.color.copy(a.color);
+    }
+  }
+  const copyProbeTo = (from) => { const to = makeSource(); copyProbe(from, to); return to; };
   /** Flaechen, die der Strahl trifft (Mittelstrahl + Ring): Grundlage fuer Raumlicht und Farbabstrahlung (wie sim3d_spot.js). */
   function probeHits(source, reach) {
     const ring = 8;                                              // Strahlproben: Mittelstrahl + 8 - unabhaengig von der Qualitaetsstufe
@@ -616,28 +641,55 @@ export function createLive(sim, ctx) {
   function ensureCones(entry, st) {
     const beams = entry.beams || [];
     if (st.beamsRef === beams) return;
-    st.cones.forEach((c) => { sim.scene.remove(c.mesh); c.material.dispose(); });
-    st.cones = beams.slice(0, MAX_BEAMS).map(() => {
-      const material = makeBeamMaterial();
-      const mesh = new THREE.Mesh(coneGeometry, material);
-      mesh.frustumCulled = false;
-      mesh.renderOrder = 3;
-      mesh.visible = false;
-      sim.scene.add(mesh);
-      return { mesh, material };
-    });
+    st.cones = beams.slice(0, MAX_BEAMS).map((_, rank) => ({ matrix: new THREE.Matrix4(), color: new THREE.Color(), strength: 0, soft: 1.7, sharp: 0, hidden: false, rank, power: 0 }));
     st.beamsRef = beams;
   }
   function dropState(st) {
-    st.cones.forEach((c) => { sim.scene.remove(c.mesh); c.material.dispose(); });
     st.cones = [];
+  }
+  // ---- Einfache Kegel: eine Instanz-Zeichnung fuer alle (Kapazitaet waechst bei Bedarf)
+  let coneBatch = null;
+  let coneCapacity = 0;
+  const coneMaterial = makeBeamMaterial();
+  function ensureConeBatch(count) {
+    if (coneBatch && count <= coneCapacity) return;
+    const capacity = Math.max(256, 1 << Math.ceil(Math.log2(Math.max(1, count))));
+    if (coneBatch) { sim.scene.remove(coneBatch); coneBatch.dispose(); }
+    coneBatch = new THREE.InstancedMesh(coneGeometry, coneMaterial, capacity);
+    coneBatch.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+    coneBatch.geometry = coneGeometry;
+    coneGeometry.setAttribute("iColor", new THREE.InstancedBufferAttribute(new Float32Array(capacity * 3), 3).setUsage(THREE.DynamicDrawUsage));
+    coneGeometry.setAttribute("iParams", new THREE.InstancedBufferAttribute(new Float32Array(capacity * 3), 3).setUsage(THREE.DynamicDrawUsage));
+    coneBatch.frustumCulled = false;
+    coneBatch.renderOrder = 3;
+    coneBatch.count = 0;
+    sim.scene.add(coneBatch);
+    coneCapacity = capacity;
+  }
+  function writeCones(list) {
+    const n = list.length;
+    if (!n) { if (coneBatch) coneBatch.visible = false; return; }
+    ensureConeBatch(n);
+    const colors = coneGeometry.getAttribute("iColor");
+    const params = coneGeometry.getAttribute("iParams");
+    for (let k = 0; k < n; k++) {
+      const c = list[k];
+      coneBatch.setMatrixAt(k, c.matrix);
+      colors.setXYZ(k, c.color.r, c.color.g, c.color.b);
+      params.setXYZ(k, c.strength, c.soft, c.sharp);
+    }
+    coneBatch.count = n;
+    coneBatch.visible = true;
+    coneBatch.instanceMatrix.needsUpdate = true;
+    colors.needsUpdate = true;
+    params.needsUpdate = true;
   }
   // ---- Shutter/Strobe
   const shutterCache = new Map();                                  // Typ -> Promise<{Shutter1: [{from, to, kind, hz}]}>
   function loadShutter(typeId) {
     if (!typeId) return Promise.resolve({});
     if (!shutterCache.has(typeId)) {
-      shutterCache.set(typeId, fetch("/api/fixture-types/" + encodeURIComponent(typeId) + "/shutter").then((res) => (res.ok ? res.json() : {})).catch(() => ({})));
+      shutterCache.set(typeId, typeFetch("/api/fixture-types/" + encodeURIComponent(typeId) + "/shutter", {}));
     }
     return shutterCache.get(typeId);
   }
@@ -722,6 +774,9 @@ export function createLive(sim, ctx) {
     if (sim.quality.level !== level) buildPool();
     else { const w = wanted(); if (w.lights !== lights.length || w.shadows !== shadowCount) buildPool(); }          // Scheinwerfer platziert/entfernt oder Grenze geaendert: Vorrat anpassen
     const haze = Math.max(0, Math.min(1, ctx.haze()));
+    const fogOn = haze > 0.002;                        // Nebel aus: weder Lichtkegel noch Nebel-Durchlauf noch Tiefenbild (der groesste Posten der Grafikkarte)
+    const activeCones = [];                            // einfache Kegel dieses Bildes (eine Instanz-Zeichnung)
+    let probesLeft = PROBES_PER_FRAME;                 // Strahlproben (CPU, gegen alle Flaechen der Buehne): nur wenige je Bild
     const gm = Math.max(0, Math.min(100, Number.isFinite(window.__grandMaster) ? window.__grandMaster : 100)) / 100;
     const blackout = window.__blackout ? 0 : 1;       // Blackout hat Vorrang: alles dunkel (der Server schickt dann keinen Dimmer-Wert, der Master steckt nicht mehr im Live-Strom)
     const cache = window.__fixturesLive || {};
@@ -733,7 +788,7 @@ export function createLive(sim, ctx) {
       let st = states.get(id);
       if (!st) { st = { dim: 0, r: 1, g: 1, b: 1, pan: 50, tilt: 50, zoom: null, focus: null, throw: 8, fx: null, cones: [], beamsRef: null, appliedPan: null, appliedTilt: null, seed: hashOf(id) }; states.set(id, st); }
       ensureCones(entry, st);
-      if (entry.data.hidden) { st.cones.forEach((c) => { c.mesh.visible = false; }); continue; }
+      if (entry.data.hidden) continue;
       const live = cache[id];
       // Zielwerte: ohne Live-Eintrag ist der Scheinwerfer aus; hat das Geraet keinen Dimmer-Kanal (nur Farbe), zaehlt die Farbe
       const unit = (v) => (Number.isFinite(v) ? Math.max(0, Math.min(1, v)) : 0);                 // jeder Eingangswert bleibt in 0..1: nichts kann ueber das Maximum hinaus wachsen
@@ -780,6 +835,7 @@ export function createLive(sim, ctx) {
         st.appliedPan = st.pan;
         st.appliedTilt = st.tilt;
       }
+      if (st.darkDone && st.dim === 0 && dimTarget === 0) continue;                 // aus und schon als aus gezeichnet: kein Lichtkegel, keine Linse, kein Muster - nichts zu tun
       entry.group.updateMatrixWorld(true);
       tmpColor.setRGB(st.r, st.g, st.b, THREE.SRGBColorSpace);
       const strobe = resolveShutter(entry, live);
@@ -798,25 +854,26 @@ export function createLive(sim, ctx) {
       let first = true;
       st.cones.forEach((cone, i) => {
         const beam = beams[i];
-        if (!beam) { cone.mesh.visible = false; return; }
+        if (!beam) return;
         let angle = beam.angle;
         if (entry.zoomRange && st.zoom !== null) angle = zoomAngle(entry.zoomRange, st.zoom);
         angle = Math.max(2, Math.min(120, angle));
         beam.object.matrixWorld.decompose(tmpPos, tmpQuat, tmpScale);
         tmpDir.set(0, 0, -1).applyQuaternion(tmpQuat);
         const visible = power > 0.004;
-        cone.mesh.visible = visible;
-        if (visible) {
+        cone.hidden = false;
+        if (visible && fogOn) {
           const length = BEAM_LENGTH;
           const radius = length * Math.tan(deg(angle) / 2);
-          cone.mesh.position.copy(tmpPos);
-          cone.mesh.quaternion.copy(tmpQuat);
-          cone.mesh.scale.set(radius, radius, length);
-          cone.material.uniforms.uColor.value.copy(tmpColor);
+          tmpScaleCone.set(radius, radius, length);
+          cone.matrix.compose(tmpPos, tmpQuat, tmpScaleCone);
+          cone.color.copy(tmpColor);
           const pen = penumbraFor(entry, st, beam, angle);
-          cone.material.uniforms.uSoft.value = 0.9 + 2 * Math.max(0, Math.min(1, (pen - 0.12) / 0.7));       // weicher Rand bei Unschaerfe
-          cone.material.uniforms.uSharp.value = 1 - Math.max(0, Math.min(1, (pen - 0.02) / 0.25));         // scharf: harte Kante
-          cone.material.uniforms.uStrength.value = haze * power * 0.45 * (beams.length > 1 ? 1 / Math.sqrt(Math.min(beams.length, MAX_BEAMS)) : 1);
+          cone.soft = 0.9 + 2 * Math.max(0, Math.min(1, (pen - 0.12) / 0.7));       // weicher Rand bei Unschaerfe
+          cone.sharp = 1 - Math.max(0, Math.min(1, (pen - 0.02) / 0.25));         // scharf: harte Kante
+          cone.strength = haze * power * 0.45 * (beams.length > 1 ? 1 / Math.sqrt(Math.min(beams.length, MAX_BEAMS)) : 1);
+          cone.power = power;
+          activeCones.push(cone);
         }
         if (first && visible) {                                   // das erste Licht des Geraets bewirbt sich um einen Platz im Vorrat
           first = false;
@@ -825,6 +882,7 @@ export function createLive(sim, ctx) {
           candidates.push({ id, power, angle, outer, pattern, up: tmpUp.set(0, 1, 0).applyQuaternion(tmpQuat).clone(), pos: tmpPos.clone(), dir: tmpDir.clone(), color: tmpColor.clone(), cone, penumbra: penumbraFor(entry, st, beam, angle), st });
         }
       });
+      st.darkDone = st.dim === 0 && dimTarget === 0;
     }
     // Vorrat verteilen: die hellsten, bisherige Plaetze bleiben erhalten (kein Flackern)
     candidates.sort((a, b) => (b.pattern ? 1 : 0) - (a.pattern ? 1 : 0) || b.power - a.power || (a.id < b.id ? -1 : 1));          // Muster (Gobo/Prisma) brauchen einen Platz mit Schatten (nur dort gibt es eine Lichtkarte)
@@ -866,6 +924,7 @@ export function createLive(sim, ctx) {
       if (!slot || slot.id !== c.id) { slot = slots[i] = { id: c.id, source: makeSource(), key: "" }; if (light.castShadow) shadowsMoved = true; }
       const key = [c.pos.x, c.pos.y, c.pos.z, c.dir.x, c.dir.y, c.dir.z, c.angle, c.pattern && maps[i] ? c.outer : c.angle, c.up.x, c.up.y, c.up.z].map((v) => v.toFixed(3)).join(",");
       const moved = key !== slot.key;
+      if (moved) { slot.key = key; slot.dirty = true; if (light.castShadow) shadowsMoved = true; }
       light.position.copy(c.pos);
       light.target.position.copy(c.pos).addScaledVector(c.dir, 10);
       light.target.updateMatrixWorld();
@@ -890,12 +949,24 @@ export function createLive(sim, ctx) {
       source.color.copy(c.color);
       source.position.copy(c.pos);
       source.axis.copy(c.dir);
-      if (moved || slot.version !== sim.version) {
-        probeHits(source, 40);
-        c.st.throw = source.hits[0].valid ? source.hits[0].distance : 12;
-        slot.key = key;
-        slot.version = sim.version;
-        if (light.castShadow) shadowsMoved = true;
+      if (slot.dirty || slot.version !== sim.version) {
+        const cached = c.st.probe;
+        if (cached && cached.key === key && cached.version === sim.version) {          // dasselbe Geraet, gleiche Lage, gleiche Buehne: Messung wiederverwenden
+          copyProbe(cached.source, source);
+          c.st.throw = source.hits[0].valid ? source.hits[0].distance : 12;
+          slot.dirty = false;
+          slot.version = sim.version;
+          if (light.castShadow) shadowsMoved = true;
+        } else if (probesLeft > 0 && now - (slot.probedAt || 0) >= PROBE_MIN_MS) {              // sonst im naechsten Bild (die Probe ist teuer: Strahlen gegen alle Flaechen der Buehne)
+          probesLeft--;
+          probeHits(source, 40);
+          c.st.probe = { key, version: sim.version, source: copyProbeTo(source) };
+          c.st.throw = source.hits[0].valid ? source.hits[0].distance : 12;
+          slot.dirty = false;
+          slot.version = sim.version;
+          slot.probedAt = now;
+          if (light.castShadow) shadowsMoved = true;
+        } else busy = true;
       }
     });
     // Jeder Platz: volumetrischer Kegel statt des einfachen (er sitzt an der Linse des zugeteilten Geraets). Plaetze mit Schattenkarte werden von ihr geschnitten, die anderen
@@ -909,8 +980,8 @@ export function createLive(sim, ctx) {
     volumes.forEach((v, i) => {
       const c = assigned.get(i);
       const light = lights[i];
-      if (!c || !light) { v.mesh.visible = false; return; }
-      c.cone.mesh.visible = false;
+      if (!c || !light || !fogOn) { v.mesh.visible = false; return; }
+      c.cone.hidden = true;                                                          // der volumetrische Kegel ersetzt den einfachen
       v.mesh.visible = true;
       volumeActive = true;
       const u = v.material.uniforms;
@@ -961,8 +1032,20 @@ export function createLive(sim, ctx) {
       u.uHasGobo.value = c.pattern && goboMap ? 1 : 0;
       u.uGobo.value = goboMap ? goboMap.tex : null;
     });
+    const shownCones = activeCones.filter((c) => !c.hidden);
+    const coneLimit = sim.limits.values.maxCones;                        // Einstellung "Max. einfache Lichtkegel" (0 = alle, wie immer): zuerst bleibt je Geraet der erste Kegel, dann die hellsten
+    if (coneLimit > 0 && shownCones.length > coneLimit) {
+      shownCones.sort((a, b) => a.rank - b.rank || b.power - a.power);
+      shownCones.length = coneLimit;
+    }
+    writeCones(shownCones);
     if (volumeActive) depthPass();
-    if (shadowsMoved) sim.renderer.shadowMap.needsUpdate = true;
+    // Schattenkarten: jede Karte zeichnet die ganze Buehne neu - bei vielen bewegten Scheinwerfern der groesste Posten. Darum hoechstens alle SHADOW_MS ms (mehr Karten = laengerer Abstand), der letzte Stand kommt immer.
+    if (shadowsMoved) pendingShadow = true;
+    if (pendingShadow) {
+      if (now - lastShadowAt >= Math.min(SHADOW_MAX_MS, SHADOW_STEP_MS * shadowCount)) { sim.renderer.shadowMap.needsUpdate = true; lastShadowAt = now; pendingShadow = false; }
+      else busy = true;
+    }
     if (busy) sim.keepAlive();
   }
   sim.frameHooks.unshift(update);                                 // vor dem Raumlicht: dessen Quellen sind dann aktuell
@@ -1021,6 +1104,8 @@ export function createLive(sim, ctx) {
       eyeTargets.forEach((target, i) => { if (target) { target.depthTexture.dispose(); target.dispose(); eyeTargets[i] = null; } });
       depthMaterial.dispose();
       fullscreen.dispose();
+      if (coneBatch) { sim.scene.remove(coneBatch); coneBatch.dispose(); coneBatch = null; }
+      coneMaterial.dispose();
       coneGeometry.dispose();
     },
   };

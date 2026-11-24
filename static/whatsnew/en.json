@@ -1,6 +1,43 @@
 {
  "releases": [
   {
+   "version": "2.2.0",
+   "date": "2026-11-24",
+   "title": "MVR import and a faster 3D simulation",
+   "items": [
+    {
+     "icon": "stage",
+     "title": "Import a stage from your design software",
+     "text": "Library → Import MVR scene… brings in the stage and the fixtures from Vectorworks, Capture or Depence: patched, placed and ready to light."
+    },
+    {
+     "icon": "folder",
+     "title": "File manager with groups",
+     "text": "The lists have a List | Groups switch, and “Delete unused” cleans up 3D models that no stage uses."
+    },
+    {
+     "icon": "pause",
+     "title": "Switch the 3D simulation off",
+     "text": "A pause button stops the 3D simulation completely, so nothing slows down the rest of the console."
+    },
+    {
+     "icon": "gear",
+     "title": "Room & light as a dialog",
+     "text": "Settings for all devices and for this device only, with options for very big stages (cones, shadows, frame rate)."
+    },
+    {
+     "icon": "bulb",
+     "title": "Fixes for big shows",
+     "text": "No more freezing after loading a show with many fixtures, light cones that point out of the lenses and moving heads that move in 3D."
+    },
+    {
+     "icon": "help",
+     "title": "New guide: 3D Simulation",
+     "text": "Buttons, settings and a troubleshooting list - the AI assistant can use it too."
+    }
+   ]
+  },
+  {
    "version": "2.1.2",
    "date": "2026-11-22",
    "title": "Chat & Notes, complete",

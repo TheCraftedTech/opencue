@@ -149,7 +149,7 @@ Das Panel **DMX-Monitor** zeigt genau, was gesendet wird. Der **Blackout**-Knopf
 ## 7. Die Oberfläche zu deiner machen
 
 - **Bearbeitungsmodus** (**Bearbeiten → Panels bearbeiten**, `Strg+E`): Panels verschieben und in der Größe ändern (sehr klein möglich, der Inhalt rollt dann), ihre Eigenschaften und Farben anpassen, sie kopieren und einfügen. **Rechtsklick auf die leere Fläche** legt ein Panel, einen Button, Schalter oder Fader an der Klickstelle an. Der Haken **Bearbeiten → Hilfslinien** schaltet die Ausrichtungslinien beim Verschieben ein oder aus (`Alt` gedrückt halten: kurz aus).
-- **Layouts** sind Dateien. Baue mehrere (zum Beispiel ein kleines zum Programmieren und ein großes zur Wiedergabe) und wechsle mit `Strg+1` … `Strg+9` oder **Ansicht → Layouts**. Gespeichert wird mit `Strg+S` oder im Dateimanager.
+- **Layouts** sind Dateien. Baue mehrere (zum Beispiel ein kleines zum Programmieren und ein großes zur Wiedergabe) und wechsle mit `Strg+1` … `Strg+9` oder **Ansicht → Layouts**. Gespeichert wird mit `Strg+S` oder im Dateimanager. Ein neues, leeres Layout legst du über **Bearbeiten → Neues Layout…** an.
 - **Themes** (Farbprofile): *Einstellungen → Darstellung* – dunkel, hell oder eigene.
 - **GUI-Skalierung** (`Strg +` / `Strg -`): macht alles größer, etwa für Touchscreens; sie wird pro Gerät gespeichert.
 - **Sprache:** Menü *Sprache* (Englisch, Deutsch, Français, Nederlands, Italiano, Español) oder `Strg+Umschalt+L`. Die Anleitungen gibt es in allen sechs Sprachen.
@@ -216,5 +216,7 @@ Deine Daten sind einfache Dateien im Datenordner (standardmäßig `%LOCALAPPDATA
 | `config` | Einstellungen (`app_config.json`, auch die gewählte Audioquelle) und die API-Tokens (`api_tokens.json`, nur Hashes) |
 
 Zum Sichern kopierst du den Ordner – oder nutzt den **Export** des Dateimanagers (eine Show als ZIP samt der Scheinwerfer und Effekte, die sie braucht), womit du eine Show auch auf einen anderen Computer bringst.
+
+Im **Dateimanager** haben die Listen *3D-Modelle*, *Medien*, *Effekte* und *Scheinwerfer* einen Umschalter **Liste | Gruppen** (OpenCue merkt sich deine Wahl). *Gruppen* zeigt zuerst die Gruppen: Effekte nach Art (Dimmer, Farbe, Position, Gobo, Zoom, Fokus), Medien nach Typ (Audio, Bild, Video), Scheinwerfer nach Marke und 3D-Modelle nach der **Show**, in der sie benutzt werden (ein Modell, das in zwei Shows vorkommt, steht in beiden Gruppen; die Liste zeigt es einmal). Ein Klick öffnet eine Gruppe, *Alle Gruppen* führt zurück. **Nicht benutzte löschen** (Liste *3D-Modelle*) entfernt jedes 3D-Modell, das auf keiner Bühne steht – weder auf der geladenen noch auf einer gespeicherten –, damit sich alte Importe nicht anhäufen.
 
 Beim Deinstallieren von OpenCue wird gefragt, ob diese Daten auch gelöscht werden sollen; die Vorgabe ist **Nein**.

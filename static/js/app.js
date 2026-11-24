@@ -1205,6 +1205,8 @@ class OpenCueClient {
         _openCloseDialog();
         break;
       case "show_save_failed": {
+        _setSaving(false);
+        document.getElementById("oc-closing")?.setAttribute("hidden", "");
         // Speichern gescheitert (gesperrt, schreibgeschuetzt, Platte voll ...): sichtbar melden; lief es aus dem Beenden-Dialog, kommt er mit der Warnung wieder.
         const p = message.payload || {};
         _pendingNavAction = null;
@@ -1221,7 +1223,11 @@ class OpenCueClient {
         _setDirty(message.payload.is_dirty !== false);
         document.dispatchEvent(new CustomEvent("fx-data-updated", { detail: message.payload }));
         break;
+      case "show_saving":
+        _setSaving(true);
+        break;
       case "show_saved": {
+        _setSaving(false);
         if (this.state) {
           this.state.showfile_name = message.payload.showfile_name;
         }
@@ -6791,6 +6797,17 @@ function _disarmClose() {
 
 /** Beenden-Dialog oeffnen. Laesst sich die geladene Show mit ihren Aenderungen nicht speichern, steht oben eine orange Warnung mit den Gruenden, und "ohne Speichern beenden" braucht zwei Klicks. */
 async function _openCloseDialog() {
+  // Erst den Dialog zeigen (sofort), dann den Zustand der Show nachfragen: ein beschaeftigter Server darf das Beenden-Fenster nicht verzoegern.
+  if (!Modal.isOpen("close-confirm")) {
+    _closeBlocked = false;
+    _disarmClose();
+    const early = document.getElementById("close-warn");
+    if (early) early.hidden = true;
+    const saveEarly = document.getElementById("close-save-button");
+    if (saveEarly) { saveEarly.dataset.i18n = "CLOSE_SAVE_AND_QUIT"; saveEarly.textContent = i18n("CLOSE_SAVE_AND_QUIT"); }
+    Modal.open("close-confirm");
+    setTimeout(() => document.getElementById("close-save-button")?.focus(), 50);
+  }
   let status = null;
   try { status = await (await fetch("/api/showfiles/status")).json(); } catch (e) { /* ohne Status: wie bisher */ }
   _closeBlocked = !!(status && status.dirty && status.blockers && status.blockers.length);
@@ -6809,8 +6826,38 @@ async function _openCloseDialog() {
   }
   const save = document.getElementById("close-save-button");
   if (save) { save.dataset.i18n = _closeBlocked ? "CLOSE_SAVE_COPY_AND_QUIT" : "CLOSE_SAVE_AND_QUIT"; save.textContent = i18n(save.dataset.i18n); }
-  Modal.open("close-confirm");
-  setTimeout(() => document.getElementById(_closeBlocked ? "close-cancel-button" : "close-save-button")?.focus(), 50);
+  if (_closeBlocked) setTimeout(() => document.getElementById("close-cancel-button")?.focus(), 50);
+}
+
+/** Ladeanzeige "Speichern ..." (Drehpunkt neben dem Showtitel). on = true: sofort an (auch bevor der Server antwortet); aus bei show_saved / show_save_failed, spaetestens nach 40 s. */
+let _savingTimer = 0;
+function _setSaving(on) {
+  clearTimeout(_savingTimer);
+  document.body.classList.toggle("oc-saving", !!on);
+  const name = document.getElementById("toolbar-showfile-name");
+  if (name) name.setAttribute("aria-busy", on ? "true" : "false");
+  if (on) _savingTimer = setTimeout(() => _setSaving(false), 40000);
+}
+
+/** Vollbild-Hinweis "OpenCue wird beendet ..." mit Drehpunkt (nach "Speichern und beenden" / "Ohne Speichern beenden"); verschwindet nach 25 s von selbst, falls das Fenster doch offen bleibt. */
+function _showClosingOverlay(textKey) {
+  let box = document.getElementById("oc-closing");
+  if (!box) {
+    box = document.createElement("div");
+    box.id = "oc-closing";
+    box.className = "oc-closing";
+    box.setAttribute("role", "status");
+    const spin = document.createElement("span");
+    spin.className = "oc-closing__spin";
+    const text = document.createElement("span");
+    text.className = "oc-closing__text";
+    box.append(spin, text);
+    document.body.appendChild(box);
+  }
+  box.querySelector(".oc-closing__text").textContent = i18n(textKey);
+  box.hidden = false;
+  clearTimeout(_showClosingOverlay.timer);
+  _showClosingOverlay.timer = setTimeout(() => { box.hidden = true; }, 25000);
 }
 
 function setupCloseConfirmModal() {
@@ -6831,6 +6878,8 @@ function setupCloseConfirmModal() {
     // Nachrichten kommen auf derselben Verbindung in Reihenfolge an: der Server
     // beendet erst, nachdem das Speichern durchgelaufen ist.
     _closeSaveInFlight = true;
+    _setSaving(true);
+    _showClosingOverlay("CLOSE_SAVING_QUITTING");
     client.send("save_show", { panels_ui: collectAllPanelUiStates() });
     client.send("close_decision", { choice: "save" });
   });
@@ -6847,6 +6896,7 @@ function setupCloseConfirmModal() {
     }
     _disarmClose();
     Modal.close("close-confirm");
+    _showClosingOverlay("CLOSE_QUITTING");
     client.send("close_decision", { choice: "discard" });
   });
 
@@ -6940,6 +6990,7 @@ function setupFileMenu() {
     e.stopPropagation();
     const name = (document.getElementById("save-as-name")?.value || "").trim();
     if (!name) return;
+    _setSaving(true);
     client.send("save_show_as", { name, target: "local", drive: "", panels_ui: collectAllPanelUiStates() });
     Modal.close("save-show-as");
   });
@@ -7178,6 +7229,13 @@ async function _layoutNewFlow() {
   }
 }
 
+/** Menue Bearbeiten -> Neues Layout...: Namen abfragen, leeres Layout anlegen und laden, danach gleich in den Bearbeitungsmodus (dort kommen die Panels dazu). */
+document.addEventListener("click", async (event) => {
+  if (!event.target.closest('[data-action="new-layout"]')) return;
+  _closeAllMenus();
+  if (await _layoutNewFlow()) setEditMode(true);
+});
+
 /** Bearbeitungsmodus ein-/ausschalten. Beim Verlassen mit ungespeicherten Aenderungen: Speichern / Verwerfen / Weiter bearbeiten. */
 async function toggleEditModeInteractive() {
   if (!isEditMode) { setEditMode(true); return; }
@@ -7197,6 +7255,7 @@ async function toggleEditModeInteractive() {
 function _saveShowDirect() {
   const name = client.state?.showfile_name;
   if (!name || name === "Untitled") { _openSaveAsModal(); return; }
+  _setSaving(true);
   client.send("save_show", { panels_ui: collectAllPanelUiStates() });
 }
 
@@ -11098,8 +11157,13 @@ window.__panelAPI = {
 
     // Global State Sync: alle Panels bei ProgrammerState-Änderungen aktualisieren
     if (panelEl._progSyncUI) document.removeEventListener("programmer-state-updated", panelEl._progSyncUI);
-    const _syncPanelUI = () => {
+    const _syncPanelUI = () => {                                       // viele Ereignisse je Sekunde (Live-Werte): hoechstens ein Abgleich je Bild
       if (_panelGone(panelEl, "programmer-state-updated", _syncPanelUI)) return;
+      if (panelEl._syncRaf) return;
+      panelEl._syncRaf = requestAnimationFrame(() => { panelEl._syncRaf = 0; _syncPanelNow(); });
+    };
+    const _syncPanelNow = () => {
+      if (!panelEl.isConnected) return;
       const PS = window.ProgrammerState;
       panelEl.querySelectorAll(".fxprog-tile[data-fx-id]").forEach(tile => {
         tile.classList.toggle("fxprog-tile--selected", PS.selectedIds.has(tile.dataset.fxId));
@@ -11731,6 +11795,16 @@ window.__panelAPI = {
   }
 
   // ── Shutter/Strobe: Voreinstellungs-Knoepfe aus den DMX-Bereichen der GDTF (/api/fixture-types/<id>/shutter) ───
+  // Eine Abfrage je Typ-Adresse, auch solange sie noch laeuft (ein kaltes Einlesen einer grossen GDTF-Datei dauert Sekunden; ohne das schickte jedes Neuzeichnen der Panels dieselbe Abfrage noch einmal).
+  window.OCTypeFetch = window.OCTypeFetch || (() => {                // eine Abfrage je Typ-Adresse, auch solange sie noch laeuft (siehe app.js)
+    const shared = new Map();
+    document.addEventListener("fixture-library-changed", () => shared.clear());
+    return (url, fallback) => {
+      if (!shared.has(url)) shared.set(url, fetch(url).then((r) => (r.ok ? r.json() : fallback)).catch(() => fallback));
+      return shared.get(url);
+    };
+  })();
+  const _typeFetch = window.OCTypeFetch;
   const _shutterDataCache = new Map();
   const _SHUTTER_KIND_LABEL = { pulse_in: "FXPROG_SHUTTER_PULSE_IN", pulse_out: "FXPROG_SHUTTER_PULSE_OUT", random: "FXPROG_SHUTTER_RANDOM" };
 
@@ -11808,8 +11882,7 @@ window.__panelAPI = {
     if (!fx) { _renderShutterPresets(panelEl); return; }
     if (_shutterDataCache.has(fx.fixture_type)) { _renderShutterPresets(panelEl); return; }
     _renderShutterPresets(panelEl);
-    fetch("/api/fixture-types/" + encodeURIComponent(fx.fixture_type) + "/shutter")
-      .then(r => (r.ok ? r.json() : {}))
+    _typeFetch("/api/fixture-types/" + encodeURIComponent(fx.fixture_type) + "/shutter", {})
       .then(data => { _shutterDataCache.set(fx.fixture_type, data || {}); _renderShutterPresets(panelEl); })
       .catch(() => { /* ohne Daten keine Knoepfe */ });
   }
@@ -11915,8 +11988,8 @@ window.__panelAPI = {
     const typeId = fx.fixture_type;
     const url = "/api/fixture-types/" + encodeURIComponent(typeId);
     Promise.all([
-      _wheelDataCache.has(typeId) ? _wheelDataCache.get(typeId) : fetch(url + "/wheels").then(r => r.json()),
-      _beamfxCache.has(typeId) ? _beamfxCache.get(typeId) : fetch(url + "/beamfx").then(r => (r.ok ? r.json() : {})).catch(() => ({})),
+      _wheelDataCache.has(typeId) ? _wheelDataCache.get(typeId) : _typeFetch(url + "/wheels", []),
+      _beamfxCache.has(typeId) ? _beamfxCache.get(typeId) : _typeFetch(url + "/beamfx", {}),
     ])
       .then(([wheels, beamfx]) => { _wheelDataCache.set(typeId, wheels); _beamfxCache.set(typeId, beamfx || {}); apply(); })
       .catch(() => { /* ohne Daten bleiben die Fallbacks */ });

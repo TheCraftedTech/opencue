@@ -476,6 +476,95 @@ def asset(path: Path, relative: str) -> Tuple[bytes, str]:
         archive.close()
 
 
+def _channel_geometries(root: ElementTree.Element) -> Dict[str, str]:
+    """Attribut (Pan, Tilt) -> Name der Geometrie, die der DMX-Kanal im ersten Modus ansteuert. Viele Dateien (z. B. Martin MAC Viper) bauen Joch und Kopf als "Geometry"
+    statt "Axis": die Bewegung haengt dann allein an dieser Angabe."""
+    mode = root.find("./FixtureType/DMXModes/DMXMode")
+    found: Dict[str, str] = {}
+    if mode is None:
+        return found
+    for channel in mode.iter("DMXChannel"):
+        logical = channel.find("LogicalChannel")
+        attr = logical.get("Attribute", "") if logical is not None else ""
+        if attr in ("Pan", "Tilt") and attr not in found and channel.get("Geometry"):
+            found[attr] = channel.get("Geometry", "")
+    return found
+
+
+def _ray_first_hit(origin: Any, direction: Any, v0: Any, e1: Any, e2: Any, tmin: float, tmax: float) -> Optional[float]:
+    """Naechster Treffer eines Strahls mit einer Dreieckswolke (Moeller-Trumbore, beidseitig); None = frei bis tmax."""
+    import numpy as np
+    p = np.cross(direction, e2)
+    det = (e1 * p).sum(axis=1)
+    ok = np.abs(det) > 1e-12
+    inv = np.zeros_like(det)
+    inv[ok] = 1.0 / det[ok]
+    s = origin - v0
+    u = (s * p).sum(axis=1) * inv
+    q = np.cross(s, e1)
+    v = (q * direction).sum(axis=1) * inv
+    t = (e2 * q).sum(axis=1) * inv
+    hit = ok & (u >= 0) & (v >= 0) & (u + v <= 1) & (t > tmin) & (t < tmax)
+    return float(t[hit].min()) if hit.any() else None
+
+
+def _orient_beams(main: Dict[str, Any], meshes: Dict[str, List[Dict[str, Any]]]) -> int:
+    """Strahl-Richtungen pruefen: GDTF legt den Strahl auf -Z der Strahl-Geometrie. Manche Dateien (z. B. ROXX CLUSTER B4-FC) drehen die Strahl-Geometrie aber so, dass der Strahl
+    IN das Gehaeuse zeigt, waehrend die Linsen auf der anderen Seite sitzen. Trifft der Strahl in 3 bis 50 cm Entfernung das eigene Modell und ist die Gegenrichtung frei, gilt die
+    Gegenrichtung (node["beam"]["flip"] = True; die Oberflaeche dreht dann nur die Richtung des Strahls, nicht das Modell). Rueckgabe: Anzahl umgedrehter Strahlen."""
+    try:
+        import numpy as np
+    except Exception:                                           # pragma: no cover - numpy steht in der requirements.txt
+        return 0
+    soup: List[Any] = []
+    beams: List[Tuple[Dict[str, Any], List[float]]] = []
+
+    def walk(node: Dict[str, Any], parent: List[float]) -> None:
+        world = _mul(parent, node["matrix"])
+        if node.get("beam"):
+            beams.append((node, world))
+        else:
+            for part in meshes.get(node["model"], []):
+                pos = np.frombuffer(part["pos"], dtype=np.float32).reshape(-1, 3).astype(np.float64)
+                idx = np.frombuffer(part["idx"], dtype=np.uint32).reshape(-1, 3)
+                if len(idx) > 60000:
+                    idx = idx[:: max(1, len(idx) // 60000)]
+                m = np.array(world).reshape(4, 4)
+                moved = pos @ m[:3, :3].T + m[:3, 3]
+                soup.append(moved[idx])
+        for child in node["children"]:
+            walk(child, world)
+
+    walk(main, list(IDENTITY))
+    if not beams or not soup:
+        return 0
+    tris = np.concatenate(soup)
+    if len(tris) > 400000:
+        tris = tris[:: len(tris) // 400000 + 1]
+    v0 = tris[:, 0]
+    e1 = tris[:, 1] - tris[:, 0]
+    e2 = tris[:, 2] - tris[:, 0]
+    step = max(1, len(beams) // 12)
+    votes = []
+    for node, world in beams[::step][:12]:
+        o = np.array(_apply(world, (0.0, 0.0, 0.0)))
+        d = np.array(_apply(world, (0.0, 0.0, -1.0))) - o
+        length = float(np.linalg.norm(d))
+        if length < 1e-9:
+            continue
+        d /= length
+        forward = _ray_first_hit(o, d, v0, e1, e2, 0.0005, 3.0)
+        backward = _ray_first_hit(o, -d, v0, e1, e2, 0.0005, 3.0)
+        # Eine Abdeckscheibe unmittelbar vor der Linse (LED-Felder, Leisten: Treffer nach wenigen Millimetern) ist normal; erst ein Treffer in 3 bis 50 cm Entfernung bei freier Gegenrichtung heisst:
+        # der Strahl zeigt in den Korpus.
+        votes.append(forward is not None and 0.03 <= forward < 0.5 and backward is None)
+    if not votes or sum(votes) * 2 <= len(votes):
+        return 0
+    for node, _world in beams:
+        node["beam"]["flip"] = True
+    return len(beams)
+
+
 def _axes(main: Dict[str, Any], root: ElementTree.Element) -> Dict[str, Any]:
     """Pan-/Tilt-Achse: die erste und zweite Axis von oben nach unten (Pan dreht um Z, Tilt um X); Bereiche aus den Kanaelen des ersten Modus."""
     axes = [n for n in _walk(main) if n["type"] == "Axis"]
@@ -492,14 +581,21 @@ def _axes(main: Dict[str, Any], root: ElementTree.Element) -> Dict[str, Any]:
                     ranges[attr] = (min(a, b), max(a, b))               # sortiert (fuer die Schieberegler der Details-Ansicht)
                     raw[attr] = (a, b)                                  # manche Dateien geben den Bereich umgekehrt an (270 ... -270): die Simulation folgt der Richtung der Datei
     out: Dict[str, Any] = {}
+    named = _channel_geometries(root)                           # Geometrie, die der Pan-/Tilt-Kanal ansteuert (DMXChannel@Geometry): auch wenn sie "Geometry" heisst statt "Axis"
+    by_name: Dict[str, Dict[str, Any]] = {}
+    for n in _walk(main):
+        by_name.setdefault(n["name"], n)
+    pan_node = by_name.get(named.get("Pan", ""))
+    tilt_node = by_name.get(named.get("Tilt", ""))
     if "Zoom" in ranges:                                         # Oeffnungswinkel in Grad bei Zoom-Wert 0 % ... 100 % (die Simulation stellt den Lichtkegel danach ein)
         segments = _zoom_segments(root)
         if segments:
             out["zoom"] = {"from": segments[0][2], "to": segments[-1][3], "segments": segments}
-    if "Pan" in ranges and axes:
-        out["pan"] = {"node": axes[0]["id"], "min": ranges["Pan"][0], "max": ranges["Pan"][1], "from": raw["Pan"][0], "to": raw["Pan"][1]}
+    if "Pan" in ranges and (pan_node is not None or axes):
+        pan_axis = pan_node if pan_node is not None else axes[0]
+        out["pan"] = {"node": pan_axis["id"], "min": ranges["Pan"][0], "max": ranges["Pan"][1], "from": raw["Pan"][0], "to": raw["Pan"][1]}
     if "Tilt" in ranges:
-        tilt_axis = axes[1] if len(axes) > 1 else (axes[0] if "Pan" not in ranges and axes else None)
+        tilt_axis = tilt_node if tilt_node is not None else (axes[1] if len(axes) > 1 else (axes[0] if "Pan" not in ranges and axes else None))
         if tilt_axis is not None:
             out["tilt"] = {"node": tilt_axis["id"], "min": ranges["Tilt"][0], "max": ranges["Tilt"][1], "from": raw["Tilt"][0], "to": raw["Tilt"][1]}
     if "Focus1" in raw:                                          # Fokus: Bereich der Funktion (Einheit meist 0..1 ohne Bedeutung; echte Meterangaben werden von der Simulation erkannt)
@@ -607,6 +703,10 @@ def scene(path: Path) -> Dict[str, Any]:
                 grow(child, world)
 
         grow(main, list(IDENTITY))
+        try:
+            _orient_beams(main, meshes)
+        except Exception as exc:                                  # nur eine Zusatzpruefung: ein Fehler darf die Vorschau nie verhindern
+            notes.append(f"beam check: {type(exc).__name__}")
         # Strahl-Knoten ohne Modell zaehlen mit (Ursprung)
         bounds = None if lo[0] == math.inf else [round(v, 5) for v in lo + hi]
         packed = {key: [_pack(p) for p in parts] for key, parts in meshes.items()}

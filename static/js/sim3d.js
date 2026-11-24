@@ -65,7 +65,7 @@ const AUTO_MAX = 4;                                    // "Auto" geht bis Stufe 
 const MANUAL_LEVEL = { low: 1, medium: 2, high: 4 };
 const QUALITY_STORE = "oc-sim3d-quality";
 const LIMITS_STORE = "oc-sim3d-limits";
-const LIMIT_DEFAULTS = { maxLights: 32, maxShadows: 0, maxSpecular: 8 };       // 0 = unbegrenzt (maxShadows 0 = so viele, wie die Grafikkarte kann)
+const LIMIT_DEFAULTS = { maxLights: 32, maxShadows: 0, maxSpecular: 8, fixtureShadows: 1, maxCones: 0, maxFps: 0 };       // 0 = unbegrenzt (maxShadows 0 = so viele, wie die Grafikkarte kann; maxCones 0 = alle einfachen Lichtkegel; maxFps 0 = Bildrate nicht begrenzt)
 const SHADOW_SIZES = [512, 512, 1024, 1024, 2048, 2048];       // Schattenkarte je Stufe
 const MIN_CAMERA_Z = 0.05;                            // die Kamera darf bis knapp auf den Boden (Meter)
 
@@ -100,6 +100,10 @@ function injectStyle() {
     .sim3d { --side: clamp(17rem, 38%, 28rem); outline: none; }
     .sim3d__tools { transition: right 0.28s ease; }
     .sim3d--build .sim3d__tools { right: calc(var(--side) + 0.5rem); }
+    .sim3d__btn--paused { background: var(--accent-color); color: var(--accent-ink, #000); border-color: var(--accent-color); }
+    .sim3d__paused { position: absolute; inset: 0; z-index: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.8rem; padding: 1rem; text-align: center; color: var(--secondary-text); }
+    .sim3d__paused-play { width: 4rem; height: 4rem; border-radius: 50%; }
+    .sim3d__paused-play .ico { width: 1.8rem; height: 1.8rem; }
     .sim3d__modes { position: absolute; top: max(0.5rem, env(safe-area-inset-top)); left: max(0.5rem, env(safe-area-inset-left)); z-index: 2; display: inline-flex;
       border: 1px solid var(--border-color); border-radius: var(--base-radius, 3px); overflow: hidden; background: color-mix(in srgb, var(--surface-1) 85%, transparent); }
     .sim3d__mode { display: inline-flex; align-items: center; gap: 0.35rem; min-height: 2.25rem; padding: 0 0.75rem; background: transparent; border: 0; border-right: 1px solid var(--border-color);
@@ -207,6 +211,9 @@ function injectStyle() {
       font: inherit; font-size: 0.72rem; font-variant-numeric: tabular-nums; cursor: pointer; white-space: nowrap; }
     .sim3d__quality:hover { border-color: var(--accent-color); color: var(--text-main); }
     .sim3d__quality--warn { border-color: #e5484d; color: #e5484d; }
+    .sim3d__compiling { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 2; padding: 0.4rem 0.8rem; font-size: 0.78rem; color: var(--secondary-text); pointer-events: none;
+      background: color-mix(in srgb, var(--surface-1) 85%, transparent); border: 1px solid var(--border-color); border-radius: var(--base-radius, 3px); }
+    .sim3d__compiling[hidden] { display: none; }
     .sim3d__nogl { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; padding: 1rem; text-align: center; color: var(--secondary-text); }
   `;
   document.head.appendChild(style);
@@ -299,16 +306,64 @@ function createScene(host) {
   const frameHooks = [];                                 // vor jedem Zeichnen aufgerufen (z. B. Griffe in Bildschirmgroesse halten)
   let shiftPx = 0;                                       // seitliche Bildverschiebung (Seitenleiste offen: die Mitte der Buehne rueckt in die Mitte des freien Bereichs)
   let shiftAnim = 0;
+  // Shader-Aufbau: Mit vielen Scheinwerfern entstehen Shader mit bis zu 32 Lichtern (ueber 140 KB Quelltext). Wuerde renderer.render() sie selbst uebersetzen, stuende die ganze Seite
+  // (Tasten, Layoutwechsel, Server-Nachrichten) so lange still - auf schwacher Grafik Minuten. Darum: Aendert sich, was die Shader bestimmt (Lichtanzahl, Schatten, Materialien),
+  // wird zuerst mit compileAsync (parallel, ohne zu blockieren) uebersetzt und erst danach gezeichnet.
+  let compiling = false;
+  let lastFrameAt = 0;
+  let compiledVersion = -1;
+  let compiledSig = "";
+  let compileNote = null;
+  const programSignature = () => {
+    let lightCount = 0;
+    let shadowCount = 0;
+    let mapCount = 0;
+    let versions = 0;
+    const materials = new Set();
+    scene.traverseVisible((o) => {
+      if (o.isLight) { lightCount += 1; if (o.castShadow) shadowCount += 1; if (o.map) mapCount += 1; }
+      const m = o.material;
+      if (m) (Array.isArray(m) ? m : [m]).forEach((x) => { if (!materials.has(x)) { materials.add(x); versions += x.version; } });
+    });
+    return [lightCount, shadowCount, mapCount, materials.size, versions].join("/");
+  };
+  const showCompiling = (on) => {
+    if (on && !compileNote) { compileNote = document.createElement("div"); compileNote.className = "sim3d__compiling"; compileNote.textContent = i18n("SIM3D_COMPILING"); host.appendChild(compileNote); }
+    if (compileNote) compileNote.hidden = !on;
+  };
+  function precompile() {
+    compiling = true;
+    showCompiling(true);
+    const done = () => {
+      compiling = false;
+      showCompiling(false);
+      ignoreFrames = Math.max(ignoreFrames, 3);          // die Wartezeit zaehlt nicht als langsame Bilder (sonst fiele Auto auf die niedrigste Stufe)
+      lastDone = performance.now();
+      if (!destroyed) invalidate();
+    };
+    let promise;
+    try { promise = renderer.compileAsync(scene, camera); } catch (err) { promise = Promise.resolve(); }
+    promise.then(done, done);
+  }
   const frame = () => {
     raf = 0;
     if (destroyed || renderer.xr.isPresenting) return;      // mit VR-Brille zeichnet deren eigene Bildschleife (sim3d_vr.js)
     if (!host.isConnected) { destroy(); return; }       // Panel wurde entfernt
     if (inflight.length >= 2) { invalidateView(); return; }       // die Grafikkarte hinkt hinterher: kein weiteres Bild vorbestellen (sonst staut sich Arbeit und alles haengt)
+    if (compiling) return;                               // Shader werden im Hintergrund uebersetzt: bis dahin kein Bild (das Fenster bleibt bedienbar), danach wird neu gezeichnet
+    const cap = limits.values.maxFps;                    // Einstellung "Max. Bildrate" (0 = unbegrenzt): die 3D-Ansicht nimmt der Oberflaeche dann weniger Zeit
+    if (cap > 0 && performance.now() - lastFrameAt < 1000 / cap - 2) { invalidateView(); return; }
+    lastFrameAt = performance.now();
     const moving = controls.update();                    // true, solange die Daempfung noch nachlaeuft
     if (camera.position.z < MIN_CAMERA_Z) camera.position.z = MIN_CAMERA_Z;       // nicht unter den Boden: die Kamera gleitet am Boden entlang
     if (controls.target.z < 0) controls.target.z = 0;
     wake = false;
     frameHooks.forEach((fn) => fn());
+    if (compiledVersion !== sceneVersion.n) {            // erst nach den Bildhaken pruefen: sie stellen Lichter/Schatten ein, und genau dieser Zustand muss vorab uebersetzt werden
+      compiledVersion = sceneVersion.n;
+      const sig = programSignature();
+      if (sig !== compiledSig) { compiledSig = sig; precompile(); return; }
+    }
     renderer.render(scene, camera);
     track();
     if (moving || wake) invalidateView();                // nie zwei Ketten: invalidateView plant nur, wenn noch nichts geplant ist (wake: ein Bildhaken animiert noch, z. B. Live-Licht)
@@ -536,6 +591,7 @@ function createScene(host) {
     onDestroy.forEach((fn) => fn());
     observer.disconnect();
     qualityButton.remove();
+    if (compileNote) compileNote.remove();
     controls.dispose();
     scene.traverse((o) => { if (o.geometry) o.geometry.dispose(); if (o.material) (Array.isArray(o.material) ? o.material : [o.material]).forEach((m) => m.dispose()); });
     renderer.dispose();
@@ -556,6 +612,15 @@ function toolButton(icon, titleKey) {
   button.setAttribute("aria-label", i18n(titleKey));
   button.appendChild(Icons.svg(icon));
   return button;
+}
+
+const ACTIVE_STORE = "opencue.sim3d.active";             // "0" = ausgeschaltet; je Geraet (die Konsole spiegelt "opencue.*" in die Konfiguration)
+function simActive() {
+  try { return localStorage.getItem(ACTIVE_STORE) !== "0"; } catch (err) { return true; }
+}
+function setSimActive(on) {
+  try { if (on) localStorage.removeItem(ACTIVE_STORE); else localStorage.setItem(ACTIVE_STORE, "0"); } catch (err) { /* ohne Speicher: gilt bis zum Neuladen nicht */ }
+  document.dispatchEvent(new CustomEvent("sim3d-active-changed"));
 }
 
 function buildContent() {
@@ -584,9 +649,39 @@ function buildContent() {
   };
   document.addEventListener("blackout-changed", syncBlackout);
   syncBlackout();
-  tools.append(blackoutButton, resetButton, fullButton);
+  // Ein/Aus der ganzen Simulation (je Geraet gemerkt): "aus" baut Szene, WebGL-Kontext, Modelle und Live-Abgleich vollstaendig ab - es wird nichts mehr gezeichnet oder berechnet, die Oberflaeche
+  // laeuft ungestoert. "Ein" baut alles neu auf. Gilt fuer alle 3D-Panels dieses Geraets.
+  const powerButton = toolButton("pause", "SIM3D_PAUSE");
+  powerButton.classList.add("sim3d__btn--power");
+  powerButton.dataset.act = "power";
+  powerButton.addEventListener("dblclick", (e) => e.stopPropagation());
+  tools.append(powerButton, blackoutButton, resetButton, fullButton);
   root.appendChild(tools);
   root._sim3d = null;
+  let pausedView = null;
+  const syncPower = () => {
+    const on = simActive();
+    powerButton.replaceChildren(Icons.svg(on ? "pause" : "play"));
+    powerButton.title = i18n(on ? "SIM3D_PAUSE" : "SIM3D_PLAY");
+    powerButton.setAttribute("aria-label", powerButton.title);
+    powerButton.setAttribute("aria-pressed", on ? "false" : "true");
+    powerButton.classList.toggle("sim3d__btn--paused", !on);
+    if (!on && !pausedView) {
+      pausedView = document.createElement("div");
+      pausedView.className = "sim3d__paused";
+      const big = toolButton("play", "SIM3D_PLAY");
+      big.classList.add("sim3d__paused-play");
+      big.addEventListener("click", () => setSimActive(true));
+      const text = document.createElement("div");
+      text.textContent = i18n("SIM3D_PAUSED");
+      pausedView.append(big, text);
+      root.appendChild(pausedView);
+    } else if (on && pausedView) {
+      pausedView.remove();
+      pausedView = null;
+    }
+  };
+  powerButton.addEventListener("click", () => setSimActive(!simActive()));
 
   // Vollbild ueber die ganze Oberflaeche (eigenes Vollbild, siehe fullscreen.js); Knopf und Tooltip folgen dem Zustand
   const syncFull = (on) => {
@@ -599,11 +694,18 @@ function buildContent() {
   fullButton.addEventListener("dblclick", (e) => e.stopPropagation());
   root.addEventListener("ocfullscreen", (e) => syncFull(!!e.detail));
 
-  // WebGL erst anlegen, wenn das Panel eine Groesse hat (es ist beim Aufbau noch nicht eingehaengt)
-  const waiter = new ResizeObserver(() => {
-    if (root._sim3d || !root.isConnected) return;
+  // WebGL erst anlegen, wenn das Panel eine Groesse hat (es ist beim Aufbau noch nicht eingehaengt) - und nur, solange die Simulation eingeschaltet ist
+  function stopSim() {
+    const sim = root._sim3d;
+    if (sim) { try { sim.destroy(); } catch (err) { console.error("3D-Simulation konnte nicht sauber beendet werden:", err); } }       // ruft auch den Abbau des Bauens (builder.dispose) auf
+    root._sim3d = null;
+    root._builder = null;
+    root.classList.remove("sim3d--build");
+    root.querySelectorAll(".sim3d__nogl").forEach((n) => n.remove());
+  }
+  function startSim() {
+    if (root._sim3d || !root.isConnected || !simActive()) return;
     if (root.clientWidth < 8 || root.clientHeight < 8) return;
-    waiter.disconnect();
     const sim = createScene(root);
     if (!sim) {
       const msg = document.createElement("div");
@@ -634,9 +736,19 @@ function buildContent() {
     }
     root._builder = attachBuilder(root, sim);
     sim.onDestroy.push(() => root._builder && root._builder.dispose());
-    resetButton.addEventListener("click", () => sim.reset());
-  });
+    resetButton.onclick = () => sim.reset();
+  }
+  const waiter = new ResizeObserver(startSim);
   waiter.observe(root);
+  let seenPower = false;
+  const onPower = () => {
+    if (root.isConnected) seenPower = true;
+    else if (seenPower) { document.removeEventListener("sim3d-active-changed", onPower); waiter.disconnect(); stopSim(); return; }       // Panel wurde entfernt
+    syncPower();
+    if (simActive()) startSim(); else stopSim();
+  };
+  document.addEventListener("sim3d-active-changed", onPower);
+  syncPower();
   return root;
 }
 

@@ -149,7 +149,7 @@ Het paneel **DMX-monitor** toont precies wat wordt verzonden. De knop **Blackout
 ## 7. De interface naar je hand zetten
 
 - **Bewerkmodus** (**Bewerken → Panelen bewerken**, `Ctrl+E`): panelen verplaatsen en vergroten of verkleinen (heel klein kan, de inhoud scrolt dan), hun eigenschappen en kleuren wijzigen, kopiëren en plakken. **Rechtsklikken op de lege werkruimte** voegt een paneel, knop, schakelaar of fader toe op de plek van de klik. Het vinkje **Bewerken → Hulplijnen** zet de uitlijnhulplijnen tijdens het verplaatsen aan of uit (houd `Alt` ingedrukt: kortstondig uit).
-- **Lay-outs** zijn bestanden. Bouw er meerdere (bijvoorbeeld een kleine om te programmeren en een grote om af te spelen) en wissel met `Ctrl+1` … `Ctrl+9` of **Weergave → Lay-outs**. Opslaan met `Ctrl+S` of in het bestandsbeheer.
+- **Lay-outs** zijn bestanden. Bouw er meerdere (bijvoorbeeld een kleine om te programmeren en een grote om af te spelen) en wissel met `Ctrl+1` … `Ctrl+9` of **Weergave → Lay-outs**. Opslaan met `Ctrl+S` of in het bestandsbeheer. Een nieuwe, lege layout maak je met **Bewerken → Nieuwe layout…**.
 - **Thema's** (kleurprofielen): *Instellingen → Weergave* – donker, licht of je eigen.
 - **GUI-schaal** (`Ctrl +` / `Ctrl -`): maakt alles groter voor aanraakschermen; wordt per apparaat bewaard.
 - **Taal:** menu *Taal* (English, Deutsch, Français, Nederlands, Italiano, Español) of `Ctrl+Shift+L`. De handleidingen zijn beschikbaar in alle zes de talen.
@@ -216,5 +216,7 @@ Je gegevens zijn gewone bestanden in de gegevensmap (standaard `%LOCALAPPDATA%\O
 | `config` | Instellingen (`app_config.json`, incl. de gekozen audiobron) en de API-tokens (`api_tokens.json`, alleen hashes) |
 
 Voor een back-up kopieer je de map – of gebruik je de **export** van het bestandsbeheer (een show als ZIP inclusief de projectoren en effecten die hij nodig heeft), waarmee je een show ook naar een andere computer verplaatst.
+
+In het **bestandsbeheer** hebben de lijsten *3D-modellen*, *media*, *effecten* en *projectoren* een schakelaar **Lijst | Groepen** (OpenCue onthoudt je keuze). *Groepen* toont eerst de groepen: effecten per soort (Dimmer, Kleur, Positie, Gobo, Zoom, Focus), media per type (Audio, Beeld, Video), projectoren per merk en 3D-modellen per **show** waarin ze worden gebruikt (een model dat in twee shows voorkomt, staat in beide groepen; de lijst toont het één keer). Een klik opent een groep, *Alle groepen* brengt je terug. **Ongebruikte verwijderen** (lijst *3D-modellen*) verwijdert elk 3D-model dat op geen enkel podium staat – noch het geladen noch een opgeslagen podium – zodat oude imports zich niet opstapelen.
 
 Bij het verwijderen van OpenCue wordt gevraagd of deze gegevens ook moeten worden gewist; de standaardkeuze is **Nee**.

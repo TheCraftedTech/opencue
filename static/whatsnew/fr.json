@@ -1,6 +1,43 @@
 {
  "releases": [
   {
+   "version": "2.2.0",
+   "date": "2026-11-24",
+   "title": "Import MVR et simulation 3D plus rapide",
+   "items": [
+    {
+     "icon": "stage",
+     "title": "Importer une scène depuis votre logiciel de conception",
+     "text": "Bibliothèque → Importer une scène MVR… apporte la scène et les projecteurs de Vectorworks, Capture ou Depence : patchés, placés et prêts à éclairer."
+    },
+    {
+     "icon": "folder",
+     "title": "Gestionnaire de fichiers avec groupes",
+     "text": "Les listes ont un commutateur Liste | Groupes, et « Supprimer les inutilisés » nettoie les modèles 3D qu'aucune scène n'utilise."
+    },
+    {
+     "icon": "pause",
+     "title": "Désactiver la simulation 3D",
+     "text": "Un bouton pause arrête complètement la simulation 3D, pour que rien ne ralentisse le reste de la console."
+    },
+    {
+     "icon": "gear",
+     "title": "Salle et lumière en boîte de dialogue",
+     "text": "Réglages pour tous les appareils et pour cet appareil uniquement, avec des options pour de très grandes scènes (cônes, ombres, cadence)."
+    },
+    {
+     "icon": "bulb",
+     "title": "Corrections pour les grands shows",
+     "text": "Plus de blocage après le chargement d'un show avec beaucoup de projecteurs, cônes de lumière qui sortent des lentilles et lyres qui bougent en 3D."
+    },
+    {
+     "icon": "help",
+     "title": "Nouveau guide : Simulation 3D",
+     "text": "Boutons, réglages et aide au dépannage – l'assistant IA peut aussi l'utiliser."
+    }
+   ]
+  },
+  {
    "version": "2.1.2",
    "date": "2026-11-22",
    "title": "Chat et notes, complet",

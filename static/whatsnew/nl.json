@@ -1,6 +1,43 @@
 {
  "releases": [
   {
+   "version": "2.2.0",
+   "date": "2026-11-24",
+   "title": "MVR-import en een snellere 3D-simulatie",
+   "items": [
+    {
+     "icon": "stage",
+     "title": "Een podium uit je ontwerpsoftware importeren",
+     "text": "Bibliotheek → MVR-scène importeren… haalt podium en projectoren uit Vectorworks, Capture of Depence: gepatcht, geplaatst en klaar om te branden."
+    },
+    {
+     "icon": "folder",
+     "title": "Bestandsbeheer met groepen",
+     "text": "De lijsten hebben een schakelaar Lijst | Groepen, en “Ongebruikte verwijderen” ruimt 3D-modellen op die geen enkel podium gebruikt."
+    },
+    {
+     "icon": "pause",
+     "title": "De 3D-simulatie uitschakelen",
+     "text": "Een pauzeknop stopt de 3D-simulatie volledig, zodat niets de rest van de console vertraagt."
+    },
+    {
+     "icon": "gear",
+     "title": "Ruimte en licht als dialoogvenster",
+     "text": "Instellingen voor alle apparaten en alleen voor dit apparaat, met opties voor zeer grote podia (kegels, schaduwen, beeldsnelheid)."
+    },
+    {
+     "icon": "bulb",
+     "title": "Verbeteringen voor grote shows",
+     "text": "Niet meer vastlopen na het laden van een show met veel projectoren, lichtkegels die uit de lenzen komen en moving heads die in 3D bewegen."
+    },
+    {
+     "icon": "help",
+     "title": "Nieuwe handleiding: 3D-simulatie",
+     "text": "Knoppen, instellingen en een lijst voor probleemoplossing – ook de AI-assistent kan hem gebruiken."
+    }
+   ]
+  },
+  {
    "version": "2.1.2",
    "date": "2026-11-22",
    "title": "Chat & notities, compleet",

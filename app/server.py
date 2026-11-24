@@ -74,6 +74,7 @@ from app import media_store
 from app import stream_sources
 from app import sim_stages
 from app import sim_models
+from app import mvr_import
 from app import voice
 from app import dictation
 from app import io_overview
@@ -378,6 +379,23 @@ def _warm_fixture_types() -> None:
         get_fixture_types()
     except Exception:                                                                # noqa: BLE001 - nur Vorwaermen
         logger.debug("Vorwaermen der Scheinwerfer-Typen fehlgeschlagen", exc_info=True)
+
+
+def _warm_type_data() -> None:
+    """Raeder, Shutter, Gobo-Kanaele und Kanallisten der benutzten Scheinwerfer-Typen im Hintergrund vorbereiten (ein Hilfsprozess liest die GDTF-Datei, danach liegt alles auf der Platte):
+    wenn die Oberflaeche die Daten abfragt, sind sie schon da und keine Abfrage haengt - bei grossen LED-Leisten dauert das erste Einlesen sonst ueber 10 s."""
+    try:
+        from app.fixture_manager import get_fixture_wheels
+        for type_id in sorted({str(fx.fixture_type) for fx in list(state.fixtures.values())}):
+            get_fixture_wheels(type_id)                                              # fuellt alle vier Arten (wheels, channels, shutter, beamfx)
+    except Exception:                                                                # noqa: BLE001 - nur Vorwaermen
+        logger.debug("Vorwaermen der Typdaten fehlgeschlagen", exc_info=True)
+
+
+def _schedule_type_warmup() -> None:
+    loop = _app_loop
+    if loop is not None:
+        loop.call_soon_threadsafe(lambda: asyncio.create_task(asyncio.to_thread(_warm_type_data)))
 
 
 async def _send_kiosk(key: str, active: bool) -> None:
@@ -1482,6 +1500,7 @@ async def lifespan(_: FastAPI):
     dictation.engine.attach(asyncio.get_running_loop(), event_bus.broadcast)
     asyncio.create_task(asyncio.to_thread(voice.load_from_config))
     await _restore_showfile_state()
+    _schedule_type_warmup()                              # Typdaten der Show im Hintergrund vorbereiten (siehe _warm_type_data)
     state.restore_startup_selection()                    # dieselben Scheinwerfer wie beim Beenden wieder ausgewaehlt (neue Clients bekommen sie mit dem Snapshot)
     backups.manager.start_session()                      # war das letzte Beenden nicht sauber? Dann wird die letzte Sicherung zur Wiederherstellung angeboten
     backup_task = asyncio.create_task(backups.manager.run())
@@ -1552,6 +1571,7 @@ app.include_router(dmx_in_mod.router)             # DMX-Eingang (/api/dmx-in)
 app.include_router(fs_browser.router)             # OpenCue-Explorer: Dateien im Datenordner, Ordner waehlen (/api/fs/*)
 app.include_router(sim_stages.router)
 app.include_router(sim_models.router)
+app.include_router(mvr_import.router)          # MVR-Import (/api/mvr): Buehne + Scheinwerfer aus einer .mvr-Datei
 app.include_router(ui_store.router)               # Oberflaechenzustand der Konsole (/api/uistore)
 app.include_router(console_defaults.router)   # Standardwerte (/api/defaults)
 app.include_router(io_overview.router)            # Uebersicht aller Ein- und Ausgaenge (/api/io-overview)
@@ -1934,25 +1954,25 @@ async def set_data_path(request: Request) -> JSONResponse:
 @app.get("/api/fixture-types/{fixture_id}/wheels")
 async def fixture_type_wheels(fixture_id: str) -> JSONResponse:
     from app.fixture_manager import get_fixture_wheels
-    return JSONResponse(get_fixture_wheels(fixture_id))
+    return JSONResponse(await asyncio.to_thread(get_fixture_wheels, fixture_id))      # nicht in der Ereignisschleife: ein kaltes Einlesen grosser GDTF-Dateien dauert Sekunden
 
 
 @app.get("/api/fixture-types/{fixture_id}/channels")
 async def fixture_type_channels(fixture_id: str) -> JSONResponse:
     from app.fixture_manager import get_fixture_channel_info
-    return JSONResponse(get_fixture_channel_info(fixture_id))
+    return JSONResponse(await asyncio.to_thread(get_fixture_channel_info, fixture_id))      # nicht in der Ereignisschleife: ein kaltes Einlesen grosser GDTF-Dateien dauert Sekunden
 
 
 @app.get("/api/fixture-types/{fixture_id}/beamfx")
 async def api_fixture_beamfx(fixture_id: str):
     from app.fixture_manager import get_fixture_beamfx
-    return JSONResponse(get_fixture_beamfx(fixture_id))
+    return JSONResponse(await asyncio.to_thread(get_fixture_beamfx, fixture_id))      # nicht in der Ereignisschleife: ein kaltes Einlesen grosser GDTF-Dateien dauert Sekunden
 
 
 @app.get("/api/fixture-types/{fixture_id}/shutter")
 async def fixture_type_shutter(fixture_id: str) -> JSONResponse:
     from app.fixture_manager import get_fixture_shutter
-    return JSONResponse(get_fixture_shutter(fixture_id))
+    return JSONResponse(await asyncio.to_thread(get_fixture_shutter, fixture_id))      # nicht in der Ereignisschleife: ein kaltes Einlesen grosser GDTF-Dateien dauert Sekunden
 
 
 # ---------------------------------------------------------------------------------------------------------------------
@@ -2729,6 +2749,7 @@ async def open_show_from_file(raw_path: str) -> Dict[str, Any]:
     timecode.reset()
     await _broadcast_timecode()
     await event_bus.broadcast({"type": "show_loaded", "payload": {}})
+    _schedule_type_warmup()
     await event_bus.broadcast(state.get_snapshot())
     await _restore_showfile_state()
     state.save_app_config()
@@ -2784,6 +2805,7 @@ async def restore_backup_file(path: Path) -> Dict[str, Any]:
     timecode.reset()
     await _broadcast_timecode()
     await event_bus.broadcast({"type": "show_loaded", "payload": {}})
+    _schedule_type_warmup()
     await event_bus.broadcast(state.get_snapshot())
     await _restore_showfile_state()
     await _announce_showfiles_changed()
@@ -3158,6 +3180,25 @@ def _save_workspace(name: Optional[str] = None) -> Path:
     path = state.save_showfile(name=name)
     _write_active_layout()
     state.save_app_config()
+    return path
+
+
+async def _save_workspace_async(name: Optional[str] = None) -> Path:
+    """Wie _save_workspace, aber der langsame Teil (Text erzeugen, auf die Platte schreiben) laeuft in einem eigenen Thread: der Server beantwortet waehrenddessen weiter alle Geraete
+    (Fader, Anzeige). Alle Geraete bekommen "show_saving" (Ladeanzeige) und danach "show_saved" bzw. "show_save_failed"."""
+    await event_bus.broadcast({"type": "show_saving", "payload": {}})
+    path, data, counter = state.prepare_showfile_save(name=name)
+
+    def write() -> None:
+        try:
+            text = json.dumps(data, indent=2, ensure_ascii=False)
+        except RuntimeError:                                          # "dictionary changed size during iteration": die Show wurde waehrenddessen bearbeitet - gleich noch einmal
+            text = json.dumps(data, indent=2, ensure_ascii=False)
+        show_safety._atomic_write(path, text)
+
+    await asyncio.to_thread(write)
+    state.commit_showfile_save(path, counter)
+    _write_active_layout()
     return path
 
 
@@ -4294,6 +4335,7 @@ async def _process_client_message(websocket: WebSocket, message_type: str, paylo
         # Reihenfolge: erst "Show gewechselt" + Snapshot, dann der Live-Zustand (Baseline-Reset,
         # Programmer, Master). So sieht jeder Client zuerst die neue Show und danach ihren Stand.
         await event_bus.broadcast({"type": "show_loaded", "payload": {}})
+        _schedule_type_warmup()
         await event_bus.broadcast(state.get_snapshot())
         await _restore_showfile_state()
         return
@@ -4301,7 +4343,7 @@ async def _process_client_message(websocket: WebSocket, message_type: str, paylo
     if message_type == "save_show":
         _apply_panels_ui(payload.get("panels_ui"), websocket.state.cid)
         try:
-            path = _save_workspace()
+            path = await _save_workspace_async()
             _last_save_ok = True
             _last_save_error = ""
             await _flush_layout_written()
@@ -4324,7 +4366,7 @@ async def _process_client_message(websocket: WebSocket, message_type: str, paylo
             return
         try:
             _apply_panels_ui(payload.get("panels_ui"), websocket.state.cid)
-            path = _save_workspace(name=name)
+            path = await _save_workspace_async(name=name)
             await _flush_layout_written()
             _last_save_ok = True
             _last_save_error = ""
@@ -4355,6 +4397,7 @@ async def _process_client_message(websocket: WebSocket, message_type: str, paylo
                 # Erst Snapshot der neuen Show (inkl. aktivem Cue, Fortschritt), danach
                 # der wiederhergestellte Live-Zustand - alle Clients sind danach konsistent.
                 await event_bus.broadcast({"type": "show_loaded", "payload": {}})
+                _schedule_type_warmup()
                 await event_bus.broadcast(state.get_snapshot())
                 await _restore_showfile_state()
             except Exception as exc:

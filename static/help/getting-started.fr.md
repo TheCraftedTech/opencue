@@ -149,7 +149,7 @@ Le panneau **Moniteur DMX** montre exactement ce qui est envoyé. Le bouton **Bl
 ## 7. Personnaliser l'interface
 
 - **Mode édition** (**Édition → Modifier les panneaux**, `Ctrl+E`) : déplacer et redimensionner les panneaux (très petit est possible, le contenu défile alors), modifier leurs propriétés et couleurs, les copier et les coller. Un **clic droit sur l'espace de travail vide** ajoute un panneau, un bouton, un interrupteur ou un fader à l'endroit du clic. La case **Édition → Repères** active ou désactive les repères d'alignement pendant le déplacement (maintenez `Alt` : désactivés brièvement).
-- Les **mises en page** sont des fichiers. Construisez-en plusieurs (par exemple une petite pour programmer et une grande pour jouer) et changez avec `Ctrl+1` … `Ctrl+9` ou **Affichage → Mises en page**. Enregistrez avec `Ctrl+S` ou dans le gestionnaire de fichiers.
+- Les **mises en page** sont des fichiers. Construisez-en plusieurs (par exemple une petite pour programmer et une grande pour jouer) et changez avec `Ctrl+1` … `Ctrl+9` ou **Affichage → Mises en page**. Enregistrez avec `Ctrl+S` ou dans le gestionnaire de fichiers. Créez un nouveau layout vide avec **Édition → Nouveau layout…**.
 - **Thèmes** (profils de couleurs) : *Paramètres → Apparence* – sombre, clair ou le vôtre.
 - **Échelle de l'interface** (`Ctrl +` / `Ctrl -`) : agrandit tout pour les écrans tactiles ; elle est mémorisée par appareil.
 - **Langue** : menu *Langue* (English, Deutsch, Français, Nederlands, Italiano, Español) ou `Ctrl+Maj+L`. Les guides existent dans les six langues.
@@ -216,5 +216,7 @@ Vos données sont de simples fichiers dans le dossier de données (`%LOCALAPPDAT
 | `config` | Paramètres (`app_config.json`, y compris la source audio choisie) et jetons d'API (`api_tokens.json`, seulement des empreintes) |
 
 Pour sauvegarder, copiez le dossier – ou utilisez l'**export** du gestionnaire de fichiers (un show en ZIP avec les projecteurs et effets dont il a besoin), qui permet aussi de déplacer un show vers un autre ordinateur.
+
+Dans le **gestionnaire de fichiers**, les listes *Modèles 3D*, *Médias*, *Effets* et *Projecteurs* ont un commutateur **Liste | Groupes** (OpenCue mémorise votre choix). *Groupes* montre d'abord les groupes : effets par type (Dimmer, Couleur, Position, Gobo, Zoom, Focus), médias par genre (Audio, Image, Vidéo), projecteurs par marque et modèles 3D par **show** dans lequel ils sont utilisés (un modèle utilisé dans deux shows figure dans les deux groupes ; la liste ne le montre qu'une fois). Un clic ouvre un groupe, *Tous les groupes* ramène en arrière. **Supprimer les inutilisés** (liste *Modèles 3D*) supprime chaque modèle 3D qui n'est sur aucune scène – ni la scène chargée ni une scène enregistrée – pour que les anciens imports ne s'accumulent pas.
 
 La désinstallation d'OpenCue demande s'il faut aussi supprimer ces données ; la réponse par défaut est **Non**.

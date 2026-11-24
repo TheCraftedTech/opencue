@@ -61,10 +61,18 @@ function parseStl(buffer) {
   const count = view.getUint32(80, true);
   if (!count || buffer.byteLength < 84 + count * 50) return null;
   const positions = new Float32Array(count * 9);
+  let colors = null;                                                    // Farbe je Dreieck (MVR-Import): Attribut-Bytes, Bit 15 = gueltig, je 5 Bit R / G / B (app/sim_models.py pack_colors)
   for (let i = 0; i < count; i++) {
     const base = 84 + i * 50 + 12;                                      // 12 Bytes Normale ueberspringen (die rechnet three selbst)
     for (let k = 0; k < 9; k++) positions[i * 9 + k] = view.getFloat32(base + k * 4, true);
+    const attr = view.getUint16(base + 36, true);
+    if (attr & 0x8000) {
+      if (!colors) { colors = new Float32Array(count * 9).fill(0.62); }
+      const r = ((attr >> 10) & 31) / 31, g = ((attr >> 5) & 31) / 31, b = (attr & 31) / 31;
+      for (let v = 0; v < 3; v++) { colors[i * 9 + v * 3] = r; colors[i * 9 + v * 3 + 1] = g; colors[i * 9 + v * 3 + 2] = b; }
+    }
   }
+  positions.colors = colors;
   return positions;
 }
 function loadStl(filename) {
@@ -76,6 +84,7 @@ function loadStl(filename) {
         if (!positions) return null;
         const g = new THREE.BufferGeometry();
         g.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+        if (positions.colors) g.setAttribute("color", new THREE.BufferAttribute(positions.colors, 3));
         g.computeBoundingBox();
         const b = g.boundingBox;
         const size = b.getSize(new THREE.Vector3());
@@ -84,7 +93,7 @@ function loadStl(filename) {
         g.computeVertexNormals();
         g.computeBoundingBox();
         g.computeBoundingSphere();
-        return { geometry: g, native: [size.x, size.y, size.z] };
+        return { geometry: g, native: [size.x, size.y, size.z], colored: !!positions.colors };
       })
       .catch(() => null));
   }
@@ -419,6 +428,7 @@ export function attachBuilder(root, sim) {
         entry.missing = false;
         entry.native = loaded.native;
         entry.mesh.geometry = loaded.geometry;
+        if (loaded.colored && !entry.material.vertexColors) { entry.material.vertexColors = true; entry.material.side = THREE.DoubleSide; entry.material.needsUpdate = true; }          // Farben der Datei (z. B. aus einer MVR-Szene); die Farbe des Objekts faerbt sie ein. Beidseitig: Planungsprogramme liefern Vorhaenge / Waende oft mit unterschiedlicher Dreiecksrichtung (von einer Seite waeren sie unsichtbar)
       }
       if (isSelected(entry.id) && editing()) renderSide();
       sim.invalidate();
@@ -1113,14 +1123,12 @@ export function attachBuilder(root, sim) {
     return box;
   }
 
-  /** Ganz am ENDE des Inhalts der Seitenleiste (man scrollt dorthin): "Als JSON bearbeiten". */
-  function jsonFooter() {
-    const foot = el("div", "sim3d__json-foot");
-    const b = iconButton("edit", t("SIMJSON_EDIT"), "", () => enterJson());
-    b.dataset.act = "json";
-    b.title = t("SIMJSON_BTN_TIP");
-    foot.appendChild(b);
-    return foot;
+  /** Kleiner Knopf "MVR-Szene importieren ..." (Buehne + Scheinwerfer aus einer .mvr-Datei, static/js/mvr_import.js). */
+  function mvrButton() {
+    const b = iconButton("stage", t("SIM3D_MVR_BTN"), "", () => { if (window.OCMvrImport) window.OCMvrImport.open(); });
+    b.dataset.act = "mvr-import";
+    b.title = t("SIM3D_MVR_TIP");
+    return b;
   }
   let jsonPanel = null;
   let jsonMode = false;
@@ -1140,7 +1148,6 @@ export function attachBuilder(root, sim) {
     renderSide();
     sim.invalidate();
   }
-  const enterJson = () => setJsonMode(true);
 
   /** Umschalter oben in der Seitenleiste (unter dem Speichern-Knopf): Werkzeuge <-> JSON. */
   function viewToggle() {
@@ -1158,7 +1165,6 @@ export function attachBuilder(root, sim) {
 
   function renderSide() {
     renderSideBody();
-    if (!jsonMode) side.appendChild(jsonFooter());
   }
 
   function renderSideBody() {
@@ -1219,6 +1225,7 @@ export function attachBuilder(root, sim) {
     modelToggle.setAttribute("aria-expanded", String(modelsOpen));
     modelToggle.title = t("SIM3D_MODEL_ADD_TIP");
     add.appendChild(modelToggle);
+    add.appendChild(mvrButton());
     if (modelsOpen) {
       const box = el("div", "sim3d__models");
       if (!modelList) box.appendChild(el("p", "sim3d__hint", t("SIM3D_MODEL_LOADING")));
@@ -1480,12 +1487,15 @@ export function attachBuilder(root, sim) {
     const loaded = await loadFixtureModel(typeId);
     if (!loaded || !fixtureEntries.has(entry.id) || entry.modelType !== typeId) return;
     const built = window.OCModelViewer.buildFixture(loaded.data, { castShadow: true, beam: false, beamMesh: false, shareGeometry: true });
+    built.group.traverse((o) => { if (o.isMesh) o.userData.canCast = o.castShadow; });
     built.lensMaterial.emissiveIntensity = 0;                           // Linse dunkel (das Leuchten kommt mit den DMX-Werten)
     entry.group.remove(entry.model);
     if (entry.built) entry.built.dispose();
     entry.model = built.group;
     entry.group.add(entry.model);
     entry.built = built;
+    entry.castApplied = undefined;
+    applyFixtureCasting();
     entry.axes = loaded.data.axes || {};
     if (window.OCSimAim) window.OCSimAim.notify();                      // jetzt kann dieser Scheinwerfer zielen
     const zoom = entry.axes.zoom;
@@ -1533,6 +1543,17 @@ export function attachBuilder(root, sim) {
   function resetFxHistory() { fxHistory = [snapshotFx()]; fxIndex = 0; updateFxUndo(); }
 
   /** Koerper der platzierten Scheinwerfer mit der Show abgleichen: Scheinwerfer, die es nicht mehr gibt, verschwinden; neue Positionen werden uebernommen. */
+  /** Die Gehaeuse der Scheinwerfer werfen Schatten in die Lichtkegel. Ausschalten (Raum & Licht, nur dieses Geraet) spart bei grossen Buehnen viel Leistung: jede Schattenkarte zeichnet sonst alle Gehaeuse neu. */
+  function applyFixtureCasting() {
+    const cast = sim.limits.values.fixtureShadows !== 0;                // Einstellung "Scheinwerfer werfen Schatten" (je Geraet; Vorgabe: ein, wie frueher)
+    fixtureEntries.forEach((entry) => {
+      if (!entry.built || entry.castApplied === cast) return;
+      entry.castApplied = cast;
+      entry.built.group.traverse((o) => { if (o.isMesh && o.userData.canCast !== undefined) o.castShadow = o.userData.canCast && cast; });
+    });
+    sim.renderer.shadowMap.needsUpdate = true;
+  }
+  sim.limits.listeners.push(() => { fixtureEntries.forEach((entry) => { entry.castApplied = undefined; }); applyFixtureCasting(); });
   function syncFixtureEntries() {
     const known = new Set(showFixtures().map((f) => f.id));
     for (const id of [...fixtureEntries.keys()]) if (!known.has(id) || !layout[id]) removeFixtureEntry(id);
@@ -1542,6 +1563,7 @@ export function attachBuilder(root, sim) {
       if (entry) { entry.data.position = item.position.slice(); entry.data.rotation = item.rotation.slice(); entry.data.hidden = !!item.hidden; entry.data.scale = item.scale || 1; applyFixture(entry); attachRealModel(entry); }
       else createFixtureEntry(id, item);
     }
+    applyFixtureCasting();
     sim.invalidate();
   }
   function applyRemoteLayout(incoming) {
@@ -1681,6 +1703,7 @@ export function attachBuilder(root, sim) {
     all.disabled = placed >= fixtures.length;
     all.style.flex = "0 0 auto";
     head.appendChild(all);
+    head.appendChild(mvrButton());
     side.appendChild(head);
 
     const list = section("");
@@ -2554,6 +2577,7 @@ export function attachBuilder(root, sim) {
       sideObserver.disconnect();
       if (envTexture) envTexture.dispose();
       clearTimeout(pushTimer);
+      [modes, side, readout, grip, marqueeEl].forEach((node) => { if (node) node.remove(); });          // Oberflaeche des Panels abbauen (die Simulation kann ausgeschaltet und neu gestartet werden)
     },
   };
 }

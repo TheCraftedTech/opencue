@@ -20,6 +20,7 @@
     ["keyboard-shortcuts", "guide.keys.t", "Keyboard shortcuts"],
     ["fixtures", "guide.fix.t", "Fixtures and patching"],
     ["fixture-editor", "guide.fixture-editor.t", "Own fixtures (editor)"],
+    ["3d-simulation", "guide.3d-simulation.t", "3D simulation"],
     ["effect-studio", "guide.fx.t", "Effect Studio guide"],
     ["timeline", "guide.timeline.t", "Timeline editor and LTC"],
     ["audio", "guide.audio.t", "Audio: lights that react to music"],

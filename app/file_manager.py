@@ -193,6 +193,71 @@ def _media_usage() -> Dict[str, int]:
     return usage
 
 
+_show_stage_cache: Dict[str, Tuple[Tuple[int, int], Optional[str]]] = {}
+
+
+def _stage_file_of_show(path: Path) -> Optional[str]:
+    """Dateiname der 3D-Buehne, die eine gespeicherte Show benutzt (Block "sim_stage"); je Datei nur neu gelesen, wenn sie sich aendert."""
+    try:
+        stat = path.stat()
+        key = (stat.st_mtime_ns, stat.st_size)
+    except OSError:
+        return None
+    cached = _show_stage_cache.get(str(path))
+    if cached is not None and cached[0] == key:
+        return cached[1]
+    filename: Optional[str] = None
+    try:
+        reference = json.loads(path.read_text(encoding="utf-8")).get("sim_stage")
+        if isinstance(reference, dict) and sim_stages.valid_filename(reference.get("filename")):
+            filename = reference["filename"]
+    except (OSError, ValueError, AttributeError):
+        pass
+    _show_stage_cache[str(path)] = (key, filename)
+    return filename
+
+
+def model_shows() -> Dict[str, List[str]]:
+    """Welches 3D-Modell in welchen Shows vorkommt: {Modell-Dateiname: [Show-Namen]} - ueber die Buehne jeder gespeicherten Show; die geladene Show zaehlt mit ihrer aktuellen
+    (auch ungespeicherten) Buehne. Ein Modell kann in mehreren Shows vorkommen."""
+    stage_models: Dict[str, set] = {}
+
+    def models_of(stage_file: str) -> set:
+        if stage_file not in stage_models:
+            try:
+                stage_models[stage_file] = {o.get("model") for o in sim_stages.read_file(stage_file)["objects"] if o.get("type") == "model" and o.get("model")}
+            except sim_stages.StageError:
+                stage_models[stage_file] = set()
+        return stage_models[stage_file]
+
+    result: Dict[str, List[str]] = {}
+
+    def add(show_name: str, models: set) -> None:
+        for model in models:
+            names = result.setdefault(str(model), [])
+            if show_name not in names:
+                names.append(show_name)
+
+    loaded = _paths.SHOWFILES_DIR
+    active_path = state.showfile_path
+    for path in sorted(loaded.glob("*.json")) if loaded.is_dir() else []:
+        if _same(active_path, path):
+            continue                                                       # die geladene Show: unten mit ihrer aktuellen Buehne
+        stage_file = _stage_file_of_show(path)
+        if stage_file:
+            add(str(_show_head(path).get("showfile_name", path.stem)), models_of(stage_file))
+    try:
+        sim_stages.store.ensure()
+        live = {o.get("model") for o in sim_stages.store.objects if o.get("type") == "model" and o.get("model")}
+    except Exception:                                                      # noqa: BLE001
+        live = set()
+    if live:
+        add(state.showfile_name if state.showfile_name and state.showfile_name != "Untitled" else "Untitled", live)
+    for names in result.values():
+        names.sort(key=str.lower)
+    return result
+
+
 def rows(kind: str) -> List[Dict[str, Any]]:
     _check_kind(kind)
     out: List[Dict[str, Any]] = []
@@ -224,7 +289,7 @@ def rows(kind: str) -> List[Dict[str, Any]]:
     elif kind == "models":
         for item in sim_models.list_models():
             out.append({"id": item["id"], "name": item["name"], "size": item["bytes"], "modified": item["modified"], "detail": str(item["triangles"]),
-                        "dimensions": item["size"], "active": bool(item["in_use"]), "in_use": int(item["in_use"]), "ok": item["ok"], "message": item.get("message", "")})
+                        "dimensions": item["size"], "active": bool(item["in_use"]), "in_use": int(item["in_use"]), "in_saved_stage": bool(item.get("in_saved_stage")), "ok": item["ok"], "message": item.get("message", "")})
     elif kind == "media":
         usage = _media_usage()
         for media_id, meta in state.media.items():
@@ -271,6 +336,16 @@ def rows(kind: str) -> List[Dict[str, Any]]:
         for item in fixture_library.installed_entries(usage):
             out.append({"id": item["file"], "name": f"{item['manufacturer']} – {item['name']}", "size": item["size"], "modified": item["installed_at"],
                         "detail": f"{item['category']} · {len(item['modes'])}", "in_use": item["in_use"], "active": bool(item["in_use"]), "error": item.get("error")})
+    if kind == "models":
+        shows = model_shows()
+        for row in out:
+            row["groups"] = shows.get(row["id"], [])
+    elif kind == "effects":
+        for row in out:
+            row["category"] = row.get("detail") or ""
+    elif kind == "fixtures":
+        for row in out:
+            row["category"] = str(row.get("name") or "").split(" – ")[0] if " – " in str(row.get("name") or "") else ""
     return out
 
 

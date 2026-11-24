@@ -1,6 +1,43 @@
 {
  "releases": [
   {
+   "version": "2.2.0",
+   "date": "2026-11-24",
+   "title": "Importación MVR y una simulación 3D más rápida",
+   "items": [
+    {
+     "icon": "stage",
+     "title": "Importar un escenario desde tu software de diseño",
+     "text": "Biblioteca → Importar escena MVR… trae el escenario y los proyectores de Vectorworks, Capture o Depence: parcheados, colocados y listos para iluminar."
+    },
+    {
+     "icon": "folder",
+     "title": "Gestor de archivos con grupos",
+     "text": "Las listas tienen un selector Lista | Grupos, y “Borrar los no usados” limpia los modelos 3D que ningún escenario usa."
+    },
+    {
+     "icon": "pause",
+     "title": "Desactivar la simulación 3D",
+     "text": "Un botón de pausa detiene por completo la simulación 3D, para que nada ralentice el resto de la consola."
+    },
+    {
+     "icon": "gear",
+     "title": "Sala y luz como diálogo",
+     "text": "Ajustes para todos los dispositivos y solo para este dispositivo, con opciones para escenarios muy grandes (conos, sombras, tasa de imagen)."
+    },
+    {
+     "icon": "bulb",
+     "title": "Correcciones para shows grandes",
+     "text": "Se acabó el bloqueo tras cargar un show con muchos proyectores, conos de luz que salen de las lentes y cabezas móviles que se mueven en 3D."
+    },
+    {
+     "icon": "help",
+     "title": "Nueva guía: Simulación 3D",
+     "text": "Botones, ajustes y una lista de solución de problemas – el asistente de IA también puede usarla."
+    }
+   ]
+  },
+  {
    "version": "2.1.2",
    "date": "2026-11-22",
    "title": "Chat y notas, completo",

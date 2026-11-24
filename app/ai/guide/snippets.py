@@ -16,7 +16,7 @@ from app import paths
 
 MIN_SCORE = 3.0                  # darunter gilt ein Schnipsel nicht als Treffer
 TEXT_LIMIT = 1400
-USER_PAGES = {"getting-started": 1.5, "fixtures": 1.2, "fixture-editor": 1.2, "remote": 1.0, "keyboard-shortcuts": 1.0, "audio": 0.8, "voice-commands": 1.0, "midi": 1.0, "dmx-input": 1.0, "timeline": 1.0, "show-safety": 1.0, "startup-options": 1.0, "automation": 1.0, "error-codes": 1.0, "chat": 1.0}      # Anleitungen fuer Anwender: bei gleichem Treffer vorn
+USER_PAGES = {"getting-started": 1.5, "fixtures": 1.2, "fixture-editor": 1.2, "remote": 1.0, "keyboard-shortcuts": 1.0, "audio": 0.8, "voice-commands": 1.0, "midi": 1.0, "dmx-input": 1.0, "timeline": 1.0, "show-safety": 1.0, "startup-options": 1.0, "automation": 1.0, "error-codes": 1.0, "chat": 1.0, "3d-simulation": 1.5}      # Anleitungen fuer Anwender: bei gleichem Treffer vorn
 STOP = {
     "de": set("der die das den dem des ein eine einen einem einer und oder aber auch ich du wir ihr sie es ist sind war wird werden kann kannst koennen können man mir mich dir dich was wie wo wann wer welche welcher welches "
               "mit von zu im in am an auf aus bei für fuer nach vor über ueber um zum zur dass nicht nur noch schon sehr mal bitte wenn dann als so viel viele hier dort gibt gibts soll sollte will möchte moechte "

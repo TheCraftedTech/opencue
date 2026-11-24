@@ -2,7 +2,7 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
   <url>
     <loc>https://thecraftedtech.github.io/opencue/</loc>
-    <lastmod>2026-11-22</lastmod>
+    <lastmod>2026-11-24</lastmod>
     <changefreq>monthly</changefreq>
     <priority>1.0</priority>
     <image:image>
@@ -40,7 +40,7 @@
   </url>
   <url>
     <loc>https://thecraftedtech.github.io/opencue/features/</loc>
-    <lastmod>2026-11-22</lastmod>
+    <lastmod>2026-11-24</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.9</priority>
     <image:image>
@@ -114,7 +114,7 @@
   </url>
   <url>
     <loc>https://thecraftedtech.github.io/opencue/panels/</loc>
-    <lastmod>2026-11-22</lastmod>
+    <lastmod>2026-11-24</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.9</priority>
     <image:image>
@@ -232,121 +232,127 @@
   </url>
   <url>
     <loc>https://thecraftedtech.github.io/opencue/guide/</loc>
-    <lastmod>2026-11-22</lastmod>
+    <lastmod>2026-11-24</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://thecraftedtech.github.io/opencue/guide/getting-started/</loc>
-    <lastmod>2026-11-22</lastmod>
+    <lastmod>2026-11-24</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
     <loc>https://thecraftedtech.github.io/opencue/guide/commands/</loc>
-    <lastmod>2026-11-22</lastmod>
+    <lastmod>2026-11-24</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
     <loc>https://thecraftedtech.github.io/opencue/guide/keyboard-shortcuts/</loc>
-    <lastmod>2026-11-22</lastmod>
+    <lastmod>2026-11-24</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
     <loc>https://thecraftedtech.github.io/opencue/guide/fixtures/</loc>
-    <lastmod>2026-11-22</lastmod>
+    <lastmod>2026-11-24</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
     <loc>https://thecraftedtech.github.io/opencue/guide/fixture-editor/</loc>
-    <lastmod>2026-11-22</lastmod>
+    <lastmod>2026-11-24</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://thecraftedtech.github.io/opencue/guide/3d-simulation/</loc>
+    <lastmod>2026-11-24</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
     <loc>https://thecraftedtech.github.io/opencue/guide/effect-studio/</loc>
-    <lastmod>2026-11-22</lastmod>
+    <lastmod>2026-11-24</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
     <loc>https://thecraftedtech.github.io/opencue/guide/timeline/</loc>
-    <lastmod>2026-11-22</lastmod>
+    <lastmod>2026-11-24</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
     <loc>https://thecraftedtech.github.io/opencue/guide/audio/</loc>
-    <lastmod>2026-11-22</lastmod>
+    <lastmod>2026-11-24</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
     <loc>https://thecraftedtech.github.io/opencue/guide/remote/</loc>
-    <lastmod>2026-11-22</lastmod>
+    <lastmod>2026-11-24</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
     <loc>https://thecraftedtech.github.io/opencue/guide/api/</loc>
-    <lastmod>2026-11-22</lastmod>
+    <lastmod>2026-11-24</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
     <loc>https://thecraftedtech.github.io/opencue/guide/midi/</loc>
-    <lastmod>2026-11-22</lastmod>
+    <lastmod>2026-11-24</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
     <loc>https://thecraftedtech.github.io/opencue/guide/automation/</loc>
-    <lastmod>2026-11-22</lastmod>
+    <lastmod>2026-11-24</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
     <loc>https://thecraftedtech.github.io/opencue/guide/dmx-input/</loc>
-    <lastmod>2026-11-22</lastmod>
+    <lastmod>2026-11-24</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
     <loc>https://thecraftedtech.github.io/opencue/guide/voice-commands/</loc>
-    <lastmod>2026-11-22</lastmod>
+    <lastmod>2026-11-24</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
     <loc>https://thecraftedtech.github.io/opencue/guide/assistant/</loc>
-    <lastmod>2026-11-22</lastmod>
+    <lastmod>2026-11-24</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
     <loc>https://thecraftedtech.github.io/opencue/guide/chat/</loc>
-    <lastmod>2026-11-22</lastmod>
+    <lastmod>2026-11-24</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
     <loc>https://thecraftedtech.github.io/opencue/guide/show-safety/</loc>
-    <lastmod>2026-11-22</lastmod>
+    <lastmod>2026-11-24</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
     <loc>https://thecraftedtech.github.io/opencue/guide/startup-options/</loc>
-    <lastmod>2026-11-22</lastmod>
+    <lastmod>2026-11-24</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
     <loc>https://thecraftedtech.github.io/opencue/guide/error-codes/</loc>
-    <lastmod>2026-11-22</lastmod>
+    <lastmod>2026-11-24</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>

@@ -149,7 +149,7 @@ The **DMX Monitor** panel shows exactly what is being sent. The **Blackout** but
 ## 7. Making the interface yours
 
 - **Edit mode** (**Edit → Edit Panels**, `Ctrl+E`): move and resize panels (very small is possible, the content then scrolls), change their properties and colours, copy and paste them. **Right-click on the empty workspace** adds a panel, button, toggle or fader at the click position. The tick **Edit → Guides** switches the alignment guides on or off while moving (hold `Alt`: off briefly).
-- **Layouts** are files. Build several (for example a small one for programming and a big one for playback) and switch with `Ctrl+1` … `Ctrl+9` or **View → Layouts**. Save with `Ctrl+S` or in the file manager.
+- **Layouts** are files. Build several (for example a small one for programming and a big one for playback) and switch with `Ctrl+1` … `Ctrl+9` or **View → Layouts**. Save with `Ctrl+S` or in the file manager. Create a new, empty layout with **Edit → New layout…**.
 - **Themes** (colour profiles): *Settings → Appearance* – dark, light, or your own.
 - **GUI scale** (`Ctrl +` / `Ctrl -`): makes everything larger for touch screens; it is stored per device.
 - **Language:** *Language* menu (English, Deutsch, Français, Nederlands, Italiano, Español) or `Ctrl+Shift+L`. The guides are available in all six languages.
@@ -216,5 +216,7 @@ Your data is plain files in the data folder (`%LOCALAPPDATA%\OpenCue` by default
 | `config` | Settings (`app_config.json`, incl. the chosen audio source) and the API tokens (`api_tokens.json`, only hashes) |
 
 To back up, copy the folder – or use the file manager's **export** (a show as a ZIP including the fixtures and effects it needs), which also lets you move a show to another computer.
+
+In the **file manager** the lists of *3D models*, *media*, *effects* and *fixtures* have a switch **List | Groups** (OpenCue remembers your choice). *Groups* first shows the groups: effects by kind (Dimmer, Color, Position, Gobo, Zoom, Focus), media by type (Audio, Image, Video), fixtures by brand and 3D models by the **show** they are used in (a model that is used in two shows is in both groups; the list shows it once). A click opens one group, *All groups* takes you back. **Delete unused** (list *3D models*) removes every 3D model that is on no stage - neither the loaded one nor a saved one - so old imports do not pile up.
 
 Uninstalling OpenCue asks whether to delete this data too; the default is **No**.

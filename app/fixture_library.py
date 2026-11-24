@@ -379,10 +379,11 @@ def show_types(usage: Dict[str, int]) -> List[Dict[str, Any]]:
     return result
 # --------------------------------------------------------------------------------------------- Einbau von Dateien
 
-def _inspect_gdtf(data: bytes) -> Dict[str, Any]:
+def _inspect_gdtf(data: bytes, deep: bool = True) -> Dict[str, Any]:
     """Prueft die Bytes als GDTF-Datei und liefert Hersteller/Name/Revision; wirft LibraryError("invalid_file").
     pygdtf ist nachsichtig (bei kaputtem XML oder ohne DMX-Modus erfindet es Ersatzwerte), deshalb wird die description.xml hier
-    selbst gelesen und streng geprueft; pygdtf muss die Datei danach zusaetzlich einlesen koennen."""
+    selbst gelesen und streng geprueft; pygdtf muss die Datei danach zusaetzlich einlesen koennen (deep=False: nur die eigene Pruefung - pygdtf braucht bei grossen Dateien
+    bis zu 13 s und liest die Datei ohnehin gleich danach noch einmal, siehe fixture_manager._parse_gdtf_cached)."""
     if len(data) > MAX_GDTF_BYTES:
         raise LibraryError("too_large", "The file is too large (max. 30 MB)", 413)
     if len(data) < 100 or data[:2] != b"PK":
@@ -414,10 +415,11 @@ def _inspect_gdtf(data: bytes) -> Dict[str, Any]:
             if not any(m.find("DMXChannels") is not None and m.find("DMXChannels").find("DMXChannel") is not None
                        for m in ft.iterfind("DMXModes/DMXMode")):
                 raise LibraryError("invalid_file", "The GDTF file contains no DMX mode with channels", 400)
-            fixture = pygdtf.FixtureType(str(tmp))
-            fixture.__exit__(None, None, None)           # Handle freigeben, sonst laesst sich das Temp-Verzeichnis unter Windows nicht loeschen
-            if not fixture.dmx_modes:
-                raise LibraryError("invalid_file", "The GDTF file contains no DMX mode", 400)
+            if deep:
+                fixture = pygdtf.FixtureType(str(tmp))
+                fixture.__exit__(None, None, None)       # Handle freigeben, sonst laesst sich das Temp-Verzeichnis unter Windows nicht loeschen
+                if not fixture.dmx_modes:
+                    raise LibraryError("invalid_file", "The GDTF file contains no DMX mode", 400)
         except LibraryError:
             raise
         except Exception as exc:
@@ -429,10 +431,10 @@ def _inspect_gdtf(data: bytes) -> Dict[str, Any]:
         shutil.rmtree(tmp_dir, ignore_errors=True)
 
 
-def install_bytes(data: bytes, stem_hint: str = "", revision_hint: str = "", usage: Optional[Dict[str, int]] = None, on_conflict: str = "replace") -> Dict[str, Any]:
+def install_bytes(data: bytes, stem_hint: str = "", revision_hint: str = "", usage: Optional[Dict[str, int]] = None, on_conflict: str = "replace", deep_check: bool = True) -> Dict[str, Any]:
     """Baut eine GDTF-Datei in den Fixture-Ordner ein. on_conflict bei gleichem Namen: "replace" (ersetzt, so wie das Aktualisieren der Bibliothek) oder "copy" (gleicher Inhalt: nichts
     wird geschrieben, identical=True; anderer Inhalt: unter einem freien Namen "<id> (2)" ...). Rueckgabe: id + ob ersetzt wurde."""
-    meta = _inspect_gdtf(data)
+    meta = _inspect_gdtf(data, deep=deep_check)
     hint = Path(stem_hint).stem if stem_hint else ""
     if hint.count("@") >= 2:
         stem = "@".join(sanitize_part(p) for p in hint.split("@")[:3])
@@ -465,7 +467,8 @@ def install_bytes(data: bytes, stem_hint: str = "", revision_hint: str = "", usa
     finally:
         if partial.exists():
             partial.unlink()
-    fixture_manager.get_fixture_types()
+    if deep_check:                                                        # (ein Aufrufer mit deep_check=False liest die Typen danach selbst und nur einmal)
+        fixture_manager.get_fixture_types()
     return {"ok": True, "id": stem, "replaced": existed, "identical": False, "copied_from": original if on_conflict == "copy" and stem != original else None,
             "name": meta["name"], "manufacturer": meta["manufacturer"], "pinned": pinned}
 

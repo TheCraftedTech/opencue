@@ -2511,6 +2511,7 @@ html.oc-fs-active body { overflow: hidden; }
 .simjson__legend { max-height: 9rem; overflow: auto; font-size: var(--fs-sm); color: var(--text-2); padding: var(--sp-2) 0; }
 /* JSON-Ansicht in der Seitenleiste des 3D-Panels (Baumodus / Scheinwerfer): ersetzt die Werkzeuge, Speichern bleibt */
 .sim3d__viewtoggle { display: flex; border: 1px solid var(--border-color); border-radius: 6px; overflow: hidden; flex: none; }
+.sim3d__viewtoggle { position: sticky; top: 0; z-index: 4; background: var(--surface-1); box-shadow: 0 0 0 4px var(--surface-1); }
 .sim3d__viewbtn { flex: 1; padding: 0.4rem 0.6rem; border: 0; background: var(--surface-2); color: var(--text-2); cursor: pointer; font: inherit; font-weight: 600; }
 .sim3d__viewbtn + .sim3d__viewbtn { border-left: 1px solid var(--border-color); }
 .sim3d__viewbtn:hover { color: var(--text-1); background: var(--surface-3); }
@@ -2552,6 +2553,62 @@ html.oc-fs-active body { overflow: hidden; }
 .fxi__msg { min-height: 1.2em; margin: var(--sp-2) 0 0; color: var(--error); }
 .fxi__skip { margin-right: auto; display: inline-flex; align-items: center; gap: var(--sp-2); }
 .fxi__skip[hidden], #fxi-again[hidden], #fxi-import[hidden] { display: none; }
+/* ---- Speichern / Beenden: Ladeanzeige ---- */
+@keyframes oc-save-spin { to { transform: rotate(360deg); } }
+body.oc-saving #toolbar-showfile-name::after { content: ""; display: inline-block; width: 0.8em; height: 0.8em; margin-left: 0.45em; vertical-align: -0.1em; border: 2px solid var(--border-strong); border-top-color: var(--accent); border-radius: 50%; animation: oc-save-spin 0.8s linear infinite; }
+.oc-closing { position: fixed; inset: 0; z-index: 100000; display: flex; align-items: center; justify-content: center; gap: 0.9rem; background: color-mix(in srgb, var(--surface-0, #000) 72%, transparent); color: var(--text-1); font-size: 1.05rem; font-weight: 600; backdrop-filter: blur(2px); }
+.oc-closing[hidden] { display: none; }
+.oc-closing__spin { width: 1.6rem; height: 1.6rem; border: 3px solid var(--border-strong); border-top-color: var(--accent); border-radius: 50%; animation: oc-save-spin 0.9s linear infinite; }
+@media (prefers-reduced-motion: reduce) { body.oc-saving #toolbar-showfile-name::after, .oc-closing__spin { animation-duration: 3s; } }
+/* ---- MVR-Szene importieren (static/js/mvr_import.js) ---- */
+.mvr__hint { margin: var(--sp-2) 0 0; color: var(--text-3); font-size: var(--fs-sm); line-height: 1.4; }
+.mvr__scene { margin-bottom: var(--sp-3); }
+.mvr__scene-name { font-size: 1.15rem; font-weight: 600; color: var(--text-1); overflow-wrap: anywhere; }
+.mvr__scene-sub { color: var(--text-3); font-size: var(--fs-sm); }
+.mvr__facts { margin: 0 0 var(--sp-3); padding-left: 1.1rem; color: var(--text-2); line-height: 1.5; }
+.mvr__sec { margin-bottom: var(--sp-4); }
+.mvr__label { margin-bottom: var(--sp-2); font-size: var(--fs-sm); text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-3); }
+.mvr__cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--sp-2); }
+.mvr__card { align-items: flex-start; }
+@media (max-width: 640px) { .mvr__cards { grid-template-columns: minmax(0, 1fr); } }
+.mvr__check { display: flex; align-items: flex-start; gap: var(--sp-3); cursor: pointer; }
+.mvr__check-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.mvr__check-title { font-weight: 600; color: var(--text-1); }
+.mvr__check-sub { color: var(--text-3); font-size: var(--fs-sm); line-height: 1.35; }
+.mvr__types { margin: var(--sp-2) 0 0 2rem; padding: 0; list-style: none; color: var(--text-2); font-size: var(--fs-sm); }
+.mvr__bad { color: var(--error); }
+.mvr__notes { margin-top: var(--sp-3); padding: var(--sp-3); border: 1px solid var(--border); border-radius: var(--base-radius, 3px); background: var(--surface-2, var(--surface-1)); }
+.mvr__notes-title { margin-bottom: var(--sp-1); font-size: var(--fs-sm); color: var(--text-3); text-transform: uppercase; letter-spacing: 0.04em; }
+.mvr__notes-list { margin: 0; padding-left: 1.1rem; color: var(--text-2); font-size: var(--fs-sm); line-height: 1.45; overflow-wrap: anywhere; }
+.mvr__done-title { margin-bottom: var(--sp-2); font-size: 1.1rem; font-weight: 600; color: var(--text-1); }
+.modal--mvr.mvr--drop { outline: 2px dashed var(--accent); outline-offset: -6px; }
+.mvr__busy { display: flex; align-items: center; gap: var(--sp-4); padding: var(--sp-4) 0; }
+.mvr__spin { flex: 0 0 auto; width: 2rem; height: 2rem; border: 3px solid var(--border-strong); border-top-color: var(--accent); border-radius: 50%; animation: connection-spin 0.9s linear infinite; }
+.mvr__busy-title { font-weight: 600; color: var(--text-1); }
+.mvr__bar { height: 0.5rem; border-radius: 999px; background: var(--surface-2, var(--surface-1)); border: 1px solid var(--border); overflow: hidden; }
+.mvr__bar-fill { height: 100%; width: 0; background: var(--accent); transition: width 0.25s ease; }
+.mvr__bar--wait .mvr__bar-fill { width: 35%; animation: mvr-wait 1.4s ease-in-out infinite alternate; }
+@keyframes mvr-wait { from { margin-left: 0; } to { margin-left: 65%; } }
+@media (prefers-reduced-motion: reduce) { .mvr__spin { animation-duration: 3s; } .mvr__bar--wait .mvr__bar-fill { animation: none; } }
+.mvr__cards--two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.mvr__fxopts { margin: var(--sp-3) 0 0 2rem; display: flex; flex-direction: column; gap: var(--sp-3); }
+.mvr__fxopts[hidden] { display: none; }
+.mvr__field { display: flex; align-items: center; flex-wrap: wrap; gap: var(--sp-2) var(--sp-3); color: var(--text-2); }
+.mvr__field .mvr__hint { margin: 0; flex-basis: 100%; }
+.mvr__field[hidden], .mvr__more[hidden] { display: none; }
+.mvr__num { width: 5rem; }
+.mvr__more { margin-bottom: var(--sp-3); border: 1px solid var(--border); border-radius: var(--base-radius, 3px); padding: var(--sp-2) var(--sp-3); background: var(--surface-1); }
+.mvr__more > summary { cursor: pointer; font-weight: 600; color: var(--text-2); }
+.mvr__more[open] > summary { margin-bottom: var(--sp-2); }
+.mvr__more > .mvr__check, .mvr__more > .mvr__field { margin-top: var(--sp-2); }
+.mvr__row { display: flex; gap: var(--sp-2); margin-bottom: var(--sp-2); }
+.mvr__small { padding: 0.15rem 0.7rem; min-width: 0; }
+.mvr__layers { max-height: 12rem; overflow: auto; display: flex; flex-direction: column; gap: 0.2rem; }
+.mvr__layer { display: flex; align-items: center; gap: var(--sp-2); }
+.mvr__layer-name { flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; }
+.mvr__layer-count { color: var(--text-3); font-size: var(--fs-sm); white-space: nowrap; }
+@media (max-width: 640px) { .mvr__cards--two { grid-template-columns: minmax(0, 1fr); } .mvr__fxopts { margin-left: 0; } }
+#mvr-again[hidden], #mvr-import[hidden], #mvr-close[hidden], #mvr-cancel[hidden] { display: none; }
 /* ---- Drucken / PDF (static/js/report.js) ---- */
 .report { display: grid; grid-template-columns: minmax(20rem, 26rem) minmax(0, 1fr); gap: var(--sp-4); align-items: start; }
 .report__preview { position: sticky; top: 0; height: min(68vh, 42rem); border: 1px solid var(--border); border-radius: var(--radius-sm, 6px); background: var(--surface-2); overflow: hidden; }

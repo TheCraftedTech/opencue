@@ -12,7 +12,7 @@
 (function () {
   "use strict";
 
-  const PAGES = ["getting-started", "fixtures", "fixture-editor", "keyboard-shortcuts", "remote", "audio", "effect-studio", "commands", "voice-commands", "midi", "dmx-input", "timeline", "assistant", "chat", "api", "show-safety", "startup-options", "automation", "error-codes"];
+  const PAGES = ["getting-started", "fixtures", "fixture-editor", "keyboard-shortcuts", "remote", "audio", "effect-studio", "commands", "voice-commands", "midi", "dmx-input", "timeline", "assistant", "chat", "api", "3d-simulation", "show-safety", "startup-options", "automation", "error-codes"];
   const MAX_RESULTS = 80;
   const ROOT = '[data-modal-backdrop="help"]';
   const STORE = "opencue.help";

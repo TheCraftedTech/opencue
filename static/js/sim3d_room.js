@@ -36,6 +36,8 @@ function injectStyle() {
       display: flex; flex-direction: column; gap: 0.5rem; background: color-mix(in srgb, var(--panel-bg) 96%, transparent); border: 1px solid var(--border-color);
       border-radius: var(--base-radius, 3px); color: var(--text-main); font-size: 0.85rem; }
     .sim3d__room[hidden] { display: none; }
+    .sim3d__room.sim3d__room--dialog { position: static; width: auto; max-height: none; overflow: visible; padding: 0; background: transparent; border: 0; border-radius: 0; font-size: 0.9rem; }
+    .sim3d__roomdialog .modal__body { overflow-y: auto; max-height: min(70vh, 40rem); overscroll-behavior: contain; }
     .sim3d__room-row { display: flex; align-items: center; gap: 0.5rem; min-height: 2.25rem; }
     .sim3d__room-row label { flex: 1 1 auto; color: var(--text-main); }
     .sim3d__room-hint { margin: 0; color: var(--secondary-text); font-size: 0.75rem; line-height: 1.35; }
@@ -289,7 +291,7 @@ export function createRoom(sim, host, tools) {
   button.title = i18n("SIM3D_ROOM_TIP");
   button.setAttribute("aria-label", i18n("SIM3D_ROOM"));
   button.setAttribute("aria-pressed", "false");
-  button.appendChild(Icons.svg("bulb"));
+  button.appendChild(Icons.svg("gear"));
   const panel = document.createElement("div");
   panel.className = "sim3d__room";
   panel.hidden = true;
@@ -320,6 +322,9 @@ export function createRoom(sim, host, tools) {
   const hint = document.createElement("p");
   hint.className = "sim3d__room-hint";
   hint.textContent = i18n("SIM3D_ROOM_HINT");
+  const hazeNote = document.createElement("p");
+  hazeNote.className = "sim3d__room-hint";
+  hazeNote.textContent = i18n("SIM3D_HAZE_OFF_NOTE");
   const resetButton = document.createElement("button");
   resetButton.type = "button";
   resetButton.className = "sim3d__btn sim3d__btn--wide sim3d__btn--danger sim3d__room-reset";
@@ -384,7 +389,20 @@ export function createRoom(sim, host, tools) {
     limitRows[key] = input;
     return row;
   }
+  const castRow = document.createElement("div");
+  castRow.className = "sim3d__room-row";
+  const castLabel = document.createElement("label");
+  castLabel.textContent = i18n("SIM3D_FIXTURE_SHADOWS");
+  castLabel.title = i18n("SIM3D_FIXTURE_SHADOWS_TIP");
+  const castBox = document.createElement("input");
+  castBox.type = "checkbox";
+  castBox.dataset.field = "fixtureShadows";
+  castBox.addEventListener("change", () => { sim.limits.set("fixtureShadows", castBox.checked ? 1 : 0); });
+  castLabel.addEventListener("click", () => castBox.click());
+  castRow.append(castLabel, castBox);
+  const note = (k) => { const p = document.createElement("p"); p.className = "sim3d__room-hint"; p.textContent = i18n(k); return p; };
   function paintLimits() {
+    castBox.checked = sim.limits.values.fixtureShadows !== 0;
     const v = sim.limits.values;
     for (const key of Object.keys(limitRows)) if (document.activeElement !== limitRows[key]) limitRows[key].value = String(v[key]);
     const info = sim.limits.info || {};
@@ -398,6 +416,8 @@ export function createRoom(sim, host, tools) {
   limitsReset.addEventListener("click", () => { sim.limits.reset(); paintLimits(); });
   sim.limits.listeners.push(() => paintLimits());
   panel.append(
+    title("SIM3D_SECTION_ALL"),
+    note("SIM3D_SECTION_ALL_HINT"),
     title("SIM3D_ROOM_LIGHTING"),
     slider("work", "SIM3D_WORKLIGHT", "SIM3D_WORKLIGHT_TIP", 100),
     slider("house", "SIM3D_HOUSE", "SIM3D_HOUSE_TIP", 100),
@@ -409,14 +429,19 @@ export function createRoom(sim, host, tools) {
     slider("reflect", "SIM3D_REFLECT", "SIM3D_REFLECT_TIP", 200),
     slider("exposure", "SIM3D_EXPOSURE", "SIM3D_EXPOSURE_TIP", 200, 50),
     slider("haze", "SIM3D_HAZE", "SIM3D_HAZE_TIP", 100),
-    helpersRow, qualityRow,
-    title("SIM3D_LIMITS"),
+    hazeNote,
+    helpersRow,
+    resetButton,
+    title("SIM3D_SECTION_DEVICE"),
+    note("SIM3D_SECTION_DEVICE_HINT"),
+    qualityRow,
     limitRow("maxLights", "SIM3D_LIMIT_LIGHTS", "SIM3D_LIMIT_LIGHTS_TIP"),
     limitRow("maxShadows", "SIM3D_LIMIT_SHADOWS", "SIM3D_LIMIT_SHADOWS_TIP"),
     limitRow("maxSpecular", "SIM3D_LIMIT_SPECULAR", "SIM3D_LIMIT_SPECULAR_TIP"),
+    limitRow("maxCones", "SIM3D_LIMIT_CONES", "SIM3D_LIMIT_CONES_TIP"),
+    limitRow("maxFps", "SIM3D_LIMIT_FPS", "SIM3D_LIMIT_FPS_TIP"),
+    castRow,
     limitInfo, limitsReset,
-    resetButton,
-    hint,
   );
 
   function paint() {
@@ -429,27 +454,62 @@ export function createRoom(sim, host, tools) {
   const onQuality = () => { qualitySelect.value = sim.quality.setting; };
   sim.quality.listeners.push(onQuality);
 
-  const toggle = (open) => {
-    panel.hidden = !open;
-    button.setAttribute("aria-pressed", String(open));
-    button.classList.toggle("sim3d__btn--on", open);
-    if (open) { host.dispatchEvent(new CustomEvent("sim3d-popover", { detail: "room" })); paint(); fit(); }        // ein anderes Fenster der Leiste schliesst sich
-  };
-  const onOtherPopover = (e) => { if (e.detail !== "room" && !panel.hidden) toggle(false); };
-  host.addEventListener("sim3d-popover", onOtherPopover);
-  /** Hoehe des Fensters an das Panel anpassen (es endet am unteren Rand des Panels; was nicht passt, scrollt). */
-  function fit() {
-    if (panel.hidden) return;
-    panel.style.maxHeight = "";
-    const bottom = host.getBoundingClientRect().bottom;
-    const top = panel.getBoundingClientRect().top;
-    panel.style.maxHeight = Math.max(140, Math.floor(bottom - top - 8)) + "px";
+  // Raum & Licht ist ein Dialog (kein Popover am Rand): alle Einstellungen gut lesbar und bedienbar, auch in einem kleinen Panel
+  let dialog = null;
+  function closeDialog() {
+    if (!dialog) return;
+    const open = dialog;
+    dialog = null;
+    panel.hidden = true;
+    panel.classList.remove("sim3d__room--dialog");
+    wrap.appendChild(panel);
+    open.remove();
+    button.setAttribute("aria-pressed", "false");
+    button.classList.remove("sim3d__btn--on");
   }
-  const fitObserver = new ResizeObserver(fit);
-  fitObserver.observe(host);
-  button.addEventListener("click", () => toggle(panel.hidden));
-  const onKey = (e) => { if (e.key === "Escape" && !panel.hidden) { toggle(false); e.stopPropagation(); } };
-  host.addEventListener("keydown", onKey);
+  function openDialog() {
+    if (dialog) return;
+    const backdrop = document.createElement("div");
+    backdrop.className = "fx-panel-modal-backdrop sim3d__roomdialog";
+    const modal = document.createElement("div");
+    modal.className = "modal modal--s";
+    modal.setAttribute("role", "dialog");
+    modal.setAttribute("aria-modal", "true");
+    const header = document.createElement("div");
+    header.className = "modal__header";
+    const titleSpan = document.createElement("span");
+    titleSpan.textContent = i18n("SIM3D_ROOM");
+    const closeX = document.createElement("button");
+    closeX.type = "button";
+    closeX.className = "modal__close";
+    closeX.textContent = "×";
+    closeX.addEventListener("click", closeDialog);
+    header.append(titleSpan, closeX);
+    const body = document.createElement("div");
+    body.className = "modal__body";
+    panel.hidden = false;
+    panel.classList.add("sim3d__room--dialog");
+    body.appendChild(panel);
+    const footer = document.createElement("div");
+    footer.className = "modal__footer";
+    const done = document.createElement("button");
+    done.type = "button";
+    done.className = "modal__button modal__button--primary";
+    done.textContent = i18n("CLOSE");
+    done.addEventListener("click", closeDialog);
+    footer.appendChild(done);
+    modal.append(header, body, footer);
+    backdrop.appendChild(modal);
+    backdrop._requestClose = closeDialog;
+    backdrop.addEventListener("mousedown", (e) => { if (e.target === backdrop) closeDialog(); });
+    document.body.appendChild(backdrop);
+    dialog = backdrop;
+    button.setAttribute("aria-pressed", "true");
+    button.classList.add("sim3d__btn--on");
+    paint();
+  }
+  const toggle = (open) => { if (open) openDialog(); else closeDialog(); };
+  button.addEventListener("click", () => toggle(!dialog));
   [wrap, panel].forEach((n) => n.addEventListener("dblclick", (e) => e.stopPropagation()));
 
   applyHelpers();
@@ -466,10 +526,8 @@ export function createRoom(sim, host, tools) {
     onEnv(fn) { listeners.push(fn); },
     update,
     dispose() {
+      closeDialog();
       document.removeEventListener("sim-stage", onStage);
-      fitObserver.disconnect();
-      host.removeEventListener("keydown", onKey);
-      host.removeEventListener("sim3d-popover", onOtherPopover);
       clearTimeout(pushTimer);
       const i = sim.frameHooks.indexOf(update);
       if (i >= 0) sim.frameHooks.splice(i, 1);

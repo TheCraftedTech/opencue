@@ -149,7 +149,7 @@ Il pannello **Monitor DMX** mostra esattamente cosa viene inviato. Il pulsante *
 ## 7. Personalizzare l'interfaccia
 
 - **Modalità modifica** (**Modifica → Modifica pannelli**, `Ctrl+E`): spostare e ridimensionare i pannelli (anche molto piccoli, il contenuto allora scorre), cambiarne proprietà e colori, copiarli e incollarli. Un **clic destro sull'area di lavoro vuota** aggiunge un pannello, pulsante, interruttore o fader nel punto del clic. La spunta **Modifica → Guide** attiva o disattiva le guide di allineamento durante lo spostamento (tieni premuto `Alt`: spente per un attimo).
-- I **layout** sono file. Creane diversi (per esempio uno piccolo per programmare e uno grande per la riproduzione) e passa dall'uno all'altro con `Ctrl+1` … `Ctrl+9` o **Visualizza → Layout**. Salva con `Ctrl+S` o nel gestore file.
+- I **layout** sono file. Creane diversi (per esempio uno piccolo per programmare e uno grande per la riproduzione) e passa dall'uno all'altro con `Ctrl+1` … `Ctrl+9` o **Visualizza → Layout**. Salva con `Ctrl+S` o nel gestore file. Crea un nuovo layout vuoto con **Modifica → Nuovo layout…**.
 - **Temi** (profili di colore): *Impostazioni → Aspetto* – scuro, chiaro o il tuo.
 - **Scala dell'interfaccia** (`Ctrl +` / `Ctrl -`): ingrandisce tutto per gli schermi touch; viene memorizzata per dispositivo.
 - **Lingua:** menu *Lingua* (English, Deutsch, Français, Nederlands, Italiano, Español) o `Ctrl+Maiusc+L`. Le guide sono disponibili in tutte e sei le lingue.
@@ -216,5 +216,7 @@ I tuoi dati sono semplici file nella cartella dei dati (`%LOCALAPPDATA%\OpenCue`
 | `config` | Impostazioni (`app_config.json`, inclusa la sorgente audio scelta) e i token API (`api_tokens.json`, solo hash) |
 
 Per il backup copia la cartella – oppure usa l'**esportazione** del gestore file (uno show come ZIP con gli apparecchi e gli effetti di cui ha bisogno), che permette anche di spostare uno show su un altro computer.
+
+Nel **gestore file** gli elenchi *Modelli 3D*, *Media*, *Effetti* e *Apparecchi* hanno un selettore **Elenco | Gruppi** (OpenCue ricorda la tua scelta). *Gruppi* mostra prima i gruppi: effetti per tipo (Dimmer, Colore, Posizione, Gobo, Zoom, Fuoco), media per genere (Audio, Immagine, Video), apparecchi per marca e modelli 3D per **show** in cui sono usati (un modello usato in due show è in entrambi i gruppi; l'elenco lo mostra una volta). Un clic apre un gruppo, *Tutti i gruppi* riporta indietro. **Elimina non usati** (elenco *Modelli 3D*) rimuove ogni modello 3D che non è su alcun palco – né quello caricato né uno salvato – così i vecchi import non si accumulano.
 
 La disinstallazione di OpenCue chiede se eliminare anche questi dati; la risposta predefinita è **No**.

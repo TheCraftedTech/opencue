@@ -44,9 +44,28 @@
     const tokens = (theme && theme.tokens) || {};
     return ["bg", "surface-1", "text-1", "accent"].map((key) => tokens[key] || base[key]);
   }
-  const state = { kind: "shows", rows: [], path: "", counts: {}, selected: new Set(), query: "", sort: { key: "name", dir: 1 }, loading: false, pick: null };          // pick: {resolve, only} waehrend der Auswahl
+  const state = { kind: "shows", rows: [], path: "", counts: {}, selected: new Set(), query: "", sort: { key: "name", dir: 1 }, loading: false, pick: null, openGroup: null };          // pick: {resolve, only} waehrend der Auswahl
   let seq = 0;
   let built = false;
+  const CATEGORY_KINDS = ["models", "media", "effects", "fixtures"];                    // Arten mit Gruppen-Ansicht (automatische Gruppen)
+  const viewKey = (kind) => "opencue.fm.view." + kind;
+  const DEFAULT_VIEW = { effects: "groups", fixtures: "groups" };                       // viele Eintraege: Gruppen zuerst; sonst Liste
+  const viewMode = (kind) => {
+    if (!CATEGORY_KINDS.includes(kind)) return "list";
+    try { const v = localStorage.getItem(viewKey(kind)); if (v === "list" || v === "groups") return v; } catch (e) { /* privates Fenster */ }
+    return DEFAULT_VIEW[kind] || "list";
+  };
+  const FX_CATEGORY_KEYS = { dimmer: "FXS_CAT_DIMMER", color: "FXS_CAT_COLOR", position: "FXS_CAT_POSITION", zoom: "FXS_CAT_ZOOM", focus: "FXS_CAT_FOCUS", gobo: "FXS_CAT_GOBO" };
+  /** Gruppen einer Zeile (automatisch, nicht einstellbar): Effekte = ihre Kategorie, Medien = Audio / Bild / Video, Scheinwerfer = Hersteller, 3D-Modelle = die Shows, in denen sie vorkommen
+   *  (ein Modell in zwei Shows steht in beiden Gruppen; die Liste zeigt es nur einmal). "" = keine Gruppe. */
+  function groupsOf(row) {
+    if (state.kind === "models") return Array.isArray(row.groups) && row.groups.length ? row.groups : [""];
+    if (state.kind === "effects") return [FX_CATEGORY_KEYS[row.category] ? t(FX_CATEGORY_KEYS[row.category]) : (row.category || "")];
+    if (state.kind === "media") return [t(row.kind === "image" ? "MEDIA_KIND_IMAGE" : row.kind === "audio" ? "MEDIA_KIND_AUDIO" : "MEDIA_KIND_VIDEO")];
+    return [row.category || ""];
+  }
+  const entriesText = (n) => (n === 1 ? t("FM_GROUP_ENTRY") : t("FM_GROUP_ENTRIES", { n }));
+  const noGroupLabel = () => t(state.kind === "models" ? "FM_NO_SHOW" : "FM_UNCATEGORISED");
 
   const style = document.createElement("style");
   style.textContent = `
@@ -66,10 +85,10 @@
     .fm__side-btn .ico, .fm__bar .modal__button .ico { width: 1.05em; height: 1.05em; }
     .fm__main { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; }
     .fm__bar { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; padding: 0.6rem 0.8rem; border-bottom: 1px solid var(--border-color); }
-    .fm__title { display: flex; flex-direction: column; margin-right: auto; min-width: 12rem; }
+    .fm__title { display: flex; flex-direction: column; margin-right: auto; min-width: 8rem; }
     .fm__title-name { font-weight: 700; font-size: 1rem; }
     .fm__title-path { font-size: 0.68rem; color: var(--secondary-text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 34rem; }
-    .fm__search { width: 14rem; max-width: 40vw; }
+    .fm__search { width: 10rem; max-width: 40vw; }
     .fm__bar .modal__button { display: inline-flex; align-items: center; gap: 0.4rem; }
     .fm__current { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 0.8rem; padding: 0.5rem 0.8rem; border-bottom: 1px solid var(--border-color); background: var(--dialog-header-bg); }
     .fm__current[hidden] { display: none; }
@@ -114,6 +133,31 @@
     .fm__foot { display: flex; align-items: center; gap: 0.6rem; padding: 0.5rem 0.8rem; border-top: 1px solid var(--border-color); min-height: 3.2rem; }
     .fm__foot-info { margin-right: auto; font-size: 0.78rem; color: var(--secondary-text); }
     .fm__foot .modal__button { display: inline-flex; align-items: center; gap: 0.4rem; }
+    .fm__group { display: flex; align-items: center; gap: 0.5rem; padding: 0.4rem 0.8rem; background: var(--dialog-header-bg); border-bottom: 1px solid var(--border-color); position: sticky; top: 0; z-index: 2; cursor: pointer; font-weight: 600; }
+    .fm__group:hover { background: var(--accent-soft, rgba(255, 176, 0, 0.1)); }
+    .fm__group .ico { width: 1em; height: 1em; transition: transform 0.12s; flex: 0 0 auto; }
+    .fm__group--open .ico:first-child { transform: rotate(90deg); }
+    .fm__group-name { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .fm__group-count { color: var(--secondary-text); font-weight: 400; font-size: 0.78rem; }
+    .fm__group-edit { border: 0; background: transparent; color: var(--secondary-text); cursor: pointer; padding: 0.1rem 0.3rem; border-radius: 3px; }
+    .fm__group-edit:hover { color: var(--text-main); background: var(--surface-3, rgba(255,255,255,0.08)); }
+    .fm__catmenu { position: fixed; z-index: 100001; min-width: 14rem; max-width: 22rem; max-height: 50vh; overflow: auto; background: var(--dialog-bg, #1b1b1d); border: 1px solid var(--border-color); border-radius: var(--base-radius, 3px); box-shadow: 0 8px 28px rgba(0,0,0,0.5); padding: 0.25rem; display: flex; flex-direction: column; }
+    .fm__catmenu button { display: flex; align-items: center; gap: 0.5rem; border: 0; background: transparent; color: var(--text-main); font: inherit; text-align: left; padding: 0.4rem 0.6rem; border-radius: 3px; cursor: pointer; }
+    .fm__catmenu button:hover { background: var(--accent-soft, rgba(255, 176, 0, 0.14)); }
+    .fm__catmenu hr { width: 100%; border: 0; border-top: 1px solid var(--border-color); margin: 0.2rem 0; }
+    .fm__view { display: inline-flex; border: 1px solid var(--border-color); border-radius: var(--base-radius, 3px); overflow: hidden; flex: none; }
+    .fm__view button { border: 0; background: var(--surface-2, transparent); color: var(--text-main); font: inherit; padding: 0.35rem 0.8rem; cursor: pointer; }
+    .fm__view button + button { border-left: 1px solid var(--border-color); }
+    .fm__view button.fm__view-on { background: var(--accent-color, #ffb000); color: var(--accent-ink, #111); font-weight: 600; }
+    .fm__gcard { display: flex; align-items: center; gap: 0.7rem; padding: 0.7rem 0.9rem; border-bottom: 1px solid var(--border-color); cursor: pointer; }
+    .fm__gcard:hover { background: var(--accent-soft, rgba(255, 176, 0, 0.1)); }
+    .fm__gcard > .ico { width: 1.15em; height: 1.15em; flex: 0 0 auto; color: var(--secondary-text); }
+    .fm__gcard-text { display: flex; flex-direction: column; flex: 1 1 auto; min-width: 0; }
+    .fm__gcard-name { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .fm__gcard-sub { color: var(--secondary-text); font-size: 0.78rem; }
+    .fm__gback { display: flex; align-items: center; gap: 0.8rem; padding: 0.5rem 0.8rem; border-bottom: 1px solid var(--border-color); background: var(--dialog-header-bg); position: sticky; top: 0; z-index: 2; }
+    .fm__gback-name { font-weight: 600; flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .fm__badge--cat { max-width: 9rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .fm__foot .ico { width: 1.05em; height: 1.05em; }
     .fm__dropzone { outline: 2px dashed var(--accent-color, #ffb000); outline-offset: -6px; }
     .modal--fmexport { width: min(38rem, 94vw); display: flex; flex-direction: column; max-height: min(52rem, 94vh); }
@@ -202,6 +246,7 @@
   function selectKind(kind) {
     if (state.pick && kind !== "media") return;                                  // waehrend einer Auswahl bleibt der Dialog bei den Medien
     state.kind = kind;
+    state.openGroup = null;
     state.query = "";
     state.selected.clear();
     state.sort = { key: kind === "shows" ? "modified" : "name", dir: kind === "shows" ? -1 : 1 };
@@ -681,6 +726,7 @@
       out.push(lockBadge);
     }
     else if (state.kind === "models" && row.active) add(t("FM_BADGE_ON_STAGE"), "active");
+    else if (state.kind === "models" && row.in_saved_stage) add(t("FM_BADGE_SAVED_STAGE"));
     if (state.kind === "themes") {
       const swatches = el("span", "fm__swatches");
       swatches.title = rowName(row);
@@ -765,10 +811,12 @@
   }
   function renderList() {
     const list = document.getElementById("fm-list");
+    const headBar = document.getElementById("fm-head");
+    if (headBar) headBar.style.display = "";                                         // (in der Gruppen-Uebersicht gibt es keine Spaltenkoepfe)
     list.textContent = "";
     const rows = visibleRows();
     if (!rows.length) { list.appendChild(el("div", "fm__empty", state.loading ? t("FM_LOADING") : state.query ? t("FM_NO_MATCH") : t("FM_EMPTY"))); return; }
-    for (const row of rows) {
+    const makeRow = (row) => {
       const node = el("div", "fm__row" + (state.selected.has(row.id) ? " fm__row--selected" : "") + (row.active ? " fm__row--active" : ""));
       node.dataset.id = row.id;
       const check = el("input");
@@ -809,8 +857,63 @@
         });
         node.addEventListener("dblclick", (e) => { if (!e.target.closest("button, input")) finishPick(row); });
       }
-      list.appendChild(node);
+      return node;
+    };
+    const grouped = CATEGORY_KINDS.includes(state.kind) && viewMode(state.kind) === "groups" && !state.pick && !state.query.trim();
+    if (!grouped) { for (const row of rows) list.appendChild(makeRow(row)); return; }
+    const groups = new Map();
+    for (const row of rows) for (const key of groupsOf(row)) { if (!groups.has(key)) groups.set(key, []); groups.get(key).push(row); }
+    if (state.openGroup !== null && !groups.has(state.openGroup)) state.openGroup = null;            // die Gruppe ist leer geworden (alles verschoben / geloescht)
+    if (state.openGroup === null) {
+      // Uebersicht der Gruppen: anklicken oeffnet sie
+      const names = [...groups.keys()].sort((a, b) => (a === "" ? 1 : b === "" ? -1 : a.localeCompare(b, undefined, { sensitivity: "base", numeric: true })));
+      for (const name of names) {
+        const members = groups.get(name);
+        const card = el("div", "fm__gcard");
+        card.setAttribute("role", "button");
+        card.tabIndex = 0;
+        card.dataset.group = name;
+        const label = el("div", "fm__gcard-text");
+        label.append(el("span", "fm__gcard-name", name || noGroupLabel()), el("span", "fm__gcard-sub", entriesText(members.length) + " · " + fmtSize(members.reduce((sum, r) => sum + (r.size || 0), 0))));
+        card.append(Icons.svg("folder"), label);
+        card.appendChild(Icons.svg("chevron-right"));
+        const open = () => { state.openGroup = name; state.selected.clear(); render(); };
+        card.addEventListener("click", open);
+        card.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); open(); } });
+        list.appendChild(card);
+      }
+      if (headBar) headBar.style.display = "none";
+      return;
     }
+    const back = el("div", "fm__gback");
+    const backButton = el("button", "modal__button");
+    backButton.type = "button";
+    backButton.id = "fm-group-back";
+    backButton.append(Icons.svg("rewind"), el("span", "", t("FM_GROUP_BACK")));
+    backButton.addEventListener("click", () => { state.openGroup = null; state.selected.clear(); render(); });
+    back.append(backButton, el("span", "fm__gback-name", state.openGroup || noGroupLabel()), el("span", "fm__gcard-sub", entriesText(groups.get(state.openGroup).length)));
+    list.appendChild(back);
+    for (const row of groups.get(state.openGroup)) list.appendChild(makeRow(row));
+  }
+
+  // ------------------------------------------------------------------------------------------ Kategorien, nicht benutzte Modelle
+  function setView(mode) {
+    try { localStorage.setItem(viewKey(state.kind), mode); } catch (e) { /* privates Fenster */ }
+    state.openGroup = null;
+    state.selected.clear();
+    render();
+  }
+  /** Modelle loeschen, die auf keiner Buehne (geladen oder gespeichert) stehen. */
+  async function deleteUnused() {
+    const probe = await call("POST", "/api/sim-models/delete-unused", { dry_run: true });
+    if (!probe.ok) { failToast(probe); return; }
+    if (!probe.data.count) { toast(t("FM_DELETE_UNUSED_NONE"), "info"); return; }
+    if (!(await _askDelete("files", { title: t("FM_DELETE_UNUSED_TITLE"), body: t("FM_DELETE_UNUSED_BODY", { n: probe.data.count, size: fmtSize(probe.data.bytes) }), confirmKey: "FM_DELETE_CONFIRM" }))) return;
+    const result = await call("POST", "/api/sim-models/delete-unused", {});
+    if (!result.ok) { failToast(result); return; }
+    toast(t("FM_DELETE_UNUSED_DONE", { n: result.data.count, size: fmtSize(result.data.bytes) }));
+    state.selected.clear();
+    reload();
   }
   function renderFoot() {
     const info = document.getElementById("fm-foot-info");
@@ -836,7 +939,16 @@
     if (root) root.classList.toggle("fm--pick", !!state.pick);
     const folderButton = document.getElementById("fm-upload-folder");
     if (folderButton) folderButton.style.display = state.kind === "media" ? "none" : "";            // Medien: keine Ordner
-    for (const id of ["fm-dl-all", "fm-dl-selected", "fm-del-selected"]) { const control = document.getElementById(id); if (control) control.style.display = state.pick ? "none" : ""; }          // Auswahl: nur waehlen und hochladen
+    for (const id of ["fm-dl-all", "fm-dl-selected", "fm-del-selected"]) { const control = document.getElementById(id); if (control) control.style.display = state.pick ? "none" : ""; }
+    const categoryKind = CATEGORY_KINDS.includes(state.kind) && !state.pick;
+    const viewBox = document.getElementById("fm-view");
+    if (viewBox) {
+      viewBox.style.display = categoryKind ? "" : "none";
+      const mode = viewMode(state.kind);
+      for (const b of viewBox.querySelectorAll("button")) { const on = b.dataset.mode === mode; b.classList.toggle("fm__view-on", on); b.setAttribute("aria-pressed", String(on)); }
+    }
+    const unusedButton = document.getElementById("fm-del-unused");
+    if (unusedButton) unusedButton.style.display = state.kind === "models" && !state.pick ? "" : "none";          // Auswahl: nur waehlen und hochladen
     renderSide();
     renderCurrent();
     renderHead();
@@ -889,7 +1001,17 @@
       b.addEventListener("click", handler);
       return b;
     };
-    bar.append(titleBox, search,
+    const view = el("div", "fm__view");
+    view.id = "fm-view";
+    view.setAttribute("role", "group");
+    for (const [mode, key] of [["list", "FM_VIEW_LIST"], ["groups", "FM_VIEW_GROUPS"]]) {
+      const b = el("button", "", t(key));
+      b.type = "button";
+      b.dataset.mode = mode;
+      b.addEventListener("click", () => setView(mode));
+      view.appendChild(b);
+    }
+    bar.append(titleBox, search, view,
       button("fm-upload", "upload", "FM_UPLOAD", () => fileInput.click()),
       button("fm-upload-folder", "folder", "FM_UPLOAD_FOLDER", () => folderInput.click()),
       button("fm-dl-all", "download", "FM_DOWNLOAD_ALL", () => startDownload(downloadUrl(state.kind, []))),
@@ -905,7 +1027,9 @@
     info.id = "fm-foot-info";
     const dl = button("fm-dl-selected", "download", "FM_DOWNLOAD_SELECTED", () => startDownload(downloadUrl(state.kind, [...state.selected])));
     const del = button("fm-del-selected", "trash", "FM_DELETE_SELECTED", () => deleteRows(state.rows.filter((r) => state.selected.has(r.id))));
-    foot.append(info, dl, del);
+    const unused = button("fm-del-unused", "trash", "FM_DELETE_UNUSED", deleteUnused);
+    unused.title = t("FM_DELETE_UNUSED_TIP");
+    foot.append(info, unused, dl, del);
     main.append(bar, current, head, list, foot);
     root.append(side, main);
     // Dateien auf den Dialog ziehen = Upload in die gewaehlte Art

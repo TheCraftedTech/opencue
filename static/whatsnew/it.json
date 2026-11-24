@@ -1,6 +1,43 @@
 {
  "releases": [
   {
+   "version": "2.2.0",
+   "date": "2026-11-24",
+   "title": "Import MVR e simulazione 3D più veloce",
+   "items": [
+    {
+     "icon": "stage",
+     "title": "Importare un palco dal software di progettazione",
+     "text": "Libreria → Importa scena MVR… porta palco e apparecchi da Vectorworks, Capture o Depence: patchati, posizionati e pronti a illuminare."
+    },
+    {
+     "icon": "folder",
+     "title": "Gestore file con gruppi",
+     "text": "Gli elenchi hanno un selettore Elenco | Gruppi, e “Elimina non usati” pulisce i modelli 3D che nessun palco usa."
+    },
+    {
+     "icon": "pause",
+     "title": "Disattivare la simulazione 3D",
+     "text": "Un pulsante di pausa ferma completamente la simulazione 3D, così nulla rallenta il resto della console."
+    },
+    {
+     "icon": "gear",
+     "title": "Stanza e luce come finestra",
+     "text": "Impostazioni per tutti i dispositivi e solo per questo dispositivo, con opzioni per palchi molto grandi (coni, ombre, frequenza)."
+    },
+    {
+     "icon": "bulb",
+     "title": "Correzioni per show grandi",
+     "text": "Niente più blocchi dopo aver caricato uno show con molti apparecchi, coni di luce che escono dalle lenti e teste mobili che si muovono in 3D."
+    },
+    {
+     "icon": "help",
+     "title": "Nuova guida: Simulazione 3D",
+     "text": "Pulsanti, impostazioni e un elenco per la risoluzione dei problemi – può usarla anche l'assistente IA."
+    }
+   ]
+  },
+  {
    "version": "2.1.2",
    "date": "2026-11-22",
    "title": "Chat e note, completo",

@@ -1,0 +1,46 @@
+# 3D-Simulation
+
+Das Panel **3D-Simulation** zeigt die Bühne in 3D, jeder Scheinwerfer leuchtet live nach seinen DMX-Werten. Du fügst es mit **Panel hinzufügen** ein. Diese Anleitung erklärt die Knöpfe, die Einstellungen in **Raum & Licht** und was du prüfen kannst, wenn das Bild nicht wie erwartet aussieht (nicht jeder Scheinwerfer leuchtet die Bühne an, Kegel oder Schatten fehlen, es ist langsam).
+
+---
+
+## 1. Das Panel
+
+- Drei Modi oben links: **Ansicht**, **Bauen** (Objekte und 3D-Modelle) und **Scheinwerfer** (Scheinwerfer platzieren, Moving Heads anleuchten).
+- Knöpfe oben rechts: VR-Brille (nur wenn der Browser eine anbietet), Kamera zwischen Geräten teilen, **Raum & Licht** (Zahnrad), **3D-Simulation anhalten / starten**, **Blackout** (Glühbirne), **Ansicht zurücksetzen**, **Vollbild**.
+- Unten links: der Qualitätsknopf zeigt Bildrate und Auflösung; ein Klick schaltet Auto → Niedrig → Mittel → Hoch um.
+
+## 2. 3D-Simulation anhalten und starten
+
+Der Pause-Knopf hält die Simulation vollständig an: Szene, Grafikkontext und Modelle werden abgebaut, nichts wird berechnet oder gezeichnet und der Rest von OpenCue wird nicht gebremst. Das Panel bleibt im Layout und zeigt einen Play-Knopf; **Starten** baut alles wieder auf. Die Wahl wird **je Gerät** gemerkt und gilt für alle 3D-Panels dieses Geräts. Ist ein 3D-Panel leer und meldet, dass es angehalten ist, drücke den Play-Knopf.
+
+Nach dem Starten, nach dem Laden einer großen Show oder nach dem Ändern der Lichtgrenzen zeigt das Panel kurz *Licht wird vorbereitet …*: Die Grafikkarte bereitet ihre Programme im Hintergrund vor, der Rest von OpenCue bleibt bedienbar.
+
+## 3. Raum & Licht
+
+Öffne den Dialog mit dem Zahnrad. Er hat zwei Teile.
+
+**Für alle Geräte** – gilt für jedes Gerät, das mit der Show verbunden ist (Konsole, iPad, Fernzugriff): *Beleuchtung* (Arbeitslicht im Baumodus, Grundlicht), *Zurückgeworfenes Licht* (Raumlicht, Wandreflexion, Farbabstrahlung), *Bild* (Objektreflexion, Belichtung, **Nebel**) und *Raster und Achsen in der Ansicht*. **Nebel auf 0 %** schaltet den Nebel ganz aus: keine Lichtkegel und keine Nebelberechnung – das spart am meisten Leistung.
+
+**Nur dieses Gerät** – Leistung und Qualität. Sie gelten nur auf diesem Gerät, jedes Gerät kann sie anders wählen:
+
+| Einstellung | Bedeutung |
+|---|---|
+| **Qualität** | Auto (passt sich der Bildrate an), Niedrig, Mittel, Hoch: Auflösung und Schattendetail. |
+| **Max. Lichter** | Wie viele Scheinwerfer gleichzeitig ein eigenes Licht auf den Flächen bekommen (Vorgabe 32). Die hellsten gewinnen. |
+| **Max. Schatten** | Wie viele dieser Lichter Schatten werfen. 0 = so viele, wie die Grafikkarte erlaubt. |
+| **Max. Spiegelstrahlen** | Spiegelungen auf Metall und Spiegeln. |
+| **Max. einfache Lichtkegel** | Wie viele einfache Lichtkegel gezeichnet werden. 0 = alle. Mit Grenze behält jeder Scheinwerfer zuerst seinen ersten Kegel, dann die hellsten. |
+| **Max. Bildrate** | Begrenzt, wie oft pro Sekunde das Bild neu gezeichnet wird (z. B. 30). 0 = unbegrenzt. |
+| **Scheinwerfer werfen Schatten** | Die Gehäuse der Scheinwerfer werfen Schatten in die Lichtkegel (Vorgabe: ein). |
+
+Die Zeile unter den Einstellungen zeigt, was gerade gilt (Lichter, Schatten, platzierte Scheinwerfer) und was die Grafikkarte erlaubt. **Grenzen zurücksetzen** stellt die Vorgaben wieder her.
+
+## 4. Wenn das Bild nicht wie erwartet aussieht
+
+- **Nicht jeder Scheinwerfer leuchtet die Bühne an, manche haben keinen Schatten, nur manche zeigen ein Gobo.** Das liegt an den Grenzen dieses Geräts. Nur die hellsten *Max. Lichter* Scheinwerfer (Vorgabe 32) beleuchten die Flächen, nur *Max. Schatten* davon werfen Schatten (die Grafikkarte setzt eine Obergrenze, sie steht in der Infozeile), und ein Gobo- oder Prisma-Muster erscheint auf den ersten **3** solchen Lichtern; die anderen zeigen offenes Licht. Erhöhe *Max. Lichter* und *Max. Schatten* (0 = so viele wie möglich), wenn alles angezeigt werden soll – bei vielen Scheinwerfern wird das Bild dann langsamer oder hat etwas Verzögerung.
+- **Ein Scheinwerfer leuchtet, aber sein Kegel fehlt.** Prüfe **Nebel** (0 % = keine Kegel), *Max. einfache Lichtkegel*, Blackout, den Grand Master, den Dimmer des Scheinwerfers und ob die 3D-Simulation angehalten ist.
+- **Das Bild ist dunkel.** Das Arbeitslicht gibt es nur im Baumodus; prüfe den Regler *Belichtung*, Blackout und den Grand Master.
+- **Die 3D-Simulation ist langsam.** Probiere der Reihe nach: Nebel 0 % (wenn du keinen Nebel brauchst), weniger *Max. Lichter* / *Max. Schatten*, *Max. einfache Lichtkegel* (z. B. 200), *Scheinwerfer werfen Schatten* ausschalten, Qualität Niedrig oder Auto, eine *Max. Bildrate* von 30 oder die 3D-Simulation anhalten, solange du sie nicht brauchst. Bühnen mit 100 oder mehr gleichzeitig leuchtenden Scheinwerfern sind anspruchsvoll; bis etwa 16 gleichzeitig leuchtende Scheinwerfer reichen die Vorgaben.
+- **Ein Scheinwerfer bewegt sich in 3D nicht.** Sein Typ braucht ein 3D-Modell mit beweglichem Joch / Kopf und Pan- / Tilt-Kanäle; Typen ohne beides (LED-Panels, Leisten, Blinder) bleiben ruhig. Der Scheinwerfer muss außerdem auf der Bühne platziert sein (Modus Scheinwerfer → *Alle platzieren*).
+- **Ein Lichtkegel zeigt in die falsche Richtung.** OpenCue dreht die Richtung automatisch, wenn eine GDTF-Datei den Strahl ins Gehäuse zeigen lässt. Stimmt ein Gerätetyp trotzdem nicht, notiere seinen Namen und melde ihn dem Entwickler.

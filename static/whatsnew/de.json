@@ -1,6 +1,43 @@
 {
  "releases": [
   {
+   "version": "2.2.0",
+   "date": "2026-11-24",
+   "title": "MVR-Import und eine schnellere 3D-Simulation",
+   "items": [
+    {
+     "icon": "stage",
+     "title": "Bühne aus der Planungssoftware importieren",
+     "text": "Bibliothek → MVR-Szene importieren… holt Bühne und Scheinwerfer aus Vectorworks, Capture oder Depence: gepatcht, platziert und bereit zum Leuchten."
+    },
+    {
+     "icon": "folder",
+     "title": "Dateimanager mit Gruppen",
+     "text": "Die Listen haben einen Umschalter Liste | Gruppen, und „Nicht benutzte löschen“ räumt 3D-Modelle auf, die keine Bühne braucht."
+    },
+    {
+     "icon": "pause",
+     "title": "3D-Simulation ausschalten",
+     "text": "Ein Pause-Knopf hält die 3D-Simulation vollständig an, damit nichts den Rest der Konsole bremst."
+    },
+    {
+     "icon": "gear",
+     "title": "Raum & Licht als Dialog",
+     "text": "Einstellungen für alle Geräte und nur für dieses Gerät, mit Optionen für sehr große Bühnen (Kegel, Schatten, Bildrate)."
+    },
+    {
+     "icon": "bulb",
+     "title": "Korrekturen für große Shows",
+     "text": "Kein Einfrieren mehr nach dem Laden einer Show mit vielen Scheinwerfern, Lichtkegel, die aus den Linsen zeigen, und Moving Heads, die sich in 3D bewegen."
+    },
+    {
+     "icon": "help",
+     "title": "Neue Anleitung: 3D-Simulation",
+     "text": "Knöpfe, Einstellungen und eine Fehlersuche – auch der KI-Assistent kann sie nutzen."
+    }
+   ]
+  },
+  {
    "version": "2.1.2",
    "date": "2026-11-22",
    "title": "Chat & Notizen, komplett",

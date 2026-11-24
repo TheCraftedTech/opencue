@@ -127,6 +127,11 @@ if len(sys.argv) > 2 and sys.argv[1] == "--dmx-output":
     from app.dmx_output import child_main
     sys.exit(child_main(sys.argv[2:]))
 
+# Hilfsprozess fuer grosse GDTF-Dateien (app/fixture_manager.py): liest eine Datei und gibt die Typdaten als JSON aus - so steht der Server beim Einlesen nie still.
+if len(sys.argv) > 3 and sys.argv[1] == "--gdtf-worker":
+    from app.fixture_manager import worker_main
+    sys.exit(worker_main(sys.argv[2:]))
+
 
 from app.version import APP_NAME, APP_VERSION_LABEL, WEBVIEW2_URL  # noqa: E402  (leicht: nur Konstanten)
 
@@ -312,6 +317,14 @@ def _stop_everything(server: uvicorn.Server, server_thread: threading.Thread) ->
             print("[OpenCue] Update-Setup gestartet.")
     except Exception as exc:
         print(f"[OpenCue] Update-Setup konnte nicht gestartet werden: {exc}")
+
+
+def _open_close_dialog_in_page(window: "webview.Window") -> None:
+    """Beenden-Dialog direkt in der Seite oeffnen (ohne den Umweg ueber den Server). Fehler sind hier egal: der Server schickt denselben Befehl noch einmal."""
+    try:
+        window.evaluate_js("if (typeof _openCloseDialog === 'function') { _pendingCloseAfterSave = false; _closeSaveInFlight = false; _openCloseDialog(); }")
+    except Exception:                                                            # noqa: BLE001
+        pass
 
 
 def _watch_exit_signal(window: webview.Window, stop_watching: threading.Event) -> None:
@@ -753,6 +766,9 @@ def main() -> None:
         # Client gibt es niemanden, der fragen kann - dann schliessen wir direkt.
         if close_allowed.is_set():
             return True
+        # Der Dialog soll SOFORT da sein, auch wenn der Server gerade beschaeftigt ist: die Seite oeffnet ihn selbst (eigener Thread, damit das Schliessen-Ereignis nicht wartet);
+        # request_close_prompt() meldet es zusaetzlich an alle verbundenen Geraete (Fernzugriff, und als Rueckfall, falls die Seite nicht antwortet).
+        threading.Thread(target=_open_close_dialog_in_page, args=(window,), name="close-dialog", daemon=True).start()
         return not request_close_prompt()
 
     # pywebview bricht das Schliessen ab, sobald ein Handler False zurueckgibt.

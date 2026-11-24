@@ -25,7 +25,7 @@
     if (rec) return rec;
     rec = { ready: false, wheels: [], beamfx: {}, shutter: {} };
     types.set(typeId, rec);
-    const get = (part, fallback) => fetch("/api/fixture-types/" + encodeURIComponent(typeId) + "/" + part).then((r) => (r.ok ? r.json() : fallback)).catch(() => fallback);
+    const get = (part, fallback) => (window.OCTypeFetch ? window.OCTypeFetch("/api/fixture-types/" + encodeURIComponent(typeId) + "/" + part, fallback) : fetch("/api/fixture-types/" + encodeURIComponent(typeId) + "/" + part).then((r) => (r.ok ? r.json() : fallback)).catch(() => fallback));
     Promise.all([get("wheels", []), get("beamfx", {}), get("shutter", {})]).then(([wheels, beamfx, shutter]) => {
       rec.wheels = Array.isArray(wheels) ? wheels : [];
       rec.beamfx = beamfx && typeof beamfx === "object" ? beamfx : {};
@@ -197,6 +197,7 @@
   }
 
   // ------------------------------------------------------------------------------------------ Kachel
+  const TILE_MIN_MS = 66;
   function draw(tile, id, p, dimPct) {
     const colorEl = tile.querySelector(".fxprog-tile__color");
     if (!colorEl) return;
@@ -209,18 +210,31 @@
       colorEl.style.boxShadow = "";                       // ein Ring der eckigen Ansicht (vor dem Laden der Geraetetypen) darf nicht stehen bleiben
       colorEl.appendChild(canvas);
       // Reiter ohne Kacheln (z. B. "Farbe") blenden das Raster aus: dann ist der Canvas 0 gross und es wird nichts gezeichnet. Wird er wieder sichtbar, sofort den neuesten Stand zeichnen.
-      if (typeof ResizeObserver === "function") new ResizeObserver(() => { if (tile._beamRedraw) tile._beamRedraw(); }).observe(canvas);
+      if (typeof ResizeObserver === "function") {
+        tile._beamSize = { w: 0, h: 0 };                       // Groesse aus dem Beobachter statt clientWidth/-Height bei jeder Zeichnung: das Lesen erzwang bei 100 Kacheln je Takt ein neues Layout
+        new ResizeObserver((entries) => {
+          const box = entries[entries.length - 1].contentRect;
+          tile._beamSize = { w: box.width, h: box.height };
+          if (tile._beamRedraw) tile._beamRedraw();
+        }).observe(canvas);
+      }
     }
     const render = () => {
-      const w = canvas.clientWidth;
-      const h = canvas.clientHeight;
+      const w = tile._beamSize ? tile._beamSize.w : canvas.clientWidth;
+      const h = tile._beamSize ? tile._beamSize.h : canvas.clientHeight;
       if (!w || !h) return;
       const dpr = Math.min(2, window.devicePixelRatio || 1);
       const st = tile._beam || (tile._beam = { key: "" });
+      const wait = TILE_MIN_MS - (performance.now() - (st.paintedAt || 0));
+      if (wait > 0) {                                          // Live-Werte kommen viele Male je Sekunde: eine Kachel zeichnet hoechstens ~15-mal, der letzte Stand kommt immer nach
+        if (!st.timer) st.timer = setTimeout(() => { st.timer = 0; render(); }, wait);
+        return;
+      }
       const L = look(typeData(tile.dataset.fxType || ""), (window.__fixturesLive || {})[id], p);
       const key = [w, h, dpr, L.rgb.join(","), Math.round(dimPct / 4), L.closed ? 1 : 0, L.strobe ? 1 : 0, L.gobos.map((u) => u + (imageFor(u).ready ? "" : "!")).join(",")].join("|");
       if (key === st.key) return;
       st.key = key;
+      st.paintedAt = performance.now();
       const cw = Math.round(w * dpr);
       const ch = Math.round(h * dpr);
       if (canvas.width !== cw || canvas.height !== ch) { canvas.width = cw; canvas.height = ch; }

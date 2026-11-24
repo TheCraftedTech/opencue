@@ -3246,6 +3246,22 @@ class StateManager:
         return universes
 
     def save_showfile(self, name: Optional[str] = None, save_dir: Optional[Path] = None) -> Path:
+        path, data, counter = self.prepare_showfile_save(name, save_dir)
+        show_safety._atomic_write(path, json.dumps(data, indent=2, ensure_ascii=False))          # erst in eine Nachbardatei, dann ersetzen: ein Absturz mittendrin laesst die alte Show heil
+        self.commit_showfile_save(path, counter)
+        return path
+
+    def commit_showfile_save(self, path: Path, counter: int) -> None:
+        """Zweiter Schritt des Speicherns (nach dem Schreiben). Hat sich die Show waehrend des Schreibens geaendert (counter), bleibt sie "ungespeichert"."""
+        self.showfile_path = str(path)
+        self.last_showfile_path = str(path)
+        self.note_recent_show(path)
+        self.is_dirty = self.change_counter != counter
+        self.save_app_config()
+
+    def prepare_showfile_save(self, name: Optional[str] = None, save_dir: Optional[Path] = None) -> Tuple[Path, Dict[str, Any], int]:
+        """Erster Schritt des Speicherns (schnell, im Ereignis-Thread): Ziel pruefen, Buehne sichern, den Inhalt der Show einsammeln. Das Umwandeln in Text und das Schreiben (langsam)
+        kann danach in einem anderen Thread laufen (app/server.py _save_workspace_async). Rueckgabe: (Pfad, Inhalt, Zaehler der Aenderungen)."""
         if name:
             self.showfile_name = name
 
@@ -3262,13 +3278,7 @@ class StateManager:
         sim_stages.store.persist()                      # die Buehne gehoert zur Show: ungespeicherte Aenderungen kommen mit in ihre Datei
         data = self._showfile_dict()
         directory.mkdir(parents=True, exist_ok=True)
-        show_safety._atomic_write(path, json.dumps(data, indent=2, ensure_ascii=False))          # erst in eine Nachbardatei, dann ersetzen: ein Absturz mittendrin laesst die alte Show heil
-        self.showfile_path = str(path)
-        self.last_showfile_path = str(path)
-        self.note_recent_show(path)
-        self.is_dirty = False
-        self.save_app_config()
-        return path
+        return path, data, self.change_counter
 
     def note_recent_show(self, path: str | Path) -> None:
         """Eine Show an den Anfang der Liste "Zuletzt benutzt" setzen (Sicherungen und doppelte Eintraege kommen nicht hinein)."""

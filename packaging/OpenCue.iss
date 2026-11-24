@@ -276,7 +276,7 @@ end;
 
 function WantDesktop(): Boolean;
 begin
-  Result := WizardSilent or CbDesktop.Checked;
+  Result := (not WizardSilent) and CbDesktop.Checked;          // still (Update aus OpenCue): keine neue Desktop-Verknuepfung; eine vorhandene bleibt unberuehrt
 end;
 
 function WantAssoc(): Boolean;

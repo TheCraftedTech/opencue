@@ -86,7 +86,13 @@ function buildFixture(data, options) {
       object.add(mesh);
     });
     if (node.beam) {
-      beamNodes.push({ object, angle: Math.min(Math.max(node.beam.angle || 20, 1), 160), radius: Math.max(node.beam.radius || 0.02, 0.01) });
+      let aim = object;                                               // Strahl zeigt nach -Z dieses Objekts
+      if (node.beam.flip) {                                           // Datei legt den Strahl ins Gehaeuse (siehe gdtf_model._orient_beams): Richtung umdrehen, Linse und Modell bleiben
+        aim = new THREE.Group();
+        aim.rotation.x = Math.PI;
+        object.add(aim);
+      }
+      beamNodes.push({ object: aim, angle: Math.min(Math.max(node.beam.angle || 20, 1), 160), radius: Math.max(node.beam.radius || 0.02, 0.01) });
       if (opts.beamMesh) {                                            // beamMesh: false (3D-Simulation zeichnet den Kegel selbst): keine Geometrie und kein Material
         const length = Math.max(Number(data.beam_length) || 0, 0.9);               // Strahl: Laenge etwa 3 Geraetehoehen, blendet nach hinten aus
         const r0 = Math.max(node.beam.radius || 0.02, 0.01);
@@ -107,7 +113,7 @@ function buildFixture(data, options) {
         materials.push(material);
         const mesh = new THREE.Mesh(cone, material);
         mesh.visible = opts.beam;
-        object.add(mesh);
+        aim.add(mesh);
         beams.push(mesh);
       }
     }

@@ -151,10 +151,19 @@ def check_triangles(triangles: np.ndarray) -> np.ndarray:
     return triangles
 
 
-def to_stl(triangles: np.ndarray) -> bytes:
-    """Binaere STL (Normalen 0: die Oberflaeche berechnet sie selbst)."""
+def pack_colors(colors: np.ndarray) -> np.ndarray:
+    """RGB (n, 3, uint8) -> 16-Bit-Attribut je Dreieck: Bit 15 = Farbe gueltig, Bits 10-14 R, 5-9 G, 0-4 B (je 5 Bit). Eigene Festlegung dieses Programms; STL-Dateien, die der Benutzer einliest,
+    werden ohne Attribute abgelegt (siehe to_stl) - so deutet nie fremder Inhalt der Attribut-Bytes als Farbe."""
+    c = np.asarray(colors, dtype=np.uint16) >> 3
+    return (0x8000 | (c[:, 0] << 10) | (c[:, 1] << 5) | c[:, 2]).astype(np.uint16)
+
+
+def to_stl(triangles: np.ndarray, colors: Any = None) -> bytes:
+    """Binaere STL (Normalen 0: die Oberflaeche berechnet sie selbst). colors: optional (n, 3) uint8 - eine Farbe je Dreieck (z. B. aus einer MVR-Szene), siehe pack_colors."""
     records = np.zeros(len(triangles), dtype=_STL_RECORD)
     records["v"] = triangles
+    if colors is not None and len(colors) == len(triangles):
+        records["attr"] = pack_colors(colors)
     header = b"OpenCue 3D model".ljust(80, b" ")
     return header + struct.pack("<I", len(triangles)) + records.tobytes()
 
@@ -172,7 +181,15 @@ def read_any(filename: str, data: bytes) -> np.ndarray:
 
 def import_bytes(filename: str, data: bytes) -> Dict[str, Any]:
     """Datei pruefen, als binaere STL ablegen. Rueckgabe wie beim Dateimanager: {ok, id, name, status (created|copy|identical), original}."""
-    stl = to_stl(read_any(filename, data))
+    return store_stl(filename, to_stl(read_any(filename, data)))
+
+
+def store_triangles(filename: str, triangles: np.ndarray, colors: Any = None) -> Dict[str, Any]:
+    """Fertige Dreiecke (Meter, Z oben, optional Farben je Dreieck) in die Modell-Bibliothek legen (MVR-Import); gleiche Regeln wie import_bytes."""
+    return store_stl(filename, to_stl(check_triangles(triangles), colors))
+
+
+def store_stl(filename: str, stl: bytes) -> Dict[str, Any]:
     original = clean_stem(Path(filename).stem)
     directory = models_dir()
     n = 1
@@ -214,12 +231,16 @@ def meta(path: Path) -> Dict[str, Any]:
 
 def list_models() -> List[Dict[str, Any]]:
     used = used_models()
+    try:
+        saved = used_by_saved_stages()
+    except Exception:          # noqa: BLE001
+        saved = set()
     out = []
     for path in sorted(models_dir().glob("*" + EXTENSION), key=lambda p: p.name.lower()):
         if path.name.startswith(".") or not path.is_file():
             continue
         stat = path.stat()
-        out.append({"id": path.name, "name": path.stem, "bytes": stat.st_size, "modified": int(stat.st_mtime), **meta(path), "in_use": path.name in used})
+        out.append({"id": path.name, "name": path.stem, "bytes": stat.st_size, "modified": int(stat.st_mtime), **meta(path), "in_use": path.name in used, "in_saved_stage": path.name in saved})
     return out
 
 
@@ -229,6 +250,33 @@ def used_models() -> set:
         return {o.get("model") for o in sim_stages.store.objects if o.get("type") == "model" and o.get("model")}
     except Exception:          # noqa: BLE001 - die Buehne ist noch nicht geladen
         return set()
+
+
+def used_by_saved_stages() -> set:
+    """Modelle, die auf irgendeiner GESPEICHERTEN Buehne (Buehnen-Bibliothek) stehen."""
+    names: set = set()
+    try:
+        for entry in sim_stages.list_files():
+            for obj in sim_stages.read_file(entry["filename"])["objects"]:
+                if obj.get("type") == "model" and obj.get("model"):
+                    names.add(obj["model"])
+    except Exception:          # noqa: BLE001 - eine unlesbare Buehnen-Datei darf nichts loeschen lassen: im Zweifel gelten alle als benutzt (siehe unused())
+        raise
+    return names
+
+
+def unused() -> List[Dict[str, Any]]:
+    """Modelle, die weder auf der geladenen noch auf einer gespeicherten Buehne stehen (loeschbar). Ist eine Buehnen-Datei nicht lesbar: nichts gilt als unbenutzt."""
+    try:
+        keep = used_models() | used_by_saved_stages()
+    except Exception:          # noqa: BLE001
+        return []
+    out = []
+    for path in sorted(models_dir().glob("*" + EXTENSION)):
+        if path.name.startswith(".") or not path.is_file() or path.name in keep:
+            continue
+        out.append({"id": path.name, "bytes": path.stat().st_size})
+    return out
 
 
 # ------------------------------------------------------------------------------------------------ Verwalten
@@ -283,6 +331,26 @@ async def api_file(filename: str) -> Response:
     except ModelError as exc:
         return exc.response()
     return Response(content=path.read_bytes(), media_type="model/stl", headers={"Cache-Control": "no-cache"})
+
+
+@router.post("/api/sim-models/delete-unused")
+async def api_delete_unused(request: Request) -> JSONResponse:
+    """Alle Modelle loeschen, die auf keiner Buehne (geladen oder gespeichert) stehen. {"dry_run": true} zaehlt nur."""
+    try:
+        body = await request.json()
+    except ValueError:
+        body = {}
+    items = unused()
+    if not (isinstance(body, dict) and body.get("dry_run")):
+        for item in items:
+            try:
+                (models_dir() / item["id"]).unlink()
+                _meta_cache.pop(str(models_dir() / item["id"]), None)
+            except OSError:
+                pass
+        if items:
+            await _announce()
+    return JSONResponse({"ok": True, "count": len(items), "bytes": sum(i["bytes"] for i in items), "ids": [i["id"] for i in items][:200]})
 
 
 @router.post("/api/sim-models/{action}")

@@ -15,8 +15,12 @@ Drei eingebaute generische Geraete (Dimmer, RGBW-Par, Moving Head; ohne 3D-Model
 """
 from __future__ import annotations
 
+import json
+import logging
+import os
+import threading
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 import pygdtf
 
@@ -183,6 +187,81 @@ def gdtf_paths() -> List[Path]:
 
 _fixture_types_cache: Optional[List[Dict[str, Any]]] = None
 _fixture_types_cache_key: Optional[tuple] = None
+_parsed_files: Dict[str, Tuple[Tuple[float, int], Dict[str, Any]]] = {}      # Pfad -> ((mtime, Groesse), Ergebnis von _parse_gdtf): jede Datei wird nur neu gelesen, wenn SIE sich aendert
+
+
+# ---- Zwischenspeicher auf der Platte: <Datenordner>/cache/gdtf_types.json {"version", "files": {Dateiname: {"key": [mtime, Groesse], "data": <Ergebnis von _parse_gdtf>}}}.
+# Gilt nur, wenn Datei (Zeit + Groesse), Cache-Version (CACHE_VERSION: bei jeder Aenderung von _parse_gdtf hochzaehlen) und pygdtf-Version passen; Fehlerergebnisse werden nie gemerkt.
+CACHE_VERSION = 1
+_disk_lock = threading.Lock()
+_disk: Optional[Dict[str, Any]] = None
+_disk_dirty = False
+_disk_logger = logging.getLogger("opencue.gdtf")
+
+
+def _disk_path() -> Path:
+    return _paths.get_data_root() / "cache" / "gdtf_types.json"
+
+
+def _disk_load() -> Dict[str, Any]:
+    global _disk
+    if _disk is None:
+        _disk = {}
+        try:
+            data = json.loads(_disk_path().read_text(encoding="utf-8"))
+            if data.get("version") == CACHE_VERSION and data.get("pygdtf") == getattr(pygdtf, "__version__", "?") and isinstance(data.get("files"), dict):
+                _disk = data["files"]
+        except (OSError, ValueError, AttributeError):
+            pass
+    return _disk
+
+
+def flush_parse_cache(existing: Optional[List[str]] = None) -> None:
+    """Geaenderten Zwischenspeicher auf die Platte schreiben (existing: Dateinamen, die es noch gibt - der Rest wird vergessen)."""
+    global _disk_dirty
+    with _disk_lock:
+        files = _disk_load()
+        if existing is not None:
+            for name in [n for n in files if n not in existing]:
+                files.pop(name, None)
+                _disk_dirty = True
+        if not _disk_dirty:
+            return
+        try:
+            target = _disk_path()
+            target.parent.mkdir(parents=True, exist_ok=True)
+            partial = target.with_suffix(".part")
+            partial.write_text(json.dumps({"version": CACHE_VERSION, "pygdtf": getattr(pygdtf, "__version__", "?"), "files": files}, ensure_ascii=False), encoding="utf-8")
+            os.replace(partial, target)
+            _disk_dirty = False
+        except OSError as exc:
+            _disk_logger.warning("GDTF-Zwischenspeicher konnte nicht geschrieben werden: %s", exc)
+
+
+def _parse_gdtf_cached(path: Path) -> Dict[str, Any]:
+    """pygdtf braucht bei grossen Dateien (LED-Leisten mit vielen Pixeln) bis zu 13 s: jede Datei wird nur neu gelesen, wenn SIE sich aendert - im Speicher und (ueber Programmstarts
+    hinweg) auf der Platte. Ein neu eingebautes GDTF darf nicht dazu fuehren, dass die ganze Bibliothek noch einmal gelesen wird."""
+    global _disk_dirty
+    try:
+        stat = path.stat()
+        key = (stat.st_mtime, stat.st_size)
+    except OSError:
+        return _parse_gdtf(path)
+    cached = _parsed_files.get(str(path))
+    if cached is not None and cached[0] == key:
+        return cached[1]
+    with _disk_lock:
+        entry = _disk_load().get(path.name)
+    if isinstance(entry, dict) and entry.get("key") == [key[0], key[1]] and isinstance(entry.get("data"), dict):
+        _parsed_files[str(path)] = (key, entry["data"])
+        return entry["data"]
+    result = _parse_gdtf(path)
+    _parsed_files[str(path)] = (key, result)
+    if "error" not in result:
+        with _disk_lock:
+            _disk_load()[path.name] = {"key": [key[0], key[1]], "data": result}
+            _disk_dirty = True
+    return result
 
 
 def get_fixture_types() -> List[Dict[str, Any]]:
@@ -204,7 +283,8 @@ def get_fixture_types() -> List[Dict[str, Any]]:
     if _fixture_types_cache is not None and cache_key == _fixture_types_cache_key:
         return _fixture_types_cache
 
-    result = [_parse_gdtf(p) for p in gdtf_files]
+    result = [_parse_gdtf_cached(p) for p in gdtf_files]
+    flush_parse_cache([p.name for p in gdtf_files])
     taken = {str(item.get("name", "")).strip().lower() for item in result}
     result += [dict(item) for item in FALLBACK_FIXTURES if str(item["name"]).strip().lower() not in taken]       # die eingebauten Generic-Geraete (ohne 3D-Modell) gibt es immer, solange keine GDTF-Datei denselben Namen hat
     _fixture_types_cache = result
@@ -246,6 +326,183 @@ _fixture_wheels_cache: Dict[str, List[Dict[str, Any]]] = {}
 _fixture_channel_info_cache: Dict[str, Dict[str, List[Dict[str, Any]]]] = {}
 
 
+# ---- Abgeleitete Typdaten (Raeder, Shutter, Gobo-/Prismenkanaele, Kanalliste): Jede dieser Abfragen musste frueher die GANZE GDTF-Datei neu durch pygdtf lesen (LED-Leisten bis 10 s je Abfrage,
+# vier Abfragen je Typ, alle direkt in der Ereignisschleife des Servers: ein Programmstart mit einer grossen Show stand deshalb eine Minute still). Jetzt:
+#  - alle vier Ergebnisse eines Typs entstehen in EINEM Durchgang (die Datei wird einmal gelesen; gleichzeitige Abfragen warten auf dieselbe Arbeit),
+#  - das Lesen laeuft in einem eigenen Hilfsprozess (main.py --gdtf-worker): der XML-Leser von pygdtf haelt die Sperre des Interpreters Sekunden lang, ein Thread haette den Server trotzdem angehalten,
+#  - die fertigen Ergebnisse stehen auf der Platte (<Datenordner>/cache/gdtf_derived/<Art>/<Typ>.json, gueltig nur fuer Datei-Zeit + Groesse, DERIVED_VERSION und pygdtf-Version), ein Neustart liest nichts mehr.
+DERIVED_VERSION = 1
+_MAX_PARSED_OBJECTS = 3
+_KINDS = ("wheels", "channels", "shutter", "beamfx")
+_EMPTY = {"wheels": [], "channels": {}, "shutter": {}, "beamfx": {}}
+_ft_objects: "Dict[str, Tuple[Tuple[float, int], Any]]" = {}
+_ft_guard = threading.Lock()
+_ft_locks: Dict[str, threading.Lock] = {}
+_path_override: Dict[str, Path] = {}               # Typ -> Datei (im Hilfsprozess: dort gibt es keinen Datenordner der Konfiguration)
+
+
+class _Unreadable(Exception):
+    """Die GDTF-Datei laesst sich nicht lesen: das Ergebnis ist leer, wird aber nicht auf der Platte gemerkt."""
+
+
+def _find_gdtf(fixture_id: str) -> Optional[Path]:
+    return _path_override.get(fixture_id) or next((p for p in gdtf_paths() if p.stem == fixture_id), None)
+
+
+def _file_key(path: Path) -> Tuple[float, int]:
+    stat = path.stat()
+    return (stat.st_mtime, stat.st_size)
+
+
+def _lock_for(name: str) -> threading.Lock:
+    with _ft_guard:
+        lock = _ft_locks.get(name)
+        if lock is None:
+            lock = _ft_locks[name] = threading.Lock()
+        return lock
+
+
+def _load_fixture_type(path: Path) -> Any:
+    """pygdtf-Objekt einer Datei, je Prozess einmal gelesen (die letzten paar bleiben im Speicher)."""
+    try:
+        key = _file_key(path)
+    except OSError as exc:
+        raise _Unreadable(str(exc))
+    with _lock_for("file:" + str(path)):
+        with _ft_guard:
+            hit = _ft_objects.get(str(path))
+        if hit is not None and hit[0] == key:
+            return hit[1]
+        try:
+            fixture = pygdtf.FixtureType(str(path))
+            fixture.__exit__(None, None, None)        # ZIP-Handle freigeben (Windows: sonst nicht loeschbar)
+        except Exception as exc:
+            raise _Unreadable(str(exc))
+        with _ft_guard:
+            _ft_objects[str(path)] = (key, fixture)
+            while len(_ft_objects) > _MAX_PARSED_OBJECTS:
+                _ft_objects.pop(next(iter(_ft_objects)))
+        return fixture
+
+
+def _compute_all_here(fixture_id: str, path: Path) -> Optional[Dict[str, Any]]:
+    """Alle vier Ergebnisse eines Typs in diesem Prozess berechnen (None: Datei nicht lesbar)."""
+    _path_override[fixture_id] = path
+    try:
+        return {"wheels": _compute_wheels(fixture_id), "channels": _compute_channel_info(fixture_id), "shutter": _compute_shutter(fixture_id), "beamfx": _compute_beamfx(fixture_id)}
+    except _Unreadable:
+        return None
+    finally:
+        _path_override.pop(fixture_id, None)
+
+
+def worker_main(argv: List[str]) -> int:
+    """Hilfsprozess (main.py --gdtf-worker <Typ> <Datei>): berechnet die Typdaten und schreibt sie als JSON nach stdout."""
+    import sys
+    result = _compute_all_here(argv[0], Path(argv[1]))
+    sys.stdout.write(json.dumps(result, ensure_ascii=False))
+    sys.stdout.flush()
+    return 0
+
+
+def _worker_command(fixture_id: str, path: Path) -> List[str]:
+    import sys
+    if getattr(sys, "frozen", False):
+        return [sys.executable, "--gdtf-worker", fixture_id, str(path)]
+    return [sys.executable, str(Path(__file__).resolve().parent.parent / "main.py"), "--gdtf-worker", fixture_id, str(path)]
+
+
+def _compute_all(fixture_id: str, path: Path) -> Optional[Dict[str, Any]]:
+    """Im Hilfsprozess berechnen; geht das nicht (Prozess startet nicht, Ausgabe unbrauchbar), im eigenen Prozess."""
+    import subprocess
+    try:
+        done = subprocess.run(_worker_command(fixture_id, path), capture_output=True, timeout=900, creationflags=0x08000000 if os.name == "nt" else 0)
+        if done.returncode == 0 and done.stdout:
+            data = json.loads(done.stdout.decode("utf-8"))
+            if data is None or (isinstance(data, dict) and all(k in data for k in _KINDS)):
+                return data
+        _disk_logger.warning("GDTF-Hilfsprozess fuer %s lieferte nichts Brauchbares (Code %s)", fixture_id, done.returncode)
+    except Exception as exc:
+        _disk_logger.warning("GDTF-Hilfsprozess fuer %s nicht moeglich (%s) - es wird im Hauptprozess gelesen", fixture_id, exc)
+    return _compute_all_here(fixture_id, path)
+
+
+def _memory(kind: str) -> Dict[str, Any]:
+    return {"wheels": _fixture_wheels_cache, "channels": _fixture_channel_info_cache, "shutter": _fixture_shutter_cache, "beamfx": _fixture_beamfx_cache}[kind]
+
+
+def _derived_file(kind: str, fixture_id: str) -> Path:
+    safe = "".join(c if c.isalnum() or c in "-_.@ " else "_" for c in fixture_id)
+    return _paths.get_data_root() / "cache" / "gdtf_derived" / kind / (safe + ".json")
+
+
+def _ensure_derived(fixture_id: str) -> None:
+    """Alle vier Ergebnisse des Typs in den Speicher bringen: von der Platte (wenn die Datei unveraendert ist), sonst berechnen und auf der Platte merken."""
+    path = _find_gdtf(fixture_id)
+    if path is None:
+        for kind in _KINDS:
+            _memory(kind)[fixture_id] = _EMPTY[kind]
+        return
+    try:
+        key = _file_key(path)
+    except OSError:
+        return
+    stamp = {"v": DERIVED_VERSION, "pygdtf": getattr(pygdtf, "__version__", "?"), "key": [key[0], key[1]]}
+    missing = []
+    for kind in _KINDS:
+        try:
+            entry = json.loads(_derived_file(kind, fixture_id).read_text(encoding="utf-8"))
+            if isinstance(entry, dict) and all(entry.get(k) == v for k, v in stamp.items()) and "data" in entry:
+                _memory(kind)[fixture_id] = entry["data"]
+                continue
+        except (OSError, ValueError):
+            pass
+        missing.append(kind)
+    if not missing:
+        return
+    results = _compute_all(fixture_id, path)
+    if results is None:
+        for kind in missing:
+            _memory(kind)[fixture_id] = _EMPTY[kind]               # nicht lesbar: leer, aber nie auf der Platte merken
+        return
+    for kind in missing:
+        _memory(kind)[fixture_id] = results[kind]
+        target = _derived_file(kind, fixture_id)
+        try:
+            target.parent.mkdir(parents=True, exist_ok=True)
+            partial = target.with_suffix(".part")
+            partial.write_text(json.dumps(dict(stamp, data=results[kind]), ensure_ascii=False), encoding="utf-8")
+            os.replace(partial, target)
+        except (OSError, TypeError, ValueError) as exc:
+            _disk_logger.warning("GDTF-Zwischenspeicher (%s) konnte nicht geschrieben werden: %s", kind, exc)
+
+
+def _derived(kind: str, fixture_id: str) -> Any:
+    memory = _memory(kind)
+    if fixture_id in memory:
+        return memory[fixture_id]
+    with _lock_for("all:" + fixture_id):
+        if fixture_id not in memory:
+            _ensure_derived(fixture_id)
+        return memory.get(fixture_id, _EMPTY[kind])
+
+
+def get_fixture_channel_info(fixture_id: str) -> Dict[str, List[Dict[str, Any]]]:
+    return _derived("channels", fixture_id)
+
+
+def get_fixture_wheels(fixture_id: str) -> List[Dict[str, Any]]:
+    return _derived("wheels", fixture_id)
+
+
+def get_fixture_beamfx(fixture_id: str) -> Dict[str, Dict[str, Any]]:
+    return _derived("beamfx", fixture_id)
+
+
+def get_fixture_shutter(fixture_id: str) -> Dict[str, List[Dict[str, Any]]]:
+    return _derived("shutter", fixture_id)
+
+
 def _coarse(value: Any) -> Optional[int]:
     """DMX-Wert einer GDTF-Angabe als 8-Bit-Wert (bei 16/24 Bit das hoechste Byte)."""
     raw = getattr(value, "value", None)
@@ -265,16 +522,13 @@ def _closed_ranges(items: List[Dict[str, Any]]) -> None:
         item["to"] = max(item["from"], items[index + 1]["from"] - 1) if index + 1 < len(items) else 255
 
 
-def get_fixture_channel_info(fixture_id: str) -> Dict[str, List[Dict[str, Any]]]:
+def _compute_channel_info(fixture_id: str) -> Dict[str, List[Dict[str, Any]]]:
     """Lesbare Kanal-Beschreibung je Modus (Detail-Ansicht im DMX-Direct-Regler): Kanal-Offset, Attribut, schoener Attributname, Funktionen mit DMX-Bereichen und deren benannte Stufen."""
-    if fixture_id in _fixture_channel_info_cache:
-        return _fixture_channel_info_cache[fixture_id]
     result: Dict[str, List[Dict[str, Any]]] = {}
-    path = next((p for p in gdtf_paths() if p.stem == fixture_id), None)
+    path = _find_gdtf(fixture_id)
     if path is not None:
         try:
-            fixture = pygdtf.FixtureType(str(path))
-            fixture.__exit__(None, None, None)
+            fixture = _load_fixture_type(path)
             pretty = {str(a.name): str(a.pretty or "") for a in fixture.attributes}
             for mode in fixture.dmx_modes:
                 rows: List[Dict[str, Any]] = []
@@ -298,13 +552,14 @@ def get_fixture_channel_info(fixture_id: str) -> Dict[str, List[Dict[str, Any]]]
                                  "default": _coarse(ch.default), "functions": functions})
                 rows.sort(key=lambda r: r["offset"])
                 result[mode.name or "default"] = rows
+        except _Unreadable:
+            raise
         except Exception:
             result = {}
-    _fixture_channel_info_cache[fixture_id] = result
     return result
 
 
-def get_fixture_wheels(fixture_id: str) -> List[Dict[str, Any]]:
+def _compute_wheels(fixture_id: str) -> List[Dict[str, Any]]:
     """Extrahiert Wheel-Slot-Daten (Gobo/Farbe/Prism) inkl. DMX-Bereiche und Base64-Bilder.
 
     Liest Wheel-Definitionen (Slots + media_file_name) sowie die zugehoerigen
@@ -314,20 +569,11 @@ def get_fixture_wheels(fixture_id: str) -> List[Dict[str, Any]]:
     import base64
     import zipfile
 
-    if fixture_id in _fixture_wheels_cache:
-        return _fixture_wheels_cache[fixture_id]
-
-    gdtf_path = next((p for p in gdtf_paths() if p.stem == fixture_id), None)
+    gdtf_path = _find_gdtf(fixture_id)
     if gdtf_path is None:
-        _fixture_wheels_cache[fixture_id] = []
         return []
 
-    try:
-        ft = pygdtf.FixtureType(str(gdtf_path))
-        ft.__exit__(None, None, None)        # ZIP-Handle freigeben (Windows: sonst nicht loeschbar)
-    except Exception:
-        _fixture_wheels_cache[fixture_id] = []
-        return []
+    ft = _load_fixture_type(gdtf_path)
 
     # Pro Wheel-Name: ChannelSets (exakte DMX-Bereiche), Attributname des
     # logischen Kanals (z.B. "Gobo1", "Gobo2", "Color1") und Kanal-Offset.
@@ -437,7 +683,6 @@ def get_fixture_wheels(fixture_id: str) -> List[Dict[str, Any]]:
     except Exception:
         pass
 
-    _fixture_wheels_cache[fixture_id] = result
     return result
 
 
@@ -482,22 +727,15 @@ def _classify_beamfx(role: str, attribute: str, set_name: str, prism: bool) -> s
     return "spin" if "spin" in text else "index"
 
 
-def get_fixture_beamfx(fixture_id: str) -> Dict[str, Dict[str, Any]]:
+def _compute_beamfx(fixture_id: str) -> Dict[str, Dict[str, Any]]:
     """Gobo-/Prismenkanaele eines Typs (erster DMX-Modus, der solche Kanaele hat): {Kanalattribut: {role: select|spin, type: gobo|prism, wheel: Radname, ranges: [{from, to, kind, slot, name,
     phys: [von, bis]}]}}. select = Kanal, der den Slot des Rads waehlt (Gobo1, Prism1; slot = Nummer im Rad ab 1); spin = Drehung/Position des Rads (Gobo1SelectSpin, Prism1Pos, Prism1PosRotate ...).
     kind siehe _classify_beamfx; phys = physikalische Werte der Datei (Winkel oder Drehgeschwindigkeit, Vorzeichen = Richtung)."""
-    if fixture_id in _fixture_beamfx_cache:
-        return _fixture_beamfx_cache[fixture_id]
     result: Dict[str, Dict[str, Any]] = {}
-    _fixture_beamfx_cache[fixture_id] = result
-    gdtf_path = next((p for p in gdtf_paths() if p.stem == fixture_id), None)
+    gdtf_path = _find_gdtf(fixture_id)
     if gdtf_path is None:
         return result
-    try:
-        ft = pygdtf.FixtureType(str(gdtf_path))
-        ft.__exit__(None, None, None)
-    except Exception:
-        return result
+    ft = _load_fixture_type(gdtf_path)
     num = lambda v: float(getattr(v, "value", v) or 0.0)           # noqa: E731 - GDTF-Werte sind kleine Wert-Objekte
     for mode in ft.dmx_modes:
         found = False
@@ -536,21 +774,14 @@ def get_fixture_beamfx(fixture_id: str) -> Dict[str, Dict[str, Any]]:
     return result
 
 
-def get_fixture_shutter(fixture_id: str) -> Dict[str, List[Dict[str, Any]]]:
+def _compute_shutter(fixture_id: str) -> Dict[str, List[Dict[str, Any]]]:
     """DMX-Bereiche der Shutter-/Strobe-Kanaele eines Typs: {Kanalattribut: [{from, to, kind, hz: [von, bis]}]} (aus dem ersten DMX-Modus, der solche Kanaele hat).
     kind: closed | open | strobe | pulse_in | pulse_out | random; hz = Blitzfrequenz am Anfang/Ende des Bereichs (GDTF: Einheit Hz; ohne Angabe 1-20 Hz); name = Name des Bereichs."""
-    if fixture_id in _fixture_shutter_cache:
-        return _fixture_shutter_cache[fixture_id]
     result: Dict[str, List[Dict[str, Any]]] = {}
-    _fixture_shutter_cache[fixture_id] = result
-    gdtf_path = next((p for p in gdtf_paths() if p.stem == fixture_id), None)
+    gdtf_path = _find_gdtf(fixture_id)
     if gdtf_path is None:
         return result
-    try:
-        ft = pygdtf.FixtureType(str(gdtf_path))
-        ft.__exit__(None, None, None)
-    except Exception:
-        return result
+    ft = _load_fixture_type(gdtf_path)
     num = lambda v: float(getattr(v, "value", v) or 0.0)           # noqa: E731 - GDTF-Werte sind kleine Wert-Objekte
     for mode in ft.dmx_modes:
         for ch in mode.dmx_channels:
